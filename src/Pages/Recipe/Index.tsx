@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './recipe.scss'
 import { type Recipe } from '@/types/Recipe'
 
@@ -25,6 +26,7 @@ export default function Recipe({ recipe }: { recipe: Recipe }) {
       <div className="recipe-content">
         <header className="recipe-header">
           <div>
+            <Link to="/recipes" className="back-link">← All Recipes</Link>
             <p className="recipe-label">Recipe</p>
             <h2 className="recipe-name">{recipe.name}</h2>
           </div>
