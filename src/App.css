@@ -1,0 +1,14 @@
+.app-shell {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    gap: 16px;
+  }
+}
