@@ -21,7 +21,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Cheese', quantity: 1, calories: 100 },
         { name: 'Bread', quantity: 2, calories: 200 },
       ],
-      date_added: new Date('2025-11-21')
+      date_added: new Date('2025-11-21'),
+      date_published: new Date('2025-11-22'),
     },
     {
       id: 2,
@@ -33,7 +34,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Ground Beef', quantity: 200, calories: 400 },
         { name: 'Tomato Sauce', quantity: 150, calories: 80 },
       ],
-      date_added: new Date('2025-12-01')
+      date_added: new Date('2025-12-01'),
+      date_published: new Date('2025-12-02'),
     },
     { 
       id: 3,
@@ -45,7 +47,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Croutons', quantity: 50, calories: 200 },
         { name: 'Caesar Dressing', quantity: 30, calories: 150 },
       ],
-      date_added: new Date('2025-12-01')
+      date_added: new Date('2025-12-01'),
+      date_published: new Date('2025-12-06'),
     }
   ]);
 

@@ -4,7 +4,7 @@ import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeP
 import type { Recipe } from '@/types/Recipe'
 import './recipes.scss'
 
-type SortOption = 'name' | 'date_added' | 'meal'
+type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
 
 export default function Recipes() {
@@ -19,13 +19,21 @@ export default function Recipes() {
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-
+  const [searchTerm, setSearchTerm] = useState<string>('')
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   const filteredAndSortedRecipes = useMemo(() => {
-    const filtered = filterMeal === 'all'
+    let filtered = filterMeal === 'all'
       ? recipes
       : recipes.filter(recipe => recipe.meal === filterMeal)
+    if(searchTerm) {
+      filtered = filtered.filter(recipe =>
+        recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        recipe.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        recipe.ingredients.some(ingredient => ingredient.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    }
+
 
     return filtered.sort((a, b) => {
       let comparison = 0
@@ -39,13 +47,21 @@ export default function Recipes() {
           comparison = dateA - dateB
           break
         }
+        case 'date_published': {
+          const dateA = a.date_published ? new Date(a.date_published).getTime() : 0
+          const dateB = b.date_published ? new Date(b.date_published).getTime() : 0
+          comparison = dateA - dateB
+          break
+        }
         case 'meal':
           comparison = (a.meal || '').localeCompare(b.meal || '')
           break
       }
+
+      
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [recipes, filterMeal, sortBy, sortDirection])
+  }, [recipes, filterMeal, sortBy, sortDirection, searchTerm])
 
   function handleSelectRecipe(recipeId: number) {
     const newSelected = new Set(selectedRecipes)
@@ -76,7 +92,7 @@ export default function Recipes() {
     if (selectedRecipes.size === 0) return
     const updatedRecipes = recipes.map(recipe => {
       if (selectedRecipes.has(recipe.id)) {
-        return { ...recipe, published: false }
+        return { ...recipe, date_published: null }
       }
       return recipe
     })
@@ -130,6 +146,20 @@ export default function Recipes() {
                   ))}
                 </select>
               </label>
+
+              <label className="filter-group">
+                <span className="filter-label">Search:</span>
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Search recipes..."
+                  onChange={(e) => {
+                    const searchTerm = e.target.value.toLowerCase()
+                    setSearchTerm(searchTerm)
+                  }}
+                />
+              </label>
+
               <label className="filter-group">
                 <span className="filter-label">Sort by:</span>
                 <select
@@ -138,10 +168,12 @@ export default function Recipes() {
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
                 >
                   <option value="date_added">Recent</option>
+                  <option value="date_published">Published Date</option>
                   <option value="name">Name</option>
                   <option value="meal">Category</option>
                 </select>
               </label>
+              
               <button
                 type="button"
                 className="sort-direction-button"
@@ -202,17 +234,17 @@ export default function Recipes() {
                         />
                       </div>
                       <Link to={`/recipes/${recipe.id}`} className="card-content">
-                        <div className="card-header">
-                          <h3 className="card-title">{recipe.name}</h3>
-                          <div className="card-badges">
-                            {recipe.meal && (
-                              <span className="pill pill-ghost">{recipe.meal}</span>
-                            )}
-                            {recipe.published === false && (
-                              <span className="pill pill-warning">Unpublished</span>
-                            )}
+                          <div className="card-header">
+                            <h3 className="card-title">{recipe.name}</h3>
+                            <div className="card-badges">
+                              {recipe.meal && (
+                                <span className="pill pill-ghost">{recipe.meal}</span>
+                              )}
+                              {recipe.date_published === null && (
+                                <span className="pill pill-warning">Unpublished</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
                         <p className="card-description">{recipe.description}</p>
                         <div className="card-footer">
                           <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>

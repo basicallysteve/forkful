@@ -17,7 +17,7 @@ const mockRecipes: Recipe[] = [
       { name: 'Cheese', quantity: 1, calories: 100 },
     ],
     date_added: new Date('2025-11-21'),
-    published: true,
+    date_published: new Date('2025-11-22'),
   },
   {
     id: 2,
@@ -29,7 +29,7 @@ const mockRecipes: Recipe[] = [
       { name: 'Ground Beef', quantity: 200, calories: 400 },
     ],
     date_added: new Date('2025-12-01'),
-    published: true,
+    date_published: new Date('2025-12-02'),
   },
   {
     id: 3,
@@ -40,10 +40,25 @@ const mockRecipes: Recipe[] = [
       { name: 'Romaine Lettuce', quantity: 100, calories: 15 },
     ],
     date_added: new Date('2025-12-01'),
-    published: true,
+    date_published: new Date('2025-12-02'),
   },
 ]
 
+// function renderRecipes(recipes: Recipe[] = sampleRecipes) {
+//   const setRecipes = vi.fn()
+//   const ctx: RecipeContextType = {
+//     recipes,
+//     setRecipes,
+//     existingIngredients: [],
+//   }
+//   return render(
+//     <BrowserRouter>
+//       <GlobalRecipeContext.Provider value={ctx}>
+//         {ui}
+//       </GlobalRecipeContext.Provider>
+//     </BrowserRouter>
+//   )
+// }
 function renderWithProviders(
   ui: React.ReactElement,
   { recipes = mockRecipes, setRecipes = vi.fn() }: { recipes?: Recipe[]; setRecipes?: (recipes: Recipe[]) => void } = {}
@@ -61,6 +76,8 @@ function renderWithProviders(
       </GlobalRecipeContext.Provider>
     </BrowserRouter>
   )
+
+  return { setRecipes }
 }
 
 describe('Recipes Page', () => {
@@ -255,9 +272,9 @@ describe('Recipes Page', () => {
 
       expect(setRecipes).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ id: 1, published: false }),
-          expect.objectContaining({ id: 2, published: true }),
-          expect.objectContaining({ id: 3, published: true }),
+          expect.objectContaining({ id: 1, date_published: null }),
+          expect.objectContaining({ id: 2, date_published: new Date('2025-12-02') }),
+          expect.objectContaining({ id: 3, date_published: new Date('2025-12-02') }),
         ])
       )
     })
@@ -272,5 +289,154 @@ describe('Recipes Page', () => {
       expect(links.some(link => link.getAttribute('href') === '/recipes/2')).toBe(true)
       expect(links.some(link => link.getAttribute('href') === '/recipes/3')).toBe(true)
     })
+  })
+})
+
+describe('Recipes filters and actions', () => {
+  it('filters recipes by meal category', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />, { recipes: [
+      {
+        id: 1,
+        name: 'Chili Bowl',
+        meal: 'Lunch',
+        description: 'A spicy bowl of chili.',
+        ingredients: [],
+      },
+      {
+        id: 2,
+        name: 'Garlic Pasta',
+        meal: 'Dinner',
+        description: 'Pasta with garlic sauce.',
+        ingredients: [],
+      },
+      {
+        id: 3,
+        name: 'Berry Oatmeal',
+        meal: 'Breakfast',
+        description: 'Oatmeal topped with fresh berries.',
+        ingredients: [],
+      },
+    ]})
+    
+
+    const categorySelect = screen.getByLabelText(/category/i)
+    await user.selectOptions(categorySelect, 'Lunch')
+
+    expect(screen.getByText('Chili Bowl')).toBeInTheDocument()
+    expect(screen.queryByText('Garlic Pasta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Berry Oatmeal')).not.toBeInTheDocument()
+  })
+
+  it('searches recipes by name and description', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />, { recipes: [
+      {
+        id: 1,
+        name: 'Chili Bowl',
+        meal: 'Lunch',
+        description: 'A spicy bowl of chili.',
+        ingredients: [
+          {
+            name: 'Chili Powder', quantity: 2, calories: 10
+          },
+          { name: 'Garlic', quantity: 1, calories: 5 }
+        ],
+      },
+      {
+        id: 2,
+        name: 'Garlic Pasta',
+        meal: 'Dinner',
+        description: 'Pasta with garlic sauce.',
+        ingredients: [],
+      },
+      {
+        id: 3,
+        name: 'Berry Oatmeal',
+        meal: 'Breakfast',
+        description: 'Oatmeal topped with fresh berries.',
+        ingredients: [],
+      },
+    ]})
+    const searchInput = screen.getByPlaceholderText(/search recipes/i)
+    await user.type(searchInput, 'garlic')
+
+    expect(screen.getByText('Garlic Pasta')).toBeInTheDocument()
+    expect(screen.queryByText('Chili Bowl')).toBeInTheDocument()
+    expect(screen.queryByText('Berry Oatmeal')).not.toBeInTheDocument()
+  })
+
+  it('sorts recipes by name and toggles direction', async () => {
+    const user = userEvent.setup()
+
+    renderWithProviders(<Recipes />, { recipes: [
+      {
+        id: 1,
+        name: 'Chili Bowl',
+        meal: 'Lunch',
+        description: 'A spicy bowl of chili.',
+        ingredients: [],
+      },
+      {
+        id: 2,
+        name: 'Garlic Pasta',
+        meal: 'Dinner',
+        description: 'Pasta with garlic sauce.',
+        ingredients: [],
+      },
+      {
+        id: 3,
+        name: 'Berry Oatmeal',
+        meal: 'Breakfast',
+        description: 'Oatmeal topped with fresh berries.',
+        ingredients: [],
+      },
+    ]})
+    const sortSelect = screen.getByLabelText(/sort by/i)
+    await user.selectOptions(sortSelect, 'name')
+
+    const getTitles = () => screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
+    expect(getTitles()).toEqual(['Garlic Pasta', 'Chili Bowl', 'Berry Oatmeal'])
+
+    const sortDirectionButton = screen.getByRole('button', { name: /sort ascending/i })
+    await user.click(sortDirectionButton)
+
+    expect(getTitles()).toEqual(['Berry Oatmeal', 'Chili Bowl', 'Garlic Pasta'])
+  })
+
+  it('deletes selected recipes', async () => {
+    const user = userEvent.setup()
+    const setRecipes = vi.fn()
+    renderWithProviders(<Recipes />, { setRecipes, recipes: [
+      {
+        id: 1,
+        name: 'Chili Bowl',
+        meal: 'Lunch',
+        description: 'A spicy bowl of chili.',
+        ingredients: [],
+      },
+      {
+        id: 2,
+        name: 'Garlic Pasta',
+        meal: 'Dinner',
+        description: 'Pasta with garlic sauce.',
+        ingredients: [],
+      },
+      {
+        id: 3,
+        name: 'Berry Oatmeal',
+        meal: 'Breakfast',
+        description: 'Oatmeal topped with fresh berries.',
+        ingredients: [],
+      },
+    ]})
+
+    await user.click(screen.getByLabelText('Select Garlic Pasta'))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    expect(setRecipes).toHaveBeenCalledTimes(1)
+    const updated = setRecipes.mock.calls[0][0] as Recipe[]
+    expect(updated).toHaveLength(2)
+    expect(updated.find((recipe) => recipe.name === 'Garlic Pasta')).toBeUndefined()
   })
 })

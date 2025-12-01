@@ -6,5 +6,5 @@ export type Recipe = {
   description: string
   ingredients: Ingredient[],
   date_added?: Date
-  published?: boolean
+  date_published?: Date | null
 }
