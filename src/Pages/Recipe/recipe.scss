@@ -104,6 +104,22 @@
   text-transform: uppercase;
 }
 
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--vscode-accent);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 120ms ease;
+
+  &:hover {
+    color: #3daee9;
+    text-decoration: underline;
+  }
+}
+
 .recipe-name {
   margin: 4px 0 0;
   font-size: 24px;
