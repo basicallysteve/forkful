@@ -388,23 +388,107 @@
 }
 
 @media (max-width: 720px) {
+  .recipe-content {
+    padding: 16px 12px 14px;
+  }
+
   .recipe-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
 
   .recipe-meta {
     width: 100%;
     flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .recipe-name {
+    font-size: 20px;
+    word-break: break-word;
+  }
+
+  .recipe-name-input {
+    max-width: 100%;
+    font-size: 18px;
+    padding: 8px 10px;
+  }
+
+  .recipe-description-input {
+    min-height: 60px;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .panel-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .toolbar-tabs {
+    flex-wrap: wrap;
+    width: 100%;
   }
 
   .toolbar-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
+    justify-content: flex-end;
   }
 
-  .recipe-name-input {
-    max-width: 100%;
+  .meal-select {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .panel-content {
+    padding: 10px;
+    overflow-x: auto;
+  }
+
+  .ingredient-table {
+    font-size: 13px;
+    min-width: 100%;
+  }
+
+  .ingredient-table th,
+  .ingredient-table td {
+    padding: 8px 6px;
+  }
+
+  .quantity-col {
+    width: 70px;
+  }
+
+  .actions-col {
+    width: 70px;
+  }
+
+  .ingredient-name-input {
+    min-width: 120px;
+  }
+
+  .ingredient-quantity-input {
+    width: 60px;
+  }
+
+  .danger-button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .ghost-button,
+  .primary-button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .add-ingredient-button {
+    padding: 10px;
   }
 }
