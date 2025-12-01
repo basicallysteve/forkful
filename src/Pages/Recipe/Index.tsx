@@ -19,7 +19,7 @@ export default function Recipe({ recipe }: { recipe: Recipe }) {
   return (
     <div className="recipe-view">
       <div className="recipe-titlebar" aria-hidden="true">
-        <span className="title">Cookbook — {recipe.name}</span>
+        <span className="title">Forkful — {recipe.name}</span>
       </div>
 
       <div className="recipe-content">
