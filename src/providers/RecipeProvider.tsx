@@ -21,7 +21,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Cheese', quantity: 1, calories: 100 },
         { name: 'Bread', quantity: 2, calories: 200 },
       ],
-      date_added: new Date('2025-11-21')
+      date_added: new Date('2025-11-21'),
+      date_published: new Date('2025-11-22'),
     },
     {
       id: 2,
@@ -33,7 +34,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Ground Beef', quantity: 200, calories: 400 },
         { name: 'Tomato Sauce', quantity: 150, calories: 80 },
       ],
-      date_added: new Date('2025-12-01')
+      date_added: new Date('2025-12-01'),
+      date_published: new Date('2025-12-02'),
     },
     { 
       id: 3,
@@ -45,7 +47,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
         { name: 'Croutons', quantity: 50, calories: 200 },
         { name: 'Caesar Dressing', quantity: 30, calories: 150 },
       ],
-      date_added: new Date('2025-12-01')
+      date_added: new Date('2025-12-01'),
+      date_published: new Date('2025-12-06'),
     }
   ]);
 
@@ -60,7 +63,7 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
     const detailedIngredients: Ingredient[] =  recipes.flatMap(recipe => recipe.ingredients)
       .filter((ingredient, index, self) =>
         index === self.findIndex((ing) => ing.name === ingredient.name)
-      ).map(ing => ({ name: ing.name, calories: Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(ing.calories / ing.quantity), quantity: 1 }));
+      ).map(ing => ({ name: ing.name, calories: ing.calories ? Math.round((ing.calories / ing.quantity) * 100) / 100 : 0, quantity: 1 }));
 
     return detailedIngredients;
 
