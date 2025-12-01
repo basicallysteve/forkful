@@ -102,7 +102,7 @@ describe('Recipes Page', () => {
     it('displays ingredient count for each recipe', () => {
       renderWithProviders(<Recipes />)
       expect(screen.getAllByText('2 ingredients')).toHaveLength(2)
-      expect(screen.getByText('1 ingredients')).toBeInTheDocument()
+      expect(screen.getByText('1 ingredient')).toBeInTheDocument()
     })
 
     it('shows empty state when no recipes', () => {
