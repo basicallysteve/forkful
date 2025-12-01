@@ -59,9 +59,17 @@ export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
     const updatedIngredients = [...editedRecipe.ingredients]
-    updatedIngredients[index] = {
-      ...updatedIngredients[index],
-      [field]: field === 'quantity' || field === 'calories' ? Number(value) : value
+    if (field === 'quantity' || field === 'calories') {
+      const numValue = Number(value)
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        [field]: isNaN(numValue) || value === '' ? 0 : numValue
+      }
+    } else {
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        [field]: value
+      }
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
