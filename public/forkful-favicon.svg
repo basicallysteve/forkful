@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Forkful logo: a fork wearing glasses">
+  <defs>
+    <linearGradient id="forkful-favicon-bg" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0d1d2b" />
+      <stop offset="1" stop-color="#18384f" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#forkful-favicon-bg)" />
+  <g stroke="#f6f0e8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 10v13M32 10v13M40 10v13" />
+    <path d="M24 20h16" />
+    <path d="M32 24v24" />
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#99e2ff" stroke-width="3">
+      <circle cx="24" cy="34" r="7.5" />
+      <circle cx="40" cy="34" r="7.5" />
+      <path d="M31 34h6" />
+    </g>
+    <path d="M16 34h5M48 34h-5" stroke="#d5f4ff" stroke-width="2.4" />
+  </g>
+  <path d="M32 45c2.4 0 4.3 1.6 4.3 3.5s-1.9 3.5-4.3 3.5-4.3-1.6-4.3-3.5 1.9-3.5 4.3-3.5z" fill="#f2d6a2" opacity=".92" />
+</svg>

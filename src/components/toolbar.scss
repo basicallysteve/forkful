@@ -13,19 +13,47 @@
   padding: 14px 18px;
   border-radius: 14px;
   border: 1px solid var(--toolbar-border);
-  background:--toolbar-bg;
+  background: var(--toolbar-bg);
   box-shadow:
     0 10px 28px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+.toolbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.toolbar-logo {
+  height: 52px;
+  width: auto;
+  display: block;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
 .toolbar-title {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   color: var(--toolbar-text);
-  font-size: 20px;
   letter-spacing: 0.3px;
-  font-weight: 700;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.toolbar-tagline {
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  color: var(--toolbar-muted);
 }
 
 .menu {
@@ -126,6 +154,10 @@
   .toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .toolbar-brand {
+    width: 100%;
   }
 
   .menu {

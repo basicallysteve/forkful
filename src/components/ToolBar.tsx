@@ -7,6 +7,8 @@ type MenuOption = {
     to?: string; // Optional for direct links
 }
 
+const logoSrc = "/forkful-logo.svg"
+
 function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
 
     function renderMenuOption(option: MenuOption) {
@@ -42,7 +44,13 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
 
     return (
         <div className="toolbar">
-            <h1 className="toolbar-title">My Cookbook</h1>
+            <div className="toolbar-brand">
+                <img src={logoSrc} alt="Forkful logo" className="toolbar-logo" />
+                <div className="toolbar-title">
+                    <span className="toolbar-name">Forkful</span>
+                    <span className="toolbar-tagline">Recipes worth repeating</span>
+                </div>
+            </div>
             <div className="menu">
                 {menuOptions && menuOptions.map((option) => renderMenuOption(option))}
             </div>
