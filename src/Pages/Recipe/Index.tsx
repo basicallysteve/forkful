@@ -10,9 +10,9 @@ export default function Recipe({ recipe }: { recipe: Recipe }) {
     xDaysOld = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
-  let daysOldText = xDaysOld > 0 ? `${xDaysOld} days old` : "New"
+  const daysOldText = xDaysOld > 0 ? `${xDaysOld} days old` : "New"
 
-  let totalCalories = recipe.ingredients.reduce((total, ingredient) => {
+  const totalCalories = recipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
   }, 0)
 

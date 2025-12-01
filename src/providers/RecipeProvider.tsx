@@ -60,7 +60,7 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
     const detailedIngredients: Ingredient[] =  recipes.flatMap(recipe => recipe.ingredients)
       .filter((ingredient, index, self) =>
         index === self.findIndex((ing) => ing.name === ingredient.name)
-      ).map(ing => ({ name: ing.name, calories: Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(ing.calories / ing.quantity), quantity: 1 }));
+      ).map(ing => ({ name: ing.name, calories: ing.calories ? Math.round((ing.calories / ing.quantity) * 100) / 100 : 0, quantity: 1 }));
 
     return detailedIngredients;
 
