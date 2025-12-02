@@ -57,6 +57,21 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     console.log('Copy recipe clicked:', recipe.name)
   }
 
+  // Helper function to check if an ingredient is an existing ingredient from context
+  function isExistingIngredient(ingredientName: string): boolean {
+    return existingIngredients.some(
+      ing => ing.name.toLowerCase() === ingredientName.toLowerCase()
+    )
+  }
+
+  // Helper function to get per-unit calories for an existing ingredient
+  function getPerUnitCalories(ingredientName: string): number {
+    const existing = existingIngredients.find(
+      ing => ing.name.toLowerCase() === ingredientName.toLowerCase()
+    )
+    return existing?.calories || 0
+  }
+
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
     const updatedIngredients = [...editedRecipe.ingredients]
     if (field === 'quantity') {
@@ -64,21 +79,24 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
       const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
       
       // Check if this ingredient exists in context to get per-unit calories
-      const existingIngredient = existingIngredients.find(
-        ing => ing.name.toLowerCase() === updatedIngredients[index].name.toLowerCase()
-      )
+      const ingredientName = updatedIngredients[index].name
       
-      if (existingIngredient) {
+      if (isExistingIngredient(ingredientName)) {
         // Recalculate calories based on new quantity and per-unit calories
         updatedIngredients[index] = {
           ...updatedIngredients[index],
           quantity: newQuantity,
-          calories: (existingIngredient.calories || 0) * newQuantity
+          calories: getPerUnitCalories(ingredientName) * newQuantity
         }
       } else {
+        // For new ingredients, scale calories proportionally if there was a previous quantity
+        const oldQuantity = updatedIngredients[index].quantity || 1
+        const oldCalories = updatedIngredients[index].calories || 0
+        const perUnitCalories = oldQuantity > 0 ? oldCalories / oldQuantity : 0
         updatedIngredients[index] = {
           ...updatedIngredients[index],
-          quantity: newQuantity
+          quantity: newQuantity,
+          calories: Math.round(perUnitCalories * newQuantity)
         }
       }
     } else if (field === 'calories') {
@@ -114,17 +132,13 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
   function handleIngredientNameChange(index: number, value: string) {
     const updatedIngredients = [...editedRecipe.ingredients]
-    // Check if the ingredient name already exists in context's existingIngredients
-    const existingIngredient = existingIngredients.find(
-      ing => ing.name.toLowerCase() === value.toLowerCase()
-    )
     
-    if (existingIngredient) {
+    if (isExistingIngredient(value)) {
       // If it exists, use the existing ingredient's calories (per unit)
       updatedIngredients[index] = {
         ...updatedIngredients[index],
         name: value,
-        calories: (existingIngredient.calories || 0) * updatedIngredients[index].quantity
+        calories: getPerUnitCalories(value) * updatedIngredients[index].quantity
       }
     } else {
       updatedIngredients[index] = {
@@ -229,6 +243,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                 <tr>
                   <th>Ingredient</th>
                   <th className="quantity-col">Quantity</th>
+                  {editMode && <th className="calories-col">Calories</th>}
                   {editMode && <th className="actions-col">Actions</th>}
                 </tr>
               </thead>
@@ -260,6 +275,18 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                             min={0}
                             onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
                             aria-label={`Ingredient ${index + 1} quantity`}
+                          />
+                        </td>
+                        <td className="calories-col">
+                          <input
+                            type="number"
+                            className="ingredient-calories-input"
+                            value={ingredient.calories || 0}
+                            min={0}
+                            onChange={(e) => handleIngredientChange(index, 'calories', e.target.value)}
+                            disabled={isExistingIngredient(ingredient.name)}
+                            aria-label={`Ingredient ${index + 1} calories`}
+                            title={isExistingIngredient(ingredient.name) ? 'Calories auto-calculated from existing ingredient' : 'Enter calories'}
                           />
                         </td>
                         <td className="actions-col">

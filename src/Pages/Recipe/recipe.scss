@@ -374,7 +374,8 @@
 }
 
 .ingredient-name-input,
-.ingredient-quantity-input {
+.ingredient-quantity-input,
+.ingredient-calories-input {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 10px;
@@ -390,9 +391,22 @@
     border-color: var(--vscode-accent);
     box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
   }
+
+  &:disabled {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--vscode-muted);
+    cursor: not-allowed;
+    border-color: rgba(60, 60, 60, 0.5);
+  }
 }
 
-.ingredient-quantity-input {
+.ingredient-quantity-input,
+.ingredient-calories-input {
+  text-align: right;
+}
+
+.calories-col {
+  width: 100px;
   text-align: right;
 }
 
@@ -511,6 +525,12 @@
     text-align: left;
   }
 
+  .calories-col {
+    width: 100%;
+    text-align: left;
+    margin-top: 8px;
+  }
+
   .actions-col {
     width: 100%;
     text-align: left;
@@ -523,10 +543,15 @@
     margin-bottom: 8px;
   }
 
-  .ingredient-quantity-input {
+  .ingredient-quantity-input,
+  .ingredient-calories-input {
     width: 100%;
     max-width: none;
     text-align: left;
+  }
+
+  .ingredient-calories-input {
+    margin-top: 4px;
   }
 
   .danger-button {
