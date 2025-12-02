@@ -78,17 +78,14 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
     },
   ])
 
-  // Check if a food is used in any recipe by matching the food name
+  // Check if a food is used in any recipe by matching the food id
   const isFoodUsedInRecipe = useCallback((foodId: number, recipes: Recipe[]): boolean => {
-    const food = foods.find(f => f.id === foodId)
-    if (!food) return false
-
     return recipes.some(recipe =>
       recipe.ingredients.some(
-        ingredient => ingredient.name.toLowerCase() === food.name.toLowerCase()
+        ingredient => ingredient.food.id === foodId
       )
     )
-  }, [foods])
+  }, [])
 
   const addFood = useCallback((foodData: Omit<Food, 'id'>): Food => {
     const newId = foods.length > 0 ? Math.max(...foods.map(f => f.id)) + 1 : 1

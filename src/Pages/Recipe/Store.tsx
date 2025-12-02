@@ -1,44 +1,50 @@
 import { useState, useContext, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
+import GlobalFoodContext, { type FoodContextType } from "@/providers/FoodProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
+import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 
 function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-  const existingIngredients = recipeContext?.existingIngredients ?? []
+  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
+  const foods = foodContext?.foods ?? []
+
+  const defaultFood = foods.length > 0 ? foods[0] : null
 
   const [ingredient, setIngredient] = useState<Ingredient>(storedIngredient ?? {
-    name: "",
+    food: defaultFood!,
     quantity: 1,
-    calories: 0,
+    calories: defaultFood?.calories || 0,
+    servingUnit: defaultFood?.servingUnit || 'g',
   })
 
   function handleAdd() {
-    if (ingredient.name.trim() === "" || ingredient.quantity <= 0) {
+    if (!ingredient.food || ingredient.quantity <= 0) {
       return
     }
     onAdd?.(ingredient)
-    setIngredient({ name: "", quantity: 1, calories: 0 })
-  }
-  
-
-
-  function fromExisitingIngredient(name: string, existingIngredients: Ingredient[]) {
-    return existingIngredients.some(ing => ing.name.toLowerCase() === name.toLowerCase())
-  }
-  
-
-  function setCaloriesFromExisiting(nameOverride?: string) {
-    const targetName = nameOverride ?? ingredient.name
-    const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
-    if (existing) {
-      setIngredient({ ...ingredient, name: targetName, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
+    if (defaultFood) {
+      setIngredient({ 
+        food: defaultFood, 
+        quantity: 1, 
+        calories: defaultFood.calories || 0,
+        servingUnit: defaultFood.servingUnit || 'g'
+      })
     }
+  }
+
+  function handleFoodSelect(food: Food) {
+    setIngredient({
+      ...ingredient,
+      food: food,
+      calories: (food.calories || 0) * ingredient.quantity,
+      servingUnit: food.servingUnit || ingredient.servingUnit
+    })
   }
 
   function setIngredientQuantity(e: React.ChangeEvent<HTMLInputElement>) {
@@ -47,41 +53,28 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       setIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
-    let caloriesPerUnit = 0
-    const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
-    if (existing) {
-      caloriesPerUnit = existing.calories || 0
-    }
+    const caloriesPerUnit = ingredient.food?.calories || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
+
   return (
     <div className="ingredient-input">
         <label className="form-field">
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
-              value={ingredient.name}
-              options={existingIngredients}
+              value={ingredient.food?.name || ''}
+              options={foods}
               getOptionLabel={(opt) => opt.name}
               onChange={(next) => {
-                const existing = existingIngredients.find(ing => ing.name.toLowerCase() === next.toLowerCase())
-                if (existing) {
-                  setIngredient({
-                    ...ingredient,
-                    name: existing.name,
-                    calories: (existing.calories || 0) * (ingredient.quantity || 1)
-                  })
-                  return
+                const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                if (food) {
+                  handleFoodSelect(food)
                 }
-                setIngredient({ ...ingredient, name: next })
               }}
-              onSelect={(existing) => setIngredient({
-                ...ingredient,
-                name: existing.name,
-                calories: (existing.calories || 0) * (ingredient.quantity || 1)
-              })}
-              placeholder="Ingredient name"
+              onSelect={(food) => handleFoodSelect(food)}
+              placeholder="Select food"
               readOnly={readOnly}
-              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/unit` : undefined}
+              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
         </label>
       <label className="form-field">
@@ -96,15 +89,31 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
             />
         </label>
       <label className="form-field">
+        <span className="field-label">Unit</span>
+        <select
+          className="number-input ingredient-unit-select"
+          value={ingredient.servingUnit}
+          onChange={(e) => setIngredient({ ...ingredient, servingUnit: e.target.value })}
+          disabled={readOnly}
+        >
+          {ingredient.food?.measurements?.map((unit) => (
+            <option key={unit} value={unit}>{unit}</option>
+          ))}
+          {ingredient.food?.measurements && !ingredient.food.measurements.includes(ingredient.servingUnit) && (
+            <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
+          )}
+        </select>
+      </label>
+      <label className="form-field">
         <span className="field-label">Calories</span>
         <input
             type="number"
             className="number-input ingredient-calories-input"
             min={0}
             value={ingredient.calories}
-            readOnly={fromExisitingIngredient(ingredient.name, existingIngredients) || readOnly}
+            readOnly={readOnly}
             onChange={(e) =>
-            setIngredient({ ...ingredient, calories: parseInt(e.target.value)})
+            setIngredient({ ...ingredient, calories: parseInt(e.target.value) || 0 })
             }
         />
         </label>
@@ -172,11 +181,11 @@ function Store() {
   const similarRecipe = useMemo(() => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return null
     
-    const currentIngredients = recipe.ingredients.map(ing => ing.name)
+    const currentIngredients = recipe.ingredients.map(ing => ing.food.name)
     let bestMatch: { recipe: Recipe; similarity: number } | null = null
     
     for (const existingRecipe of recipes) {
-      const existingIngredients = existingRecipe.ingredients.map(ing => ing.name)
+      const existingIngredients = existingRecipe.ingredients.map(ing => ing.food.name)
       const similarity = calculateJaccardSimilarity(currentIngredients, existingIngredients)
       
       // Only suggest if similarity is above 30%
@@ -325,7 +334,7 @@ function Store() {
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
         ))}
         
         {similarRecipe && (

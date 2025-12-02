@@ -29,7 +29,7 @@ export default function Autocomplete<T>({
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const listboxId = useId()
-  const blurTimeout = useRef<number>()
+  const blurTimeout = useRef<number | undefined>(undefined)
 
   const filteredOptions = useMemo(() => {
     const query = value.trim().toLowerCase()

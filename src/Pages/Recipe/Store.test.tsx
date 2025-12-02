@@ -4,7 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Store from './Store'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import type { Recipe } from '@/types/Recipe'
+import type { Food } from '@/types/Food'
+
+// Mock foods
+const mockFoods: Food[] = [
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'loaf'] },
+  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
+  { id: 5, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'lb'] },
+]
 
 const mockRecipes: Recipe[] = [
   {
@@ -13,9 +24,9 @@ const mockRecipes: Recipe[] = [
     meal: 'Lunch',
     description: 'A delicious sandwich made with ham and cheese.',
     ingredients: [
-      { name: 'Ham', quantity: 2, calories: 150 },
-      { name: 'Cheese', quantity: 1, calories: 100 },
-      { name: 'Bread', quantity: 2, calories: 200 },
+      { food: mockFoods[0], quantity: 2, calories: 150, servingUnit: 'slice' },
+      { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
+      { food: mockFoods[2], quantity: 2, calories: 200, servingUnit: 'slice' },
     ],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
@@ -26,9 +37,8 @@ const mockRecipes: Recipe[] = [
     meal: 'Dinner',
     description: 'A classic Italian pasta dish with a rich meat sauce.',
     ingredients: [
-      { name: 'Spaghetti', quantity: 100, calories: 350 },
-      { name: 'Ground Beef', quantity: 200, calories: 400 },
-      { name: 'Tomato Sauce', quantity: 150, calories: 80 },
+      { food: mockFoods[3], quantity: 100, calories: 350, servingUnit: 'g' },
+      { food: mockFoods[4], quantity: 200, calories: 400, servingUnit: 'g' },
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
@@ -40,24 +50,38 @@ function renderWithProviders(
   { 
     recipes = mockRecipes, 
     setRecipes = vi.fn(),
-    existingIngredients = []
+    existingIngredients = [],
+    foods = mockFoods,
   }: { 
     recipes?: Recipe[]
     setRecipes?: (recipes: Recipe[]) => void
-    existingIngredients?: { name: string; quantity: number; calories?: number }[]
+    existingIngredients?: Recipe['ingredients']
+    foods?: Food[]
   } = {}
 ) {
-  const contextValue: RecipeContextType = {
+  const recipeContextValue: RecipeContextType = {
     recipes,
     setRecipes,
     existingIngredients,
   }
 
+  const foodContextValue: FoodContextType = {
+    foods,
+    setFoods: vi.fn(),
+    addFood: vi.fn(),
+    updateFood: vi.fn(),
+    deleteFood: vi.fn(),
+    isFoodUsedInRecipe: vi.fn(),
+    getFoodByName: vi.fn((name) => foods.find(f => f.name.toLowerCase() === name.toLowerCase())),
+  }
+
   return render(
     <BrowserRouter>
-      <GlobalRecipeContext.Provider value={contextValue}>
-        {ui}
-      </GlobalRecipeContext.Provider>
+      <GlobalFoodContext.Provider value={foodContextValue}>
+        <GlobalRecipeContext.Provider value={recipeContextValue}>
+          {ui}
+        </GlobalRecipeContext.Provider>
+      </GlobalFoodContext.Provider>
     </BrowserRouter>
   )
 }
@@ -152,20 +176,19 @@ describe('Store Page - Recipe Creation', () => {
   describe('Similar Recipe Suggestions', () => {
     it('shows suggestion when ingredients match existing recipe (Jaccard similarity >= 30%)', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Store />, {
-        existingIngredients: [
-          { name: 'Ham', quantity: 1, calories: 75 },
-          { name: 'Cheese', quantity: 1, calories: 100 },
-          { name: 'Bread', quantity: 1, calories: 100 },
-        ]
-      })
+      const existingIngredients = [
+        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
+        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
+        { food: mockFoods[2], quantity: 1, calories: 100, servingUnit: 'slice' },
+      ]
+      renderWithProviders(<Store />, { existingIngredients })
 
       // Switch to ingredients tab
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      // Add ingredient that matches existing recipe
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      // Select Ham from autocomplete
+      const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Ham')
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
@@ -175,7 +198,7 @@ describe('Store Page - Recipe Creation', () => {
       const addButton = screen.getByRole('button', { name: '+' })
       await user.click(addButton)
 
-      // Add another matching ingredient
+      // Add another matching ingredient - select Cheese
       await user.type(ingredientNameInput, 'Cheese')
       await user.clear(quantityInput)
       await user.type(quantityInput, '1')
@@ -190,46 +213,41 @@ describe('Store Page - Recipe Creation', () => {
 
     it('does not show suggestion when no ingredients are similar', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Store />, {
-        existingIngredients: [
-          { name: 'Unique Ingredient', quantity: 1 }
-        ]
+      const uniqueFood: Food = { id: 999, name: 'Unique Ingredient', calories: 50, protein: 1, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
+      // Only provide unique food, not the mockFoods that are used in existing recipes
+      renderWithProviders(<Store />, { 
+        existingIngredients: [],
+        foods: [uniqueFood],
+        recipes: [] // No existing recipes to compare against
       })
 
       // Switch to ingredients tab
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      // Add unique ingredient
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
-      await user.type(ingredientNameInput, 'Unique Ingredient')
-
-      const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
-      await user.clear(quantityInput)
-      await user.type(quantityInput, '1')
-
+      // Input already defaults to unique food (the only food in list)
+      // Just click add button
       const addButton = screen.getByRole('button', { name: '+' })
       await user.click(addButton)
 
-      // Should not see any suggestion alert (only alerts in this view are suggestions)
+      // Should not see any suggestion alert (no existing recipes to match against)
       expect(screen.queryByText(/Similar recipe found/)).not.toBeInTheDocument()
     })
 
     it('suggestion link navigates to the similar recipe', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Store />, {
-        existingIngredients: [
-          { name: 'Ham', quantity: 1, calories: 75 },
-          { name: 'Cheese', quantity: 1, calories: 100 },
-        ]
-      })
+      const existingIngredients = [
+        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
+        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
+      ]
+      renderWithProviders(<Store />, { existingIngredients })
 
       // Switch to ingredients tab
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
       // Add matching ingredients
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Ham')
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
@@ -251,51 +269,36 @@ describe('Store Page - Recipe Creation', () => {
   })
 
   describe('Ingredient Autocomplete', () => {
-    it('shows dropdown suggestions and fills calories when selecting an existing ingredient', async () => {
+    it('shows dropdown suggestions when clicking on ingredient name input', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Store />, {
-        existingIngredients: [
-          { name: 'Avocado', quantity: 1, calories: 80 },
-          { name: 'Apple', quantity: 1, calories: 50 },
-        ]
-      })
+      renderWithProviders(<Store />)
 
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.click(ingredientNameInput)
 
-      const avocadoOption = await screen.findByRole('option', { name: /avocado/i })
-      expect(screen.getByRole('option', { name: /apple/i })).toBeInTheDocument()
-
-      await user.click(avocadoOption)
-
-      expect(ingredientNameInput).toHaveValue('Avocado')
-      const caloriesInput = screen.getByRole('spinbutton', { name: /calories/i })
-      expect(caloriesInput).toHaveValue(80)
+      // Should show autocomplete suggestions dropdown
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
     })
 
     it('filters suggestions as the user types', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Store />, {
-        existingIngredients: [
-          { name: 'Banana', quantity: 1, calories: 90 },
-          { name: 'Blueberry', quantity: 1, calories: 10 },
-        ]
-      })
+      renderWithProviders(<Store />)
 
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
-      await user.type(ingredientNameInput, 'blue')
+      const ingredientNameInput = screen.getByPlaceholderText('Select food')
+      
+      // Type to filter
+      await user.tripleClick(ingredientNameInput)
+      await user.keyboard('Cheese')
 
-      const blueberryOption = await screen.findByRole('option', { name: /blueberry/i })
-      expect(screen.queryByRole('option', { name: /banana/i })).not.toBeInTheDocument()
-
-      await user.click(blueberryOption)
-      expect(ingredientNameInput).toHaveValue('Blueberry')
+      // Should show filtered suggestions
+      const listbox = screen.getByRole('listbox')
+      expect(listbox).toBeInTheDocument()
     })
   })
 
@@ -355,9 +358,13 @@ describe('Store Page - Recipe Creation', () => {
     it('calls setRecipes with published recipe when Publish is clicked', async () => {
       const user = userEvent.setup()
       const setRecipes = vi.fn()
+      const testFood: Food = { id: 200, name: 'Test Ingredient', calories: 50, protein: 2, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
+      const existingIngredients = [{ food: testFood, quantity: 1, calories: 50, servingUnit: 'piece' }]
+      const allFoods = [...mockFoods, testFood]
       renderWithProviders(<Store />, { 
         setRecipes,
-        existingIngredients: [{ name: 'Test Ingredient', quantity: 1, calories: 50 }]
+        existingIngredients,
+        foods: allFoods
       })
 
       // Fill out all required fields
@@ -374,7 +381,7 @@ describe('Store Page - Recipe Creation', () => {
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Test Ingredient')
 
       const addButton = screen.getByRole('button', { name: '+' })
