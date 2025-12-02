@@ -95,9 +95,19 @@
   background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
 }
 
+.recipe-header-container {
+  width: 600px;
+}
+
+
+@media screen and (max-width: 670px) {
+  .recipe-header-container {
+    width: 100%;
+  }
+}
 .recipe-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 12px;
