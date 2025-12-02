@@ -1,4 +1,5 @@
 import { useState, useContext, useMemo } from "react"
+import { Link } from "react-router-dom"
 import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
@@ -114,13 +115,19 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
 
 
 /**
- * Calculate Jaccard similarity between two sets of ingredient names
+ * Calculate Jaccard similarity between two sets of ingredient names.
+ * Returns a value between 0 and 1, where 1 means identical sets.
+ * When both sets are empty, returns 0 (no meaningful similarity for comparison).
  */
 function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string[]): number {
-  const setA = new Set(ingredientsA.map(name => name.toLowerCase().trim()))
-  const setB = new Set(ingredientsB.map(name => name.toLowerCase().trim()))
+  const normalizedA = ingredientsA.map(name => name.toLowerCase().trim())
+  const normalizedB = ingredientsB.map(name => name.toLowerCase().trim())
   
-  if (setA.size === 0 && setB.size === 0) return 0
+  const setA = new Set(normalizedA)
+  const setB = new Set(normalizedB)
+  
+  // If either set is empty, there's no meaningful similarity for recipe comparison
+  if (setA.size === 0 || setB.size === 0) return 0
   
   const intersection = new Set([...setA].filter(x => setB.has(x)))
   const union = new Set([...setA, ...setB])
@@ -290,7 +297,7 @@ function Store() {
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <a href={`/recipes/${similarRecipe.recipe.id}`} className="suggestion-link">{similarRecipe.recipe.name}</a> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link to={`/recipes/${similarRecipe.recipe.id}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}
