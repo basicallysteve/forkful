@@ -5,6 +5,16 @@ import { BrowserRouter } from 'react-router-dom'
 import Recipes from './Index'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Recipe } from '@/types/Recipe'
+import type { Food } from '@/types/Food'
+
+// Mock foods
+const mockFoods: Food[] = [
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 3, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
+  { id: 4, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'lb'] },
+  { id: 5, name: 'Romaine Lettuce', calories: 15, protein: 1, carbs: 3, fat: 0, fiber: 2, servingSize: 100, servingUnit: 'g', measurements: ['g', 'cup'] },
+]
 
 const mockRecipes: Recipe[] = [
   {
@@ -13,8 +23,8 @@ const mockRecipes: Recipe[] = [
     meal: 'Lunch',
     description: 'A delicious sandwich made with ham and cheese.',
     ingredients: [
-      { name: 'Ham', quantity: 2, calories: 150 },
-      { name: 'Cheese', quantity: 1, calories: 100 },
+      { food: mockFoods[0], quantity: 2, calories: 150, servingUnit: 'slice' },
+      { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
     ],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
@@ -25,8 +35,8 @@ const mockRecipes: Recipe[] = [
     meal: 'Dinner',
     description: 'A classic Italian pasta dish with a rich meat sauce.',
     ingredients: [
-      { name: 'Spaghetti', quantity: 100, calories: 350 },
-      { name: 'Ground Beef', quantity: 200, calories: 400 },
+      { food: mockFoods[2], quantity: 100, calories: 350, servingUnit: 'g' },
+      { food: mockFoods[3], quantity: 200, calories: 400, servingUnit: 'g' },
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
@@ -37,28 +47,13 @@ const mockRecipes: Recipe[] = [
     meal: 'Lunch',
     description: 'A fresh salad with romaine lettuce, croutons, and Caesar dressing.',
     ingredients: [
-      { name: 'Romaine Lettuce', quantity: 100, calories: 15 },
+      { food: mockFoods[4], quantity: 100, calories: 15, servingUnit: 'g' },
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
   },
 ]
 
-// function renderRecipes(recipes: Recipe[] = sampleRecipes) {
-//   const setRecipes = vi.fn()
-//   const ctx: RecipeContextType = {
-//     recipes,
-//     setRecipes,
-//     existingIngredients: [],
-//   }
-//   return render(
-//     <BrowserRouter>
-//       <GlobalRecipeContext.Provider value={ctx}>
-//         {ui}
-//       </GlobalRecipeContext.Provider>
-//     </BrowserRouter>
-//   )
-// }
 function renderWithProviders(
   ui: React.ReactElement,
   { recipes = mockRecipes, setRecipes = vi.fn() }: { recipes?: Recipe[]; setRecipes?: (recipes: Recipe[]) => void } = {}
@@ -330,6 +325,10 @@ describe('Recipes filters and actions', () => {
 
   it('searches recipes by name and description', async () => {
     const user = userEvent.setup()
+    const testFoods: Food[] = [
+      { id: 101, name: 'Chili Powder', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'tsp', measurements: ['tsp', 'tbsp'] },
+      { id: 102, name: 'Garlic', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'clove', measurements: ['clove', 'g'] },
+    ]
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
@@ -337,10 +336,8 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [
-          {
-            name: 'Chili Powder', quantity: 2, calories: 10
-          },
-          { name: 'Garlic', quantity: 1, calories: 5 }
+          { food: testFoods[0], quantity: 2, calories: 10, servingUnit: 'tsp' },
+          { food: testFoods[1], quantity: 1, calories: 5, servingUnit: 'clove' }
         ],
       },
       {

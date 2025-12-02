@@ -4,7 +4,9 @@ import './recipe.scss'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
+import type { Food } from '@/types/Food'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 
@@ -16,12 +18,18 @@ interface RecipeProps {
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
+  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
   
   if (!recipeContext) {
     throw new Error('RecipeProvider is missing')
   }
 
-  const { recipes, setRecipes, existingIngredients } = recipeContext
+  if (!foodContext) {
+    throw new Error('FoodProvider is missing')
+  }
+
+  const { recipes, setRecipes } = recipeContext
+  const { foods } = foodContext
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
@@ -44,7 +52,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
   function handleSave() {
     const sanitizedIngredients = editedRecipe.ingredients.filter(
-      ing => ing.name.trim() !== '' && ing.calories !== undefined && ing.calories !== null && !Number.isNaN(ing.calories)
+      ing => ing.food && ing.calories !== undefined && !Number.isNaN(ing.calories)
     )
 
     const updatedRecipe = { ...editedRecipe, ingredients: sanitizedIngredients }
@@ -66,19 +74,9 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     console.log('Copy recipe clicked:', recipe.name)
   }
 
-  // Helper function to check if an ingredient is an existing ingredient from context
-  function isExistingIngredient(ingredientName: string): boolean {
-    return existingIngredients.some(
-      ing => ing.name.toLowerCase() === ingredientName.toLowerCase()
-    )
-  }
-
-  // Helper function to get per-unit calories for an existing ingredient
-  function getPerUnitCalories(ingredientName: string): number {
-    const existing = existingIngredients.find(
-      ing => ing.name.toLowerCase() === ingredientName.toLowerCase()
-    )
-    return existing?.calories || 0
+  // Helper function to get per-unit calories for a food
+  function getPerUnitCalories(food: Food): number {
+    return food.calories || 0
   }
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
@@ -87,38 +85,24 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
       const numValue = Number(value)
       const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
       
-      // Check if this ingredient exists in context to get per-unit calories
-      const ingredientName = updatedIngredients[index].name
-      
-      if (isExistingIngredient(ingredientName)) {
-        // Recalculate calories based on new quantity and per-unit calories
-        updatedIngredients[index] = {
-          ...updatedIngredients[index],
-          quantity: newQuantity,
-          calories: getPerUnitCalories(ingredientName) * newQuantity
-        }
-      } else {
-        // For new ingredients, scale calories proportionally if there was a previous quantity
-        const oldQuantity = updatedIngredients[index].quantity || 1
-        const oldCalories = updatedIngredients[index].calories
-        const perUnitCalories = oldCalories && oldQuantity > 0 ? oldCalories / oldQuantity : undefined
-        updatedIngredients[index] = {
-          ...updatedIngredients[index],
-          quantity: newQuantity,
-          calories: perUnitCalories !== undefined ? Math.round(perUnitCalories * newQuantity) : undefined
-        }
+      // Recalculate calories based on new quantity and food's per-unit calories
+      const food = updatedIngredients[index].food
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        quantity: newQuantity,
+        calories: getPerUnitCalories(food) * newQuantity
       }
     } else if (field === 'calories') {
       const numValue = Number(value)
-      const nextCalories = value === '' || isNaN(numValue) ? undefined : Math.max(0, numValue)
+      const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
       updatedIngredients[index] = {
         ...updatedIngredients[index],
         calories: nextCalories
       }
-    } else {
+    } else if (field === 'servingUnit') {
       updatedIngredients[index] = {
         ...updatedIngredients[index],
-        [field]: value
+        servingUnit: value as string
       }
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
@@ -130,40 +114,40 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   }
 
   function handleAddIngredient() {
-    // Block adding if any ingredient has a name but missing calories
+    // Block adding if any ingredient has missing calories
     const hasIncompleteCalories = editedRecipe.ingredients.some(
-      ing => ing.name.trim() !== '' && (ing.calories === undefined || ing.calories === null || Number.isNaN(ing.calories))
+      ing => ing.calories === undefined || Number.isNaN(ing.calories)
     )
     if (hasIncompleteCalories) {
       return
     }
 
     // Check if there's an empty ingredient slot already (prevents adding duplicates)
-    const hasEmptyIngredient = editedRecipe.ingredients.some(ing => ing.name.trim() === '')
+    const hasEmptyIngredient = editedRecipe.ingredients.some(ing => !ing.food)
     if (hasEmptyIngredient) {
       return // Don't add another empty ingredient if one already exists
     }
 
-    const newIngredient: Ingredient = { name: '', quantity: 1, calories: undefined }
-    setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
+    // Create a placeholder ingredient with the first food
+    if (foods.length > 0) {
+      const defaultFood = foods[0]
+      const newIngredient: Ingredient = { 
+        food: defaultFood, 
+        quantity: 1, 
+        calories: defaultFood.calories,
+        servingUnit: defaultFood.servingUnit || 'g'
+      }
+      setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
+    }
   }
 
-  function handleIngredientNameChange(index: number, value: string) {
+  function handleIngredientFoodChange(index: number, food: Food) {
     const updatedIngredients = [...editedRecipe.ingredients]
-    
-    if (isExistingIngredient(value)) {
-      // If it exists, use the existing ingredient's calories (per unit)
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        name: value,
-        calories: getPerUnitCalories(value) * updatedIngredients[index].quantity
-      }
-    } else {
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        name: value,
-        calories: undefined
-      }
+    updatedIngredients[index] = {
+      ...updatedIngredients[index],
+      food: food,
+      calories: getPerUnitCalories(food) * updatedIngredients[index].quantity,
+      servingUnit: food.servingUnit || updatedIngredients[index].servingUnit
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
@@ -187,7 +171,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     setEditedRecipe(updatedRecipe)
   }
 
-  let publishedButton = !isPublished ? (
+  const publishedButton = !isPublished ? (
     <button onClick={publishRecipe} type="button" className="ghost-button" disabled={displayRecipe.ingredients.length === 0}>
       Publish
     </button>
@@ -292,6 +276,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                 <tr>
                   <th>Ingredient</th>
                   <th className="quantity-col">Quantity</th>
+                  {editMode && <th className="unit-col">Unit</th>}
                   {editMode && <th className="calories-col">Calories</th>}
                   {editMode && <th className="actions-col">Actions</th>}
                 </tr>
@@ -303,15 +288,20 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                       <>
                         <td>
                           <Autocomplete
-                            value={ingredient.name}
-                            options={existingIngredients}
+                            value={ingredient.food.name}
+                            options={foods}
                             getOptionLabel={(opt) => opt.name}
-                            onChange={(next) => handleIngredientNameChange(index, next)}
-                            onSelect={(opt) => handleIngredientNameChange(index, opt.name)}
-                            placeholder="Ingredient name"
+                            onChange={(next) => {
+                              const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                              if (food) {
+                                handleIngredientFoodChange(index, food)
+                              }
+                            }}
+                            onSelect={(opt) => handleIngredientFoodChange(index, opt)}
+                            placeholder="Select food"
                             inputAriaLabel={`Ingredient ${index + 1} name`}
                             renderOptionMeta={(opt) =>
-                              opt.calories ? `${opt.calories} cal/unit` : undefined
+                              opt.calories ? `${opt.calories} cal/serving` : undefined
                             }
                           />
                         </td>
@@ -325,6 +315,21 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                             aria-label={`Ingredient ${index + 1} quantity`}
                           />
                         </td>
+                        <td className="unit-col">
+                          <select
+                            className="ingredient-unit-select"
+                            value={ingredient.servingUnit}
+                            onChange={(e) => handleIngredientChange(index, 'servingUnit', e.target.value)}
+                            aria-label={`Ingredient ${index + 1} unit`}
+                          >
+                            {ingredient.food.measurements?.map((unit) => (
+                              <option key={unit} value={unit}>{unit}</option>
+                            ))}
+                            {!ingredient.food.measurements?.includes(ingredient.servingUnit) && (
+                              <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
+                            )}
+                          </select>
+                        </td>
                         <td className="calories-col">
                           <input
                             type="number"
@@ -332,9 +337,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                             value={ingredient.calories ?? ''}
                             min={0}
                             onChange={(e) => handleIngredientChange(index, 'calories', e.target.value)}
-                            disabled={isExistingIngredient(ingredient.name)}
                             aria-label={`Ingredient ${index + 1} calories`}
-                            title={isExistingIngredient(ingredient.name) ? 'Calories auto-calculated from existing ingredient' : 'Enter calories'}
                           />
                         </td>
                         <td className="actions-col">
@@ -342,7 +345,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                             type="button"
                             className="danger-button"
                             onClick={() => handleRemoveIngredient(index)}
-                            aria-label={`Remove ${ingredient.name}`}
+                            aria-label={`Remove ${ingredient.food.name}`}
                           >
                             Remove
                           </button>
@@ -350,8 +353,8 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                       </>
                     ) : (
                       <>
-                        <td>{ingredient.name}</td>
-                        <td className="quantity-col">{ingredient.quantity}</td>
+                        <td>{ingredient.food.name}</td>
+                        <td className="quantity-col">{ingredient.quantity} {ingredient.servingUnit}</td>
                       </>
                     )}
                   </tr>

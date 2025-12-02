@@ -4,7 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Recipe from './Index'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import type { Recipe as RecipeType } from '@/types/Recipe'
+import type { Food } from '@/types/Food'
+
+// Mock foods
+const mockFoods: Food[] = [
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
+  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'loaf'] },
+  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
+  { id: 5, name: 'Tomato', calories: 20, protein: 1, carbs: 4, fat: 0, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] },
+]
 
 const mockRecipe: RecipeType = {
   id: 1,
@@ -12,8 +23,8 @@ const mockRecipe: RecipeType = {
   meal: 'Lunch',
   description: 'A delicious sandwich made with ham and cheese.',
   ingredients: [
-    { name: 'Ham', quantity: 2, calories: 150 },
-    { name: 'Cheese', quantity: 1, calories: 100 },
+    { food: mockFoods[0], quantity: 2, calories: 150, servingUnit: 'slice' },
+    { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
   ],
   date_added: new Date('2025-11-21'),
   date_published: new Date('2025-11-22'),
@@ -27,7 +38,7 @@ const mockRecipes: RecipeType[] = [
     meal: 'Dinner',
     description: 'A classic Italian pasta dish.',
     ingredients: [
-      { name: 'Spaghetti', quantity: 100, calories: 350 },
+      { food: mockFoods[3], quantity: 100, calories: 350, servingUnit: 'g' },
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
@@ -36,20 +47,42 @@ const mockRecipes: RecipeType[] = [
 
 function renderWithProviders(
   ui: React.ReactElement,
-  { recipes = mockRecipes, setRecipes = vi.fn(), existingIngredients = [] }: { recipes?: RecipeType[]; setRecipes?: (recipes: RecipeType[]) => void; existingIngredients?: { name: string; quantity: number; calories?: number }[] } = {}
+  { 
+    recipes = mockRecipes, 
+    setRecipes = vi.fn(), 
+    existingIngredients = [],
+    foods = mockFoods,
+  }: { 
+    recipes?: RecipeType[]; 
+    setRecipes?: (recipes: RecipeType[]) => void; 
+    existingIngredients?: RecipeType['ingredients'];
+    foods?: Food[];
+  } = {}
 ) {
-  const contextValue: RecipeContextType = {
+  const recipeContextValue: RecipeContextType = {
     recipes,
     setRecipes,
     existingIngredients,
   }
 
+  const foodContextValue: FoodContextType = {
+    foods,
+    setFoods: vi.fn(),
+    addFood: vi.fn(),
+    updateFood: vi.fn(),
+    deleteFood: vi.fn(),
+    isFoodUsedInRecipe: vi.fn(),
+    getFoodByName: vi.fn((name) => foods.find(f => f.name.toLowerCase() === name.toLowerCase())),
+  }
+
   return {
     ...render(
       <BrowserRouter>
-        <GlobalRecipeContext.Provider value={contextValue}>
-          {ui}
-        </GlobalRecipeContext.Provider>
+        <GlobalFoodContext.Provider value={foodContextValue}>
+          <GlobalRecipeContext.Provider value={recipeContextValue}>
+            {ui}
+          </GlobalRecipeContext.Provider>
+        </GlobalFoodContext.Provider>
       </BrowserRouter>
     ),
     setRecipes,
@@ -87,8 +120,9 @@ describe('Recipe View Page', () => {
     it('displays ingredient quantities', () => {
       renderWithProviders(<Recipe recipe={mockRecipe} />)
       const table = screen.getByRole('table')
-      expect(within(table).getByText('2')).toBeInTheDocument()
-      expect(within(table).getByText('1')).toBeInTheDocument()
+      // Quantities now include the serving unit
+      expect(within(table).getByText('2 slice')).toBeInTheDocument()
+      expect(within(table).getByText('1 slice')).toBeInTheDocument()
     })
 
     it('displays total calories', () => {
@@ -206,17 +240,21 @@ describe('Recipe View Page', () => {
       expect(mealSelect).toHaveValue('Dinner')
     })
 
-    it('allows editing ingredient name', async () => {
+    it('displays autocomplete with food options when editing ingredient', async () => {
       const user = userEvent.setup()
       renderWithProviders(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
+      // The autocomplete should be visible and contain the food name
       const ingredientInput = screen.getByLabelText('Ingredient 1 name')
-      await user.clear(ingredientInput)
-      await user.type(ingredientInput, 'Turkey')
-
-      expect(ingredientInput).toHaveValue('Turkey')
+      expect(ingredientInput).toHaveValue('Ham')
+      
+      // Click to open suggestions
+      await user.click(ingredientInput)
+      
+      // Should show autocomplete suggestions
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
     })
 
     it('allows editing ingredient quantity', async () => {
@@ -236,8 +274,8 @@ describe('Recipe View Page', () => {
       const user = userEvent.setup()
       // Provide existing ingredients with per-unit calories (75 calories per unit for Ham)
       const existingIngredients = [
-        { name: 'Ham', quantity: 1, calories: 75 },
-        { name: 'Cheese', quantity: 1, calories: 100 },
+        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
+        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
       ]
       renderWithProviders(<Recipe recipe={mockRecipe} />, { existingIngredients })
 
@@ -345,56 +383,41 @@ describe('Recipe View Page', () => {
       expect(screen.getByRole('button', { name: /add ingredient/i })).toBeInTheDocument()
     })
 
-    it('adds an existing ingredient and requires calories before adding a new ingredient', async () => {
+    it('adds an existing ingredient and updates calories', async () => {
       const user = userEvent.setup()
       const setRecipes = vi.fn()
-      const existingIngredients = [
-        { name: 'Tomato', quantity: 1, calories: 25 },
-        { name: 'Lettuce', quantity: 1, calories: 5 },
-      ]
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { existingIngredients, setRecipes })
+      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
-      // Add and select an existing ingredient (should update calories)
+      // Add ingredient - defaults to first food (Ham with 75 cal)
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-      const existingIngredientInput = screen.getByLabelText('Ingredient 3 name')
-      await user.type(existingIngredientInput, 'Tomato')
+      
+      // Should now have 3 ingredients
+      expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
+      
+      // Total calories should be 250 + 75 = 325 (Ham added by default)
+      expect(await screen.findByText('325 calories')).toBeInTheDocument()
 
-      // Calories should include the existing ingredient's per-unit calories (250 + 25 = 275)
-      expect(await screen.findByText('275 calories')).toBeInTheDocument()
-
-      // Add a brand new ingredient name without entering calories
-      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-      const newIngredientInput = screen.getByLabelText('Ingredient 4 name')
-      await user.type(newIngredientInput, 'Pickles')
-
-      // Cannot add another ingredient while calories are missing
-      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-      expect(screen.queryByLabelText('Ingredient 5 name')).not.toBeInTheDocument()
-
-      // Saving should ignore the ingredient that has no calories
+      // Save the recipe
       await user.click(screen.getByRole('button', { name: /save/i }))
       expect(setRecipes).toHaveBeenCalledTimes(1)
       const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
       const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
-      expect(updatedRecipe?.ingredients.some(ing => ing.name === 'Tomato')).toBe(true)
-      expect(updatedRecipe?.ingredients.some(ing => ing.name === 'Pickles')).toBe(false)
+      expect(updatedRecipe?.ingredients).toHaveLength(3)
     })
 
-    it('does not add duplicate empty ingredient', async () => {
+    it('does not add ingredient when foods list is empty', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithProviders(<Recipe recipe={mockRecipe} />, { foods: [] })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
-      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      // Still should be 3, not 4 (don't add duplicate empty)
+      // Should still only have 2 ingredients since no foods available
       expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
       expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Ingredient 4 name')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Ingredient 3 name')).not.toBeInTheDocument()
     })
   })
 
