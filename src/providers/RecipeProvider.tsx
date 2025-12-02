@@ -30,9 +30,9 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
       meal: 'Dinner',
       description: 'A classic Italian pasta dish with a rich meat sauce.',
       ingredients: [
-        { name: 'Spaghetti', quantity: 100, calories: 350 },
-        { name: 'Ground Beef', quantity: 200, calories: 400 },
-        { name: 'Tomato Sauce', quantity: 150, calories: 80 },
+        { name: 'Spaghetti', quantity: 1, calories: 350 },
+        { name: 'Ground Beef', quantity: 2, calories: 400 },
+        { name: 'Tomato Sauce', quantity: 1, calories: 80 },
       ],
       date_added: new Date('2025-12-01'),
       date_published: new Date('2025-12-02'),
