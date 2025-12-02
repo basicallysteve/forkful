@@ -9,6 +9,7 @@ import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeP
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
+const DEFAULT_SERVING_UNIT = 'g'
 
 interface RecipeProps {
   recipe: Recipe
@@ -135,7 +136,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
         food: defaultFood, 
         quantity: 1, 
         calories: defaultFood.calories,
-        servingUnit: defaultFood.servingUnit || 'g'
+        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
       }
       setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
     }

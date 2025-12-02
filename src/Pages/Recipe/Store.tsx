@@ -9,6 +9,7 @@ import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
+const DEFAULT_SERVING_UNIT = 'g'
 
 function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
   const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
@@ -16,15 +17,22 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
-  const [ingredient, setIngredient] = useState<Ingredient>(storedIngredient ?? {
-    food: defaultFood!,
-    quantity: 1,
-    calories: defaultFood?.calories || 0,
-    servingUnit: defaultFood?.servingUnit || 'g',
-  })
+  // Create initial ingredient state - handle case when no foods are available
+  const createInitialIngredient = (): Ingredient | null => {
+    if (storedIngredient) return storedIngredient
+    if (!defaultFood) return null
+    return {
+      food: defaultFood,
+      quantity: 1,
+      calories: defaultFood.calories || 0,
+      servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
+    }
+  }
+
+  const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
 
   function handleAdd() {
-    if (!ingredient.food || ingredient.quantity <= 0) {
+    if (!ingredient || !ingredient.food || ingredient.quantity <= 0) {
       return
     }
     onAdd?.(ingredient)
@@ -33,12 +41,13 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         food: defaultFood, 
         quantity: 1, 
         calories: defaultFood.calories || 0,
-        servingUnit: defaultFood.servingUnit || 'g'
+        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
       })
     }
   }
 
   function handleFoodSelect(food: Food) {
+    if (!ingredient) return
     setIngredient({
       ...ingredient,
       food: food,
@@ -48,6 +57,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   }
 
   function setIngredientQuantity(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!ingredient) return
     const quantity = parseInt(e.target.value)
     if (isNaN(quantity) || quantity < 0) {
       setIngredient({ ...ingredient, quantity: 0, calories: 0 })
@@ -56,6 +66,18 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     const caloriesPerUnit = ingredient.food?.calories || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
+
+  // If no foods available, show a message
+  if (!ingredient && !storedIngredient) {
+    return (
+      <div className="ingredient-input">
+        <span className="no-foods-message">No foods available. Please add foods first.</span>
+      </div>
+    )
+  }
+
+  // Safety check for null ingredient
+  if (!ingredient) return null
 
   return (
     <div className="ingredient-input">

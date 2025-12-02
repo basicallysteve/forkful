@@ -11,6 +11,9 @@ export interface RecipeContextType {
 
 const GlobalRecipeContext = createContext<RecipeContextType | undefined>(undefined);
 
+// Default serving unit constant
+const DEFAULT_SERVING_UNIT = 'g';
+
 export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
     const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext);
     
@@ -20,15 +23,21 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { foods } = foodContext;
 
-    // Helper to get food by name
-    const getFoodByName = (name: string) => foods.find(f => f.name.toLowerCase() === name.toLowerCase());
+    // Helper to get food by name - throws if not found (for required initial data)
+    const getRequiredFood = (name: string) => {
+      const food = foods.find(f => f.name.toLowerCase() === name.toLowerCase());
+      if (!food) {
+        throw new Error(`Required food "${name}" not found in FoodProvider`);
+      }
+      return food;
+    };
 
-    // Create initial recipes with food relationships
-    const hamFood = getFoodByName('Ham');
-    const cheeseFood = getFoodByName('Cheese');
-    const breadFood = getFoodByName('Bread');
-    const spaghettiFood = getFoodByName('Spaghetti');
-    const groundBeefFood = getFoodByName('Ground Beef');
+    // Create initial recipes with food relationships - these foods must exist
+    const hamFood = getRequiredFood('Ham');
+    const cheeseFood = getRequiredFood('Cheese');
+    const breadFood = getRequiredFood('Bread');
+    const spaghettiFood = getRequiredFood('Spaghetti');
+    const groundBeefFood = getRequiredFood('Ground Beef');
 
     const [recipes, setRecipes] = useState<Recipe[]>([
       {
@@ -37,9 +46,9 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
       meal: 'Lunch',
       description: 'A delicious sandwich made with ham and cheese.',
       ingredients: [
-        { food: hamFood!, quantity: 2, calories: 150, servingUnit: 'slice' },
-        { food: cheeseFood!, quantity: 1, calories: 100, servingUnit: 'slice' },
-        { food: breadFood!, quantity: 2, calories: 200, servingUnit: 'slice' },
+        { food: hamFood, quantity: 2, calories: 150, servingUnit: hamFood.servingUnit || DEFAULT_SERVING_UNIT },
+        { food: cheeseFood, quantity: 1, calories: 100, servingUnit: cheeseFood.servingUnit || DEFAULT_SERVING_UNIT },
+        { food: breadFood, quantity: 2, calories: 200, servingUnit: breadFood.servingUnit || DEFAULT_SERVING_UNIT },
       ],
       date_added: new Date('2025-11-21'),
       date_published: new Date('2025-11-22'),
@@ -50,8 +59,8 @@ export const RecipeProvider = ({ children }: { children: React.ReactNode }) => {
       meal: 'Dinner',
       description: 'A classic Italian pasta dish with a rich meat sauce.',
       ingredients: [
-        { food: spaghettiFood!, quantity: 1, calories: 350, servingUnit: 'g' },
-        { food: groundBeefFood!, quantity: 2, calories: 400, servingUnit: 'g' },
+        { food: spaghettiFood, quantity: 1, calories: 350, servingUnit: spaghettiFood.servingUnit || DEFAULT_SERVING_UNIT },
+        { food: groundBeefFood, quantity: 2, calories: 400, servingUnit: groundBeefFood.servingUnit || DEFAULT_SERVING_UNIT },
       ],
       date_added: new Date('2025-12-01'),
       date_published: new Date('2025-12-02'),
