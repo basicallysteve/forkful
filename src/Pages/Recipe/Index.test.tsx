@@ -345,17 +345,41 @@ describe('Recipe View Page', () => {
       expect(screen.getByRole('button', { name: /add ingredient/i })).toBeInTheDocument()
     })
 
-    it('adds new ingredient when Add Ingredient button is clicked', async () => {
+    it('adds an existing ingredient and requires calories before adding a new ingredient', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      const setRecipes = vi.fn()
+      const existingIngredients = [
+        { name: 'Tomato', quantity: 1, calories: 25 },
+        { name: 'Lettuce', quantity: 1, calories: 5 },
+      ]
+      renderWithProviders(<Recipe recipe={mockRecipe} />, { existingIngredients, setRecipes })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
-      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      // Should now have 3 ingredient inputs
-      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
+      // Add and select an existing ingredient (should update calories)
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      const existingIngredientInput = screen.getByLabelText('Ingredient 3 name')
+      await user.type(existingIngredientInput, 'Tomato')
+
+      // Calories should include the existing ingredient's per-unit calories (250 + 25 = 275)
+      expect(await screen.findByText('275 calories')).toBeInTheDocument()
+
+      // Add a brand new ingredient name without entering calories
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      const newIngredientInput = screen.getByLabelText('Ingredient 4 name')
+      await user.type(newIngredientInput, 'Pickles')
+
+      // Cannot add another ingredient while calories are missing
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(screen.queryByLabelText('Ingredient 5 name')).not.toBeInTheDocument()
+
+      // Saving should ignore the ingredient that has no calories
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
+      expect(updatedRecipe?.ingredients.some(ing => ing.name === 'Tomato')).toBe(true)
+      expect(updatedRecipe?.ingredients.some(ing => ing.name === 'Pickles')).toBe(false)
     })
 
     it('does not add duplicate empty ingredient', async () => {

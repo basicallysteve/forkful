@@ -40,8 +40,14 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   }, 0)
 
   function handleSave() {
+    const sanitizedIngredients = editedRecipe.ingredients.filter(
+      ing => ing.name.trim() !== '' && ing.calories !== undefined && ing.calories !== null && !Number.isNaN(ing.calories)
+    )
+
+    const updatedRecipe = { ...editedRecipe, ingredients: sanitizedIngredients }
+
     const updatedRecipes = recipes.map(r => 
-      r.id === editedRecipe.id ? editedRecipe : r
+      r.id === updatedRecipe.id ? updatedRecipe : r
     )
     setRecipes(updatedRecipes)
     setEditMode(false)
@@ -91,19 +97,20 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
       } else {
         // For new ingredients, scale calories proportionally if there was a previous quantity
         const oldQuantity = updatedIngredients[index].quantity || 1
-        const oldCalories = updatedIngredients[index].calories || 0
-        const perUnitCalories = oldQuantity > 0 ? oldCalories / oldQuantity : 0
+        const oldCalories = updatedIngredients[index].calories
+        const perUnitCalories = oldCalories && oldQuantity > 0 ? oldCalories / oldQuantity : undefined
         updatedIngredients[index] = {
           ...updatedIngredients[index],
           quantity: newQuantity,
-          calories: Math.round(perUnitCalories * newQuantity)
+          calories: perUnitCalories !== undefined ? Math.round(perUnitCalories * newQuantity) : undefined
         }
       }
     } else if (field === 'calories') {
       const numValue = Number(value)
+      const nextCalories = value === '' || isNaN(numValue) ? undefined : Math.max(0, numValue)
       updatedIngredients[index] = {
         ...updatedIngredients[index],
-        [field]: isNaN(numValue) || value === '' ? 0 : numValue
+        calories: nextCalories
       }
     } else {
       updatedIngredients[index] = {
@@ -120,13 +127,21 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   }
 
   function handleAddIngredient() {
+    // Block adding if any ingredient has a name but missing calories
+    const hasIncompleteCalories = editedRecipe.ingredients.some(
+      ing => ing.name.trim() !== '' && (ing.calories === undefined || ing.calories === null || Number.isNaN(ing.calories))
+    )
+    if (hasIncompleteCalories) {
+      return
+    }
+
     // Check if there's an empty ingredient slot already (prevents adding duplicates)
     const hasEmptyIngredient = editedRecipe.ingredients.some(ing => ing.name.trim() === '')
     if (hasEmptyIngredient) {
       return // Don't add another empty ingredient if one already exists
     }
 
-    const newIngredient: Ingredient = { name: '', quantity: 1, calories: 0 }
+    const newIngredient: Ingredient = { name: '', quantity: 1, calories: undefined }
     setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
   }
 
@@ -143,7 +158,8 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     } else {
       updatedIngredients[index] = {
         ...updatedIngredients[index],
-        name: value
+        name: value,
+        calories: undefined
       }
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
@@ -281,7 +297,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                           <input
                             type="number"
                             className="ingredient-calories-input"
-                            value={ingredient.calories || 0}
+                            value={ingredient.calories ?? ''}
                             min={0}
                             onChange={(e) => handleIngredientChange(index, 'calories', e.target.value)}
                             disabled={isExistingIngredient(ingredient.name)}
