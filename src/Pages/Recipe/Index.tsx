@@ -152,6 +152,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                 className="recipe-name-input"
                 value={editedRecipe.name}
                 onChange={(e) => setEditedRecipe({ ...editedRecipe, name: e.target.value })}
+                maxLength={60}
                 aria-label="Recipe name"
               />
             ) : (

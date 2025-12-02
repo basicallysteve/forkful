@@ -270,8 +270,9 @@
   padding: 8px 12px;
   margin: 4px 0 0;
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -293,6 +294,7 @@
   font-family: inherit;
   line-height: 1.6;
   resize: vertical;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
