@@ -212,7 +212,7 @@
     display: grid;
     grid-template-columns: 1.5fr repeat(2, 120px) auto;
     gap: 10px;
-    align-items: center;
+    align-items: flex-end;
     padding: 12px;
     border: 1px solid var(--vscode-border);
     border-radius: 10px;
@@ -461,7 +461,7 @@
   .ghost-button {
     border-radius: 8px;
     border: 1px solid var(--vscode-border);
-    padding: 8px 12px;
+    padding: 10px 14px;    
     font-size: 13px;
     font-family: inherit;
     color: var(--vscode-text);
