@@ -379,5 +379,14 @@
     .recipe-cards {
       grid-template-columns: 1fr;
     }
+
+    .card-title {
+      font-size: 14px;
+    }
+
+    .card-badges .pill {
+      font-size: 11px;
+      padding: 4px 8px;
+    }
   }
 }
