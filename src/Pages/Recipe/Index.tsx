@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import './recipe.scss'
+import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
@@ -26,11 +27,13 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
 
   let publishedText = "Unpublished"
+  let isPublished = false
   if (recipe.date_published) {
+    isPublished = true
     const now = new Date()
     const diffTime = Math.abs(now.getTime() - recipe.date_published.getTime())
     const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    publishedText = daysSincePublished > 0 ? `Published ${daysSincePublished} days ago` : "Published today"
+    publishedText = daysSincePublished > 1 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
 
   const displayRecipe = editMode ? editedRecipe : recipe
@@ -165,6 +168,35 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
 
+  function publishRecipe() {
+    const now = new Date()
+    const updatedRecipe = { ...editedRecipe, date_published: now }
+    const updatedRecipes = recipes.map(r => 
+      r.id === updatedRecipe.id ? updatedRecipe : r
+    )
+    setRecipes(updatedRecipes)
+    setEditedRecipe(updatedRecipe)
+  }
+
+  function unpublishRecipe() {
+    const updatedRecipe = { ...editedRecipe, date_published: null }
+    const updatedRecipes = recipes.map(r => 
+      r.id === updatedRecipe.id ? updatedRecipe : r
+    )
+    setRecipes(updatedRecipes)
+    setEditedRecipe(updatedRecipe)
+  }
+
+  let publishedButton = !isPublished ? (
+    <button onClick={publishRecipe} type="button" className="ghost-button" disabled={displayRecipe.ingredients.length === 0}>
+      Publish
+    </button>
+  ) : (
+    <button onClick={unpublishRecipe} type="button" className="ghost-button">
+      Unpublish
+    </button>
+  )
+
   return (
     <div className="recipe-view">
       <div className="recipe-titlebar" aria-hidden="true">
@@ -240,6 +272,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                 </>
               ) : (
                 <>
+                  {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
                     Copy Recipe
                   </button>
@@ -269,19 +302,18 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                     {editMode ? (
                       <>
                         <td>
-                          <input
-                            type="text"
-                            className="ingredient-name-input"
+                          <Autocomplete
                             value={ingredient.name}
-                            onChange={(e) => handleIngredientNameChange(index, e.target.value)}
-                            list="existing-ingredients"
-                            aria-label={`Ingredient ${index + 1} name`}
+                            options={existingIngredients}
+                            getOptionLabel={(opt) => opt.name}
+                            onChange={(next) => handleIngredientNameChange(index, next)}
+                            onSelect={(opt) => handleIngredientNameChange(index, opt.name)}
+                            placeholder="Ingredient name"
+                            inputAriaLabel={`Ingredient ${index + 1} name`}
+                            renderOptionMeta={(opt) =>
+                              opt.calories ? `${opt.calories} cal/unit` : undefined
+                            }
                           />
-                          <datalist id="existing-ingredients">
-                            {existingIngredients.map((ing, i) => (
-                              <option key={i} value={ing.name} />
-                            ))}
-                          </datalist>
                         </td>
                         <td className="quantity-col">
                           <input

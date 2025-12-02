@@ -14,7 +14,7 @@
     var(--vscode-bg);
   border: 1px solid var(--vscode-border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
   width: 100%;
@@ -219,7 +219,7 @@
 
 .panel-content {
   padding: 14px;
-  overflow: auto;
+  overflow: visible;
 }
 
 .ingredient-table {
@@ -486,7 +486,7 @@
 
   .panel-content {
     padding: 10px;
-    overflow-x: hidden;
+    overflow: visible;
   }
 
   .ingredient-table {

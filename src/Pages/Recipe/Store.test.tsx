@@ -250,6 +250,55 @@ describe('Store Page - Recipe Creation', () => {
     })
   })
 
+  describe('Ingredient Autocomplete', () => {
+    it('shows dropdown suggestions and fills calories when selecting an existing ingredient', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />, {
+        existingIngredients: [
+          { name: 'Avocado', quantity: 1, calories: 80 },
+          { name: 'Apple', quantity: 1, calories: 50 },
+        ]
+      })
+
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.click(ingredientNameInput)
+
+      const avocadoOption = await screen.findByRole('option', { name: /avocado/i })
+      expect(screen.getByRole('option', { name: /apple/i })).toBeInTheDocument()
+
+      await user.click(avocadoOption)
+
+      expect(ingredientNameInput).toHaveValue('Avocado')
+      const caloriesInput = screen.getByRole('spinbutton', { name: /calories/i })
+      expect(caloriesInput).toHaveValue(80)
+    })
+
+    it('filters suggestions as the user types', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />, {
+        existingIngredients: [
+          { name: 'Banana', quantity: 1, calories: 90 },
+          { name: 'Blueberry', quantity: 1, calories: 10 },
+        ]
+      })
+
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'blue')
+
+      const blueberryOption = await screen.findByRole('option', { name: /blueberry/i })
+      expect(screen.queryByRole('option', { name: /banana/i })).not.toBeInTheDocument()
+
+      await user.click(blueberryOption)
+      expect(ingredientNameInput).toHaveValue('Blueberry')
+    })
+  })
+
   describe('Mobile/Desktop Layout - Name and Pill Clamping', () => {
     it('renders recipe name input and displays properly', () => {
       renderWithProviders(<Store />)

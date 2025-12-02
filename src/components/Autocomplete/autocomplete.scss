@@ -1,0 +1,50 @@
+.autocomplete {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--vscode-panel-strong, #1f1f23);
+  border: 1px solid var(--vscode-border, #3c3c3c);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.autocomplete-suggestions li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--vscode-text, #d4d4d4);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &.is-active {
+    background: rgba(0, 122, 204, 0.14);
+    border-left: 2px solid var(--vscode-accent, #007acc);
+  }
+}
+
+.suggestion-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-meta {
+  color: var(--vscode-muted, #9da5b4);
+  font-size: 12px;
+  margin-left: 8px;
+}

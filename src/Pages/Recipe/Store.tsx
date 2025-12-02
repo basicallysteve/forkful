@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
+import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -27,22 +28,16 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   
 
 
-  const topExistingIngredients = useMemo(() => {
-    const filteredIngredients = ingredient.name ? existingIngredients.filter(ing => ing.name.toLowerCase().includes(ingredient.name.toLowerCase()) && ing.name.toLowerCase() !== ingredient.name.toLowerCase()) : existingIngredients
-
-    return filteredIngredients.slice(0, 3)
-  }, [ingredient, existingIngredients])
-
-
   function fromExisitingIngredient(name: string, existingIngredients: Ingredient[]) {
     return existingIngredients.some(ing => ing.name.toLowerCase() === name.toLowerCase())
   }
   
 
-  function setCaloriesFromExisiting() {
+  function setCaloriesFromExisiting(nameOverride?: string) {
+    const targetName = nameOverride ?? ingredient.name
     const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
     if (existing) {
-      setIngredient({ ...ingredient, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
+      setIngredient({ ...ingredient, name: targetName, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
     }
   }
 
@@ -63,21 +58,31 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     <div className="ingredient-input">
         <label className="form-field">
         <span className="field-label">Ingredient Name</span>
-            <input
-                type="text"
-                className="text-input ingredient-name-input"
-                list="ingredient-suggestions"
-                placeholder="Ingredient name"
-                value={ingredient.name}
-                onChange={(e) => setIngredient({ ...ingredient, name: e.target.value })}
-                onBlur={setCaloriesFromExisiting}
-                readOnly={readOnly}
+            <Autocomplete
+              value={ingredient.name}
+              options={existingIngredients}
+              getOptionLabel={(opt) => opt.name}
+              onChange={(next) => {
+                const existing = existingIngredients.find(ing => ing.name.toLowerCase() === next.toLowerCase())
+                if (existing) {
+                  setIngredient({
+                    ...ingredient,
+                    name: existing.name,
+                    calories: (existing.calories || 0) * (ingredient.quantity || 1)
+                  })
+                  return
+                }
+                setIngredient({ ...ingredient, name: next })
+              }}
+              onSelect={(existing) => setIngredient({
+                ...ingredient,
+                name: existing.name,
+                calories: (existing.calories || 0) * (ingredient.quantity || 1)
+              })}
+              placeholder="Ingredient name"
+              readOnly={readOnly}
+              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/unit` : undefined}
             />
-            <datalist id="ingredient-suggestions">
-                {topExistingIngredients.map((ing, index) => (
-                <option key={index} value={ing.name} />
-                ))}
-            </datalist>
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
@@ -353,7 +358,6 @@ function Store() {
           <div className="store-meta">
             <span className="pill pill-primary">Draft</span>
             <span className="pill pill-ghost">{ingredientCount} ingredients</span>
-            <span className="pill pill-ghost">{recipes.length} saved</span>
           </div>
         </header>
 

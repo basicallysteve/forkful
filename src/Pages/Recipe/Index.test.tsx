@@ -450,4 +450,35 @@ describe('Recipe View Page', () => {
       expect(screen.getByText('Unpublished')).toBeInTheDocument()
     })
   })
+
+  describe('Publishing / Unpublishing', () => {
+    it('publishes the recipe and sets date_published when Publish is clicked', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+      const unpublishedRecipe = { ...mockRecipe, date_published: null }
+
+      renderWithProviders(<Recipe recipe={unpublishedRecipe} />, { setRecipes })
+
+      await user.click(screen.getByRole('button', { name: /publish/i }))
+
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipe = updatedRecipes.find(r => r.id === unpublishedRecipe.id)
+      expect(updatedRecipe?.date_published).toBeInstanceOf(Date)
+    })
+
+    it('unpublishes the recipe when Unpublish is clicked', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+
+      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
+
+      await user.click(screen.getByRole('button', { name: /unpublish/i }))
+
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
+      expect(updatedRecipe?.date_published).toBeNull()
+    })
+  })
 })
