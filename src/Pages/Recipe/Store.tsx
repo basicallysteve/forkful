@@ -1,7 +1,9 @@
 import { useState, useContext, useMemo } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
+import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -26,22 +28,16 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   
 
 
-  const topExistingIngredients = useMemo(() => {
-    const filteredIngredients = ingredient.name ? existingIngredients.filter(ing => ing.name.toLowerCase().includes(ingredient.name.toLowerCase()) && ing.name.toLowerCase() !== ingredient.name.toLowerCase()) : existingIngredients
-
-    return filteredIngredients.slice(0, 3)
-  }, [ingredient, existingIngredients])
-
-
   function fromExisitingIngredient(name: string, existingIngredients: Ingredient[]) {
     return existingIngredients.some(ing => ing.name.toLowerCase() === name.toLowerCase())
   }
   
 
-  function setCaloriesFromExisiting() {
+  function setCaloriesFromExisiting(nameOverride?: string) {
+    const targetName = nameOverride ?? ingredient.name
     const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
     if (existing) {
-      setIngredient({ ...ingredient, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
+      setIngredient({ ...ingredient, name: targetName, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
     }
   }
 
@@ -62,21 +58,31 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     <div className="ingredient-input">
         <label className="form-field">
         <span className="field-label">Ingredient Name</span>
-            <input
-                type="text"
-                className="text-input ingredient-name-input"
-                list="ingredient-suggestions"
-                placeholder="Ingredient name"
-                value={ingredient.name}
-                onChange={(e) => setIngredient({ ...ingredient, name: e.target.value })}
-                onBlur={setCaloriesFromExisiting}
-                readOnly={readOnly}
+            <Autocomplete
+              value={ingredient.name}
+              options={existingIngredients}
+              getOptionLabel={(opt) => opt.name}
+              onChange={(next) => {
+                const existing = existingIngredients.find(ing => ing.name.toLowerCase() === next.toLowerCase())
+                if (existing) {
+                  setIngredient({
+                    ...ingredient,
+                    name: existing.name,
+                    calories: (existing.calories || 0) * (ingredient.quantity || 1)
+                  })
+                  return
+                }
+                setIngredient({ ...ingredient, name: next })
+              }}
+              onSelect={(existing) => setIngredient({
+                ...ingredient,
+                name: existing.name,
+                calories: (existing.calories || 0) * (ingredient.quantity || 1)
+              })}
+              placeholder="Ingredient name"
+              readOnly={readOnly}
+              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/unit` : undefined}
             />
-            <datalist id="ingredient-suggestions">
-                {topExistingIngredients.map((ing, index) => (
-                <option key={index} value={ing.name} />
-                ))}
-            </datalist>
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
@@ -113,14 +119,36 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
 
 
 
+/**
+ * Calculate Jaccard similarity between two sets of ingredient names.
+ * Returns a value between 0 and 1, where 1 means identical sets.
+ * When both sets are empty, returns 0 (no meaningful similarity for comparison).
+ */
+function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string[]): number {
+  const normalizedA = ingredientsA.map(name => name.toLowerCase().trim())
+  const normalizedB = ingredientsB.map(name => name.toLowerCase().trim())
+  
+  const setA = new Set(normalizedA)
+  const setB = new Set(normalizedB)
+  
+  // If either set is empty, there's no meaningful similarity for recipe comparison
+  if (setA.size === 0 || setB.size === 0) return 0
+  
+  const intersection = new Set([...setA].filter(x => setB.has(x)))
+  const union = new Set([...setA, ...setB])
+  
+  return intersection.size / union.size
+}
+
 function Store() {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
+  const navigate = useNavigate()
 
   if (!recipeContext) {
     throw new Error("RecipeProvider is missing")
   }
 
-  const { recipes } = recipeContext
+  const { recipes, setRecipes } = recipeContext
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
@@ -128,12 +156,41 @@ function Store() {
     description: "",
     ingredients: [],
   })
-    const ingredientCount = useMemo(() => {
+  
+  const ingredientCount = useMemo(() => {
     return recipe.ingredients ? recipe.ingredients.length : 0
   }, [recipe])
+
+  // Check for duplicate recipe name (case-insensitive, trimmed)
+  const isDuplicateName = useMemo(() => {
+    const trimmedName = recipe.name?.trim().toLowerCase()
+    if (!trimmedName) return false
+    return recipes.some(r => r.name.trim().toLowerCase() === trimmedName)
+  }, [recipe.name, recipes])
+
+  // Find similar recipes based on ingredient overlap using Jaccard similarity
+  const similarRecipe = useMemo(() => {
+    if (!recipe.ingredients || recipe.ingredients.length === 0) return null
+    
+    const currentIngredients = recipe.ingredients.map(ing => ing.name)
+    let bestMatch: { recipe: Recipe; similarity: number } | null = null
+    
+    for (const existingRecipe of recipes) {
+      const existingIngredients = existingRecipe.ingredients.map(ing => ing.name)
+      const similarity = calculateJaccardSimilarity(currentIngredients, existingIngredients)
+      
+      // Only suggest if similarity is above 30%
+      if (similarity >= 0.3 && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = { recipe: existingRecipe, similarity }
+      }
+    }
+    
+    return bestMatch
+  }, [recipe.ingredients, recipes])
+
   const canSave = useMemo(() => {
-    return !!(recipe.name && recipe.meal && recipe.description)
-  }, [recipe])
+    return !!(recipe.name && recipe.meal && recipe.description && !isDuplicateName)
+  }, [recipe, isDuplicateName])
 
     const canPublish = useMemo(() => {
         return !!(canSave && ingredientCount > 0)
@@ -159,18 +216,53 @@ function Store() {
     })
   }
 
+  function createRecipe(publish: boolean): Recipe {
+    const newId = recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
+    return {
+      id: newId,
+      name: recipe.name!.trim(),
+      meal: recipe.meal,
+      description: recipe.description!,
+      ingredients: recipe.ingredients || [],
+      date_added: new Date(),
+      date_published: publish ? new Date() : null,
+    }
+  }
+
+  function handleSaveRecipe() {
+    if (!canSave) return
+    
+    const newRecipe = createRecipe(false)
+    setRecipes([...recipes, newRecipe])
+    navigate(`/recipes/${newRecipe.id}`)
+  }
+
+  function handlePublishRecipe() {
+    if (!canPublish) return
+    
+    const newRecipe = createRecipe(true)
+    setRecipes([...recipes, newRecipe])
+    navigate(`/recipes/${newRecipe.id}`)
+  }
+
   const detailsTabContent = (<form className="store-form">
               <div className="form-grid">
-                <label className="form-field">
+                <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
                   <span className="field-label">Name</span>
                   <input
-                    className="text-input"
+                    className={`text-input ${isDuplicateName ? 'input-error' : ''}`}
                     type="text"
                     value={recipe.name}
                     placeholder="e.g. Smoky chipotle chili"
                     onChange={(e) => setRecipe({ ...recipe, name: e.target.value })}
+                    aria-invalid={isDuplicateName}
+                    aria-describedby={isDuplicateName ? "name-error" : undefined}
                   />
-                  <span className="field-hint">Give your recipe a clear, inviting title.</span>
+                  {isDuplicateName ? (
+                    <span id="name-error" className="field-error" role="alert">A recipe with this name already exists.</span>
+                  ) : (
+                    <span className="field-hint">Give your recipe a clear, inviting title.</span>
+                  )}
                 </label>
 
                 <div className="form-field">
@@ -213,10 +305,10 @@ function Store() {
 
               <div className="form-footer">
                 <div className="footer-actions">
-                  <button type="button" className="ghost-button" disabled={!canSave}>
+                  <button type="button" className="ghost-button" disabled={!canSave} onClick={handleSaveRecipe}>
                     Save Recipe
                   </button>
-                  <button type="button" className="primary-button" disabled={!canPublish}>
+                  <button type="button" className="primary-button" disabled={!canPublish} onClick={handlePublishRecipe}>
                     Publish
                   </button>
                 </div>
@@ -235,6 +327,15 @@ function Store() {
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
           <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
         ))}
+        
+        {similarRecipe && (
+          <div className="similar-recipe-suggestion" role="alert">
+            <span className="suggestion-icon">💡</span>
+            <span className="suggestion-text">
+              Similar recipe found: <Link to={`/recipes/${similarRecipe.recipe.id}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+            </span>
+          </div>
+        )}
       </div>
     </form>
   )
@@ -257,7 +358,6 @@ function Store() {
           <div className="store-meta">
             <span className="pill pill-primary">Draft</span>
             <span className="pill pill-ghost">{ingredientCount} ingredients</span>
-            <span className="pill pill-ghost">{recipes.length} saved</span>
           </div>
         </header>
 

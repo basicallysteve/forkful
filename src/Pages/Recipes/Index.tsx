@@ -100,13 +100,13 @@ export default function Recipes() {
     setSelectedRecipes(new Set())
   }
 
-  function getDaysOld(dateAdded?: Date): string {
-    if (!dateAdded) return 'Unknown'
+  function getDaysOld(date?: Date|null): string {
+    if (!date) return ''
     const now = new Date()
-    const date = new Date(dateAdded)
-    const diffTime = Math.abs(now.getTime() - date.getTime())
+    const dateObj = new Date(date)
+    const diffTime = Math.abs(now.getTime() - dateObj.getTime())
     const xDaysOld = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return xDaysOld > 0 ? `${xDaysOld} days ago` : 'Today'
+    return xDaysOld > 1 ? `${xDaysOld} days ago` : 'Today'
   }
 
   return (
@@ -248,7 +248,7 @@ export default function Recipes() {
                         <p className="card-description">{recipe.description}</p>
                         <div className="card-footer">
                           <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
-                          <span className="card-meta">{getDaysOld(recipe.date_added)}</span>
+                          <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
                         </div>
                       </Link>
                     </div>
