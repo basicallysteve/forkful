@@ -448,38 +448,66 @@
 
   .panel-content {
     padding: 10px;
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .ingredient-table {
     font-size: 13px;
-    min-width: 100%;
+    width: 100%;
+    table-layout: fixed;
   }
 
   .ingredient-table th,
   .ingredient-table td {
-    padding: 8px 6px;
+    padding: 8px 4px;
+    vertical-align: top;
+  }
+
+  // In edit mode, stack the ingredient row contents vertically
+  .ingredient-table td {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 4px 0;
+    border-bottom: none;
+  }
+
+  .ingredient-table thead {
+    display: none;
+  }
+
+  .ingredient-table tbody tr {
+    display: block;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--vscode-border);
   }
 
   .quantity-col {
-    width: 70px;
+    width: 100%;
+    text-align: left;
   }
 
   .actions-col {
-    width: 70px;
+    width: 100%;
+    text-align: left;
+    padding-top: 8px;
   }
 
   .ingredient-name-input {
-    min-width: 120px;
+    width: 100%;
+    min-width: auto;
+    margin-bottom: 8px;
   }
 
   .ingredient-quantity-input {
-    width: 60px;
+    width: 100%;
+    text-align: left;
   }
 
   .danger-button {
     padding: 6px 8px;
     font-size: 12px;
+    width: 100%;
   }
 
   .ghost-button,
