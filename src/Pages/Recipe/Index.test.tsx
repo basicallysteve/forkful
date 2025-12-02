@@ -232,6 +232,29 @@ describe('Recipe View Page', () => {
       expect(quantityInputs[0]).toHaveValue(5)
     })
 
+    it('updates calories when quantity changes for existing ingredient', async () => {
+      const user = userEvent.setup()
+      // Provide existing ingredients with per-unit calories (75 calories per unit for Ham)
+      const existingIngredients = [
+        { name: 'Ham', quantity: 1, calories: 75 },
+        { name: 'Cheese', quantity: 1, calories: 100 },
+      ]
+      renderWithProviders(<Recipe recipe={mockRecipe} />, { existingIngredients })
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      // Initial calories should be 250 (150 + 100)
+      expect(screen.getByText('250 calories')).toBeInTheDocument()
+
+      // Change Ham quantity from 2 to 4
+      const quantityInputs = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })
+      await user.clear(quantityInputs[0])
+      await user.type(quantityInputs[0], '4')
+
+      // Calories should update: Ham (4 * 75 = 300) + Cheese (100) = 400
+      expect(screen.getByText('400 calories')).toBeInTheDocument()
+    })
+
     it('saves changes when Save button is clicked', async () => {
       const user = userEvent.setup()
       const setRecipes = vi.fn()

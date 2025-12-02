@@ -59,7 +59,29 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
     const updatedIngredients = [...editedRecipe.ingredients]
-    if (field === 'quantity' || field === 'calories') {
+    if (field === 'quantity') {
+      const numValue = Number(value)
+      const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
+      
+      // Check if this ingredient exists in context to get per-unit calories
+      const existingIngredient = existingIngredients.find(
+        ing => ing.name.toLowerCase() === updatedIngredients[index].name.toLowerCase()
+      )
+      
+      if (existingIngredient) {
+        // Recalculate calories based on new quantity and per-unit calories
+        updatedIngredients[index] = {
+          ...updatedIngredients[index],
+          quantity: newQuantity,
+          calories: (existingIngredient.calories || 0) * newQuantity
+        }
+      } else {
+        updatedIngredients[index] = {
+          ...updatedIngredients[index],
+          quantity: newQuantity
+        }
+      }
+    } else if (field === 'calories') {
       const numValue = Number(value)
       updatedIngredients[index] = {
         ...updatedIngredients[index],
