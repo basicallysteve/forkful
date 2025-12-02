@@ -36,12 +36,12 @@ const mockRecipes: RecipeType[] = [
 
 function renderWithProviders(
   ui: React.ReactElement,
-  { recipes = mockRecipes, setRecipes = vi.fn() }: { recipes?: RecipeType[]; setRecipes?: (recipes: RecipeType[]) => void } = {}
+  { recipes = mockRecipes, setRecipes = vi.fn(), existingIngredients = [] }: { recipes?: RecipeType[]; setRecipes?: (recipes: RecipeType[]) => void; existingIngredients?: { name: string; quantity: number; calories?: number }[] } = {}
 ) {
   const contextValue: RecipeContextType = {
     recipes,
     setRecipes,
-    existingIngredients: [],
+    existingIngredients,
   }
 
   return {
@@ -212,13 +212,11 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
-      const ingredientInput = screen.getAllByRole('textbox', { name: /ingredient \d+ name/i })[0]
+      const ingredientInput = screen.getByLabelText('Ingredient 1 name')
       await user.clear(ingredientInput)
       await user.type(ingredientInput, 'Turkey')
 
-      // Re-query the element after typing
-      const updatedInput = screen.getAllByRole('textbox', { name: /ingredient \d+ name/i })[0]
-      expect(updatedInput).toHaveValue('Turkey')
+      expect(ingredientInput).toHaveValue('Turkey')
     })
 
     it('allows editing ingredient quantity', async () => {
@@ -310,9 +308,9 @@ describe('Recipe View Page', () => {
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /remove ham/i }))
 
-      const ingredientInputs = screen.getAllByRole('textbox', { name: /ingredient \d+ name/i })
-      expect(ingredientInputs).toHaveLength(1)
-      expect(ingredientInputs[0]).toHaveValue('Cheese')
+      // After removing Ham, only Cheese should remain
+      expect(screen.queryByLabelText('Ingredient 1 name')).toHaveValue('Cheese')
+      expect(screen.queryByLabelText('Ingredient 2 name')).not.toBeInTheDocument()
     })
 
     it('displays Add Ingredient button in edit mode', async () => {
@@ -331,8 +329,25 @@ describe('Recipe View Page', () => {
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      const ingredientInputs = screen.getAllByRole('textbox', { name: /ingredient \d+ name/i })
-      expect(ingredientInputs).toHaveLength(3)
+      // Should now have 3 ingredient inputs
+      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
+    })
+
+    it('does not add duplicate empty ingredient', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+
+      // Still should be 3, not 4 (don't add duplicate empty)
+      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Ingredient 4 name')).not.toBeInTheDocument()
     })
   })
 
@@ -351,6 +366,41 @@ describe('Recipe View Page', () => {
 
       expect(consoleSpy).toHaveBeenCalledWith('Copy recipe clicked:', 'Ham and Cheese Sandwich')
       consoleSpy.mockRestore()
+    })
+  })
+
+  describe('canEdit Prop', () => {
+    it('hides Edit button when canEdit is false', () => {
+      renderWithProviders(<Recipe recipe={mockRecipe} canEdit={false} />)
+      expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    })
+
+    it('shows Edit button when canEdit is true (default)', () => {
+      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
+    })
+
+    it('does not enter edit mode with isEditing=true when canEdit is false', () => {
+      renderWithProviders(<Recipe recipe={mockRecipe} isEditing={true} canEdit={false} />)
+      expect(screen.queryByRole('textbox', { name: /recipe name/i })).not.toBeInTheDocument()
+    })
+
+    it('still shows Copy Recipe button when canEdit is false', () => {
+      renderWithProviders(<Recipe recipe={mockRecipe} canEdit={false} />)
+      expect(screen.getByRole('button', { name: /copy recipe/i })).toBeInTheDocument()
+    })
+  })
+
+  describe('Published Date Display', () => {
+    it('displays published date text for published recipes', () => {
+      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      expect(screen.getByText(/published/i)).toBeInTheDocument()
+    })
+
+    it('displays Unpublished for recipes without date_published', () => {
+      const unpublishedRecipe = { ...mockRecipe, date_published: null }
+      renderWithProviders(<Recipe recipe={unpublishedRecipe} />)
+      expect(screen.getByText('Unpublished')).toBeInTheDocument()
     })
   })
 })

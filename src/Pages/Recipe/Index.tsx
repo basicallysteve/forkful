@@ -10,28 +10,28 @@ const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", 
 interface RecipeProps {
   recipe: Recipe
   isEditing?: boolean
+  canEdit?: boolean
 }
 
-export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
+export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   
   if (!recipeContext) {
     throw new Error('RecipeProvider is missing')
   }
 
-  const { recipes, setRecipes } = recipeContext
+  const { recipes, setRecipes, existingIngredients } = recipeContext
 
-  const [editMode, setEditMode] = useState(isEditing)
+  const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
 
-  let xDaysOld = 0
-  if (recipe.date_added) {
+  let publishedText = "Unpublished"
+  if (recipe.date_published) {
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - recipe.date_added.getTime())
-    xDaysOld = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const diffTime = Math.abs(now.getTime() - recipe.date_published.getTime())
+    const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    publishedText = daysSincePublished > 0 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
-
-  const daysOldText = xDaysOld > 0 ? `${xDaysOld} days old` : "New"
 
   const displayRecipe = editMode ? editedRecipe : recipe
 
@@ -80,8 +80,37 @@ export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
   }
 
   function handleAddIngredient() {
+    // Check if there's an empty ingredient slot already (prevents adding duplicates)
+    const hasEmptyIngredient = editedRecipe.ingredients.some(ing => ing.name.trim() === '')
+    if (hasEmptyIngredient) {
+      return // Don't add another empty ingredient if one already exists
+    }
+
     const newIngredient: Ingredient = { name: '', quantity: 1, calories: 0 }
     setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
+  }
+
+  function handleIngredientNameChange(index: number, value: string) {
+    const updatedIngredients = [...editedRecipe.ingredients]
+    // Check if the ingredient name already exists in context's existingIngredients
+    const existingIngredient = existingIngredients.find(
+      ing => ing.name.toLowerCase() === value.toLowerCase()
+    )
+    
+    if (existingIngredient) {
+      // If it exists, use the existing ingredient's calories (per unit)
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        name: value,
+        calories: (existingIngredient.calories || 0) * updatedIngredients[index].quantity
+      }
+    } else {
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        name: value
+      }
+    }
+    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
 
   return (
@@ -108,7 +137,7 @@ export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
             )}
           </div>
           <div className="recipe-meta">
-            <span className="pill pill-primary">{daysOldText}</span>
+            <span className="pill pill-primary">{publishedText}</span>
             <span className="pill pill-ghost">
               {displayRecipe.ingredients.length} ingredients
             </span>
@@ -161,9 +190,11 @@ export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
                     Copy Recipe
                   </button>
-                  <button type="button" className="primary-button" onClick={() => setEditMode(true)}>
-                    Edit
-                  </button>
+                  {canEdit && (
+                    <button type="button" className="primary-button" onClick={() => setEditMode(true)}>
+                      Edit
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -188,9 +219,15 @@ export default function Recipe({ recipe, isEditing = false }: RecipeProps) {
                             type="text"
                             className="ingredient-name-input"
                             value={ingredient.name}
-                            onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                            onChange={(e) => handleIngredientNameChange(index, e.target.value)}
+                            list="existing-ingredients"
                             aria-label={`Ingredient ${index + 1} name`}
                           />
+                          <datalist id="existing-ingredients">
+                            {existingIngredients.map((ing, i) => (
+                              <option key={i} value={ing.name} />
+                            ))}
+                          </datalist>
                         </td>
                         <td className="quantity-col">
                           <input
