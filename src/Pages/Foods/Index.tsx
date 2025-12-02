@@ -1,6 +1,7 @@
 import { useState, useContext, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Food } from '@/types/Food'
 import './foods.scss'
 
@@ -9,12 +10,18 @@ type SortDirection = 'asc' | 'desc'
 
 export default function Foods() {
   const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
+  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
 
   if (!foodContext) {
     throw new Error('FoodProvider is missing')
   }
 
+  if (!recipeContext) {
+    throw new Error('RecipeProvider is missing')
+  }
+
   const { foods, deleteFood, isFoodUsedInRecipe } = foodContext
+  const { recipes } = recipeContext
   const [selectedFoods, setSelectedFoods] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -41,7 +48,7 @@ export default function Foods() {
           comparison = a.calories - b.calories
           break
         case 'protein':
-          comparison = (a.macronutrients?.protein || 0) - (b.macronutrients?.protein || 0)
+          comparison = (a.protein || 0) - (b.protein || 0)
           break
       }
       return sortDirection === 'asc' ? comparison : -comparison
@@ -77,7 +84,7 @@ export default function Foods() {
 
     selectedFoods.forEach((id) => {
       const food = foods.find((f) => f.id === id)
-      if (food && isFoodUsedInRecipe(id)) {
+      if (food && isFoodUsedInRecipe(id, recipes)) {
         foodsInUse.push(food.name)
       } else {
         foodsToDelete.push(id)
@@ -85,7 +92,7 @@ export default function Foods() {
     })
 
     // Delete foods that are not in use
-    foodsToDelete.forEach((id) => deleteFood(id))
+    foodsToDelete.forEach((id) => deleteFood(id, recipes))
 
     // Show error for foods that couldn't be deleted
     if (foodsInUse.length > 0) {
@@ -103,12 +110,10 @@ export default function Foods() {
   }
 
   function formatMacros(food: Food): string {
-    const macros = food.macronutrients
-    if (!macros) return '-'
     const parts: string[] = []
-    if (macros.protein) parts.push(`P: ${macros.protein}g`)
-    if (macros.carbs) parts.push(`C: ${macros.carbs}g`)
-    if (macros.fat) parts.push(`F: ${macros.fat}g`)
+    if (food.protein) parts.push(`P: ${food.protein}g`)
+    if (food.carbs) parts.push(`C: ${food.carbs}g`)
+    if (food.fat) parts.push(`F: ${food.fat}g`)
     return parts.length > 0 ? parts.join(' | ') : '-'
   }
 
@@ -212,7 +217,7 @@ export default function Foods() {
                     <div
                       key={food.id}
                       className={`food-card ${selectedFoods.has(food.id) ? 'is-selected' : ''} ${
-                        isFoodUsedInRecipe(food.id) ? 'is-used' : ''
+                        isFoodUsedInRecipe(food.id, recipes) ? 'is-used' : ''
                       }`}
                     >
                       <div className="card-checkbox">
@@ -229,7 +234,7 @@ export default function Foods() {
                           <h3 className="card-title">{food.name}</h3>
                           <div className="card-badges">
                             <span className="pill pill-ghost">{food.calories} cal</span>
-                            {isFoodUsedInRecipe(food.id) && (
+                            {isFoodUsedInRecipe(food.id, recipes) && (
                               <span className="pill pill-info">In use</span>
                             )}
                           </div>

@@ -1,28 +1,29 @@
-import { createContext, useState, useContext, useMemo, useCallback } from 'react'
+import { createContext, useState, useMemo, useCallback } from 'react'
 import type { Food } from '@/types/Food'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import type { Recipe } from '@/types/Recipe'
 
 export interface FoodContextType {
   foods: Food[]
   setFoods: (foods: Food[]) => void
   addFood: (food: Omit<Food, 'id'>) => Food
   updateFood: (food: Food) => void
-  deleteFood: (id: number) => boolean
-  isFoodUsedInRecipe: (foodId: number) => boolean
+  deleteFood: (id: number, recipes?: Recipe[]) => boolean
+  isFoodUsedInRecipe: (foodId: number, recipes: Recipe[]) => boolean
   getFoodByName: (name: string) => Food | undefined
 }
 
 const GlobalFoodContext = createContext<FoodContextType | undefined>(undefined)
 
 export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-
   const [foods, setFoods] = useState<Food[]>([
     {
       id: 1,
       name: 'Ham',
       calories: 75,
-      macronutrients: { protein: 5, carbs: 1, fat: 6 },
+      protein: 5,
+      carbs: 1,
+      fat: 6,
+      fiber: 0,
       servingSize: 1,
       servingUnit: 'slice',
       measurements: ['slice', 'oz', 'g'],
@@ -31,7 +32,10 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       id: 2,
       name: 'Cheese',
       calories: 100,
-      macronutrients: { protein: 7, carbs: 0, fat: 8 },
+      protein: 7,
+      carbs: 0,
+      fat: 8,
+      fiber: 0,
       servingSize: 1,
       servingUnit: 'slice',
       measurements: ['slice', 'oz', 'g'],
@@ -40,7 +44,10 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       id: 3,
       name: 'Bread',
       calories: 100,
-      macronutrients: { protein: 3, carbs: 20, fat: 1 },
+      protein: 3,
+      carbs: 20,
+      fat: 1,
+      fiber: 2,
       servingSize: 1,
       servingUnit: 'slice',
       measurements: ['slice', 'loaf'],
@@ -49,7 +56,10 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       id: 4,
       name: 'Spaghetti',
       calories: 350,
-      macronutrients: { protein: 13, carbs: 71, fat: 2 },
+      protein: 13,
+      carbs: 71,
+      fat: 2,
+      fiber: 3,
       servingSize: 100,
       servingUnit: 'g',
       measurements: ['g', 'oz', 'cup'],
@@ -58,7 +68,10 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       id: 5,
       name: 'Ground Beef',
       calories: 200,
-      macronutrients: { protein: 26, carbs: 0, fat: 10 },
+      protein: 26,
+      carbs: 0,
+      fat: 10,
+      fiber: 0,
       servingSize: 100,
       servingUnit: 'g',
       measurements: ['g', 'oz', 'lb'],
@@ -66,17 +79,16 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
   ])
 
   // Check if a food is used in any recipe by matching the food name
-  const isFoodUsedInRecipe = useCallback((foodId: number): boolean => {
-    if (!recipeContext) return false
+  const isFoodUsedInRecipe = useCallback((foodId: number, recipes: Recipe[]): boolean => {
     const food = foods.find(f => f.id === foodId)
     if (!food) return false
 
-    return recipeContext.recipes.some(recipe =>
+    return recipes.some(recipe =>
       recipe.ingredients.some(
         ingredient => ingredient.name.toLowerCase() === food.name.toLowerCase()
       )
     )
-  }, [foods, recipeContext])
+  }, [foods])
 
   const addFood = useCallback((foodData: Omit<Food, 'id'>): Food => {
     const newId = foods.length > 0 ? Math.max(...foods.map(f => f.id)) + 1 : 1
@@ -89,8 +101,8 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
     setFoods(prevFoods => prevFoods.map(f => (f.id === updatedFood.id ? updatedFood : f)))
   }, [])
 
-  const deleteFood = useCallback((id: number): boolean => {
-    if (isFoodUsedInRecipe(id)) {
+  const deleteFood = useCallback((id: number, recipes: Recipe[] = []): boolean => {
+    if (isFoodUsedInRecipe(id, recipes)) {
       return false
     }
     setFoods(prevFoods => prevFoods.filter(f => f.id !== id))

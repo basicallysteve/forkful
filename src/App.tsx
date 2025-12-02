@@ -14,8 +14,6 @@ import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvide
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 
-const MENU_FOODS_LIMIT = 10
-
 function App() {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
@@ -51,11 +49,6 @@ function App() {
       children: [
           { label: 'Browse All Foods', action: () => { console.log('Browse All Foods clicked') }, to: '/foods' },
           { label: 'Add New Food', action: () => { console.log('Add New Food clicked') }, to: '/foods/new' },
-          ...foods.slice(0, MENU_FOODS_LIMIT).map((food: Food) => ({
-            label: food.name,
-            to: `/foods/${food.id}`,
-            action: () => { console.log(`Food clicked: ${food.name}`) },
-        }))
     ]
     },
     {

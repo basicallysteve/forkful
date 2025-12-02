@@ -4,13 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import FoodIndex from './Index'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Food } from '@/types/Food'
+import type { Recipe } from '@/types/Recipe'
 
 const mockFood: Food = {
   id: 1,
   name: 'Chicken Breast',
   calories: 165,
-  macronutrients: { protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+  protein: 31,
+  carbs: 0,
+  fat: 3.6,
+  fiber: 0,
   servingSize: 100,
   servingUnit: 'g',
   measurements: ['g', 'oz'],
@@ -22,12 +27,17 @@ const mockFoods: Food[] = [
     id: 2,
     name: 'Brown Rice',
     calories: 216,
-    macronutrients: { protein: 5, carbs: 45, fat: 1.8, fiber: 3.5 },
+    protein: 5,
+    carbs: 45,
+    fat: 1.8,
+    fiber: 3.5,
     servingSize: 1,
     servingUnit: 'cup',
     measurements: ['cup', 'g'],
   },
 ]
+
+const mockRecipes: Recipe[] = []
 
 function renderWithProviders(
   ui: React.ReactElement,
@@ -39,9 +49,12 @@ function renderWithProviders(
     deleteFood = vi.fn().mockReturnValue(true),
     isFoodUsedInRecipe = vi.fn().mockReturnValue(false),
     getFoodByName = vi.fn(),
-  }: Partial<FoodContextType> = {}
+    recipes = mockRecipes,
+    setRecipes = vi.fn(),
+    existingIngredients = [],
+  }: Partial<FoodContextType> & Partial<RecipeContextType> = {}
 ) {
-  const contextValue: FoodContextType = {
+  const foodContextValue: FoodContextType = {
     foods,
     setFoods,
     addFood,
@@ -51,10 +64,18 @@ function renderWithProviders(
     getFoodByName,
   }
 
+  const recipeContextValue: RecipeContextType = {
+    recipes,
+    setRecipes,
+    existingIngredients,
+  }
+
   return render(
     <BrowserRouter>
-      <GlobalFoodContext.Provider value={contextValue}>
-        {ui}
+      <GlobalFoodContext.Provider value={foodContextValue}>
+        <GlobalRecipeContext.Provider value={recipeContextValue}>
+          {ui}
+        </GlobalRecipeContext.Provider>
       </GlobalFoodContext.Provider>
     </BrowserRouter>
   )
@@ -121,7 +142,7 @@ describe('Food View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /delete/i }))
 
-      expect(deleteFood).toHaveBeenCalledWith(1)
+      expect(deleteFood).toHaveBeenCalledWith(1, mockRecipes)
     })
 
     it('disables Delete button when food is used in recipe', () => {
