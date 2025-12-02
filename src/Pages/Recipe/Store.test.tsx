@@ -270,6 +270,107 @@ describe('Store Page - Recipe Creation', () => {
       expect(screen.getByRole('radio', { name: /dessert/i })).toBeInTheDocument()
     })
   })
+
+  describe('Save and Publish Functionality', () => {
+    it('calls setRecipes with new recipe when Save Recipe is clicked', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+      renderWithProviders(<Store />, { setRecipes })
+
+      // Fill out all required fields
+      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
+      await user.type(nameInput, 'New Test Recipe')
+
+      const lunchRadio = screen.getByRole('radio', { name: /lunch/i })
+      await user.click(lunchRadio)
+
+      const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      await user.type(descriptionInput, 'A test description')
+
+      // Click save
+      const saveButton = screen.getByRole('button', { name: /save recipe/i })
+      await user.click(saveButton)
+
+      // Verify setRecipes was called
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const newRecipes = setRecipes.mock.calls[0][0]
+      expect(newRecipes).toHaveLength(3) // 2 existing + 1 new
+      
+      const newRecipe = newRecipes[2]
+      expect(newRecipe.name).toBe('New Test Recipe')
+      expect(newRecipe.meal).toBe('Lunch')
+      expect(newRecipe.description).toBe('A test description')
+      expect(newRecipe.date_published).toBeNull() // Saved as draft
+    })
+
+    it('calls setRecipes with published recipe when Publish is clicked', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+      renderWithProviders(<Store />, { 
+        setRecipes,
+        existingIngredients: [{ name: 'Test Ingredient', quantity: 1, calories: 50 }]
+      })
+
+      // Fill out all required fields
+      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
+      await user.type(nameInput, 'Published Recipe')
+
+      const dinnerRadio = screen.getByRole('radio', { name: /dinner/i })
+      await user.click(dinnerRadio)
+
+      const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      await user.type(descriptionInput, 'A published recipe description')
+
+      // Add an ingredient (required for publish)
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'Test Ingredient')
+
+      const addButton = screen.getByRole('button', { name: '+' })
+      await user.click(addButton)
+
+      // Switch back to details tab to access publish button
+      const detailsTab = screen.getByRole('button', { name: /details tab/i })
+      await user.click(detailsTab)
+
+      // Click publish
+      const publishButton = screen.getByRole('button', { name: /publish/i })
+      await user.click(publishButton)
+
+      // Verify setRecipes was called
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const newRecipes = setRecipes.mock.calls[0][0]
+      expect(newRecipes).toHaveLength(3)
+      
+      const newRecipe = newRecipes[2]
+      expect(newRecipe.name).toBe('Published Recipe')
+      expect(newRecipe.date_published).not.toBeNull() // Published with date
+    })
+
+    it('Publish button is disabled when no ingredients are added', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />)
+
+      // Fill out all required fields but no ingredients
+      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
+      await user.type(nameInput, 'Recipe Without Ingredients')
+
+      const lunchRadio = screen.getByRole('radio', { name: /lunch/i })
+      await user.click(lunchRadio)
+
+      const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      await user.type(descriptionInput, 'A description')
+
+      // Save should be enabled, Publish should be disabled
+      const saveButton = screen.getByRole('button', { name: /save recipe/i })
+      const publishButton = screen.getByRole('button', { name: /publish/i })
+      
+      expect(saveButton).not.toBeDisabled()
+      expect(publishButton).toBeDisabled()
+    })
+  })
 })
 
 describe('Recipes List - Card Layout', () => {

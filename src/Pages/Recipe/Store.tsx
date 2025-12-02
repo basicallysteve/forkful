@@ -1,5 +1,5 @@
 import { useState, useContext, useMemo } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
@@ -137,12 +137,13 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 
 function Store() {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
+  const navigate = useNavigate()
 
   if (!recipeContext) {
     throw new Error("RecipeProvider is missing")
   }
 
-  const { recipes } = recipeContext
+  const { recipes, setRecipes } = recipeContext
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
@@ -210,6 +211,42 @@ function Store() {
     })
   }
 
+  function handleSaveRecipe() {
+    if (!canSave) return
+    
+    const newId = Math.max(...recipes.map(r => r.id), 0) + 1
+    const newRecipe: Recipe = {
+      id: newId,
+      name: recipe.name!.trim(),
+      meal: recipe.meal,
+      description: recipe.description!,
+      ingredients: recipe.ingredients || [],
+      date_added: new Date(),
+      date_published: null,
+    }
+    
+    setRecipes([...recipes, newRecipe])
+    navigate(`/recipes/${newId}`)
+  }
+
+  function handlePublishRecipe() {
+    if (!canPublish) return
+    
+    const newId = Math.max(...recipes.map(r => r.id), 0) + 1
+    const newRecipe: Recipe = {
+      id: newId,
+      name: recipe.name!.trim(),
+      meal: recipe.meal,
+      description: recipe.description!,
+      ingredients: recipe.ingredients || [],
+      date_added: new Date(),
+      date_published: new Date(),
+    }
+    
+    setRecipes([...recipes, newRecipe])
+    navigate(`/recipes/${newId}`)
+  }
+
   const detailsTabContent = (<form className="store-form">
               <div className="form-grid">
                 <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
@@ -270,10 +307,10 @@ function Store() {
 
               <div className="form-footer">
                 <div className="footer-actions">
-                  <button type="button" className="ghost-button" disabled={!canSave}>
+                  <button type="button" className="ghost-button" disabled={!canSave} onClick={handleSaveRecipe}>
                     Save Recipe
                   </button>
-                  <button type="button" className="primary-button" disabled={!canPublish}>
+                  <button type="button" className="primary-button" disabled={!canPublish} onClick={handlePublishRecipe}>
                     Publish
                   </button>
                 </div>
