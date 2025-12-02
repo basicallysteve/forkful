@@ -1,21 +1,31 @@
 import RecipeIndex from "@/Pages/Recipe/Index"
 import RecipeStore from "@/Pages/Recipe/Store"
+import RecipesList from "@/Pages/Recipes/Index"
 import ToolBar from "@/components/ToolBar"
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Home from "@/Pages/Home"
 import { useContext } from 'react'
-import GlobalRecipeContext from '@/providers/RecipeProvider'
+import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import type { Recipe } from '@/types/Recipe'
+
 function App() {
-    const { recipes } = useContext(GlobalRecipeContext);
+  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
+  
+  if (!recipeContext) {
+    throw new Error('RecipeProvider is missing')
+  }
+
+  const { recipes } = recipeContext
 
   const menuOptions = [
     {
-      label: 'All Recipes',
-      action: () => { console.log('All Recipes clicked') },
+      label: 'Recipes',
+      action: () => { console.log('Recipes clicked') },
       children: [
+          { label: 'Browse All Recipes', action: () => { console.log('Browse All Recipes clicked') }, to: '/recipes' },
           { label: 'Add New Recipe', action: () => { console.log('Add New Recipe clicked') }, to: '/recipes/new' },
-          ...recipes.map(recipe => ({
+          ...recipes.map((recipe: Recipe) => ({
             label: recipe.name,
             to: `/recipes/${recipe.id}`,
             action: () => { console.log(`Recipe clicked: ${recipe.name}`) },
@@ -44,9 +54,10 @@ function App() {
       <ToolBar menuOptions={menuOptions} />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/recipes" element={<RecipesList />} />
         <Route path="/recipes/new" element={<RecipeStore />} />
        { 
-          recipes.map(recipe => (
+          recipes.map((recipe: Recipe) => (
             <Route key={recipe.id} path={`/recipes/${recipe.id}`} element={<RecipeIndex recipe={recipe} />} />
           ))
         }

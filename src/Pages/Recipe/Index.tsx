@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './recipe.scss'
 import { type Recipe } from '@/types/Recipe'
 
@@ -10,9 +11,9 @@ export default function Recipe({ recipe }: { recipe: Recipe }) {
     xDaysOld = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
-  let daysOldText = xDaysOld > 0 ? `${xDaysOld} days old` : "New"
+  const daysOldText = xDaysOld > 0 ? `${xDaysOld} days old` : "New"
 
-  let totalCalories = recipe.ingredients.reduce((total, ingredient) => {
+  const totalCalories = recipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
   }, 0)
 
@@ -25,6 +26,7 @@ export default function Recipe({ recipe }: { recipe: Recipe }) {
       <div className="recipe-content">
         <header className="recipe-header">
           <div>
+            <Link to="/recipes" className="back-link">← All Recipes</Link>
             <p className="recipe-label">Recipe</p>
             <h2 className="recipe-name">{recipe.name}</h2>
           </div>

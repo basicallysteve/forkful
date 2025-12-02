@@ -1,6 +1,6 @@
 export type Ingredient = {
   name: string
   quantity: number,
-  units: string,
+  units?: string,
   calories?: number
 }

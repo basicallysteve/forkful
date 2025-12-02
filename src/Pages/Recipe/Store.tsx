@@ -20,14 +20,14 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     if (ingredient.name.trim() === "" || ingredient.quantity <= 0) {
       return
     }
-    onAdd(ingredient)
+    onAdd?.(ingredient)
     setIngredient({ name: "", quantity: 1, calories: 0 })
   }
   
 
 
   const topExistingIngredients = useMemo(() => {
-    let filteredIngredients = ingredient.name ? existingIngredients.filter(ing => ing.name.toLowerCase().includes(ingredient.name.toLowerCase()) && ing.name.toLowerCase() !== ingredient.name.toLowerCase()) : existingIngredients
+    const filteredIngredients = ingredient.name ? existingIngredients.filter(ing => ing.name.toLowerCase().includes(ingredient.name.toLowerCase()) && ing.name.toLowerCase() !== ingredient.name.toLowerCase()) : existingIngredients
 
     return filteredIngredients.slice(0, 3)
   }, [ingredient, existingIngredients])
@@ -120,11 +120,11 @@ function Store() {
     throw new Error("RecipeProvider is missing")
   }
 
-  const { recipes, existingIngredients } = recipeContext
+  const { recipes } = recipeContext
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
-    meal: "",
+    meal: undefined,
     description: "",
     ingredients: [],
   })
@@ -159,7 +159,7 @@ function Store() {
     })
   }
 
-  let detailsTabContent = (<form className="store-form">
+  const detailsTabContent = (<form className="store-form">
               <div className="form-grid">
                 <label className="form-field">
                   <span className="field-label">Name</span>
@@ -223,7 +223,7 @@ function Store() {
               </div>
             </form>);
 
-    let ingredientsTabContent = (
+    const ingredientsTabContent = (
     <form className="store-form">
       <div className="form-grid">
         <label className="form-field form-field-full">
@@ -232,7 +232,7 @@ function Store() {
         {ingredientCount === 0 && <p className="no-ingredients-text">No ingredients added yet.</p>}
         
         <IngredientInput onAdd={handleAddIngredient} />
-        {ingredientCount > 0 && recipe.ingredients.map((ingredient, index) => (
+        {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
           <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
         ))}
       </div>
