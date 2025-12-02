@@ -159,6 +159,26 @@
     }
   }
 
+  .filter-input {
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    font-size: 13px;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+
+    &::placeholder {
+      color: var(--vscode-muted);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--vscode-accent);
+      box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+    }
+  }
+
   .sort-direction-button {
     padding: 8px 12px;
     border-radius: 8px;
@@ -303,10 +323,10 @@
 
   .card-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .card-title {
@@ -314,13 +334,19 @@
     font-size: 16px;
     font-weight: 600;
     color: #f3f3f3;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card-badges {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
   }
 
   .card-description {

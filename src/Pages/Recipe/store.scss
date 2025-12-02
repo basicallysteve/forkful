@@ -295,6 +295,52 @@
     line-height: 1.5;
   }
 
+  .field-error {
+    margin: 0;
+    color: #ff5f56;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .has-error {
+    border-color: #ff5f56;
+  }
+
+  .input-error {
+    border-color: #ff5f56;
+
+    &:focus {
+      border-color: #ff5f56;
+      box-shadow: 0 0 0 1px rgba(255, 95, 86, 0.35);
+    }
+  }
+
+  .similar-recipe-suggestion {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--vscode-accent);
+    border-radius: 10px;
+    background: rgba(0, 122, 204, 0.1);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  .suggestion-icon {
+    font-size: 16px;
+  }
+
+  .suggestion-link {
+    color: var(--vscode-accent);
+    text-decoration: underline;
+    
+    &:hover {
+      color: #1ea3ff;
+    }
+  }
+
   .text-input,
   .text-area {
     border: 1px solid var(--vscode-border);
