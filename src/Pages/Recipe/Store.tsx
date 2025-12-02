@@ -211,40 +211,33 @@ function Store() {
     })
   }
 
-  function handleSaveRecipe() {
-    if (!canSave) return
-    
-    const newId = Math.max(...recipes.map(r => r.id), 0) + 1
-    const newRecipe: Recipe = {
+  function createRecipe(publish: boolean): Recipe {
+    const newId = recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
+    return {
       id: newId,
       name: recipe.name!.trim(),
       meal: recipe.meal,
       description: recipe.description!,
       ingredients: recipe.ingredients || [],
       date_added: new Date(),
-      date_published: null,
+      date_published: publish ? new Date() : null,
     }
+  }
+
+  function handleSaveRecipe() {
+    if (!canSave) return
     
+    const newRecipe = createRecipe(false)
     setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newId}`)
+    navigate(`/recipes/${newRecipe.id}`)
   }
 
   function handlePublishRecipe() {
     if (!canPublish) return
     
-    const newId = Math.max(...recipes.map(r => r.id), 0) + 1
-    const newRecipe: Recipe = {
-      id: newId,
-      name: recipe.name!.trim(),
-      meal: recipe.meal,
-      description: recipe.description!,
-      ingredients: recipe.ingredients || [],
-      date_added: new Date(),
-      date_published: new Date(),
-    }
-    
+    const newRecipe = createRecipe(true)
     setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newId}`)
+    navigate(`/recipes/${newRecipe.id}`)
   }
 
   const detailsTabContent = (<form className="store-form">
