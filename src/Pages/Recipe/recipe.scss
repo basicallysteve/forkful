@@ -1,3 +1,4 @@
+@import '@/assets/styles/main.scss';
 .recipe-view {
   --vscode-bg: #1e1e1e;
   --vscode-panel: #252526;
@@ -82,14 +83,31 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.edit-actions {
+  justify-content: flex-end;
+  flex: 1;
+  max-width: 260px;
+  margin-left: auto;
+}
+
 .recipe-content {
   padding: 22px 22px 18px;
   background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
 }
 
+.recipe-header-container {
+  width: 600px;
+}
+
+
+@media screen and (max-width: 670px) {
+  .recipe-header-container {
+    width: 100%;
+  }
+}
 .recipe-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 12px;
@@ -254,19 +272,301 @@
   font-weight: 600;
 }
 
-@media (max-width: 720px) {
+.recipe-name-input {
+  font-size: 24px;
+  color: #f3f3f3;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 4px 0 0;
+  width: 100%;
+  font-family: inherit;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+}
+
+.recipe-description-input {
+  width: 100%;
+  min-height: 80px;
+  margin: 14px 0 18px;
+  padding: 12px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+}
+
+.meal-select {
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--vscode-panel);
+  color: var(--vscode-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+}
+
+.ghost-button,
+.primary-button,
+.danger-button {
+  border-radius: 8px;
+  border: 1px solid var(--vscode-border);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.ghost-button {
+  color: var(--vscode-text);
+  background: rgba(255, 255, 255, 0.04);
+
+  &:hover {
+    border-color: var(--vscode-accent);
+    color: #ffffff;
+  }
+}
+
+.primary-button {
+  color: #ffffff;
+  background: var(--vscode-accent);
+  border-color: var(--vscode-accent);
+
+  &:hover {
+    background: #0062a3;
+    border-color: #0062a3;
+  }
+}
+
+.danger-button {
+  background: #e811235f;
+  color: #ffffff;
+  border-color: #e81123;
+
+  &:hover {
+    background: #e81123;
+  }
+}
+
+.ingredient-name-input,
+.ingredient-quantity-input,
+.ingredient-calories-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+
+  &:disabled {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--vscode-muted);
+    cursor: not-allowed;
+    border-color: rgba(60, 60, 60, 0.5);
+  }
+}
+
+.ingredient-quantity-input,
+.ingredient-calories-input {
+  text-align: right;
+}
+
+.calories-col {
+  width: 100px;
+  text-align: right;
+}
+
+.actions-col {
+  width: 100px;
+  text-align: center;
+}
+
+.add-ingredient-button {
+  margin-top: 12px;
+  width: 100%;
+}
+
+@media (max-width: 775px) {
+  .recipe-content {
+    padding: 16px 12px 14px;
+  }
+
   .recipe-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
 
   .recipe-meta {
     width: 100%;
     flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
-  .titlebar-actions,
+  .recipe-name {
+    font-size: 20px;
+    word-break: break-word;
+  }
+
+  .recipe-name-input {
+    max-width: 100%;
+    font-size: 18px;
+    padding: 8px 10px;
+  }
+
+  .recipe-description-input {
+    min-height: 60px;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .panel-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .toolbar-tabs {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
   .toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .edit-actions {
+    justify-content: space-between;
+    max-width: none;
+  }
+
+  .meal-select {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .panel-content {
+    padding: 10px;
+    overflow-x: hidden;
+  }
+
+  .ingredient-table {
+    font-size: 13px;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .ingredient-table th,
+  .ingredient-table td {
+    padding: 8px 4px;
+    vertical-align: top;
+  }
+
+  // In edit mode, stack the ingredient row contents vertically
+  .ingredient-table td {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 4px 0;
+    border-bottom: none;
+  }
+
+  .ingredient-table thead {
     display: none;
+  }
+
+  .ingredient-table tbody tr {
+    display: block;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--vscode-border);
+  }
+
+  .quantity-col {
+    width: 100%;
+    text-align: left;
+  }
+
+  .calories-col {
+    width: 100%;
+    text-align: left;
+    margin-top: 8px;
+  }
+
+  .actions-col {
+    width: 100%;
+    text-align: left;
+    padding-top: 8px;
+  }
+
+  .ingredient-name-input {
+    width: 100%;
+    min-width: auto;
+    margin-bottom: 8px;
+  }
+
+  .ingredient-quantity-input,
+  .ingredient-calories-input {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+  }
+
+  .ingredient-calories-input {
+    margin-top: 4px;
+  }
+
+  .danger-button {
+    padding: 6px 8px;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .ghost-button,
+  .primary-button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .add-ingredient-button {
+    padding: 10px;
   }
 }
