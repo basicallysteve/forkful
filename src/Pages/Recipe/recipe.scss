@@ -82,6 +82,13 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.edit-actions {
+  justify-content: space-between;
+  flex: 1;
+  max-width: 260px;
+  margin-left: auto;
+}
+
 .recipe-content {
   padding: 22px 22px 18px;
   background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
@@ -357,6 +364,7 @@
 .ingredient-name-input,
 .ingredient-quantity-input {
   width: 100%;
+  box-sizing: border-box;
   padding: 6px 10px;
   font-size: 14px;
   color: var(--vscode-text);
@@ -373,7 +381,6 @@
 }
 
 .ingredient-quantity-input {
-  width: 80px;
   text-align: right;
 }
 
@@ -441,6 +448,11 @@
     justify-content: flex-end;
   }
 
+  .edit-actions {
+    justify-content: space-between;
+    max-width: none;
+  }
+
   .meal-select {
     flex: 1;
     min-width: 100px;
@@ -501,6 +513,7 @@
 
   .ingredient-quantity-input {
     width: 100%;
+    max-width: none;
     text-align: left;
   }
 

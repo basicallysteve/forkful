@@ -197,7 +197,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
               )}
               <span className="tab">{totalCalories} calories</span>
             </div>
-            <div className="toolbar-actions">
+            <div className={editMode ? 'toolbar-actions edit-actions' : 'toolbar-actions'}>
               {editMode ? (
                 <>
                   <button type="button" className="ghost-button" onClick={handleCancel}>
