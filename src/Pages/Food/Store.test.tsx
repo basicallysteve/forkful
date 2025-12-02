@@ -173,7 +173,6 @@ describe('Food Store Page - Add Food', () => {
     })
 
     it('prevents negative macronutrient values', async () => {
-      const user = userEvent.setup()
       renderWithProviders(<Store />)
 
       const proteinInput = screen.getByLabelText('Protein')

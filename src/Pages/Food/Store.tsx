@@ -100,7 +100,7 @@ function Store({ existingFood }: FoodStoreProps) {
 
     if (isEditing && existingFood) {
       updateFood({ ...foodData, id: existingFood.id })
-      navigate(`/foods`)
+      navigate('/foods')
     } else {
       addFood(foodData)
       navigate('/foods')

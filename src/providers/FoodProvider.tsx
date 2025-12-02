@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useMemo } from 'react'
+import { createContext, useState, useContext, useMemo, useCallback } from 'react'
 import type { Food } from '@/types/Food'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 
@@ -66,7 +66,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
   ])
 
   // Check if a food is used in any recipe by matching the food name
-  const isFoodUsedInRecipe = (foodId: number): boolean => {
+  const isFoodUsedInRecipe = useCallback((foodId: number): boolean => {
     if (!recipeContext) return false
     const food = foods.find(f => f.id === foodId)
     if (!food) return false
@@ -76,30 +76,30 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
         ingredient => ingredient.name.toLowerCase() === food.name.toLowerCase()
       )
     )
-  }
+  }, [foods, recipeContext])
 
-  const addFood = (foodData: Omit<Food, 'id'>): Food => {
+  const addFood = useCallback((foodData: Omit<Food, 'id'>): Food => {
     const newId = foods.length > 0 ? Math.max(...foods.map(f => f.id)) + 1 : 1
     const newFood: Food = { ...foodData, id: newId }
-    setFoods([...foods, newFood])
+    setFoods(prevFoods => [...prevFoods, newFood])
     return newFood
-  }
+  }, [foods])
 
-  const updateFood = (updatedFood: Food): void => {
-    setFoods(foods.map(f => (f.id === updatedFood.id ? updatedFood : f)))
-  }
+  const updateFood = useCallback((updatedFood: Food): void => {
+    setFoods(prevFoods => prevFoods.map(f => (f.id === updatedFood.id ? updatedFood : f)))
+  }, [])
 
-  const deleteFood = (id: number): boolean => {
+  const deleteFood = useCallback((id: number): boolean => {
     if (isFoodUsedInRecipe(id)) {
       return false
     }
-    setFoods(foods.filter(f => f.id !== id))
+    setFoods(prevFoods => prevFoods.filter(f => f.id !== id))
     return true
-  }
+  }, [isFoodUsedInRecipe])
 
-  const getFoodByName = (name: string): Food | undefined => {
+  const getFoodByName = useCallback((name: string): Food | undefined => {
     return foods.find(f => f.name.toLowerCase() === name.toLowerCase())
-  }
+  }, [foods])
 
   const contextValue = useMemo(
     () => ({
@@ -111,8 +111,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       isFoodUsedInRecipe,
       getFoodByName,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [foods, recipeContext?.recipes]
+    [foods, addFood, updateFood, deleteFood, isFoodUsedInRecipe, getFoodByName]
   )
 
   return (
