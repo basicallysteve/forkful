@@ -306,7 +306,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .card-title {
@@ -314,13 +314,18 @@
     font-size: 16px;
     font-weight: 600;
     color: #f3f3f3;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card-badges {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
 
   .card-description {
