@@ -143,7 +143,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
       <div className="recipe-content">
         <header className="recipe-header">
-          <div>
+          <div style={{ width: '600px'}}>
             <Link to="/recipes" className="back-link">← All Recipes</Link>
             <p className="recipe-label">Recipe</p>
             {editMode ? (
@@ -151,8 +151,8 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                 type="text"
                 className="recipe-name-input"
                 value={editedRecipe.name}
-                onChange={(e) => setEditedRecipe({ ...editedRecipe, name: e.target.value })}
-                maxLength={60}
+                onChange={(e) => setEditedRecipe({ ...editedRecipe, name: e.target.value.slice(0, 35) })}
+                maxLength={35}
                 aria-label="Recipe name"
               />
             ) : (
