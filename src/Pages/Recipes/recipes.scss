@@ -78,8 +78,8 @@
 
   .pill {
     border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: clamp(.3rem, 1vw, .5rem) clamp(.3rem, 1.5vw, .5rem);
+    font-size: clamp(.3rem, 2vw, .75rem);
     border: 1px solid var(--vscode-border);
     background: var(--vscode-panel);
     color: var(--vscode-muted);
@@ -268,7 +268,7 @@
   .recipe-card {
     display: flex;
     gap: 12px;
-    padding: 16px;
+    padding: clamp(.8rem, 1.5vw, 1rem);
     border-radius: 10px;
     border: 1px solid var(--vscode-border);
     background: rgba(255, 255, 255, 0.02);
@@ -294,6 +294,7 @@
 
   .card-content {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -306,26 +307,31 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .card-title {
     margin: 0;
-    font-size: 16px;
+    font-size: clamp(.75rem, 2.5vw, 1rem);
     font-weight: 600;
     color: #f3f3f3;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card-badges {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
 
   .card-description {
     margin: 0;
-    font-size: 13px;
+    font-size: clamp(.6rem, 2vw, .875rem);
     color: var(--vscode-muted);
     line-height: 1.5;
     display: -webkit-box;
