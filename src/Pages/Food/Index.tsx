@@ -1,6 +1,7 @@
 import { useContext } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Food } from '@/types/Food'
 import './food.scss'
 
@@ -10,31 +11,35 @@ interface FoodIndexProps {
 
 export default function FoodIndex({ food }: FoodIndexProps) {
   const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
+  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   const navigate = useNavigate()
 
   if (!foodContext) {
     throw new Error('FoodProvider is missing')
   }
 
-  const { deleteFood, isFoodUsedInRecipe } = foodContext
+  if (!recipeContext) {
+    throw new Error('RecipeProvider is missing')
+  }
 
-  const isUsedInRecipe = isFoodUsedInRecipe(food.id)
+  const { deleteFood, isFoodUsedInRecipe } = foodContext
+  const { recipes } = recipeContext
+
+  const isUsedInRecipe = isFoodUsedInRecipe(food.id, recipes)
 
   function handleDelete() {
     if (isUsedInRecipe) return
-    if (deleteFood(food.id)) {
+    if (deleteFood(food.id, recipes)) {
       navigate('/foods')
     }
   }
 
   function formatMacros(): string {
-    const macros = food.macronutrients
-    if (!macros) return 'No macronutrient data'
     const parts: string[] = []
-    if (macros.protein !== undefined) parts.push(`Protein: ${macros.protein}g`)
-    if (macros.carbs !== undefined) parts.push(`Carbs: ${macros.carbs}g`)
-    if (macros.fat !== undefined) parts.push(`Fat: ${macros.fat}g`)
-    if (macros.fiber !== undefined) parts.push(`Fiber: ${macros.fiber}g`)
+    if (food.protein !== undefined) parts.push(`Protein: ${food.protein}g`)
+    if (food.carbs !== undefined) parts.push(`Carbs: ${food.carbs}g`)
+    if (food.fat !== undefined) parts.push(`Fat: ${food.fat}g`)
+    if (food.fiber !== undefined) parts.push(`Fiber: ${food.fiber}g`)
     return parts.length > 0 ? parts.join(' • ') : 'No macronutrient data'
   }
 
@@ -97,23 +102,23 @@ export default function FoodIndex({ food }: FoodIndexProps) {
                 <div className="nutrition-item">
                   <span className="nutrition-label">Protein</span>
                   <span className="nutrition-value">
-                    {food.macronutrients?.protein || 0}g
+                    {food.protein || 0}g
                   </span>
                 </div>
                 <div className="nutrition-item">
                   <span className="nutrition-label">Carbohydrates</span>
                   <span className="nutrition-value">
-                    {food.macronutrients?.carbs || 0}g
+                    {food.carbs || 0}g
                   </span>
                 </div>
                 <div className="nutrition-item">
                   <span className="nutrition-label">Fat</span>
-                  <span className="nutrition-value">{food.macronutrients?.fat || 0}g</span>
+                  <span className="nutrition-value">{food.fat || 0}g</span>
                 </div>
                 <div className="nutrition-item">
                   <span className="nutrition-label">Fiber</span>
                   <span className="nutrition-value">
-                    {food.macronutrients?.fiber || 0}g
+                    {food.fiber || 0}g
                   </span>
                 </div>
               </div>

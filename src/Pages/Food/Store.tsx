@@ -1,7 +1,7 @@
 import { useState, useContext, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
-import type { Food, Macronutrients } from '@/types/Food'
+import type { Food } from '@/types/Food'
 import './store.scss'
 
 const defaultMeasurements = ['g', 'oz', 'cup', 'tbsp', 'tsp', 'slice', 'piece']
@@ -25,7 +25,10 @@ function Store({ existingFood }: FoodStoreProps) {
   const [food, setFood] = useState<Partial<Food>>({
     name: existingFood?.name || '',
     calories: existingFood?.calories || 0,
-    macronutrients: existingFood?.macronutrients || { protein: 0, carbs: 0, fat: 0, fiber: 0 },
+    protein: existingFood?.protein || 0,
+    carbs: existingFood?.carbs || 0,
+    fat: existingFood?.fat || 0,
+    fiber: existingFood?.fiber || 0,
     servingSize: existingFood?.servingSize || 1,
     servingUnit: existingFood?.servingUnit || 'g',
     measurements: existingFood?.measurements || ['g'],
@@ -55,15 +58,12 @@ function Store({ existingFood }: FoodStoreProps) {
     )
   }, [food, isDuplicateName])
 
-  function handleMacroChange(field: keyof Macronutrients, value: string) {
+  function handleMacroChange(field: 'protein' | 'carbs' | 'fat' | 'fiber', value: string) {
     const numValue = Number(value)
     const nextValue = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
     setFood({
       ...food,
-      macronutrients: {
-        ...food.macronutrients,
-        [field]: nextValue,
-      },
+      [field]: nextValue,
     })
   }
 
@@ -92,7 +92,10 @@ function Store({ existingFood }: FoodStoreProps) {
     const foodData: Omit<Food, 'id'> = {
       name: food.name!.trim(),
       calories: food.calories!,
-      macronutrients: food.macronutrients,
+      protein: food.protein || 0,
+      carbs: food.carbs || 0,
+      fat: food.fat || 0,
+      fiber: food.fiber || 0,
       servingSize: food.servingSize!,
       servingUnit: food.servingUnit,
       measurements: food.measurements,
@@ -229,7 +232,7 @@ function Store({ existingFood }: FoodStoreProps) {
                         type="number"
                         min={0}
                         step="0.1"
-                        value={food.macronutrients?.protein || 0}
+                        value={food.protein || 0}
                         onChange={(e) => handleMacroChange('protein', e.target.value)}
                         aria-label="Protein"
                       />
@@ -241,7 +244,7 @@ function Store({ existingFood }: FoodStoreProps) {
                         type="number"
                         min={0}
                         step="0.1"
-                        value={food.macronutrients?.carbs || 0}
+                        value={food.carbs || 0}
                         onChange={(e) => handleMacroChange('carbs', e.target.value)}
                         aria-label="Carbohydrates"
                       />
@@ -253,7 +256,7 @@ function Store({ existingFood }: FoodStoreProps) {
                         type="number"
                         min={0}
                         step="0.1"
-                        value={food.macronutrients?.fat || 0}
+                        value={food.fat || 0}
                         onChange={(e) => handleMacroChange('fat', e.target.value)}
                         aria-label="Fat"
                       />
@@ -265,7 +268,7 @@ function Store({ existingFood }: FoodStoreProps) {
                         type="number"
                         min={0}
                         step="0.1"
-                        value={food.macronutrients?.fiber || 0}
+                        value={food.fiber || 0}
                         onChange={(e) => handleMacroChange('fiber', e.target.value)}
                         aria-label="Fiber"
                       />
