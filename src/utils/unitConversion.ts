@@ -98,22 +98,30 @@ export function convertUnit(value: number, fromUnit: string, toUnit: string): nu
   return null
 }
 
+export interface CalculateCaloriesParams {
+  /** Calories per serving */
+  baseCalories: number
+  /** The base serving size amount */
+  baseServingSize: number
+  /** The base serving unit */
+  baseServingUnit: string
+  /** The amount we want calories for */
+  targetAmount: number
+  /** The unit of the target amount */
+  targetUnit: string
+}
+
 /**
  * Calculates calories for a given amount and unit based on food's per-serving calories
- * @param baseCalories - Calories per serving
- * @param baseServingSize - The base serving size amount
- * @param baseServingUnit - The base serving unit
- * @param targetAmount - The amount we want calories for
- * @param targetUnit - The unit of the target amount
  * @returns Calculated calories or null if conversion not possible
  */
-export function calculateCalories(
-  baseCalories: number,
-  baseServingSize: number,
-  baseServingUnit: string,
-  targetAmount: number,
-  targetUnit: string
-): number | null {
+export function calculateCalories({
+  baseCalories,
+  baseServingSize,
+  baseServingUnit,
+  targetAmount,
+  targetUnit,
+}: CalculateCaloriesParams): number | null {
   // Same unit - simple ratio calculation
   if (baseServingUnit === targetUnit) {
     return (baseCalories / baseServingSize) * targetAmount
