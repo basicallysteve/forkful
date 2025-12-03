@@ -280,9 +280,9 @@ describe('Foods List Page', () => {
       renderWithProviders(<Foods />)
 
       const links = screen.getAllByRole('link')
-      expect(links.some(link => link.getAttribute('href') === '/foods/1')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/foods/2')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/foods/3')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/foods/chicken-breast')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/foods/brown-rice')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/foods/broccoli')).toBe(true)
     })
   })
 })

@@ -2,9 +2,9 @@ import { useState, useContext, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import type { Food } from '@/types/Food'
+import { toSlug } from '@/utils/slug'
+import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
 import './store.scss'
-
-const defaultMeasurements = ['g', 'oz', 'cup', 'tbsp', 'tsp', 'slice', 'piece']
 
 interface FoodStoreProps {
   existingFood?: Food
@@ -47,6 +47,11 @@ function Store({ existingFood }: FoodStoreProps) {
     return foods.some(f => f.name.trim().toLowerCase() === trimmedName)
   }, [food.name, foods, isEditing, existingFood])
 
+  // Get the category of the base serving unit
+  const servingUnitCategory = useMemo((): UnitCategory => {
+    return getUnitCategory(food.servingUnit || 'g')
+  }, [food.servingUnit])
+
   const canSave = useMemo(() => {
     return !!(
       food.name?.trim() &&
@@ -71,6 +76,13 @@ function Store({ existingFood }: FoodStoreProps) {
     const trimmed = newMeasurement.trim().toLowerCase()
     if (!trimmed) return
     if (food.measurements?.includes(trimmed)) return
+    
+    // Check if the new measurement is compatible with the serving unit category
+    const newUnitCategory = getUnitCategory(trimmed)
+    if (servingUnitCategory !== 'custom' && newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory) {
+      // Don't allow mixing mass and volume units
+      return
+    }
 
     setFood({
       ...food,
@@ -83,6 +95,32 @@ function Store({ existingFood }: FoodStoreProps) {
     setFood({
       ...food,
       measurements: food.measurements?.filter(m => m !== measurement) || [],
+    })
+  }
+
+  function handleServingUnitChange(newUnit: string) {
+    const newCategory = getUnitCategory(newUnit)
+    const oldCategory = getUnitCategory(food.servingUnit || 'g')
+    
+    // If category changed, filter out incompatible measurements
+    let updatedMeasurements = food.measurements || []
+    if (newCategory !== oldCategory && newCategory !== 'custom' && oldCategory !== 'custom') {
+      // Filter to only keep compatible measurements
+      updatedMeasurements = updatedMeasurements.filter(m => {
+        const mCategory = getUnitCategory(m)
+        return mCategory === newCategory || mCategory === 'custom'
+      })
+    }
+    
+    // Make sure the new unit is in measurements
+    if (!updatedMeasurements.includes(newUnit)) {
+      updatedMeasurements = [newUnit, ...updatedMeasurements]
+    }
+    
+    setFood({
+      ...food,
+      servingUnit: newUnit,
+      measurements: updatedMeasurements,
     })
   }
 
@@ -103,10 +141,10 @@ function Store({ existingFood }: FoodStoreProps) {
 
     if (isEditing && existingFood) {
       updateFood({ ...foodData, id: existingFood.id })
-      navigate('/foods')
+      navigate(`/foods/${toSlug(food.name!)}`)
     } else {
       addFood(foodData)
-      navigate('/foods')
+      navigate(`/foods/${toSlug(food.name!)}`)
     }
   }
 
@@ -203,23 +241,42 @@ function Store({ existingFood }: FoodStoreProps) {
                   <select
                     className="text-input"
                     value={food.servingUnit}
-                    onChange={(e) => setFood({ ...food, servingUnit: e.target.value })}
+                    onChange={(e) => handleServingUnitChange(e.target.value)}
                     aria-label="Serving unit"
                   >
-                    {defaultMeasurements.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
+                    <optgroup label="Mass">
+                      {MASS_UNITS.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Volume">
+                      {VOLUME_UNITS.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Custom">
+                      {CUSTOM_UNITS.map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </optgroup>
                     {food.measurements
-                      ?.filter((m) => !defaultMeasurements.includes(m))
+                      ?.filter((m) => {
+                        const allStandardUnits: string[] = [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS]
+                        return !allStandardUnits.includes(m)
+                      })
                       .map((unit) => (
                         <option key={unit} value={unit}>
                           {unit}
                         </option>
                       ))}
                   </select>
-                  <span className="field-hint">Unit of measurement.</span>
+                  <span className="field-hint">Unit of measurement. {servingUnitCategory !== 'custom' ? `Changing this will filter measurements to ${servingUnitCategory} units.` : ''}</span>
                 </label>
 
                 <div className="form-field form-field-full">

@@ -13,6 +13,7 @@ import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeP
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+import { toSlug } from '@/utils/slug'
 
 function App() {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
@@ -38,7 +39,7 @@ function App() {
           { label: 'Add New Recipe', action: () => { console.log('Add New Recipe clicked') }, to: '/recipes/new' },
           ...recipes.map((recipe: Recipe) => ({
             label: recipe.name,
-            to: `/recipes/${recipe.id}`,
+            to: `/recipes/${toSlug(recipe.name)}`,
             action: () => { console.log(`Recipe clicked: ${recipe.name}`) },
         }))
     ]
@@ -79,17 +80,17 @@ function App() {
         <Route path="/foods/new" element={<FoodStore />} />
         { 
           recipes.map((recipe: Recipe) => (
-            <Route key={recipe.id} path={`/recipes/${recipe.id}`} element={<RecipeIndex recipe={recipe} />} />
+            <Route key={recipe.id} path={`/recipes/${toSlug(recipe.name)}`} element={<RecipeIndex recipe={recipe} />} />
           ))
         }
         {
           foods.map((food: Food) => (
-            <Route key={food.id} path={`/foods/${food.id}`} element={<FoodIndex food={food} />} />
+            <Route key={food.id} path={`/foods/${toSlug(food.name)}`} element={<FoodIndex food={food} />} />
           ))
         }
         {
           foods.map((food: Food) => (
-            <Route key={`${food.id}-edit`} path={`/foods/${food.id}/edit`} element={<FoodStore existingFood={food} />} />
+            <Route key={`${food.id}-edit`} path={`/foods/${toSlug(food.name)}/edit`} element={<FoodStore existingFood={food} />} />
           ))
         }
       </Routes>
