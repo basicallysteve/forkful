@@ -2,6 +2,7 @@
 
 ## Building Backend Structure
 Recommended backend structure looks like this. Would like some flexibility to grow to scale
+```
 backend/
 │
 ├── app/
@@ -43,3 +44,4 @@ backend/
 ├── .env
 ├── Pipfile / requirements.txt
 └── alembic.ini
+```
