@@ -80,13 +80,13 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     const baseServingUnit = food.servingUnit || DEFAULT_SERVING_UNIT
     
     // Calculate calories based on the new unit
-    const calculatedCalories = calculateCalories(
+    const calculatedCalories = calculateCalories({
       baseCalories,
       baseServingSize,
       baseServingUnit,
-      ingredient.quantity,
-      newUnit
-    )
+      targetAmount: ingredient.quantity,
+      targetUnit: newUnit,
+    })
     
     // If conversion is possible, use calculated calories; otherwise keep current calories
     const newCalories = calculatedCalories !== null 
