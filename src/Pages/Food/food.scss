@@ -126,8 +126,8 @@
 
   .panel-toolbar {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
     border-bottom: 1px solid var(--vscode-border);
@@ -136,18 +136,17 @@
 
   .toolbar-tabs {
     display: flex;
-    width: 100%;
+    align-items: center;
+    gap: 6px;
   }
 
   .tab {
-    width: 100%;
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 13px;
     color: var(--vscode-muted);
     background: transparent;
     border: 1px solid transparent;
-    text-align: center;
 
     &.is-active {
       border-color: var(--vscode-border);
@@ -159,9 +158,8 @@
 
   .toolbar-actions {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
-    width: 100%;
   }
 
   .primary-button,
@@ -172,10 +170,9 @@
     font-size: 13px;
     font-family: inherit;
     text-decoration: none;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
     cursor: pointer;
     transition: border-color 120ms ease, background-color 120ms ease;
   }
@@ -314,6 +311,30 @@
 
     .food-meta {
       justify-content: flex-start;
+    }
+
+    .panel-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .toolbar-tabs {
+      width: 100%;
+    }
+
+    .tab {
+      width: 100%;
+      text-align: center;
+    }
+
+    .toolbar-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .primary-button,
+    .danger-button {
+      width: 100%;
     }
   }
 

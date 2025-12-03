@@ -125,7 +125,7 @@ describe('Food View Page', () => {
     it('renders Edit link', () => {
       renderWithProviders(<FoodIndex food={mockFood} />)
       const editLink = screen.getByRole('link', { name: /edit/i })
-      expect(editLink).toHaveAttribute('href', '/foods/1/edit')
+      expect(editLink).toHaveAttribute('href', '/foods/chicken-breast/edit')
     })
   })
 

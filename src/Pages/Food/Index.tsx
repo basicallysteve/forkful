@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Food } from '@/types/Food'
+import { toSlug } from '@/utils/slug'
 import './food.scss'
 
 interface FoodIndexProps {
@@ -85,7 +86,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               >
                 Delete
               </button>
-              <Link to={`/foods/${food.id}/edit`} className="primary-button">
+              <Link to={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
                 Edit
               </Link>
             </div>

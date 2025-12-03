@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
 import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
 import type { Food } from '@/types/Food'
+import { toSlug } from '@/utils/slug'
 import './foods.scss'
 
 type SortOption = 'name' | 'calories' | 'protein'
@@ -229,7 +230,7 @@ export default function Foods() {
                           aria-label={`Select ${food.name}`}
                         />
                       </div>
-                      <Link to={`/foods/${food.id}`} className="card-content">
+                      <Link to={`/foods/${toSlug(food.name)}`} className="card-content">
                         <div className="card-header">
                           <h3 className="card-title">{food.name}</h3>
                           <div className="card-badges">

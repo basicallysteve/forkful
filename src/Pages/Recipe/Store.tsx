@@ -6,6 +6,7 @@ import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
+import { toSlug } from "@/utils/slug"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -69,11 +70,11 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
 
-  // If no foods available, show a message
+  // If no foods available, show a message with link to create food
   if (!ingredient && !storedIngredient) {
     return (
       <div className="ingredient-input">
-        <span className="no-foods-message">No foods available. Please add foods first.</span>
+        <span className="no-foods-message">No foods available. <Link to="/foods/new">Add a food</Link> first.</span>
       </div>
     )
   }
@@ -282,7 +283,7 @@ function Store() {
     
     const newRecipe = createRecipe(false)
     setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newRecipe.id}`)
+    navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   function handlePublishRecipe() {
@@ -290,7 +291,7 @@ function Store() {
     
     const newRecipe = createRecipe(true)
     setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newRecipe.id}`)
+    navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   const detailsTabContent = (<form className="store-form">
@@ -380,7 +381,7 @@ function Store() {
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <Link to={`/recipes/${similarRecipe.recipe.id}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link to={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}

@@ -187,10 +187,13 @@ describe('Store Page - Recipe Creation', () => {
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      // Select Ham from autocomplete
+      // Select Ham from autocomplete - first clear any pre-filled value, then type
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
+      await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Ham')
-      await user.click(await screen.findByRole('option', { name: /ham/i }))
+      // Find option that starts with Ham (includes calories meta text)
+      const hamOption = await screen.findByRole('option', { name: /^Ham/i })
+      await user.click(hamOption)
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
       await user.clear(quantityInput)
@@ -202,7 +205,9 @@ describe('Store Page - Recipe Creation', () => {
       // Add another matching ingredient - select Cheese
       await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Cheese')
-      await user.click(await screen.findByRole('option', { name: /cheese/i }))
+      // Find option that starts with Cheese (includes calories meta text)
+      const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
+      await user.click(cheeseOption)
       await user.clear(quantityInput)
       await user.type(quantityInput, '1')
       await user.click(addButton)
@@ -249,10 +254,13 @@ describe('Store Page - Recipe Creation', () => {
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
-      // Add matching ingredients
+      // Add matching ingredients - first clear any pre-filled value
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
+      await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Ham')
-      await user.click(await screen.findByRole('option', { name: /ham/i }))
+      // Find option that starts with Ham (includes calories meta text)
+      const hamOption = await screen.findByRole('option', { name: /^Ham/i })
+      await user.click(hamOption)
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
       await user.clear(quantityInput)
@@ -263,14 +271,16 @@ describe('Store Page - Recipe Creation', () => {
 
       await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Cheese')
-      await user.click(await screen.findByRole('option', { name: /cheese/i }))
+      // Find option that starts with Cheese (includes calories meta text)
+      const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
+      await user.click(cheeseOption)
       await user.clear(quantityInput)
       await user.type(quantityInput, '1')
       await user.click(addButton)
 
       // Check that the link exists and points to the right recipe
       const suggestionLink = screen.getByRole('link', { name: /ham and cheese sandwich/i })
-      expect(suggestionLink).toHaveAttribute('href', '/recipes/1')
+      expect(suggestionLink).toHaveAttribute('href', '/recipes/ham-and-cheese-sandwich')
     })
   })
 
@@ -385,7 +395,9 @@ describe('Store Page - Recipe Creation', () => {
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
       await user.click(ingredientsTab)
 
+      // Clear any pre-filled value before typing
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
+      await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Test Ingredient')
       await user.click(await screen.findByRole('option', { name: /test ingredient/i }))
 

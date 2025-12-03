@@ -280,9 +280,9 @@ describe('Recipes Page', () => {
       renderWithProviders(<Recipes />)
 
       const links = screen.getAllByRole('link')
-      expect(links.some(link => link.getAttribute('href') === '/recipes/1')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/2')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/3')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/ham-and-cheese-sandwich')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/spaghetti-bolognese')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/caesar-salad')).toBe(true)
     })
   })
 })
