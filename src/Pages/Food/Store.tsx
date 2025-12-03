@@ -4,6 +4,7 @@ import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvide
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
+import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import './store.scss'
 
 interface FoodStoreProps {
@@ -52,6 +53,26 @@ function Store({ existingFood }: FoodStoreProps) {
     return getUnitCategory(food.servingUnit || 'g')
   }, [food.servingUnit])
 
+  // Get available measurement options based on serving unit category
+  const availableMeasurementOptions = useMemo((): string[] => {
+    const alreadyAdded = food.measurements || []
+    let availableUnits: string[] = []
+    
+    if (servingUnitCategory === 'mass') {
+      // Mass serving unit: show mass units + custom units
+      availableUnits = [...MASS_UNITS, ...CUSTOM_UNITS]
+    } else if (servingUnitCategory === 'volume') {
+      // Volume serving unit: show volume units + custom units
+      availableUnits = [...VOLUME_UNITS, ...CUSTOM_UNITS]
+    } else {
+      // Custom serving unit: show all units
+      availableUnits = [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS]
+    }
+    
+    // Filter out units that are already added
+    return availableUnits.filter(unit => !alreadyAdded.includes(unit))
+  }, [servingUnitCategory, food.measurements])
+
   const canSave = useMemo(() => {
     return !!(
       food.name?.trim() &&
@@ -72,8 +93,8 @@ function Store({ existingFood }: FoodStoreProps) {
     })
   }
 
-  function handleAddMeasurement() {
-    const trimmed = newMeasurement.trim().toLowerCase()
+  function handleAddMeasurement(unitToAdd?: string) {
+    const trimmed = (unitToAdd || newMeasurement).trim().toLowerCase()
     if (!trimmed) return
     if (food.measurements?.includes(trimmed)) return
     
@@ -351,29 +372,28 @@ function Store({ existingFood }: FoodStoreProps) {
                     ))}
                   </div>
                   <div className="add-measurement">
-                    <input
-                      className="text-input measurement-input"
-                      type="text"
-                      placeholder="Add measurement (e.g. cup, tbsp)"
+                    <Autocomplete
                       value={newMeasurement}
-                      onChange={(e) => setNewMeasurement(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleAddMeasurement()
-                        }
-                      }}
+                      options={availableMeasurementOptions}
+                      getOptionLabel={(opt) => opt}
+                      onChange={(value) => setNewMeasurement(value)}
+                      onSelect={(unit) => handleAddMeasurement(unit)}
+                      placeholder="Add measurement (e.g. cup, tbsp)"
+                      inputAriaLabel="Add measurement"
+                      allowClear={true}
                     />
                     <button
                       type="button"
                       className="ghost-button"
-                      onClick={handleAddMeasurement}
+                      onClick={() => handleAddMeasurement()}
                     >
                       Add
                     </button>
                   </div>
                   <span className="field-hint">
-                    Define which units can be used when measuring this food.
+                    {servingUnitCategory !== 'custom' 
+                      ? `Define which units can be used when measuring this food. Showing ${servingUnitCategory} and custom units.`
+                      : 'Define which units can be used when measuring this food.'}
                   </span>
                 </div>
               </div>
