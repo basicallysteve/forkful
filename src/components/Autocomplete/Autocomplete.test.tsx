@@ -28,6 +28,7 @@ function AutocompleteHarness({
       }}
       onSelect={onSelect}
       placeholder="Ingredient name"
+      allowClear
     />
   )
 }
@@ -93,5 +94,18 @@ describe('Autocomplete component', () => {
 
     expect(onSelect).toHaveBeenCalledWith('Avocado')
     expect((input as HTMLInputElement).value).toBe('Avocado')
+  })
+
+  it('clears the input via the clear button', async () => {
+    const user = userEvent.setup()
+    render(<AutocompleteHarness />)
+
+    const input = screen.getByPlaceholderText('Ingredient name')
+    await user.type(input, 'Apple')
+
+    const clearButton = screen.getByRole('button', { name: /clear input/i })
+    await user.click(clearButton)
+
+    expect((input as HTMLInputElement).value).toBe('')
   })
 })

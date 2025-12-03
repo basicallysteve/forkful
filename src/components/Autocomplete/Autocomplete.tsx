@@ -12,6 +12,8 @@ type AutocompleteProps<T> = {
   readOnly?: boolean
   disabled?: boolean
   renderOptionMeta?: (option: T) => string | undefined
+  allowClear?: boolean
+  inputClassName?: string
 }
 
 export default function Autocomplete<T>({
@@ -25,11 +27,14 @@ export default function Autocomplete<T>({
   readOnly,
   disabled,
   renderOptionMeta,
+  allowClear = true,
+  inputClassName = '',
 }: AutocompleteProps<T>) {
   const [isOpen, setIsOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const listboxId = useId()
   const blurTimeout = useRef<number | undefined>(undefined)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const filteredOptions = useMemo(() => {
     const query = value.trim().toLowerCase()
@@ -68,7 +73,8 @@ export default function Autocomplete<T>({
     <div className="autocomplete">
       <input
         type="text"
-        className="text-input ingredient-name-input"
+        className={`text-input ingredient-name-input ${inputClassName}`.trim()}
+        ref={inputRef}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
@@ -121,6 +127,26 @@ export default function Autocomplete<T>({
           }
         }}
       />
+      {allowClear && !!value && !readOnly && !disabled && (
+        <button
+          type="button"
+          className="autocomplete-clear"
+          aria-label="Clear input"
+          onMouseDown={(e) => {
+            // Prevent input blur before we clear
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onClick={() => {
+            onChange('')
+            setHighlightedIndex(-1)
+            setIsOpen(false)
+            inputRef.current?.focus()
+          }}
+        >
+          ×
+        </button>
+      )}
       {isOpen && filteredOptions.length > 0 && (
         <ul className="autocomplete-suggestions" role="listbox" id={listboxId}>
           {filteredOptions.map((option, index) => {

@@ -190,6 +190,7 @@ describe('Store Page - Recipe Creation', () => {
       // Select Ham from autocomplete
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Ham')
+      await user.click(await screen.findByRole('option', { name: /ham/i }))
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
       await user.clear(quantityInput)
@@ -199,7 +200,9 @@ describe('Store Page - Recipe Creation', () => {
       await user.click(addButton)
 
       // Add another matching ingredient - select Cheese
+      await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Cheese')
+      await user.click(await screen.findByRole('option', { name: /cheese/i }))
       await user.clear(quantityInput)
       await user.type(quantityInput, '1')
       await user.click(addButton)
@@ -249,6 +252,7 @@ describe('Store Page - Recipe Creation', () => {
       // Add matching ingredients
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Ham')
+      await user.click(await screen.findByRole('option', { name: /ham/i }))
 
       const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
       await user.clear(quantityInput)
@@ -257,7 +261,9 @@ describe('Store Page - Recipe Creation', () => {
       const addButton = screen.getByRole('button', { name: '+' })
       await user.click(addButton)
 
+      await user.clear(ingredientNameInput)
       await user.type(ingredientNameInput, 'Cheese')
+      await user.click(await screen.findByRole('option', { name: /cheese/i }))
       await user.clear(quantityInput)
       await user.type(quantityInput, '1')
       await user.click(addButton)
@@ -291,10 +297,8 @@ describe('Store Page - Recipe Creation', () => {
       await user.click(ingredientsTab)
 
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
-      
-      // Type to filter
-      await user.tripleClick(ingredientNameInput)
-      await user.keyboard('Cheese')
+      await user.clear(ingredientNameInput)
+      await user.type(ingredientNameInput, 'Cheese')
 
       // Should show filtered suggestions
       const listbox = screen.getByRole('listbox')
@@ -383,6 +387,7 @@ describe('Store Page - Recipe Creation', () => {
 
       const ingredientNameInput = screen.getByPlaceholderText('Select food')
       await user.type(ingredientNameInput, 'Test Ingredient')
+      await user.click(await screen.findByRole('option', { name: /test ingredient/i }))
 
       const addButton = screen.getByRole('button', { name: '+' })
       await user.click(addButton)

@@ -30,9 +30,11 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   }
 
   const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
+  const [ingredientName, setIngredientName] = useState<string>(ingredient ? ingredient.food.name : "")
+  const [missingFood, setMissingFood] = useState<boolean>(false)
 
   function handleAdd() {
-    if (!ingredient || !ingredient.food || ingredient.quantity <= 0) {
+    if (!ingredient || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
       return
     }
     onAdd?.(ingredient)
@@ -81,23 +83,38 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
 
   return (
     <div className="ingredient-input">
-        <label className="form-field">
+        <label className={`form-field ${missingFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
-              value={ingredient.food?.name || ''}
+              value={ingredientName}
               options={foods}
               getOptionLabel={(opt) => opt.name}
               onChange={(next) => {
+                if (next !== ingredientName) {
+                  setIngredientName(next)
+                }
                 const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
                 if (food) {
+                  setMissingFood(false)
                   handleFoodSelect(food)
+                } else {
+                  setMissingFood(true)
                 }
               }}
-              onSelect={(food) => handleFoodSelect(food)}
+              onSelect={(food) => {
+                setMissingFood(false)
+                setIngredientName(food.name)
+                handleFoodSelect(food)
+              }}
               placeholder="Select food"
+              inputAriaLabel="Ingredient name"
               readOnly={readOnly}
+              inputClassName={missingFood ? 'input-error' : ''}
               renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
+            {missingFood && (
+              <span className="field-error" role="alert">Please select a food from the list.</span>
+            )}
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
