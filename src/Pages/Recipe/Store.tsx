@@ -7,6 +7,7 @@ import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import { toSlug } from "@/utils/slug"
+import { calculateCalories } from "@/utils/unitConversion"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -68,6 +69,35 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     }
     const caloriesPerUnit = ingredient.food?.calories || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
+  }
+
+  function handleUnitChange(newUnit: string) {
+    if (!ingredient || !ingredient.food) return
+    
+    const food = ingredient.food
+    const baseCalories = food.calories || 0
+    const baseServingSize = food.servingSize || 1
+    const baseServingUnit = food.servingUnit || DEFAULT_SERVING_UNIT
+    
+    // Calculate calories based on the new unit
+    const calculatedCalories = calculateCalories(
+      baseCalories,
+      baseServingSize,
+      baseServingUnit,
+      ingredient.quantity,
+      newUnit
+    )
+    
+    // If conversion is possible, use calculated calories; otherwise keep current calories
+    const newCalories = calculatedCalories !== null 
+      ? Math.round(calculatedCalories) 
+      : ingredient.calories
+    
+    setIngredient({
+      ...ingredient,
+      servingUnit: newUnit,
+      calories: newCalories,
+    })
   }
 
   // If no foods available, show a message with link to create food
@@ -133,7 +163,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         <select
           className="number-input ingredient-unit-select"
           value={ingredient.servingUnit}
-          onChange={(e) => setIngredient({ ...ingredient, servingUnit: e.target.value })}
+          onChange={(e) => handleUnitChange(e.target.value)}
           disabled={readOnly}
         >
           {ingredient.food?.measurements?.map((unit) => (
