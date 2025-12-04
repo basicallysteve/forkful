@@ -46,6 +46,10 @@ function App() {
           action: () => { console.log('Preferences clicked') },
         }
       ]
+    },
+    {
+      label: 'Sign Up',
+      to: '/create-account',
     }
   ]
 

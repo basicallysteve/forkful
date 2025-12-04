@@ -2,7 +2,7 @@ import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
 import "./createAccount.scss"
 
-const cuisineOptions = ["Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "French", "Other"]
+const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
 
 interface PasswordValidation {
