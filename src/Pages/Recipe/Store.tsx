@@ -8,7 +8,7 @@ import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 
-function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
+function IngredientInput({ onAdd, onRemove, onUpdate, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, onUpdate?: (ingredient: Ingredient) => void, storedIngredient?: Ingredient }) {
   const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   const existingIngredients = recipeContext?.existingIngredients ?? []
 
@@ -41,10 +41,14 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     }
   }
 
+  const isStoredIngredient = !!storedIngredient
+
   function setIngredientQuantity(e: React.ChangeEvent<HTMLInputElement>) {
     const quantity = parseInt(e.target.value)
     if (isNaN(quantity) || quantity < 0) {
-      setIngredient({ ...ingredient, quantity: 0, calories: 0 })
+      const updated = { ...ingredient, quantity: 0, calories: 0 }
+      setIngredient(updated)
+      if (isStoredIngredient) onUpdate?.(updated)
       return
     }
     let caloriesPerUnit = 0
@@ -52,7 +56,16 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     if (existing) {
       caloriesPerUnit = existing.calories || 0
     }
-    setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
+    const updated = { ...ingredient, quantity, calories: caloriesPerUnit * quantity }
+    setIngredient(updated)
+    if (isStoredIngredient) onUpdate?.(updated)
+  }
+
+  function setIngredientCalories(e: React.ChangeEvent<HTMLInputElement>) {
+    const calories = parseInt(e.target.value)
+    const updated = { ...ingredient, calories: isNaN(calories) ? 0 : calories }
+    setIngredient(updated)
+    if (isStoredIngredient) onUpdate?.(updated)
   }
   return (
     <div className="ingredient-input">
@@ -80,7 +93,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
                 calories: (existing.calories || 0) * (ingredient.quantity || 1)
               })}
               placeholder="Ingredient name"
-              readOnly={readOnly}
+              readOnly={isStoredIngredient}
               renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/unit` : undefined}
             />
         </label>
@@ -92,7 +105,6 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
           min={0}
           value={ingredient.quantity}
           onChange={setIngredientQuantity}
-          readOnly={readOnly}
             />
         </label>
       <label className="form-field">
@@ -102,13 +114,11 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
             className="number-input ingredient-calories-input"
             min={0}
             value={ingredient.calories}
-            readOnly={fromExisitingIngredient(ingredient.name, existingIngredients) || readOnly}
-            onChange={(e) =>
-            setIngredient({ ...ingredient, calories: parseInt(e.target.value)})
-            }
+            readOnly={fromExisitingIngredient(ingredient.name, existingIngredients)}
+            onChange={setIngredientCalories}
         />
         </label>
-      {readOnly ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
+      {isStoredIngredient ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
         -
       </button> :  <button type="button" className="primary-button ingredient-action-button" onClick={handleAdd}>
         +
@@ -210,6 +220,16 @@ function Store() {
     if (!recipe.ingredients) return
     const updatedIngredients = [...recipe.ingredients]
     updatedIngredients.splice(index, 1)
+    setRecipe({
+        ...recipe,
+        ingredients: updatedIngredients,
+    })
+  }
+
+  function handleUpdateIngredient(index: number, ingredient: Ingredient) {
+    if (!recipe.ingredients) return
+    const updatedIngredients = [...recipe.ingredients]
+    updatedIngredients[index] = ingredient
     setRecipe({
         ...recipe,
         ingredients: updatedIngredients,
@@ -325,7 +345,7 @@ function Store() {
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} onUpdate={(updated) => handleUpdateIngredient(index, updated)} />
         ))}
         
         {similarRecipe && (

@@ -420,6 +420,159 @@ describe('Store Page - Recipe Creation', () => {
       expect(publishButton).toBeDisabled()
     })
   })
+
+  describe('Ingredient Editing', () => {
+    it('allows updating quantity on a stored ingredient', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+      renderWithProviders(<Store />, {
+        setRecipes,
+        existingIngredients: [
+          { name: 'Tomato', quantity: 1, calories: 20 }
+        ]
+      })
+
+      // Switch to ingredients tab
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      // Add an ingredient
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'Tomato')
+
+      const addButton = screen.getByRole('button', { name: '+' })
+      await user.click(addButton)
+
+      // Now there should be two quantity inputs - one for the new ingredient form and one for the stored ingredient
+      const quantityInputs = screen.getAllByRole('spinbutton', { name: /quantity/i })
+      expect(quantityInputs.length).toBe(2)
+
+      // The second quantity input is the stored ingredient
+      const storedQuantityInput = quantityInputs[1]
+      expect(storedQuantityInput).toHaveValue(1)
+
+      // Update the quantity
+      await user.clear(storedQuantityInput)
+      await user.type(storedQuantityInput, '5')
+
+      expect(storedQuantityInput).toHaveValue(5)
+    })
+
+    it('allows updating calories on a stored ingredient with custom calories', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />, {
+        existingIngredients: []
+      })
+
+      // Switch to ingredients tab
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      // Add a custom ingredient with calories
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'Custom Item')
+
+      const caloriesInput = screen.getByRole('spinbutton', { name: /calories/i })
+      await user.clear(caloriesInput)
+      await user.type(caloriesInput, '100')
+
+      const addButton = screen.getByRole('button', { name: '+' })
+      await user.click(addButton)
+
+      // Now there should be two calorie inputs
+      const caloriesInputs = screen.getAllByRole('spinbutton', { name: /calories/i })
+      expect(caloriesInputs.length).toBe(2)
+
+      // The second calories input is the stored ingredient
+      const storedCaloriesInput = caloriesInputs[1]
+      expect(storedCaloriesInput).toHaveValue(100)
+
+      // Update the calories
+      await user.clear(storedCaloriesInput)
+      await user.type(storedCaloriesInput, '150')
+
+      expect(storedCaloriesInput).toHaveValue(150)
+    })
+
+    it('keeps ingredient name readonly on stored ingredient', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />, {
+        existingIngredients: [
+          { name: 'Onion', quantity: 1, calories: 40 }
+        ]
+      })
+
+      // Switch to ingredients tab
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      // Add an ingredient
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'Onion')
+
+      const addButton = screen.getByRole('button', { name: '+' })
+      await user.click(addButton)
+
+      // Now there should be two ingredient name inputs
+      const nameInputs = screen.getAllByPlaceholderText('Ingredient name')
+      expect(nameInputs.length).toBe(2)
+
+      // The second name input (stored ingredient) should be readonly
+      const storedNameInput = nameInputs[1]
+      expect(storedNameInput).toHaveAttribute('readonly')
+    })
+
+    it('updates recipe state when ingredient quantity is changed', async () => {
+      const user = userEvent.setup()
+      const setRecipes = vi.fn()
+      renderWithProviders(<Store />, {
+        setRecipes,
+        existingIngredients: [
+          { name: 'Garlic', quantity: 1, calories: 5 }
+        ]
+      })
+
+      // Fill out required fields first
+      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
+      await user.type(nameInput, 'Test Recipe')
+
+      const lunchRadio = screen.getByRole('radio', { name: /lunch/i })
+      await user.click(lunchRadio)
+
+      const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      await user.type(descriptionInput, 'A test description')
+
+      // Switch to ingredients tab
+      const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
+      await user.click(ingredientsTab)
+
+      // Add an ingredient
+      const ingredientNameInput = screen.getByPlaceholderText('Ingredient name')
+      await user.type(ingredientNameInput, 'Garlic')
+
+      const addButton = screen.getByRole('button', { name: '+' })
+      await user.click(addButton)
+
+      // Update the stored ingredient quantity
+      const quantityInputs = screen.getAllByRole('spinbutton', { name: /quantity/i })
+      const storedQuantityInput = quantityInputs[1]
+      await user.clear(storedQuantityInput)
+      await user.type(storedQuantityInput, '3')
+
+      // Switch back to details and save
+      const detailsTab = screen.getByRole('button', { name: /details tab/i })
+      await user.click(detailsTab)
+
+      const publishButton = screen.getByRole('button', { name: /publish/i })
+      await user.click(publishButton)
+
+      // Verify the updated quantity was saved
+      expect(setRecipes).toHaveBeenCalledTimes(1)
+      const newRecipes = setRecipes.mock.calls[0][0]
+      const newRecipe = newRecipes[2]
+      expect(newRecipe.ingredients[0].quantity).toBe(3)
+    })
+  })
 })
 
 describe('Recipes List - Card Layout', () => {
