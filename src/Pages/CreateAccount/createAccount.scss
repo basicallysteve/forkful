@@ -228,11 +228,20 @@
   .checkbox-group,
   .radio-group {
     display: flex;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-flow:column;
     gap: 8px;
   }
 
+
+  @media screen and (min-width: 770px) {
+    .checkbox-group,
+    .radio-group {
+      flex-flow: row;
+      flex-wrap: wrap;
+        align-items: center;
+
+    }
+  }
   .checkbox-option,
   .radio-option {
     position: relative;
