@@ -67,7 +67,13 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       setIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
-    const caloriesPerUnit = ingredient.food?.calories || 0
+    const caloriesPerUnit = calculateCalories({
+      baseCalories: ingredient.food?.calories || 0,
+      baseServingSize: ingredient.food?.servingSize || 1,
+      baseServingUnit: ingredient.food?.servingUnit || DEFAULT_SERVING_UNIT,
+      targetAmount: 1,
+      targetUnit: ingredient.servingUnit,
+    }) || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
 
@@ -275,7 +281,6 @@ function Store() {
   const [activeTab, setActiveTab] = useState<"details" | "ingredients">("details")
   
   function handleAddIngredient(ingredient: Ingredient) {
-    console.log("Adding ingredient:", ingredient)
     setRecipe({
         ...recipe,
         ingredients: [...(recipe.ingredients || []), ingredient],
