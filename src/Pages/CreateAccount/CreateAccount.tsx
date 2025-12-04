@@ -5,21 +5,34 @@ import "./createAccount.scss"
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
 
+// Common passwords that should be rejected
+const commonPasswords = [
+  "password", "password1", "password123", "123456", "12345678", "123456789",
+  "qwerty", "qwerty123", "abc123", "letmein", "welcome", "admin", "login",
+  "monkey", "dragon", "master", "football", "baseball", "iloveyou", "trustno1",
+  "sunshine", "princess", "starwars", "superman", "batman", "shadow", "michael",
+  "jennifer", "jessica", "ashley", "amanda", "andrew", "joshua", "matthew",
+  "daniel", "david", "james", "robert", "john", "joseph", "thomas", "charles"
+]
+
 interface PasswordValidation {
   hasMinLength: boolean
   hasUppercase: boolean
   hasLowercase: boolean
   hasNumber: boolean
   hasSpecialChar: boolean
+  isNotCommon: boolean
 }
 
 function validatePassword(password: string): PasswordValidation {
+  const lowerPassword = password.toLowerCase()
   return {
     hasMinLength: password.length >= 8,
     hasUppercase: /[A-Z]/.test(password),
     hasLowercase: /[a-z]/.test(password),
     hasNumber: /[0-9]/.test(password),
     hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+    isNotCommon: password.length === 0 || !commonPasswords.includes(lowerPassword),
   }
 }
 
@@ -29,7 +42,8 @@ function isPasswordValid(validation: PasswordValidation): boolean {
     validation.hasUppercase &&
     validation.hasLowercase &&
     validation.hasNumber &&
-    validation.hasSpecialChar
+    validation.hasSpecialChar &&
+    validation.isNotCommon
   )
 }
 
@@ -186,6 +200,9 @@ function CreateAccount() {
                     </span>
                     <span className={`requirement ${passwordValidation.hasSpecialChar ? 'valid' : ''}`}>
                       ✓ One special character
+                    </span>
+                    <span className={`requirement ${passwordValidation.isNotCommon ? 'valid' : ''}`}>
+                      ✓ Not a common password
                     </span>
                   </div>
                 </label>

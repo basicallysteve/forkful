@@ -89,6 +89,7 @@ describe('CreateAccount Page', () => {
       expect(screen.getByText('✓ One lowercase letter')).toBeInTheDocument()
       expect(screen.getByText('✓ One number')).toBeInTheDocument()
       expect(screen.getByText('✓ One special character')).toBeInTheDocument()
+      expect(screen.getByText('✓ Not a common password')).toBeInTheDocument()
     })
 
     it('shows requirements as valid when password meets criteria', async () => {
@@ -284,6 +285,38 @@ describe('CreateAccount Page', () => {
 
       const submitButton = screen.getByRole('button', { name: /create account/i })
       expect(submitButton).toBeDisabled()
+    })
+
+    it('does not allow common passwords like "password"', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'password')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'password')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+
+      const commonPasswordRequirement = screen.getByText('✓ Not a common password')
+      expect(commonPasswordRequirement).not.toHaveClass('valid')
+    })
+
+    it('does not allow common passwords like "qwerty123"', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'qwerty123')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'qwerty123')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+
+      const commonPasswordRequirement = screen.getByText('✓ Not a common password')
+      expect(commonPasswordRequirement).not.toHaveClass('valid')
     })
   })
 
