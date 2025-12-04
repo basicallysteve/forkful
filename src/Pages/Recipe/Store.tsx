@@ -54,7 +54,8 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     setIngredient({
       ...ingredient,
       food: food,
-      calories: (food.calories || 0) * ingredient.quantity,
+      quantity: food.servingSize || 1,
+      calories: (food.calories || 0),
       servingUnit: food.servingUnit || ingredient.servingUnit
     })
   }
@@ -274,6 +275,7 @@ function Store() {
   const [activeTab, setActiveTab] = useState<"details" | "ingredients">("details")
   
   function handleAddIngredient(ingredient: Ingredient) {
+    console.log("Adding ingredient:", ingredient)
     setRecipe({
         ...recipe,
         ingredients: [...(recipe.ingredients || []), ingredient],

@@ -80,7 +80,7 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
                         ...recipe,
                         ingredients: recipe.ingredients.map((ingredient, index) => {
                             if (index === ingredientId) {
-                                const baseCalories = ingredient.calories
+                                const baseCalories = ingredient.food.calories
                                 const baseServingSize = ingredient.quantity
                                 const food = ingredient.food
                                 const baseServingUnit = ingredient.servingUnit || food.servingUnit || 'unit'
