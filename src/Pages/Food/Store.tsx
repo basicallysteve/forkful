@@ -1,6 +1,6 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
@@ -12,14 +12,10 @@ interface FoodStoreProps {
 }
 
 function Store({ existingFood }: FoodStoreProps) {
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
+  const foods = useFoodStore((state) => state.foods)
+  const addFood = useFoodStore((state) => state.addFood)
+  const updateFood = useFoodStore((state) => state.updateFood)
   const navigate = useNavigate()
-
-  if (!foodContext) {
-    throw new Error('FoodProvider is missing')
-  }
-
-  const { foods, addFood, updateFood } = foodContext
 
   const isEditing = !!existingFood
 

@@ -8,27 +8,15 @@ import ToolBar from "@/components/ToolBar"
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Home from "@/Pages/Home"
-import { useContext } from 'react'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useRecipeStore } from '@/stores/recipes'
+import { useFoodStore } from '@/stores/food'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 function App() {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
-  
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  if (!foodContext) {
-    throw new Error('FoodProvider is missing')
-  }
-
-  const { recipes } = recipeContext
-  const { foods } = foodContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const foods = useFoodStore((state) => state.foods)
 
   const menuOptions = [
     {

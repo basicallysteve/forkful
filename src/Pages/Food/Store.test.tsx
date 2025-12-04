@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Store from './Store'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
 
 const mockFoods: Food[] = [
@@ -37,31 +37,32 @@ function renderWithProviders(
   ui: React.ReactElement,
   {
     foods = mockFoods,
-    setFoods = vi.fn(),
     addFood = vi.fn().mockImplementation((food) => ({ ...food, id: 999 })),
     updateFood = vi.fn(),
     deleteFood = vi.fn().mockReturnValue(true),
     isFoodUsedInRecipe = vi.fn().mockReturnValue(false),
     getFoodByName = vi.fn(),
-  }: Partial<FoodContextType> = {}
+  }: {
+    foods?: Food[]
+    addFood?: ReturnType<typeof vi.fn>
+    updateFood?: ReturnType<typeof vi.fn>
+    deleteFood?: ReturnType<typeof vi.fn>
+    isFoodUsedInRecipe?: ReturnType<typeof vi.fn>
+    getFoodByName?: ReturnType<typeof vi.fn>
+  } = {}
 ) {
-  const contextValue: FoodContextType = {
+  resetFoodStore()
+  useFoodStore.setState((state) => ({
+    ...state,
     foods,
-    setFoods,
-    addFood,
-    updateFood,
-    deleteFood,
-    isFoodUsedInRecipe,
-    getFoodByName,
-  }
+    addFood: addFood ?? state.addFood,
+    updateFood: updateFood ?? state.updateFood,
+    deleteFood: deleteFood ?? state.deleteFood,
+    isFoodUsedInRecipe: isFoodUsedInRecipe ?? state.isFoodUsedInRecipe,
+    getFoodByName: getFoodByName ?? state.getFoodByName,
+  }))
 
-  return render(
-    <BrowserRouter>
-      <GlobalFoodContext.Provider value={contextValue}>
-        {ui}
-      </GlobalFoodContext.Provider>
-    </BrowserRouter>
-  )
+  return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
 describe('Food Store Page - Add Food', () => {

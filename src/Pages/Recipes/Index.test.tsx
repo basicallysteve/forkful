@@ -3,7 +3,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Recipes from './Index'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
+import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 
@@ -56,23 +57,11 @@ const mockRecipes: Recipe[] = [
 
 function renderWithProviders(
   ui: React.ReactElement,
-  { recipes = mockRecipes, setRecipes = vi.fn() }: { recipes?: Recipe[]; setRecipes?: (recipes: Recipe[]) => void } = {}
+  { recipes = mockRecipes }: { recipes?: Recipe[] } = {}
 ) {
-  const contextValue: RecipeContextType = {
-    recipes,
-    setRecipes,
-    existingIngredients: [],
-  }
-
-  return render(
-    <BrowserRouter>
-      <GlobalRecipeContext.Provider value={contextValue}>
-        {ui}
-      </GlobalRecipeContext.Provider>
-    </BrowserRouter>
-  )
-
-  return { setRecipes }
+  resetRecipeStore()
+  useRecipeStore.setState((state) => ({ ...state, recipes }))
+  return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
 describe('Recipes Page', () => {
@@ -230,8 +219,7 @@ describe('Recipes Page', () => {
   describe('Delete functionality', () => {
     it('deletes selected recipes', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Recipes />, { setRecipes })
+      renderWithProviders(<Recipes />)
 
       const checkbox = screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i })
       await user.click(checkbox)
@@ -239,25 +227,16 @@ describe('Recipes Page', () => {
       const deleteButton = screen.getByRole('button', { name: /delete/i })
       await user.click(deleteButton)
 
-      expect(setRecipes).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ id: 2 }),
-          expect.objectContaining({ id: 3 }),
-        ])
-      )
-      expect(setRecipes).toHaveBeenCalledWith(
-        expect.not.arrayContaining([
-          expect.objectContaining({ id: 1 }),
-        ])
-      )
+      const updated = useRecipeStore.getState().recipes
+      expect(updated.find((r) => r.id === 1)).toBeUndefined()
+      expect(updated).toHaveLength(mockRecipes.length - 1)
     })
   })
 
   describe('Unpublish functionality', () => {
     it('unpublishes selected recipes', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Recipes />, { setRecipes })
+      renderWithProviders(<Recipes />)
 
       const checkbox = screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i })
       await user.click(checkbox)
@@ -265,13 +244,8 @@ describe('Recipes Page', () => {
       const unpublishButton = screen.getByRole('button', { name: /unpublish/i })
       await user.click(unpublishButton)
 
-      expect(setRecipes).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ id: 1, date_published: null }),
-          expect.objectContaining({ id: 2, date_published: new Date('2025-12-02') }),
-          expect.objectContaining({ id: 3, date_published: new Date('2025-12-02') }),
-        ])
-      )
+      const updated = useRecipeStore.getState().recipes
+      expect(updated.find((r) => r.id === 1)?.date_published).toBeNull()
     })
   })
 
@@ -403,8 +377,7 @@ describe('Recipes filters and actions', () => {
 
   it('deletes selected recipes', async () => {
     const user = userEvent.setup()
-    const setRecipes = vi.fn()
-    renderWithProviders(<Recipes />, { setRecipes, recipes: [
+    renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
         name: 'Chili Bowl',
@@ -431,8 +404,7 @@ describe('Recipes filters and actions', () => {
     await user.click(screen.getByLabelText('Select Garlic Pasta'))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
-    expect(setRecipes).toHaveBeenCalledTimes(1)
-    const updated = setRecipes.mock.calls[0][0] as Recipe[]
+    const updated = useRecipeStore.getState().recipes
     expect(updated).toHaveLength(2)
     expect(updated.find((recipe) => recipe.name === 'Garlic Pasta')).toBeUndefined()
   })

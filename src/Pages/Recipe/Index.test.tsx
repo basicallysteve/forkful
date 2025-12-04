@@ -3,8 +3,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Recipe from './Index'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
+import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe as RecipeType } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 
@@ -45,80 +45,54 @@ const mockRecipes: RecipeType[] = [
   },
 ]
 
-function renderWithProviders(
+function renderWithStores(
   ui: React.ReactElement,
-  { 
-    recipes = mockRecipes, 
-    setRecipes = vi.fn(), 
-    existingIngredients = [],
+  {
+    recipes = mockRecipes,
     foods = mockFoods,
-  }: { 
-    recipes?: RecipeType[]; 
-    setRecipes?: (recipes: RecipeType[]) => void; 
-    existingIngredients?: RecipeType['ingredients'];
-    foods?: Food[];
+  }: {
+    recipes?: RecipeType[]
+    foods?: Food[]
   } = {}
 ) {
-  const recipeContextValue: RecipeContextType = {
-    recipes,
-    setRecipes,
-    existingIngredients,
-  }
+  resetRecipeStore()
+  resetFoodStore()
+  useRecipeStore.setState((state) => ({ ...state, recipes }))
+  useFoodStore.setState((state) => ({ ...state, foods }))
 
-  const foodContextValue: FoodContextType = {
-    foods,
-    setFoods: vi.fn(),
-    addFood: vi.fn(),
-    updateFood: vi.fn(),
-    deleteFood: vi.fn(),
-    isFoodUsedInRecipe: vi.fn(),
-    getFoodByName: vi.fn((name) => foods.find(f => f.name.toLowerCase() === name.toLowerCase())),
-  }
-
-  return {
-    ...render(
-      <BrowserRouter>
-        <GlobalFoodContext.Provider value={foodContextValue}>
-          <GlobalRecipeContext.Provider value={recipeContextValue}>
-            {ui}
-          </GlobalRecipeContext.Provider>
-        </GlobalFoodContext.Provider>
-      </BrowserRouter>
-    ),
-    setRecipes,
-  }
+  return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
 describe('Recipe View Page', () => {
   describe('Viewing Recipe', () => {
     it('renders the recipe name', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByRole('heading', { name: 'Ham and Cheese Sandwich' })).toBeInTheDocument()
     })
 
     it('renders the recipe description', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('A delicious sandwich made with ham and cheese.')).toBeInTheDocument()
     })
 
     it('displays meal category', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('Lunch')).toBeInTheDocument()
     })
 
     it('displays ingredient count', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('2 ingredients')).toBeInTheDocument()
     })
 
     it('displays all ingredients in the table', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('Ham')).toBeInTheDocument()
       expect(screen.getByText('Cheese')).toBeInTheDocument()
     })
 
     it('displays ingredient quantities', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       const table = screen.getByRole('table')
       // Quantities now include the serving unit
       expect(within(table).getByText('2 slice')).toBeInTheDocument()
@@ -126,36 +100,36 @@ describe('Recipe View Page', () => {
     })
 
     it('displays total calories', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('250 calories')).toBeInTheDocument()
     })
 
     it('renders back link to all recipes', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       const backLink = screen.getByRole('link', { name: /all recipes/i })
       expect(backLink).toHaveAttribute('href', '/recipes')
     })
 
     it('displays Edit button in view mode', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
     })
 
     it('displays Copy Recipe button in view mode', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByRole('button', { name: /copy recipe/i })).toBeInTheDocument()
     })
   })
 
   describe('Editing Recipe', () => {
     it('enters edit mode when isEditing prop is true', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} isEditing={true} />)
+      renderWithStores(<Recipe recipe={mockRecipe} isEditing={true} />)
       expect(screen.getByRole('textbox', { name: /recipe name/i })).toBeInTheDocument()
     })
 
     it('enters edit mode when Edit button is clicked', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -164,7 +138,7 @@ describe('Recipe View Page', () => {
 
     it('displays name input with current recipe name in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -174,7 +148,7 @@ describe('Recipe View Page', () => {
 
     it('displays description textarea in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -184,7 +158,7 @@ describe('Recipe View Page', () => {
 
     it('displays meal select in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -194,7 +168,7 @@ describe('Recipe View Page', () => {
 
     it('displays Save and Cancel buttons in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -204,7 +178,7 @@ describe('Recipe View Page', () => {
 
     it('allows editing recipe name', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -217,7 +191,7 @@ describe('Recipe View Page', () => {
 
     it('allows editing recipe description', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -230,7 +204,7 @@ describe('Recipe View Page', () => {
 
     it('allows changing meal type', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -242,7 +216,7 @@ describe('Recipe View Page', () => {
 
     it('displays autocomplete with food options when editing ingredient', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -259,7 +233,7 @@ describe('Recipe View Page', () => {
 
     it('allows editing ingredient quantity', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -277,7 +251,7 @@ describe('Recipe View Page', () => {
         { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
         { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
       ]
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { existingIngredients })
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -295,8 +269,7 @@ describe('Recipe View Page', () => {
 
     it('saves changes when Save button is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -306,14 +279,13 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /save/i }))
 
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipes = useRecipeStore.getState().recipes
       expect(updatedRecipes.find(r => r.id === 1)?.name).toBe('Updated Sandwich')
     })
 
     it('exits edit mode after saving', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /save/i }))
@@ -324,8 +296,7 @@ describe('Recipe View Page', () => {
 
     it('cancels changes when Cancel button is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -335,13 +306,12 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /cancel/i }))
 
-      expect(setRecipes).not.toHaveBeenCalled()
       expect(screen.getByRole('heading', { name: 'Ham and Cheese Sandwich' })).toBeInTheDocument()
     })
 
     it('exits edit mode after cancelling', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /cancel/i }))
@@ -354,7 +324,7 @@ describe('Recipe View Page', () => {
   describe('Managing Ingredients', () => {
     it('displays Remove button for each ingredient in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -364,7 +334,7 @@ describe('Recipe View Page', () => {
 
     it('removes ingredient when Remove button is clicked', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /remove ham/i }))
@@ -376,7 +346,7 @@ describe('Recipe View Page', () => {
 
     it('displays Add Ingredient button in edit mode', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -385,8 +355,7 @@ describe('Recipe View Page', () => {
 
     it('adds an existing ingredient and updates calories', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
@@ -401,15 +370,14 @@ describe('Recipe View Page', () => {
 
       // Save the recipe
       await user.click(screen.getByRole('button', { name: /save/i }))
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipes = useRecipeStore.getState().recipes
       const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
       expect(updatedRecipe?.ingredients).toHaveLength(3)
     })
 
     it('does not add ingredient when foods list is empty', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { foods: [] })
+      renderWithStores(<Recipe recipe={mockRecipe} />, { foods: [] })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
@@ -423,14 +391,14 @@ describe('Recipe View Page', () => {
 
   describe('Copy Recipe Functionality', () => {
     it('displays Copy Recipe button', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByRole('button', { name: /copy recipe/i })).toBeInTheDocument()
     })
 
     it('logs message when Copy Recipe button is clicked (placeholder)', async () => {
       const user = userEvent.setup()
       const consoleSpy = vi.spyOn(console, 'log')
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /copy recipe/i }))
 
@@ -441,35 +409,35 @@ describe('Recipe View Page', () => {
 
   describe('canEdit Prop', () => {
     it('hides Edit button when canEdit is false', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} canEdit={false} />)
+      renderWithStores(<Recipe recipe={mockRecipe} canEdit={false} />)
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
     })
 
     it('shows Edit button when canEdit is true (default)', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
     })
 
     it('does not enter edit mode with isEditing=true when canEdit is false', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} isEditing={true} canEdit={false} />)
+      renderWithStores(<Recipe recipe={mockRecipe} isEditing={true} canEdit={false} />)
       expect(screen.queryByRole('textbox', { name: /recipe name/i })).not.toBeInTheDocument()
     })
 
     it('still shows Copy Recipe button when canEdit is false', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} canEdit={false} />)
+      renderWithStores(<Recipe recipe={mockRecipe} canEdit={false} />)
       expect(screen.getByRole('button', { name: /copy recipe/i })).toBeInTheDocument()
     })
   })
 
   describe('Published Date Display', () => {
     it('displays published date text for published recipes', () => {
-      renderWithProviders(<Recipe recipe={mockRecipe} />)
+      renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText(/published/i)).toBeInTheDocument()
     })
 
     it('displays Unpublished for recipes without date_published', () => {
       const unpublishedRecipe = { ...mockRecipe, date_published: null }
-      renderWithProviders(<Recipe recipe={unpublishedRecipe} />)
+      renderWithStores(<Recipe recipe={unpublishedRecipe} />)
       expect(screen.getByText('Unpublished')).toBeInTheDocument()
     })
   })
@@ -477,29 +445,24 @@ describe('Recipe View Page', () => {
   describe('Publishing / Unpublishing', () => {
     it('publishes the recipe and sets date_published when Publish is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
       const unpublishedRecipe = { ...mockRecipe, date_published: null }
 
-      renderWithProviders(<Recipe recipe={unpublishedRecipe} />, { setRecipes })
+      renderWithStores(<Recipe recipe={unpublishedRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /publish/i }))
 
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipes = useRecipeStore.getState().recipes
       const updatedRecipe = updatedRecipes.find(r => r.id === unpublishedRecipe.id)
       expect(updatedRecipe?.date_published).toBeInstanceOf(Date)
     })
 
     it('unpublishes the recipe when Unpublish is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-
-      renderWithProviders(<Recipe recipe={mockRecipe} />, { setRecipes })
+      renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /unpublish/i }))
 
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const updatedRecipes = setRecipes.mock.calls[0][0] as RecipeType[]
+      const updatedRecipes = useRecipeStore.getState().recipes
       const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
       expect(updatedRecipe?.date_published).toBeNull()
     })

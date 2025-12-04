@@ -1,12 +1,12 @@
-import { useState, useContext } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import './recipe.scss'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useRecipeStore } from '@/stores/recipes'
+import { useFoodStore } from '@/stores/food'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -18,19 +18,9 @@ interface RecipeProps {
 }
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
-  
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  if (!foodContext) {
-    throw new Error('FoodProvider is missing')
-  }
-
-  const { recipes, setRecipes } = recipeContext
-  const { foods } = foodContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
+  const foods = useFoodStore((state) => state.foods)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
@@ -58,10 +48,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
     const updatedRecipe = { ...editedRecipe, ingredients: sanitizedIngredients }
 
-    const updatedRecipes = recipes.map(r => 
-      r.id === updatedRecipe.id ? updatedRecipe : r
-    )
-    setRecipes(updatedRecipes)
+    updateRecipeInStore(updatedRecipe)
     setEditMode(false)
   }
 
@@ -156,19 +143,13 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   function publishRecipe() {
     const now = new Date()
     const updatedRecipe = { ...editedRecipe, date_published: now }
-    const updatedRecipes = recipes.map(r => 
-      r.id === updatedRecipe.id ? updatedRecipe : r
-    )
-    setRecipes(updatedRecipes)
+    updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
   }
 
   function unpublishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: null }
-    const updatedRecipes = recipes.map(r => 
-      r.id === updatedRecipe.id ? updatedRecipe : r
-    )
-    setRecipes(updatedRecipes)
+    updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
   }
 

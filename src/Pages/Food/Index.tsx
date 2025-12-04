@@ -1,7 +1,7 @@
-import { useContext } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useFoodStore } from '@/stores/food'
+import { useRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import './food.scss'
@@ -11,22 +11,11 @@ interface FoodIndexProps {
 }
 
 export default function FoodIndex({ food }: FoodIndexProps) {
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
+  const deleteFood = useFoodStore((state) => state.deleteFood)
+  const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
+  const recipes = useRecipeStore((state) => state.recipes)
   const navigate = useNavigate()
-
-  if (!foodContext) {
-    throw new Error('FoodProvider is missing')
-  }
-
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  const { deleteFood, isFoodUsedInRecipe } = foodContext
-  const { recipes } = recipeContext
-
-  const isUsedInRecipe = isFoodUsedInRecipe(food.id, recipes)
+  const isUsedInRecipe = useMemo(() => isFoodUsedInRecipe(food.id, recipes), [food.id, recipes, isFoodUsedInRecipe])
 
   function handleDelete() {
     if (isUsedInRecipe) return

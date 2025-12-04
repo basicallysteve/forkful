@@ -1,7 +1,7 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useFoodStore } from '@/stores/food'
+import { useRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import './foods.scss'
@@ -10,19 +10,10 @@ type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
 
 export default function Foods() {
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-
-  if (!foodContext) {
-    throw new Error('FoodProvider is missing')
-  }
-
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  const { foods, deleteFood, isFoodUsedInRecipe } = foodContext
-  const { recipes } = recipeContext
+  const foods = useFoodStore((state) => state.foods)
+  const deleteFood = useFoodStore((state) => state.deleteFood)
+  const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
+  const recipes = useRecipeStore((state) => state.recipes)
   const [selectedFoods, setSelectedFoods] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')

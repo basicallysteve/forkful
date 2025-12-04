@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Store from './Store'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
+import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
+import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 
@@ -47,43 +47,20 @@ const mockRecipes: Recipe[] = [
 
 function renderWithProviders(
   ui: React.ReactElement,
-  { 
-    recipes = mockRecipes, 
-    setRecipes = vi.fn(),
-    existingIngredients = [],
+  {
+    recipes = mockRecipes,
     foods = mockFoods,
-  }: { 
+  }: {
     recipes?: Recipe[]
-    setRecipes?: (recipes: Recipe[]) => void
-    existingIngredients?: Recipe['ingredients']
     foods?: Food[]
   } = {}
 ) {
-  const recipeContextValue: RecipeContextType = {
-    recipes,
-    setRecipes,
-    existingIngredients,
-  }
+  resetFoodStore()
+  resetRecipeStore()
+  useFoodStore.setState({ foods })
+  useRecipeStore.setState((state) => ({ ...state, recipes }))
 
-  const foodContextValue: FoodContextType = {
-    foods,
-    setFoods: vi.fn(),
-    addFood: vi.fn(),
-    updateFood: vi.fn(),
-    deleteFood: vi.fn(),
-    isFoodUsedInRecipe: vi.fn(),
-    getFoodByName: vi.fn((name) => foods.find(f => f.name.toLowerCase() === name.toLowerCase())),
-  }
-
-  return render(
-    <BrowserRouter>
-      <GlobalFoodContext.Provider value={foodContextValue}>
-        <GlobalRecipeContext.Provider value={recipeContextValue}>
-          {ui}
-        </GlobalRecipeContext.Provider>
-      </GlobalFoodContext.Provider>
-    </BrowserRouter>
-  )
+  return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
 describe('Store Page - Recipe Creation', () => {
@@ -176,12 +153,7 @@ describe('Store Page - Recipe Creation', () => {
   describe('Similar Recipe Suggestions', () => {
     it('shows suggestion when ingredients match existing recipe (Jaccard similarity >= 30%)', async () => {
       const user = userEvent.setup()
-      const existingIngredients = [
-        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
-        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
-        { food: mockFoods[2], quantity: 1, calories: 100, servingUnit: 'slice' },
-      ]
-      renderWithProviders(<Store />, { existingIngredients })
+      renderWithProviders(<Store />)
 
       // Switch to ingredients tab
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
@@ -213,7 +185,7 @@ describe('Store Page - Recipe Creation', () => {
       await user.click(addButton)
 
       // Should see similar recipe suggestion
-      const suggestion = screen.getByRole('alert')
+      const suggestion = await screen.findByRole('alert')
       expect(suggestion).toHaveTextContent('Similar recipe found:')
       expect(suggestion).toHaveTextContent('Ham and Cheese Sandwich')
       expect(suggestion).toHaveTextContent('% ingredient match')
@@ -224,7 +196,6 @@ describe('Store Page - Recipe Creation', () => {
       const uniqueFood: Food = { id: 999, name: 'Unique Ingredient', calories: 50, protein: 1, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
       // Only provide unique food, not the mockFoods that are used in existing recipes
       renderWithProviders(<Store />, { 
-        existingIngredients: [],
         foods: [uniqueFood],
         recipes: [] // No existing recipes to compare against
       })
@@ -244,11 +215,7 @@ describe('Store Page - Recipe Creation', () => {
 
     it('suggestion link navigates to the similar recipe', async () => {
       const user = userEvent.setup()
-      const existingIngredients = [
-        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
-        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
-      ]
-      renderWithProviders(<Store />, { existingIngredients })
+      renderWithProviders(<Store />)
 
       // Switch to ingredients tab
       const ingredientsTab = screen.getByRole('button', { name: /ingredients tab/i })
@@ -279,7 +246,7 @@ describe('Store Page - Recipe Creation', () => {
       await user.click(addButton)
 
       // Check that the link exists and points to the right recipe
-      const suggestionLink = screen.getByRole('link', { name: /ham and cheese sandwich/i })
+      const suggestionLink = await screen.findByRole('link', { name: /ham and cheese sandwich/i })
       expect(suggestionLink).toHaveAttribute('href', '/recipes/ham-and-cheese-sandwich')
     })
   })
@@ -338,10 +305,9 @@ describe('Store Page - Recipe Creation', () => {
   })
 
   describe('Save and Publish Functionality', () => {
-    it('calls setRecipes with new recipe when Save Recipe is clicked', async () => {
+    it('saves a new recipe when Save Recipe is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
-      renderWithProviders(<Store />, { setRecipes })
+      renderWithProviders(<Store />)
 
       // Fill out all required fields
       const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
@@ -357,27 +323,21 @@ describe('Store Page - Recipe Creation', () => {
       const saveButton = screen.getByRole('button', { name: /save recipe/i })
       await user.click(saveButton)
 
-      // Verify setRecipes was called
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const newRecipes = setRecipes.mock.calls[0][0]
+      const newRecipes = useRecipeStore.getState().recipes
       expect(newRecipes).toHaveLength(3) // 2 existing + 1 new
-      
-      const newRecipe = newRecipes[2]
+
+      const newRecipe = newRecipes[newRecipes.length - 1]
       expect(newRecipe.name).toBe('New Test Recipe')
       expect(newRecipe.meal).toBe('Lunch')
       expect(newRecipe.description).toBe('A test description')
       expect(newRecipe.date_published).toBeNull() // Saved as draft
     })
 
-    it('calls setRecipes with published recipe when Publish is clicked', async () => {
+    it('saves a published recipe when Publish is clicked', async () => {
       const user = userEvent.setup()
-      const setRecipes = vi.fn()
       const testFood: Food = { id: 200, name: 'Test Ingredient', calories: 50, protein: 2, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
-      const existingIngredients = [{ food: testFood, quantity: 1, calories: 50, servingUnit: 'piece' }]
       const allFoods = [...mockFoods, testFood]
       renderWithProviders(<Store />, { 
-        setRecipes,
-        existingIngredients,
         foods: allFoods
       })
 
@@ -412,12 +372,10 @@ describe('Store Page - Recipe Creation', () => {
       const publishButton = screen.getByRole('button', { name: /publish/i })
       await user.click(publishButton)
 
-      // Verify setRecipes was called
-      expect(setRecipes).toHaveBeenCalledTimes(1)
-      const newRecipes = setRecipes.mock.calls[0][0]
+      const newRecipes = useRecipeStore.getState().recipes
       expect(newRecipes).toHaveLength(3)
       
-      const newRecipe = newRecipes[2]
+      const newRecipe = newRecipes[newRecipes.length - 1]
       expect(newRecipe.name).toBe('Published Recipe')
       expect(newRecipe.date_published).not.toBeNull() // Published with date
     })
@@ -458,32 +416,23 @@ describe('Recipes List - Card Layout', () => {
       },
     ]
 
-    const contextValue: RecipeContextType = {
-      recipes,
-      setRecipes: vi.fn(),
-      existingIngredients: [],
-    }
-
     const { container } = render(
       <BrowserRouter>
-        <GlobalRecipeContext.Provider value={contextValue}>
-          <div className="recipes-list">
-            <div className="recipe-card">
-              <div className="card-content">
-                <div className="card-header">
-                  <h3 className="card-title">Test Recipe</h3>
-                  <div className="card-badges">
-                    <span className="pill pill-ghost">Lunch</span>
-                  </div>
+        <div className="recipes-list">
+          <div className="recipe-card">
+            <div className="card-content">
+              <div className="card-header">
+                <h3 className="card-title">Test Recipe</h3>
+                <div className="card-badges">
+                  <span className="pill pill-ghost">Lunch</span>
                 </div>
               </div>
             </div>
           </div>
-        </GlobalRecipeContext.Provider>
+        </div>
       </BrowserRouter>
     )
 
-    // Verify the card header structure exists
     const cardHeader = container.querySelector('.card-header')
     expect(cardHeader).toBeInTheDocument()
 
@@ -494,7 +443,6 @@ describe('Recipes List - Card Layout', () => {
     const cardBadges = container.querySelector('.card-badges')
     expect(cardBadges).toBeInTheDocument()
     
-    // Both title and badges should be children of the same header element
     expect(cardHeader?.contains(cardTitle!)).toBe(true)
     expect(cardHeader?.contains(cardBadges!)).toBe(true)
   })

@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Foods from './Index'
-import GlobalFoodContext, { type FoodContextType } from '@/providers/FoodProvider'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useFoodStore, resetFoodStore } from '@/stores/food'
+import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
 
@@ -53,42 +53,27 @@ function renderWithProviders(
   ui: React.ReactElement,
   {
     foods = mockFoods,
-    setFoods = vi.fn(),
-    addFood = vi.fn(),
-    updateFood = vi.fn(),
-    deleteFood = vi.fn().mockReturnValue(true),
-    isFoodUsedInRecipe = vi.fn().mockReturnValue(false),
-    getFoodByName = vi.fn(),
     recipes = mockRecipes,
-    setRecipes = vi.fn(),
-    existingIngredients = [],
-  }: Partial<FoodContextType> & Partial<RecipeContextType> = {}
-) {
-  const foodContextValue: FoodContextType = {
-    foods,
-    setFoods,
-    addFood,
-    updateFood,
     deleteFood,
     isFoodUsedInRecipe,
-    getFoodByName,
-  }
+  }: {
+    foods?: Food[]
+    recipes?: Recipe[]
+    deleteFood?: ReturnType<typeof vi.fn>
+    isFoodUsedInRecipe?: ReturnType<typeof vi.fn>
+  } = {}
+) {
+  resetFoodStore()
+  resetRecipeStore()
+  useFoodStore.setState((state) => ({
+    ...state,
+    foods,
+    deleteFood: deleteFood ?? state.deleteFood,
+    isFoodUsedInRecipe: isFoodUsedInRecipe ?? state.isFoodUsedInRecipe,
+  }))
+  useRecipeStore.setState((state) => ({ ...state, recipes }))
 
-  const recipeContextValue: RecipeContextType = {
-    recipes,
-    setRecipes,
-    existingIngredients,
-  }
-
-  return render(
-    <BrowserRouter>
-      <GlobalFoodContext.Provider value={foodContextValue}>
-        <GlobalRecipeContext.Provider value={recipeContextValue}>
-          {ui}
-        </GlobalRecipeContext.Provider>
-      </GlobalFoodContext.Provider>
-    </BrowserRouter>
-  )
+  return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
 describe('Foods List Page', () => {

@@ -1,21 +1,20 @@
-import { useState, useContext, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
-import GlobalFoodContext, { type FoodContextType } from "@/providers/FoodProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import { toSlug } from "@/utils/slug"
 import { calculateCalories } from "@/utils/unitConversion"
+import { useRecipeStore } from "@/stores/recipes"
+import { useFoodStore } from "@/stores/food"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
 
 function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
-  const foodContext: FoodContextType | undefined = useContext(GlobalFoodContext)
-  const foods = foodContext?.foods ?? []
+  const foods = useFoodStore((state) => state.foods)
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
@@ -220,14 +219,10 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 }
 
 function Store() {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   const navigate = useNavigate()
-
-  if (!recipeContext) {
-    throw new Error("RecipeProvider is missing")
-  }
-
-  const { recipes, setRecipes } = recipeContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
+  const foods = useFoodStore((state) => state.foods)
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
@@ -312,7 +307,7 @@ function Store() {
     if (!canSave) return
     
     const newRecipe = createRecipe(false)
-    setRecipes([...recipes, newRecipe])
+    addRecipeToStore(newRecipe)
     navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
@@ -320,7 +315,7 @@ function Store() {
     if (!canPublish) return
     
     const newRecipe = createRecipe(true)
-    setRecipes([...recipes, newRecipe])
+    addRecipeToStore(newRecipe)
     navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 

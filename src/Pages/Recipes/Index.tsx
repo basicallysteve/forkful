@@ -1,6 +1,6 @@
-import { useState, useContext, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
 import './recipes.scss'
@@ -9,13 +9,9 @@ type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
 
 export default function Recipes() {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  const { recipes, setRecipes } = recipeContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
+  const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
@@ -84,20 +80,17 @@ export default function Recipes() {
 
   function handleDeleteSelected() {
     if (selectedRecipes.size === 0) return
-    const remainingRecipes = recipes.filter(recipe => !selectedRecipes.has(recipe.id))
-    setRecipes(remainingRecipes)
+    selectedRecipes.forEach((id) => deleteRecipe(id))
     setSelectedRecipes(new Set())
   }
 
   function handleUnpublishSelected() {
     if (selectedRecipes.size === 0) return
-    const updatedRecipes = recipes.map(recipe => {
+    recipes.forEach((recipe) => {
       if (selectedRecipes.has(recipe.id)) {
-        return { ...recipe, date_published: null }
+        updateRecipe({ ...recipe, date_published: null })
       }
-      return recipe
     })
-    setRecipes(updatedRecipes)
     setSelectedRecipes(new Set())
   }
 
