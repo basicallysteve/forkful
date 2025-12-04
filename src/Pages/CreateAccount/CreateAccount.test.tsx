@@ -232,6 +232,59 @@ describe('CreateAccount Page', () => {
       const submitButton = screen.getByRole('button', { name: /create account/i })
       expect(submitButton).toBeDisabled()
     })
+
+    it('does not allow weak password submission', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      // Fill all fields but use a weak password
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'weak')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'weak')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+    })
+
+    it('does not allow password without uppercase letter', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'lowercase1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'lowercase1!')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+    })
+
+    it('does not allow password without number', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'NoNumbers!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'NoNumbers!')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+    })
+
+    it('does not allow password without special character', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'NoSpecial1')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'NoSpecial1')
+
+      const submitButton = screen.getByRole('button', { name: /create account/i })
+      expect(submitButton).toBeDisabled()
+    })
   })
 
   describe('Optional Preferences', () => {
