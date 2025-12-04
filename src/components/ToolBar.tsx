@@ -16,6 +16,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
 
         return (
             <div className="menu-option" key={option.label}>
+                <Link to={option.to || "#"} className="menu-option__link" onClick={option.action}>
                 <button
                     type="button"
                     className="menu-option__trigger"
@@ -24,6 +25,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                     <span className="menu-option__label">{option.label}</span>
                     {hasChildren && <span className="menu-option__caret">▾</span>}
                 </button>
+                </Link>
                 {hasChildren && (
                     <div className="submenu" role="menu">
                         {option.children!.map((childOption) => (
