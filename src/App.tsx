@@ -1,6 +1,7 @@
 import RecipeIndex from "@/Pages/Recipe/Index"
 import RecipeStore from "@/Pages/Recipe/Store"
 import RecipesList from "@/Pages/Recipes/Index"
+import CreateAccount from "@/Pages/CreateAccount/CreateAccount"
 import ToolBar from "@/components/ToolBar"
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
@@ -54,6 +55,7 @@ function App() {
       <ToolBar menuOptions={menuOptions} />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/recipes" element={<RecipesList />} />
         <Route path="/recipes/new" element={<RecipeStore />} />
        { 
