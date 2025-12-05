@@ -3,6 +3,24 @@
   width: 100%;
 }
 
+.autocomplete-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--vscode-muted, #9da5b4);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+
+  &:hover {
+    color: var(--vscode-text, #d4d4d4);
+  }
+}
+
 .autocomplete-suggestions {
   position: absolute;
   z-index: 10;

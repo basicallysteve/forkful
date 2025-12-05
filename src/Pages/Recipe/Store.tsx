@@ -1,88 +1,157 @@
-import { useState, useContext, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import GlobalRecipeContext, { type RecipeContextType } from "@/providers/RecipeProvider"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
+import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
+import { toSlug } from "@/utils/slug"
+import { calculateCalories } from "@/utils/unitConversion"
+import { useRecipeStore } from "@/stores/recipes"
+import { useFoodStore } from "@/stores/food"
 import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
+const DEFAULT_SERVING_UNIT = 'g'
 
 function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-  const existingIngredients = recipeContext?.existingIngredients ?? []
+  const foods = useFoodStore((state) => state.foods)
 
-  const [ingredient, setIngredient] = useState<Ingredient>(storedIngredient ?? {
-    name: "",
-    quantity: 1,
-    calories: 0,
-  })
+  const defaultFood = foods.length > 0 ? foods[0] : null
+
+  // Create initial ingredient state - handle case when no foods are available
+  const createInitialIngredient = (): Ingredient | null => {
+    if (storedIngredient) return storedIngredient
+    if (!defaultFood) return null
+    return {
+      food: defaultFood,
+      quantity: 1,
+      calories: defaultFood.calories || 0,
+      servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
+    }
+  }
+
+  const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
+  const [ingredientName, setIngredientName] = useState<string>(ingredient ? ingredient.food.name : "")
+  const [missingFood, setMissingFood] = useState<boolean>(false)
 
   function handleAdd() {
-    if (ingredient.name.trim() === "" || ingredient.quantity <= 0) {
+    if (!ingredient || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
       return
     }
     onAdd?.(ingredient)
-    setIngredient({ name: "", quantity: 1, calories: 0 })
-  }
-  
-
-
-  function fromExisitingIngredient(name: string, existingIngredients: Ingredient[]) {
-    return existingIngredients.some(ing => ing.name.toLowerCase() === name.toLowerCase())
-  }
-  
-
-  function setCaloriesFromExisiting(nameOverride?: string) {
-    const targetName = nameOverride ?? ingredient.name
-    const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
-    if (existing) {
-      setIngredient({ ...ingredient, name: targetName, calories: (existing.calories || 0) * (ingredient.quantity || 1) })
+    if (defaultFood) {
+      setIngredient({ 
+        food: defaultFood, 
+        quantity: 1, 
+        calories: defaultFood.calories || 0,
+        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
+      })
     }
   }
 
+  function handleFoodSelect(food: Food) {
+    if (!ingredient) return
+    setIngredient({
+      ...ingredient,
+      food: food,
+      quantity: food.servingSize || 1,
+      calories: (food.calories || 0),
+      servingUnit: food.servingUnit || ingredient.servingUnit
+    })
+  }
+
   function setIngredientQuantity(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!ingredient) return
     const quantity = parseInt(e.target.value)
     if (isNaN(quantity) || quantity < 0) {
       setIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
-    let caloriesPerUnit = 0
-    const existing = existingIngredients.find(ing => ing.name.toLowerCase() === ingredient.name.toLowerCase())
-    if (existing) {
-      caloriesPerUnit = existing.calories || 0
-    }
+    const caloriesPerUnit = calculateCalories({
+      baseCalories: ingredient.food?.calories || 0,
+      baseServingSize: ingredient.food?.servingSize || 1,
+      baseServingUnit: ingredient.food?.servingUnit || DEFAULT_SERVING_UNIT,
+      targetAmount: 1,
+      targetUnit: ingredient.servingUnit,
+    }) || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
+
+  function handleUnitChange(newUnit: string) {
+    if (!ingredient || !ingredient.food) return
+    
+    const food = ingredient.food
+    const baseCalories = food.calories || 0
+    const baseServingSize = food.servingSize || 1
+    const baseServingUnit = food.servingUnit || DEFAULT_SERVING_UNIT
+    
+    // Calculate calories based on the new unit
+    const calculatedCalories = calculateCalories({
+      baseCalories,
+      baseServingSize,
+      baseServingUnit,
+      targetAmount: ingredient.quantity,
+      targetUnit: newUnit,
+    })
+    
+    // If conversion is possible, use calculated calories; otherwise keep current calories
+    const newCalories = calculatedCalories !== null 
+      ? Math.round(calculatedCalories) 
+      : ingredient.calories
+    
+    setIngredient({
+      ...ingredient,
+      servingUnit: newUnit,
+      calories: newCalories,
+    })
+  }
+
+  // If no foods available, show a message with link to create food
+  if (!ingredient && !storedIngredient) {
+    return (
+      <div className="ingredient-input">
+        <span className="no-foods-message">No foods available. <Link to="/foods/new">Add a food</Link> first.</span>
+      </div>
+    )
+  }
+
+  // Safety check for null ingredient
+  if (!ingredient) return null
+
   return (
     <div className="ingredient-input">
-        <label className="form-field">
+        <label className={`form-field ${missingFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
-              value={ingredient.name}
-              options={existingIngredients}
+              value={ingredientName}
+              options={foods}
               getOptionLabel={(opt) => opt.name}
               onChange={(next) => {
-                const existing = existingIngredients.find(ing => ing.name.toLowerCase() === next.toLowerCase())
-                if (existing) {
-                  setIngredient({
-                    ...ingredient,
-                    name: existing.name,
-                    calories: (existing.calories || 0) * (ingredient.quantity || 1)
-                  })
-                  return
+                if (next !== ingredientName) {
+                  setIngredientName(next)
                 }
-                setIngredient({ ...ingredient, name: next })
+                const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                if (food) {
+                  setMissingFood(false)
+                  handleFoodSelect(food)
+                } else {
+                  setMissingFood(true)
+                }
               }}
-              onSelect={(existing) => setIngredient({
-                ...ingredient,
-                name: existing.name,
-                calories: (existing.calories || 0) * (ingredient.quantity || 1)
-              })}
-              placeholder="Ingredient name"
+              onSelect={(food) => {
+                setMissingFood(false)
+                setIngredientName(food.name)
+                handleFoodSelect(food)
+              }}
+              placeholder="Select food"
+              inputAriaLabel="Ingredient name"
               readOnly={readOnly}
-              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/unit` : undefined}
+              inputClassName={missingFood ? 'input-error' : ''}
+              renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
+            {missingFood && (
+              <span className="field-error" role="alert">Please select a food from the list.</span>
+            )}
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
@@ -96,15 +165,31 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
             />
         </label>
       <label className="form-field">
+        <span className="field-label">Unit</span>
+        <select
+          className="number-input ingredient-unit-select"
+          value={ingredient.servingUnit}
+          onChange={(e) => handleUnitChange(e.target.value)}
+          disabled={readOnly}
+        >
+          {ingredient.food?.measurements?.map((unit) => (
+            <option key={unit} value={unit}>{unit}</option>
+          ))}
+          {ingredient.food?.measurements && !ingredient.food.measurements.includes(ingredient.servingUnit) && (
+            <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
+          )}
+        </select>
+      </label>
+      <label className="form-field">
         <span className="field-label">Calories</span>
         <input
             type="number"
             className="number-input ingredient-calories-input"
             min={0}
             value={ingredient.calories}
-            readOnly={fromExisitingIngredient(ingredient.name, existingIngredients) || readOnly}
+            readOnly={readOnly}
             onChange={(e) =>
-            setIngredient({ ...ingredient, calories: parseInt(e.target.value)})
+            setIngredient({ ...ingredient, calories: parseInt(e.target.value) || 0 })
             }
         />
         </label>
@@ -141,14 +226,10 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 }
 
 function Store() {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
   const navigate = useNavigate()
-
-  if (!recipeContext) {
-    throw new Error("RecipeProvider is missing")
-  }
-
-  const { recipes, setRecipes } = recipeContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
+  const foods = useFoodStore((state) => state.foods)
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
@@ -172,11 +253,11 @@ function Store() {
   const similarRecipe = useMemo(() => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return null
     
-    const currentIngredients = recipe.ingredients.map(ing => ing.name)
+    const currentIngredients = recipe.ingredients.map(ing => ing.food.name)
     let bestMatch: { recipe: Recipe; similarity: number } | null = null
     
     for (const existingRecipe of recipes) {
-      const existingIngredients = existingRecipe.ingredients.map(ing => ing.name)
+      const existingIngredients = existingRecipe.ingredients.map(ing => ing.food.name)
       const similarity = calculateJaccardSimilarity(currentIngredients, existingIngredients)
       
       // Only suggest if similarity is above 30%
@@ -233,16 +314,16 @@ function Store() {
     if (!canSave) return
     
     const newRecipe = createRecipe(false)
-    setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newRecipe.id}`)
+    addRecipeToStore(newRecipe)
+    navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   function handlePublishRecipe() {
     if (!canPublish) return
     
     const newRecipe = createRecipe(true)
-    setRecipes([...recipes, newRecipe])
-    navigate(`/recipes/${newRecipe.id}`)
+    addRecipeToStore(newRecipe)
+    navigate(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   const detailsTabContent = (<form className="store-form">
@@ -325,14 +406,14 @@ function Store() {
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
         ))}
         
         {similarRecipe && (
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <Link to={`/recipes/${similarRecipe.recipe.id}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link to={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}
