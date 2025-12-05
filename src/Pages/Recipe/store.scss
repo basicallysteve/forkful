@@ -13,7 +13,7 @@
     var(--vscode-bg);
   border: 1px solid var(--vscode-border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
   width: 100%;
@@ -189,7 +189,7 @@
 
   .panel-content {
     padding: 14px;
-    overflow: auto;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -212,7 +212,7 @@
     display: grid;
     grid-template-columns: 1.5fr repeat(2, 120px) auto;
     gap: 10px;
-    align-items: center;
+    align-items: flex-end;
     padding: 12px;
     border: 1px solid var(--vscode-border);
     border-radius: 10px;
@@ -255,6 +255,7 @@
     padding: 10px 14px;
   }
 
+
   .no-ingredients-text {
     grid-column: 1 / -1;
     margin: 0;
@@ -293,6 +294,52 @@
     color: var(--vscode-muted);
     font-size: 12px;
     line-height: 1.5;
+  }
+
+  .field-error {
+    margin: 0;
+    color: #ff5f56;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .has-error {
+    border-color: #ff5f56;
+  }
+
+  .input-error {
+    border-color: #ff5f56;
+
+    &:focus {
+      border-color: #ff5f56;
+      box-shadow: 0 0 0 1px rgba(255, 95, 86, 0.35);
+    }
+  }
+
+  .similar-recipe-suggestion {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--vscode-accent);
+    border-radius: 10px;
+    background: rgba(0, 122, 204, 0.1);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  .suggestion-icon {
+    font-size: 16px;
+  }
+
+  .suggestion-link {
+    color: var(--vscode-accent);
+    text-decoration: underline;
+    
+    &:hover {
+      color: #1ea3ff;
+    }
   }
 
   .text-input,
@@ -415,7 +462,7 @@
   .ghost-button {
     border-radius: 8px;
     border: 1px solid var(--vscode-border);
-    padding: 8px 12px;
+    padding: 10px 14px;    
     font-size: 13px;
     font-family: inherit;
     color: var(--vscode-text);
@@ -475,6 +522,32 @@
     .form-footer {
       flex-direction: column;
       align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 475px) {
+    .store-content {
+      padding: 14px 12px;
+    }
+
+    .ingredient-input {
+      grid-template-columns: 1fr;
+      gap: 8px;
+
+      .form-field {
+        width: 100%;
+      }
+    }
+
+    .ingredient-action-button {
+      width: 100%;
+      justify-self: stretch;
+    }
+
+    .similar-recipe-suggestion {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
     }
   }
 }
