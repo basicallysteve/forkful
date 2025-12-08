@@ -7,6 +7,11 @@ name = "pypi"
 fastapi = {extras = ["standard"], version = "*"}
 uvicorn = "*"
 bcrypt = "*"
+sqlalchemy = "*"
+psycopg2-binary = "*"
+pydantic-settings = "*"
+python-dotenv = "*"
+alembic = "*"
 
 [dev-packages]
 
@@ -15,3 +20,5 @@ python_version = "3.9"
 
 [scripts]
 dev = "uvicorn app.main:app --reload"
+alembic-init = "alembic init app/migrations"
+alembic-revision = "alembic revision --autogenerate -m"
