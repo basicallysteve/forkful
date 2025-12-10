@@ -266,6 +266,7 @@ export default function Pantry() {
             </div>
           ) : (
             <div className="panel-content">
+              {/* Desktop table view */}
               <table className="pantry-table">
                 <thead>
                   <tr>
@@ -356,6 +357,112 @@ export default function Pantry() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Mobile card view */}
+              <div className="select-all-row">
+                <label className="select-all-label">
+                  <input
+                    type="checkbox"
+                    className="select-all-checkbox"
+                    checked={
+                      selectedItems.size === filteredAndSortedItems.length &&
+                      filteredAndSortedItems.length > 0
+                    }
+                    onChange={handleSelectAll}
+                  />
+                  <span className="checkbox-text">Select all</span>
+                </label>
+              </div>
+              <div className="pantry-cards">
+                {filteredAndSortedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
+                  >
+                    <div className="card-checkbox">
+                      <input
+                        type="checkbox"
+                        className="item-checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={() => handleSelectItem(item.id)}
+                        aria-label={`Select ${item.food.name}`}
+                      />
+                    </div>
+                    <div className="card-content">
+                      <div className="card-header">
+                        <Link to={`/foods/${toSlug(item.food.name)}`} className="card-title">
+                          {item.food.name}
+                        </Link>
+                        <div className="card-badges">
+                          <span className={`status-badge ${getStatusClass(item.status)}`}>
+                            {getStatusLabel(item.status)}
+                          </span>
+                          {item.frozenDate && (
+                            <span className="status-badge status-frozen">Frozen</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="card-details">
+                        <div className="detail-row">
+                          <span className="detail-label">Quantity:</span>
+                          <span className="detail-value">{item.quantityLeft} / {item.quantity}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Size:</span>
+                          <span className="detail-value">
+                            {item.currentSize.size.toFixed(2)} {item.currentSize.unit} / {item.originalSize.size.toFixed(2)} {item.originalSize.unit}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">
+                            {item.frozenDate ? 'Frozen:' : 'Expires:'}
+                          </span>
+                          <span className="detail-value">
+                            {item.frozenDate ? formatDate(item.frozenDate) : formatDate(item.expirationDate)}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Added:</span>
+                          <span className="detail-value">{formatDate(item.addedDate)}</span>
+                        </div>
+                      </div>
+
+                      <div className="card-actions">
+                        {item.frozenDate ? (
+                          <button
+                            onClick={() => unfreezeItem(item.id)}
+                            className="btn-small btn-info"
+                            title="Unfreeze item"
+                          >
+                            Thaw
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => freezeItem(item.id)}
+                            className="btn-small btn-info"
+                            title="Freeze item"
+                          >
+                            Freeze
+                          </button>
+                        )}
+                        <Link
+                          to={`/pantry/${item.id}/edit`}
+                          className="btn-small btn-secondary"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="btn-small btn-danger"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
