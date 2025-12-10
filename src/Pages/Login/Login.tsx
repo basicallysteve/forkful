@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
+import { useSettingsStore } from "@/stores/settings"
 import "./login.scss"
 
 function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("")
   const [password, setPassword] = useState("")
   const [submitted, setSubmitted] = useState(false)
+  const setUser = useSettingsStore((state) => state.setUser)
 
   const canSubmit = useMemo(() => {
     return usernameOrEmail.trim().length > 0 && password.length > 0
@@ -15,7 +17,15 @@ function Login() {
     e.preventDefault()
     if (!canSubmit) return
     
-    // For now, just show success message
+    // TODO: Replace with actual authentication logic
+    // For now, create a mock user and store it in the settings store
+    const isEmail = usernameOrEmail.includes('@')
+    setUser({
+      user_id: `user_${Date.now()}`, // Temporary mock ID
+      username: isEmail ? usernameOrEmail.split('@')[0] : usernameOrEmail,
+      email: isEmail ? usernameOrEmail : `${usernameOrEmail}@example.com`,
+    })
+    
     setSubmitted(true)
   }
 
