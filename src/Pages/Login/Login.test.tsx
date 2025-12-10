@@ -43,6 +43,14 @@ describe('Login Page', () => {
       expect(createAccountLink).toBeInTheDocument()
       expect(createAccountLink).toHaveAttribute('href', '/create-account')
     })
+
+    it('renders forgot password link', () => {
+      renderWithProviders(<Login />)
+
+      const forgotPasswordLink = screen.getByRole('link', { name: /forgot password/i })
+      expect(forgotPasswordLink).toBeInTheDocument()
+      expect(forgotPasswordLink).toHaveAttribute('href', '/forgot-password')
+    })
   })
 
   describe('Form Validation', () => {
