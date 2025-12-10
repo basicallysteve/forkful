@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
-import type { Food } from '@/types/Food'
 
 type PantryStore = {
   items: PantryItem[]

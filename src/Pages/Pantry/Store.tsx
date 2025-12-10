@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
-import type { Food } from '@/types/Food'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import './pantry.scss'
 
@@ -20,7 +19,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const calculateItemStatus = usePantryStore((state) => state.calculateItemStatus)
 
   const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
-  const [selectedFood, setSelectedFood] = useState<Food | null>(existingItem?.food || null)
   const [quantity, setQuantity] = useState<number>(existingItem?.quantity || 1)
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
@@ -30,15 +28,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   const isEditing = !!existingItem
 
-  // Update selected food when food name changes
-  useEffect(() => {
-    const food = foods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
-    if (food) {
-      setSelectedFood(food)
-    } else if (foodName === '') {
-      setSelectedFood(null)
-    }
-  }, [foodName, foods])
+  // Derive selected food from foodName
+  const selectedFood = foods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
   // Generate a new ID for pantry items
   function generateId(): number {

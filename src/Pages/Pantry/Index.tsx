@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantryStore } from '@/stores/pantry'
-import { useFoodStore } from '@/stores/food'
-import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
+import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
 import './pantry.scss'
 
@@ -45,19 +44,23 @@ export default function Pantry() {
     return filtered.sort((a, b) => {
       let comparison = 0
       switch (sortBy) {
-        case 'name':
+        case 'name': {
           comparison = a.food.name.localeCompare(b.food.name)
           break
-        case 'expirationDate':
+        }
+        case 'expirationDate': {
           comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
           break
-        case 'addedDate':
+        }
+        case 'addedDate': {
           comparison = new Date(a.addedDate).getTime() - new Date(b.addedDate).getTime()
           break
-        case 'status':
+        }
+        case 'status': {
           const statusOrder = { 'expired': 0, 'expiring-soon': 1, 'good': 2 }
           comparison = statusOrder[a.status || 'good'] - statusOrder[b.status || 'good']
           break
+        }
       }
       return sortDirection === 'asc' ? comparison : -comparison
     })
