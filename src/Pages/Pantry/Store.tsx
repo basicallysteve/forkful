@@ -4,6 +4,7 @@ import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import './pantry.scss'
 
 interface PantryStoreProps {
@@ -22,7 +23,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [quantity, setQuantity] = useState<number>(existingItem?.quantity || 1)
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
-      ? new Date(existingItem.expirationDate).toISOString().split('T')[0]
+      ? formatDateForInput(existingItem.expirationDate)
       : ''
   )
 
@@ -110,7 +111,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             type="date"
             value={expirationDate}
             onChange={(e) => setExpirationDate(e.target.value)}
-            min={new Date().toISOString().split('T')[0]}
+            min={getTodayDateString()}
           />
           {expirationDate && (
             <div className="date-preview">

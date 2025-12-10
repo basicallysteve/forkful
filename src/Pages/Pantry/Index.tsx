@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
@@ -8,6 +8,13 @@ import './pantry.scss'
 type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
 type SortDirection = 'asc' | 'desc'
 type StatusFilter = 'all' | PantryItemStatus
+
+// Status priority order for sorting
+const STATUS_ORDER: Record<PantryItemStatus, number> = {
+  'expired': 0,
+  'expiring-soon': 1,
+  'good': 2,
+}
 
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
@@ -20,7 +27,7 @@ export default function Pantry() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   // Refresh statuses when component mounts or periodically
-  useMemo(() => {
+  useEffect(() => {
     refreshItemStatuses()
   }, [refreshItemStatuses])
 
@@ -57,8 +64,7 @@ export default function Pantry() {
           break
         }
         case 'status': {
-          const statusOrder = { 'expired': 0, 'expiring-soon': 1, 'good': 2 }
-          comparison = statusOrder[a.status || 'good'] - statusOrder[b.status || 'good']
+          comparison = STATUS_ORDER[a.status || 'good'] - STATUS_ORDER[b.status || 'good']
           break
         }
       }

@@ -14,15 +14,19 @@ type PantryStore = {
   refreshItemStatuses: () => void
 }
 
+// Constants
+const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
+const EXPIRING_SOON_THRESHOLD_DAYS = 7
+
 // Helper function to calculate status based on expiration date
 const calculateStatus = (expirationDate: Date): PantryItemStatus => {
   const now = new Date()
   const expDate = new Date(expirationDate)
-  const daysUntilExpiration = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const daysUntilExpiration = Math.ceil((expDate.getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
 
   if (daysUntilExpiration < 0) {
     return 'expired'
-  } else if (daysUntilExpiration <= 7) {
+  } else if (daysUntilExpiration <= EXPIRING_SOON_THRESHOLD_DAYS) {
     return 'expiring-soon'
   } else {
     return 'good'
