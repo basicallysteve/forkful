@@ -60,10 +60,6 @@ function App() {
       label: 'Login',
       to: '/login',
     },
-    {
-      label: 'Sign Up',
-      to: '/create-account',
-    }
   ]
 
   
