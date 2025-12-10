@@ -159,7 +159,7 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      expect(screen.getByText('Chicken Breast')).toBeInTheDocument()
+      expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
       // Check table rows contain the data (getAllByText since quantity and quantityLeft both show "2")
       const twos = screen.getAllByText('2')
       expect(twos.length).toBeGreaterThanOrEqual(2) // At least quantity and quantityLeft
@@ -178,8 +178,8 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      expect(screen.getByRole('link', { name: /edit/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: /edit/i })[0]).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: /delete/i })[0]).toBeInTheDocument()
     })
   })
 
@@ -199,7 +199,7 @@ describe('Pantry List Page', () => {
       const searchInput = screen.getByPlaceholderText('Search pantry items...')
       await user.type(searchInput, 'Chicken')
 
-      expect(screen.getByText('Chicken Breast')).toBeInTheDocument()
+      expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
       expect(screen.queryByText('Brown Rice')).not.toBeInTheDocument()
     })
 
@@ -221,7 +221,7 @@ describe('Pantry List Page', () => {
       const statusFilter = screen.getByLabelText('Filter by status')
       await user.selectOptions(statusFilter, 'good')
 
-      expect(screen.getByText('Brown Rice')).toBeInTheDocument()
+      expect(screen.getAllByText('Brown Rice')[0]).toBeInTheDocument()
       // Expired item should not be visible
       const chickens = screen.queryAllByText('Chicken Breast')
       expect(chickens.length).toBe(0)
@@ -284,7 +284,7 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      const checkbox = screen.getByLabelText('Select Chicken Breast')
+      const checkbox = screen.getAllByLabelText('Select Chicken Breast')[0]
       await user.click(checkbox)
 
       const deleteButton = screen.getByRole('button', { name: /delete \(1\)/i })
