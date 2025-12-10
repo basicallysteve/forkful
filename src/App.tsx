@@ -2,6 +2,7 @@ import RecipeIndex from "@/Pages/Recipe/Index"
 import RecipeStore from "@/Pages/Recipe/Store"
 import RecipesList from "@/Pages/Recipes/Index"
 import CreateAccount from "@/Pages/CreateAccount/CreateAccount"
+import Login from "@/Pages/Login/Login"
 import FoodsList from "@/Pages/Foods/Index"
 import FoodStore from "@/Pages/Food/Store"
 import FoodIndex from "@/Pages/Food/Index"
@@ -56,9 +57,9 @@ function App() {
       ]
     },
     {
-      label: 'Sign Up',
-      to: '/create-account',
-    }
+      label: 'Login',
+      to: '/login',
+    },
   ]
 
   
@@ -67,6 +68,7 @@ function App() {
       <ToolBar menuOptions={menuOptions} />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/recipes" element={<RecipesList />} />
         <Route path="/recipes/new" element={<RecipeStore />} />
