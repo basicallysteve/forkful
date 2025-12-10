@@ -54,7 +54,7 @@ function renderWithProviders(
 }
 
 // Helper to create valid pantry items with all required fields
-function createPantryItem(overrides: Partial<PantryItem> & createPantryItem({id: number; food: Food }): PantryItem {
+function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
     quantity: 1,
     quantityLeft: 1,
@@ -153,7 +153,14 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 2, quantityLeft: 2, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          quantity: 2,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -170,7 +177,14 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 2, quantityLeft: 2, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          quantity: 2,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -187,8 +201,22 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
+        {
+          id: 2,
+          food: mockFoods[1],
+          expirationDate: futureDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -209,8 +237,22 @@ describe('Pantry List Page', () => {
       goodDate.setDate(goodDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: expiredDate, quantity: 1, quantityLeft: 1, status: 'expired'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: goodDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: expiredDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'expired',
+        },
+        {
+          id: 2,
+          food: mockFoods[1],
+          expirationDate: goodDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -235,8 +277,22 @@ describe('Pantry List Page', () => {
       date2.setDate(date2.getDate() + 20)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[1], expirationDate: date2, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[0], expirationDate: date1, quantity: 1, quantityLeft: 1, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[1],
+          expirationDate: date2,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
+        {
+          id: 2,
+          food: mockFoods[0],
+          expirationDate: date1,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -258,8 +314,22 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
+        {
+          id: 2,
+          food: mockFoods[1],
+          expirationDate: futureDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -276,7 +346,14 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        {
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          quantity: 1,
+          addedDate: new Date(),
+          status: 'good',
+        },
       ]
 
       renderWithProviders(<PantryList />, { items })

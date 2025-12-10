@@ -10,7 +10,7 @@ type PantryStore = {
   getItemById: (id: number) => PantryItem | undefined
   getItemsByStatus: (status: PantryItemStatus) => PantryItem[]
   getItemsByFood: (foodId: number) => PantryItem[]
-  calculateItemStatus: (expirationDate: Date) => PantryItemStatus
+  calculateItemStatus: (expirationDate: Date | null) => PantryItemStatus
   refreshItemStatuses: () => void
 }
 
@@ -19,7 +19,12 @@ const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
 // Helper function to calculate status based on expiration date
-const calculateStatus = (expirationDate: Date): PantryItemStatus => {
+const calculateStatus = (expirationDate: Date | null): PantryItemStatus => {
+  // If no expiration date, item is considered good
+  if (!expirationDate) {
+    return 'good'
+  }
+  
   const now = new Date()
   const expDate = new Date(expirationDate)
   const daysUntilExpiration = Math.ceil((expDate.getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
@@ -72,7 +77,7 @@ export const usePantryStore = create<PantryStore>((set, get) => ({
   getItemsByFood: (foodId: number) => {
     return get().items.filter(item => item.food.id === foodId)
   },
-  calculateItemStatus: (expirationDate: Date) => {
+  calculateItemStatus: (expirationDate: Date | null) => {
     return calculateStatus(expirationDate)
   },
   refreshItemStatuses: () => {

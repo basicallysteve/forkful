@@ -53,6 +53,20 @@ function renderWithProviders(
   return render(<BrowserRouter>{ui}</BrowserRouter>)
 }
 
+// Helper to create valid pantry items with all required fields
+function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
+  return {
+    quantity: 1,
+    quantityLeft: 1,
+    originalSize: 1,
+    currentSize: 1,
+    expirationDate: new Date(),
+    addedDate: new Date(),
+    status: 'good',
+    ...overrides,
+  }
+}
+
 describe('Pantry Store Page', () => {
   beforeEach(() => {
     resetPantryStore()
@@ -68,7 +82,10 @@ describe('Pantry Store Page', () => {
     it('renders all form fields', () => {
       renderWithProviders(<PantryStore />)
       expect(screen.getByLabelText(/food item/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/quantity/i)).toBeInTheDocument()
+      expect(screen.getByRole("spinbutton", { name: /Quantity \*/ })).toBeInTheDocument()
+      expect(screen.getByLabelText(/quantity left/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/original size/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/current size/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/expiration date/i)).toBeInTheDocument()
     })
 
@@ -89,7 +106,7 @@ describe('Pantry Store Page', () => {
       await user.click(option)
 
       // Set quantity
-      const quantityInput = screen.getByLabelText(/quantity/i)
+      const quantityInput = screen.getByRole("spinbutton", { name: /Quantity \*/ })
       await user.clear(quantityInput)
       await user.type(quantityInput, '2')
 
@@ -117,14 +134,14 @@ describe('Pantry Store Page', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 10)
 
-      const existingItem: PantryItem = {
+      const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
         expirationDate: futureDate,
         quantity: 2,
-        addedDate: new Date(),
+        quantityLeft: 2,
         status: 'good',
-      }
+      })
 
       renderWithProviders(<PantryStore existingItem={existingItem} />)
       expect(screen.getByText('Edit Pantry Item')).toBeInTheDocument()
@@ -134,21 +151,21 @@ describe('Pantry Store Page', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 10)
 
-      const existingItem: PantryItem = {
+      const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
         expirationDate: futureDate,
         quantity: 3,
-        addedDate: new Date(),
+        quantityLeft: 3,
         status: 'good',
-      }
+      })
 
       renderWithProviders(<PantryStore existingItem={existingItem} />)
 
       const foodInput = screen.getByPlaceholderText('Select a food item')
       expect(foodInput).toHaveValue('Chicken Breast')
 
-      const quantityInput = screen.getByLabelText(/quantity/i) as HTMLInputElement
+      const quantityInput = screen.getByRole("spinbutton", { name: /Quantity \*/ }) as HTMLInputElement
       expect(quantityInput.value).toBe('3')
     })
 
@@ -157,20 +174,20 @@ describe('Pantry Store Page', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 10)
 
-      const existingItem: PantryItem = {
+      const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
         expirationDate: futureDate,
         quantity: 2,
-        addedDate: new Date(),
+        quantityLeft: 2,
         status: 'good',
-      }
+      })
 
       renderWithProviders(<PantryStore existingItem={existingItem} />, {
         items: [existingItem],
       })
 
-      const quantityInput = screen.getByLabelText(/quantity/i)
+      const quantityInput = screen.getByRole("spinbutton", { name: /Quantity \*/ })
       await user.clear(quantityInput)
       await user.type(quantityInput, '5')
 
@@ -223,7 +240,7 @@ describe('Pantry Store Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)
 
-      const quantityInput = screen.getByLabelText(/quantity/i)
+      const quantityInput = screen.getByRole('spinbutton', { name: /^quantity$/i })
       await user.clear(quantityInput)
       await user.type(quantityInput, '0')
 

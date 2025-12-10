@@ -21,6 +21,9 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
   const [quantity, setQuantity] = useState<number>(existingItem?.quantity || 1)
+  const [quantityLeft, setQuantityLeft] = useState<number>(existingItem?.quantityLeft || existingItem?.quantity || 1)
+  const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize || 1)
+  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize || existingItem?.originalSize || 1)
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
       ? formatDateForInput(existingItem.expirationDate)
@@ -39,15 +42,18 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   }
 
   function handleSave() {
-    if (!selectedFood || !expirationDate) return
+    if (!selectedFood) return
 
     const pantryItem: PantryItem = {
       id: isEditing ? existingItem.id : generateId(),
       food: selectedFood,
       quantity,
-      expirationDate: new Date(expirationDate),
+      quantityLeft,
+      originalSize,
+      currentSize,
+      expirationDate: expirationDate ? new Date(expirationDate) : null,
       addedDate: isEditing ? existingItem.addedDate : new Date(),
-      status: calculateItemStatus(new Date(expirationDate)),
+      status: calculateItemStatus(expirationDate ? new Date(expirationDate) : null),
     }
 
     if (isEditing) {
@@ -63,7 +69,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     navigate('/pantry')
   }
 
-  const isSaveDisabled = !selectedFood || !expirationDate || quantity <= 0
+  const isSaveDisabled = !selectedFood || quantity <= 0 || quantityLeft > quantity || currentSize > originalSize
 
   return (
     <div className="pantry-store-page">
@@ -100,11 +106,62 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="Enter quantity"
           />
+          <small>Number of items purchased</small>
+        </div>
+
+        <div className="form-section">
+          <label htmlFor="quantity-left">
+            Quantity Left <span className="required">*</span>
+          </label>
+          <input
+            id="quantity-left"
+            type="number"
+            min="0"
+            max={quantity}
+            step="1"
+            value={quantityLeft}
+            onChange={(e) => setQuantityLeft(Number(e.target.value))}
+            placeholder="Enter quantity left"
+          />
+          <small>Number of items remaining</small>
+        </div>
+
+        <div className="form-section">
+          <label htmlFor="original-size">
+            Original Size <span className="required">*</span>
+          </label>
+          <input
+            id="original-size"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={originalSize}
+            onChange={(e) => setOriginalSize(Number(e.target.value))}
+            placeholder="Enter original size"
+          />
+          <small>Original size of each item (e.g., 16 oz box)</small>
+        </div>
+
+        <div className="form-section">
+          <label htmlFor="current-size">
+            Current Size <span className="required">*</span>
+          </label>
+          <input
+            id="current-size"
+            type="number"
+            min="0"
+            max={originalSize}
+            step="0.01"
+            value={currentSize}
+            onChange={(e) => setCurrentSize(Number(e.target.value))}
+            placeholder="Enter current size"
+          />
+          <small>Remaining size of each item (e.g., 8 oz left)</small>
         </div>
 
         <div className="form-section">
           <label htmlFor="expiration-date">
-            Expiration Date <span className="required">*</span>
+            Expiration Date
           </label>
           <input
             id="expiration-date"
@@ -118,6 +175,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
               Status: <strong>{calculateItemStatus(new Date(expirationDate))}</strong>
             </div>
           )}
+          <small>Optional - leave blank if no expiration date</small>
         </div>
 
         <div className="form-actions">

@@ -56,7 +56,16 @@ export default function Pantry() {
           break
         }
         case 'expirationDate': {
-          comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
+          // Handle null expiration dates - put them at the end
+          if (!a.expirationDate && !b.expirationDate) {
+            comparison = 0
+          } else if (!a.expirationDate) {
+            comparison = 1
+          } else if (!b.expirationDate) {
+            comparison = -1
+          } else {
+            comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
+          }
           break
         }
         case 'addedDate': {
@@ -99,7 +108,8 @@ export default function Pantry() {
     setSelectedItems(new Set())
   }
 
-  function formatDate(date: Date): string {
+  function formatDate(date: Date | null): string {
+    if (!date) return 'No expiration'
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -107,7 +117,7 @@ export default function Pantry() {
     })
   }
 
-  function getStatusLabel(status?: PantryItemStatus): string {
+  function getStatusLabel(status: PantryItemStatus): string {
     switch (status) {
       case 'expired':
         return 'Expired'
@@ -120,7 +130,7 @@ export default function Pantry() {
     }
   }
 
-  function getStatusClass(status?: PantryItemStatus): string {
+  function getStatusClass(status: PantryItemStatus): string {
     switch (status) {
       case 'expired':
         return 'status-expired'
@@ -246,6 +256,8 @@ export default function Pantry() {
                 </th>
                 <th>Food Item</th>
                 <th>Quantity</th>
+                <th>Qty Left</th>
+                <th>Size (Orig/Curr)</th>
                 <th>Expiration Date</th>
                 <th>Status</th>
                 <th>Added Date</th>
@@ -269,6 +281,8 @@ export default function Pantry() {
                     </Link>
                   </td>
                   <td>{item.quantity}</td>
+                  <td>{item.quantityLeft}</td>
+                  <td>{item.originalSize.toFixed(2)} / {item.currentSize.toFixed(2)}</td>
                   <td>{formatDate(item.expirationDate)}</td>
                   <td>
                     <span className={`status-badge ${getStatusClass(item.status)}`}>
