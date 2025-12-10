@@ -78,21 +78,24 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   return (
     <div className="pantry-store-page">
-      <div className="page-header">
-        <h1>{isEditing ? 'Edit Pantry Item' : 'Add Pantry Item'}</h1>
+      <div className="pantry-titlebar">
+        <span className="title">Pantry Item</span>
       </div>
 
-      <div className="form-container">
-        <div className="form-section">
-          <label htmlFor="food-select">
-            Food Item <span className="required">*</span>
-          </label>
-          <Autocomplete
-            value={foodName}
-            options={foods}
-            getOptionLabel={(food) => food.name}
-            renderOptionMeta={(food) => `${food.calories} cal`}
-            onChange={setFoodName}
+      <div className="pantry-content">
+        <h1>{isEditing ? 'Edit Pantry Item' : 'Add Pantry Item'}</h1>
+
+        <div className="form-container">
+          <div className="form-section">
+            <label htmlFor="food-select">
+              Food Item <span className="required">*</span>
+            </label>
+            <Autocomplete
+              value={foodName}
+              options={foods}
+              getOptionLabel={(food) => food.name}
+              renderOptionMeta={(food) => `${food.calories} cal`}
+              onChange={setFoodName}
             placeholder="Select a food item"
             inputAriaLabel="Food item"
           />
@@ -189,11 +192,12 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             disabled={isSaveDisabled}
             className="btn btn-primary"
           >
-            {isEditing ? 'Update Item' : 'Add Item'}
-          </button>
-          <button onClick={handleCancel} className="btn btn-secondary">
-            Cancel
-          </button>
+              {isEditing ? 'Update Item' : 'Add Item'}
+            </button>
+            <button onClick={handleCancel} className="btn btn-secondary">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>

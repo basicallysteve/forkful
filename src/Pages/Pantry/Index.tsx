@@ -148,170 +148,193 @@ export default function Pantry() {
   const goodCount = items.filter((item) => item.status === 'good').length
 
   return (
-    <div className="pantry-page">
-      <div className="page-header">
-        <h1>Pantry</h1>
-        <Link to="/pantry/new" className="btn btn-primary">
-          Add Item
-        </Link>
+    <div className="pantry-list">
+      <div className="pantry-titlebar">
+        <span className="title">Pantry</span>
       </div>
 
-      <div className="pantry-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Items</span>
-          <span className="stat-value">{items.length}</span>
+      <div className="pantry-content">
+        <div className="pantry-header">
+          <div>
+            <p className="pantry-label">Pantry Management</p>
+            <h1 className="pantry-name">Pantry</h1>
+          </div>
+          <div className="pantry-meta">
+            <Link to="/pantry/new" className="pill pill-primary">
+              Add Item
+            </Link>
+          </div>
         </div>
-        <div className="stat-card stat-good">
-          <span className="stat-label">Good</span>
-          <span className="stat-value">{goodCount}</span>
+
+        <div className="pantry-stats">
+          <div className="stat-card">
+            <span className="stat-label">Total Items</span>
+            <span className="stat-value">{items.length}</span>
+          </div>
+          <div className="stat-card stat-good">
+            <span className="stat-label">Good</span>
+            <span className="stat-value">{goodCount}</span>
+          </div>
+          <div className="stat-card stat-warning">
+            <span className="stat-label">Expiring Soon</span>
+            <span className="stat-value">{expiringSoonCount}</span>
+          </div>
+          <div className="stat-card stat-danger">
+            <span className="stat-label">Expired</span>
+            <span className="stat-value">{expiredCount}</span>
+          </div>
         </div>
-        <div className="stat-card stat-warning">
-          <span className="stat-label">Expiring Soon</span>
-          <span className="stat-value">{expiringSoonCount}</span>
-        </div>
-        <div className="stat-card stat-danger">
-          <span className="stat-label">Expired</span>
-          <span className="stat-value">{expiredCount}</span>
+
+        <div className="pantry-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-filters">
+              <div className="filter-group">
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Search pantry items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search pantry items"
+                />
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Status:</span>
+                <select
+                  className="filter-select"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All</option>
+                  <option value="good">Good</option>
+                  <option value="expiring-soon">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Sort by:</span>
+                <select
+                  className="filter-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  aria-label="Sort by"
+                >
+                  <option value="expirationDate">Expiration Date</option>
+                  <option value="name">Name</option>
+                  <option value="addedDate">Date Added</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+                className="sort-direction-button"
+                aria-label="Toggle sort direction"
+              >
+                {sortDirection === 'asc' ? '↑' : '↓'}
+              </button>
+            </div>
+
+            {selectedItems.size > 0 && (
+              <div className="toolbar-actions">
+                <button onClick={handleDeleteSelected} className="danger-button">
+                  Delete ({selectedItems.size})
+                </button>
+              </div>
+            )}
+          </div>
+
+          {selectedItems.size > 0 && (
+            <div className="bulk-actions-bar">
+              <span>{selectedItems.size} item(s) selected</span>
+            </div>
+          )}
+
+          {filteredAndSortedItems.length === 0 ? (
+            <div className="panel-content">
+              <div className="empty-state">
+                <p>No pantry items found.</p>
+                <Link to="/pantry/new" className="primary-button">
+                  Add your first item
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="panel-content">
+              <table className="pantry-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                        onChange={handleSelectAll}
+                        aria-label="Select all items"
+                      />
+                    </th>
+                    <th>Food Item</th>
+                    <th>Quantity</th>
+                    <th>Qty Left</th>
+                    <th>Size (Orig/Curr)</th>
+                    <th>Expiration Date</th>
+                    <th>Status</th>
+                    <th>Added Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedItems.map((item) => (
+                    <tr key={item.id} className={getStatusClass(item.status)}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.has(item.id)}
+                          onChange={() => handleSelectItem(item.id)}
+                          aria-label={`Select ${item.food.name}`}
+                        />
+                      </td>
+                      <td>
+                        <Link to={`/foods/${toSlug(item.food.name)}`}>
+                          {item.food.name}
+                        </Link>
+                      </td>
+                      <td>{item.quantity}</td>
+                      <td>{item.quantityLeft}</td>
+                      <td>{item.originalSize.toFixed(2)} / {item.currentSize.toFixed(2)}</td>
+                      <td>{formatDate(item.expirationDate)}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(item.status)}`}>
+                          {getStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td>{formatDate(item.addedDate)}</td>
+                      <td>
+                        <div className="item-actions">
+                          <Link
+                            to={`/pantry/${item.id}/edit`}
+                            className="btn-small btn-secondary"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="btn-small btn-danger"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
-
-      <div className="pantry-controls">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search pantry items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search pantry items"
-          />
-        </div>
-
-        <div className="filter-controls">
-          <label>
-            Status:
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              aria-label="Filter by status"
-            >
-              <option value="all">All</option>
-              <option value="good">Good</option>
-              <option value="expiring-soon">Expiring Soon</option>
-              <option value="expired">Expired</option>
-            </select>
-          </label>
-
-          <label>
-            Sort by:
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              aria-label="Sort by"
-            >
-              <option value="expirationDate">Expiration Date</option>
-              <option value="name">Name</option>
-              <option value="addedDate">Date Added</option>
-              <option value="status">Status</option>
-            </select>
-          </label>
-
-          <button
-            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-            className="btn btn-secondary"
-            aria-label="Toggle sort direction"
-          >
-            {sortDirection === 'asc' ? '↑' : '↓'}
-          </button>
-        </div>
-      </div>
-
-      {selectedItems.size > 0 && (
-        <div className="bulk-actions">
-          <span>{selectedItems.size} item(s) selected</span>
-          <button onClick={handleDeleteSelected} className="btn btn-danger">
-            Delete Selected
-          </button>
-        </div>
-      )}
-
-      {filteredAndSortedItems.length === 0 ? (
-        <div className="empty-state">
-          <p>No pantry items found.</p>
-          <Link to="/pantry/new" className="btn btn-primary">
-            Add your first item
-          </Link>
-        </div>
-      ) : (
-        <div className="pantry-table-wrapper">
-          <table className="pantry-table">
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
-                    onChange={handleSelectAll}
-                    aria-label="Select all items"
-                  />
-                </th>
-                <th>Food Item</th>
-                <th>Quantity</th>
-                <th>Qty Left</th>
-                <th>Size (Orig/Curr)</th>
-                <th>Expiration Date</th>
-                <th>Status</th>
-                <th>Added Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAndSortedItems.map((item) => (
-                <tr key={item.id} className={getStatusClass(item.status)}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.has(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
-                      aria-label={`Select ${item.food.name}`}
-                    />
-                  </td>
-                  <td>
-                    <Link to={`/foods/${toSlug(item.food.name)}`}>
-                      {item.food.name}
-                    </Link>
-                  </td>
-                  <td>{item.quantity}</td>
-                  <td>{item.quantityLeft}</td>
-                  <td>{item.originalSize.toFixed(2)} / {item.currentSize.toFixed(2)}</td>
-                  <td>{formatDate(item.expirationDate)}</td>
-                  <td>
-                    <span className={`status-badge ${getStatusClass(item.status)}`}>
-                      {getStatusLabel(item.status)}
-                    </span>
-                  </td>
-                  <td>{formatDate(item.addedDate)}</td>
-                  <td>
-                    <div className="item-actions">
-                      <Link
-                        to={`/pantry/${item.id}/edit`}
-                        className="btn btn-small btn-secondary"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="btn btn-small btn-danger"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   )
 }
