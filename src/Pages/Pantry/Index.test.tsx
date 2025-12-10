@@ -286,7 +286,7 @@ describe('Pantry List Page', () => {
       const checkbox = screen.getByLabelText('Select Chicken Breast')
       await user.click(checkbox)
 
-      const deleteButton = screen.getByRole('button', { name: /delete selected/i })
+      const deleteButton = screen.getByRole('button', { name: /delete \(1\)/i })
       await user.click(deleteButton)
 
       const storeItems = usePantryStore.getState().items
