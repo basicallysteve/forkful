@@ -19,6 +19,8 @@ const STATUS_ORDER: Record<PantryItemStatus, number> = {
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
   const deleteItem = usePantryStore((state) => state.deleteItem)
+  const freezeItem = usePantryStore((state) => state.freezeItem)
+  const unfreezeItem = usePantryStore((state) => state.unfreezeItem)
   const refreshItemStatuses = usePantryStore((state) => state.refreshItemStatuses)
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('expirationDate')
@@ -303,8 +305,14 @@ export default function Pantry() {
                       </td>
                       <td>{item.quantity}</td>
                       <td>{item.quantityLeft}</td>
-                      <td>{item.originalSize.toFixed(2)} / {item.currentSize.toFixed(2)}</td>
-                      <td>{formatDate(item.expirationDate)}</td>
+                      <td>{item.originalSize.size.toFixed(2)}{item.originalSize.unit} / {item.currentSize.size.toFixed(2)}{item.currentSize.unit}</td>
+                      <td>
+                        {item.frozenDate ? (
+                          <span className="status-badge status-frozen">Frozen</span>
+                        ) : (
+                          formatDate(item.expirationDate)
+                        )}
+                      </td>
                       <td>
                         <span className={`status-badge ${getStatusClass(item.status)}`}>
                           {getStatusLabel(item.status)}
@@ -313,6 +321,23 @@ export default function Pantry() {
                       <td>{formatDate(item.addedDate)}</td>
                       <td>
                         <div className="item-actions">
+                          {item.frozenDate ? (
+                            <button
+                              onClick={() => unfreezeItem(item.id)}
+                              className="btn-small btn-info"
+                              title="Unfreeze item"
+                            >
+                              Unfreeze
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => freezeItem(item.id)}
+                              className="btn-small btn-info"
+                              title="Freeze item"
+                            >
+                              Freeze
+                            </button>
+                          )}
                           <Link
                             to={`/pantry/${item.id}/edit`}
                             className="btn-small btn-secondary"

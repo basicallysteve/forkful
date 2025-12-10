@@ -431,6 +431,12 @@
       color: #ff6b6b;
       border-color: var(--vscode-danger);
     }
+
+    &.status-frozen {
+      background: rgba(23, 162, 184, 0.15);
+      color: #17a2b8;
+      border-color: #17a2b8;
+    }
   }
 
   .item-actions {
@@ -464,6 +470,16 @@
 
         &:hover {
           background: var(--vscode-danger);
+        }
+      }
+
+      &.btn-info {
+        background: rgba(23, 162, 184, 0.2);
+        color: #17a2b8;
+        border-color: #17a2b8;
+
+        &:hover {
+          background: rgba(23, 162, 184, 0.4);
         }
       }
     }
@@ -595,6 +611,7 @@
       color: var(--vscode-text);
       font-size: 13px;
       font-family: inherit;
+      box-sizing: border-box;
       transition: border-color 120ms ease, box-shadow 120ms ease;
 
       &::placeholder {
@@ -611,6 +628,19 @@
         background: rgba(255, 255, 255, 0.02);
         cursor: not-allowed;
         opacity: 0.5;
+      }
+    }
+
+    .size-input-group {
+      display: flex;
+      gap: 8px;
+
+      .size-number {
+        flex: 2;
+      }
+
+      .size-unit {
+        flex: 1;
       }
     }
 

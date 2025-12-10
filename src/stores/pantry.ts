@@ -7,9 +7,12 @@ type PantryStore = {
   addItem: (item: PantryItem) => void
   updateItem: (updatedItem: PantryItem) => void
   deleteItem: (id: number) => void
+  freezeItem: (id: number) => void
+  unfreezeItem: (id: number) => void
   getItemById: (id: number) => PantryItem | undefined
   getItemsByStatus: (status: PantryItemStatus) => PantryItem[]
   getItemsByFood: (foodId: number) => PantryItem[]
+  getFrozenItems: () => PantryItem[]
   calculateItemStatus: (expirationDate: Date | null) => PantryItemStatus
   refreshItemStatuses: () => void
 }
@@ -68,6 +71,16 @@ export const usePantryStore = create<PantryStore>((set, get) => ({
   deleteItem: (id: number) => set(state => ({
     items: state.items.filter(item => item.id !== id)
   })),
+  freezeItem: (id: number) => set(state => ({
+    items: state.items.map(item =>
+      item.id === id ? { ...item, frozenDate: new Date() } : item
+    )
+  })),
+  unfreezeItem: (id: number) => set(state => ({
+    items: state.items.map(item =>
+      item.id === id ? { ...item, frozenDate: null } : item
+    )
+  })),
   getItemById: (id: number) => {
     return get().items.find(item => item.id === id)
   },
@@ -76,6 +89,9 @@ export const usePantryStore = create<PantryStore>((set, get) => ({
   },
   getItemsByFood: (foodId: number) => {
     return get().items.filter(item => item.food.id === foodId)
+  },
+  getFrozenItems: () => {
+    return get().items.filter(item => item.frozenDate !== null)
   },
   calculateItemStatus: (expirationDate: Date | null) => {
     return calculateStatus(expirationDate)

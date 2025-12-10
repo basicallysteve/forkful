@@ -58,11 +58,12 @@ function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: F
   return {
     quantity: 1,
     quantityLeft: 1,
-    originalSize: 1,
-    currentSize: 1,
+    originalSize: { size: 1, unit: 'oz' },
+    currentSize: { size: 1, unit: 'oz' },
     expirationDate: new Date(),
     addedDate: new Date(),
     status: 'good',
+    frozenDate: null,
     ...overrides,
   }
 }
