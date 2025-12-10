@@ -1,6 +1,7 @@
 import RecipeIndex from "@/Pages/Recipe/Index"
 import RecipeStore from "@/Pages/Recipe/Store"
 import RecipesList from "@/Pages/Recipes/Index"
+import CreateAccount from "@/Pages/CreateAccount/CreateAccount"
 import FoodsList from "@/Pages/Foods/Index"
 import FoodStore from "@/Pages/Food/Store"
 import FoodIndex from "@/Pages/Food/Index"
@@ -53,6 +54,10 @@ function App() {
           action: () => { console.log('Preferences clicked') },
         }
       ]
+    },
+    {
+      label: 'Sign Up',
+      to: '/create-account',
     }
   ]
 
@@ -62,6 +67,7 @@ function App() {
       <ToolBar menuOptions={menuOptions} />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/recipes" element={<RecipesList />} />
         <Route path="/recipes/new" element={<RecipeStore />} />
         <Route path="/foods" element={<FoodsList />} />
