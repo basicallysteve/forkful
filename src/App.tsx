@@ -2,22 +2,22 @@ import RecipeIndex from "@/Pages/Recipe/Index"
 import RecipeStore from "@/Pages/Recipe/Store"
 import RecipesList from "@/Pages/Recipes/Index"
 import CreateAccount from "@/Pages/CreateAccount/CreateAccount"
+import FoodsList from "@/Pages/Foods/Index"
+import FoodStore from "@/Pages/Food/Store"
+import FoodIndex from "@/Pages/Food/Index"
 import ToolBar from "@/components/ToolBar"
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Home from "@/Pages/Home"
-import { useContext } from 'react'
-import GlobalRecipeContext, { type RecipeContextType } from '@/providers/RecipeProvider'
+import { useRecipeStore } from '@/stores/recipes'
+import { useFoodStore } from '@/stores/food'
 import type { Recipe } from '@/types/Recipe'
+import type { Food } from '@/types/Food'
+import { toSlug } from '@/utils/slug'
 
 function App() {
-  const recipeContext: RecipeContextType | undefined = useContext(GlobalRecipeContext)
-  
-  if (!recipeContext) {
-    throw new Error('RecipeProvider is missing')
-  }
-
-  const { recipes } = recipeContext
+  const recipes = useRecipeStore((state) => state.recipes)
+  const foods = useFoodStore((state) => state.foods)
 
   const menuOptions = [
     {
@@ -28,9 +28,17 @@ function App() {
           { label: 'Add New Recipe', action: () => { console.log('Add New Recipe clicked') }, to: '/recipes/new' },
           ...recipes.map((recipe: Recipe) => ({
             label: recipe.name,
-            to: `/recipes/${recipe.id}`,
+            to: `/recipes/${toSlug(recipe.name)}`,
             action: () => { console.log(`Recipe clicked: ${recipe.name}`) },
         }))
+    ]
+    },
+    {
+      label: 'Foods',
+      action: () => { console.log('Foods clicked') },
+      children: [
+          { label: 'Browse All Foods', action: () => { console.log('Browse All Foods clicked') }, to: '/foods' },
+          { label: 'Add New Food', action: () => { console.log('Add New Food clicked') }, to: '/foods/new' },
     ]
     },
     {
@@ -62,9 +70,21 @@ function App() {
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/recipes" element={<RecipesList />} />
         <Route path="/recipes/new" element={<RecipeStore />} />
-       { 
+        <Route path="/foods" element={<FoodsList />} />
+        <Route path="/foods/new" element={<FoodStore />} />
+        { 
           recipes.map((recipe: Recipe) => (
-            <Route key={recipe.id} path={`/recipes/${recipe.id}`} element={<RecipeIndex recipe={recipe} />} />
+            <Route key={recipe.id} path={`/recipes/${toSlug(recipe.name)}`} element={<RecipeIndex recipe={recipe} />} />
+          ))
+        }
+        {
+          foods.map((food: Food) => (
+            <Route key={food.id} path={`/foods/${toSlug(food.name)}`} element={<FoodIndex food={food} />} />
+          ))
+        }
+        {
+          foods.map((food: Food) => (
+            <Route key={`${food.id}-edit`} path={`/foods/${toSlug(food.name)}/edit`} element={<FoodStore existingFood={food} />} />
           ))
         }
       </Routes>
