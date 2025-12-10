@@ -85,8 +85,10 @@ describe('Pantry Store Page', () => {
       expect(screen.getByLabelText(/food item/i)).toBeInTheDocument()
       expect(screen.getByRole("spinbutton", { name: /Quantity \*/ })).toBeInTheDocument()
       expect(screen.getByLabelText(/quantity left/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/original size/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/current size/i)).toBeInTheDocument()
+      expect(screen.getByRole("spinbutton", { name: /original size/i })).toBeInTheDocument()
+      expect(screen.getByRole("combobox", { name: /original size unit/i })).toBeInTheDocument()
+      expect(screen.getByRole("spinbutton", { name: /current size/i })).toBeInTheDocument()
+      expect(screen.getByRole("combobox", { name: /current size unit/i })).toBeInTheDocument()
       expect(screen.getByLabelText(/expiration date/i)).toBeInTheDocument()
     })
 

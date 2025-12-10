@@ -5,6 +5,7 @@ import { useFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
+import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
 import './pantry.scss'
 
 interface PantryStoreProps {
@@ -24,8 +25,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [quantityLeft, setQuantityLeft] = useState<number>(existingItem?.quantityLeft || existingItem?.quantity || 1)
   const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
   const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
-  const [currentSize, setCurrentSize] = useState<number|null>(existingItem?.currentSize.size || existingItem?.originalSize.size || null)
-  const [currentUnit, setCurrentUnit] = useState<string|null>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || null)
+  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
+  const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
       ? formatDateForInput(existingItem.expirationDate)
@@ -37,6 +38,15 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   // Derive selected food from foodName
   const selectedFood = foods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
+  // Handle unit changes to keep units compatible
+  function handleOriginalUnitChange(newUnit: string) {
+    setOriginalUnit(newUnit)
+  }
+
+  function handleCurrentUnitChange(newUnit: string) {
+    setCurrentUnit(newUnit)
+  }
+
   // Generate a new ID for pantry items
   function generateId(): number {
     if (items.length === 0) return 1
@@ -46,10 +56,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   function handleSave() {
     if (!selectedFood) return
 
-    if(currentSize == null || currentUnit == null) {
-      setCurrentSize(originalSize)
-      setCurrentUnit(originalUnit)
-    }
     const pantryItem: PantryItem = {
       id: isEditing ? existingItem.id : generateId(),
       food: selectedFood,
@@ -80,8 +86,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const hasSelectedFood = !!selectedFood
   const hasValidQuantity = quantity > 0
   const quantityLeftValid = quantityLeft <= quantity
-  // Only validate size if both have the same unit
-  const sizeValid = originalUnit === currentUnit ? currentSize <= originalSize : true
+  // Validate size based on unit compatibility
+  const sizeValid = canConvert(currentUnit, originalUnit) 
+    ? currentSize <= originalSize 
+    : true // If units aren't convertible, skip size validation
   const isSaveDisabled = !hasSelectedFood || !hasValidQuantity || !quantityLeftValid || !sizeValid
 
   return (
@@ -157,42 +165,84 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
               placeholder="Enter size"
               className="size-number"
             />
-            <input
+            <select
               id="original-unit"
-              type="text"
               value={originalUnit}
-              onChange={(e) => setOriginalUnit(e.target.value)}
-              placeholder="Unit"
+              onChange={(e) => handleOriginalUnitChange(e.target.value)}
               className="size-unit"
-            />
+              aria-label="Original size unit"
+            >
+              <optgroup label="Mass">
+                {MASS_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Volume">
+                {VOLUME_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Custom">
+                {CUSTOM_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </div>
           <small>Original size of each item (e.g., 16 oz box)</small>
         </div>
 
         <div className="form-section">
           <label htmlFor="current-size">
-            Current Size
+            Current Size <span className="required">*</span>
           </label>
           <div className="size-input-group">
             <input
               id="current-size"
               type="number"
               min="0"
-              max={originalUnit === currentUnit ? originalSize : undefined}
+              max={canConvert(currentUnit, originalUnit) ? originalSize : undefined}
               step="0.01"
               value={currentSize}
               onChange={(e) => setCurrentSize(Number(e.target.value))}
               placeholder="Enter size"
               className="size-number"
             />
-            <input
+            <select
               id="current-unit"
-              type="text"
               value={currentUnit}
-              onChange={(e) => setCurrentUnit(e.target.value)}
-              placeholder="Unit"
+              onChange={(e) => handleCurrentUnitChange(e.target.value)}
               className="size-unit"
-            />
+              aria-label="Current size unit"
+            >
+              <optgroup label="Mass">
+                {MASS_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Volume">
+                {VOLUME_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Custom">
+                {CUSTOM_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </div>
           <small>Remaining size of each item (e.g., 8 oz left)</small>
         </div>
