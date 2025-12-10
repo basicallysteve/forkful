@@ -305,7 +305,7 @@ export default function Pantry() {
                       </td>
                       <td>{item.quantity}</td>
                       <td>{item.quantityLeft}</td>
-                      <td>{item.originalSize.size.toFixed(2)}{item.originalSize.unit} / {item.currentSize.size.toFixed(2)}{item.currentSize.unit}</td>
+                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
                       <td>
                         {item.frozenDate ? (
                           <span className="status-badge status-frozen">Frozen</span>
