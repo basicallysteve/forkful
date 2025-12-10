@@ -54,7 +54,7 @@ function renderWithProviders(
 }
 
 // Helper to create valid pantry items with all required fields
-function createPantryItem(overrides: Partial<PantryItem> & createPantryItem({id: number; food: Food }): PantryItem {
+function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
     quantity: 1,
     quantityLeft: 1,
@@ -159,7 +159,9 @@ describe('Pantry List Page', () => {
       renderWithProviders(<PantryList />, { items })
 
       expect(screen.getByText('Chicken Breast')).toBeInTheDocument()
-      expect(screen.getByText('2')).toBeInTheDocument()
+      // Check table rows contain the data (getAllByText since quantity and quantityLeft both show "2")
+      const twos = screen.getAllByText('2')
+      expect(twos.length).toBeGreaterThanOrEqual(2) // At least quantity and quantityLeft
       // Check for the status badge specifically
       const statusBadge = document.querySelector('.status-badge.status-good')
       expect(statusBadge).toHaveTextContent('Good')

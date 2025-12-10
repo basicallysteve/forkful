@@ -240,7 +240,7 @@ describe('Pantry Store Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)
 
-      const quantityInput = screen.getByRole('spinbutton', { name: /^quantity$/i })
+      const quantityInput = screen.getByRole('spinbutton', { name: /Quantity \*/i })
       await user.clear(quantityInput)
       await user.type(quantityInput, '0')
 
