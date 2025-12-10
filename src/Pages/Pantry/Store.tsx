@@ -69,7 +69,12 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     navigate('/pantry')
   }
 
-  const isSaveDisabled = !selectedFood || quantity <= 0 || quantityLeft > quantity || currentSize > originalSize
+  // Validation logic
+  const hasSelectedFood = !!selectedFood
+  const hasValidQuantity = quantity > 0
+  const quantityLeftValid = quantityLeft <= quantity
+  const sizeValid = currentSize <= originalSize
+  const isSaveDisabled = !hasSelectedFood || !hasValidQuantity || !quantityLeftValid || !sizeValid
 
   return (
     <div className="pantry-store-page">
