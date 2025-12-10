@@ -24,8 +24,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [quantityLeft, setQuantityLeft] = useState<number>(existingItem?.quantityLeft || existingItem?.quantity || 1)
   const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
   const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
-  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
-  const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
+  const [currentSize, setCurrentSize] = useState<number|null>(existingItem?.currentSize.size || existingItem?.originalSize.size || null)
+  const [currentUnit, setCurrentUnit] = useState<string|null>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || null)
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
       ? formatDateForInput(existingItem.expirationDate)
@@ -46,6 +46,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   function handleSave() {
     if (!selectedFood) return
 
+    if(currentSize == null || currentUnit == null) {
+      setCurrentSize(originalSize)
+      setCurrentUnit(originalUnit)
+    }
     const pantryItem: PantryItem = {
       id: isEditing ? existingItem.id : generateId(),
       food: selectedFood,
@@ -167,7 +171,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
         <div className="form-section">
           <label htmlFor="current-size">
-            Current Size <span className="required">*</span>
+            Current Size
           </label>
           <div className="size-input-group">
             <input
