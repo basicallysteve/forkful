@@ -22,8 +22,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
   const [quantity, setQuantity] = useState<number>(existingItem?.quantity || 1)
   const [quantityLeft, setQuantityLeft] = useState<number>(existingItem?.quantityLeft || existingItem?.quantity || 1)
-  const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize || 1)
-  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize || existingItem?.originalSize || 1)
+  const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
+  const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
+  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
+  const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate 
       ? formatDateForInput(existingItem.expirationDate)
@@ -49,11 +51,12 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
       food: selectedFood,
       quantity,
       quantityLeft,
-      originalSize,
-      currentSize,
+      originalSize: { size: originalSize, unit: originalUnit },
+      currentSize: { size: currentSize, unit: currentUnit },
       expirationDate: expirationDate ? new Date(expirationDate) : null,
       addedDate: isEditing ? existingItem.addedDate : new Date(),
       status: calculateItemStatus(expirationDate ? new Date(expirationDate) : null),
+      frozenDate: isEditing ? existingItem.frozenDate : null,
     }
 
     if (isEditing) {
@@ -73,7 +76,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const hasSelectedFood = !!selectedFood
   const hasValidQuantity = quantity > 0
   const quantityLeftValid = quantityLeft <= quantity
-  const sizeValid = currentSize <= originalSize
+  // Only validate size if both have the same unit
+  const sizeValid = originalUnit === currentUnit ? currentSize <= originalSize : true
   const isSaveDisabled = !hasSelectedFood || !hasValidQuantity || !quantityLeftValid || !sizeValid
 
   return (
@@ -138,15 +142,26 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
           <label htmlFor="original-size">
             Original Size <span className="required">*</span>
           </label>
-          <input
-            id="original-size"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={originalSize}
-            onChange={(e) => setOriginalSize(Number(e.target.value))}
-            placeholder="Enter original size"
-          />
+          <div className="size-input-group">
+            <input
+              id="original-size"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={originalSize}
+              onChange={(e) => setOriginalSize(Number(e.target.value))}
+              placeholder="Enter size"
+              className="size-number"
+            />
+            <input
+              id="original-unit"
+              type="text"
+              value={originalUnit}
+              onChange={(e) => setOriginalUnit(e.target.value)}
+              placeholder="Unit"
+              className="size-unit"
+            />
+          </div>
           <small>Original size of each item (e.g., 16 oz box)</small>
         </div>
 
@@ -154,16 +169,27 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
           <label htmlFor="current-size">
             Current Size <span className="required">*</span>
           </label>
-          <input
-            id="current-size"
-            type="number"
-            min="0"
-            max={originalSize}
-            step="0.01"
-            value={currentSize}
-            onChange={(e) => setCurrentSize(Number(e.target.value))}
-            placeholder="Enter current size"
-          />
+          <div className="size-input-group">
+            <input
+              id="current-size"
+              type="number"
+              min="0"
+              max={originalUnit === currentUnit ? originalSize : undefined}
+              step="0.01"
+              value={currentSize}
+              onChange={(e) => setCurrentSize(Number(e.target.value))}
+              placeholder="Enter size"
+              className="size-number"
+            />
+            <input
+              id="current-unit"
+              type="text"
+              value={currentUnit}
+              onChange={(e) => setCurrentUnit(e.target.value)}
+              placeholder="Unit"
+              className="size-unit"
+            />
+          </div>
           <small>Remaining size of each item (e.g., 8 oz left)</small>
         </div>
 
