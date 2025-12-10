@@ -327,7 +327,7 @@ export default function Pantry() {
                               className="btn-small btn-info"
                               title="Unfreeze item"
                             >
-                              Unfreeze
+                              Thaw
                             </button>
                           ) : (
                             <button
