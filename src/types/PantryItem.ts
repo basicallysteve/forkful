@@ -19,4 +19,5 @@ export type PantryItem = {
   currentSize: ServingSize
   addedDate: Date
   status: PantryItemStatus
+  frozenDate: Date | null
 }
