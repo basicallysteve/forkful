@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Depends
 from datetime import datetime, timedelta
 from app.config.settings import settings
-import pyjwt as jwt
+import jwt
 import bcrypt
 
 users_db = {

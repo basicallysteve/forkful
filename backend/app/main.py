@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Annotated
 from app.database import engine, Base
 from app.models.user import User
-from app.core.security import authenticate_user, create_access_token
+from app.core.security import authenticate_user, create_access_token, decode_access_token
 
 # from app.routers import auth
 app = FastAPI()
@@ -46,6 +46,5 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         return HTTPException(status_code=400, detail="Incorrect username or password")
-    access_token = create_access_token(data={"sub": user["username"]})
-    
+    access_token = create_access_token(data={"sub": user["email"]})
     return {"access_token": access_token, "token_type": "bearer"}
