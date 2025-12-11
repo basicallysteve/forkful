@@ -5,9 +5,9 @@ import jwt
 import bcrypt
 
 users_db = {
-    "john@example.com": {
+    "john@email.com": {
         "user_id": 1,
-        "username": "john",
+        "username": "john@email.com",
         "email": "john@email.com",
         "password": "$2b$12$i7KQpT5uMIOJ6UzUJuXt9eDFb.ACRGz8TaC9PgPGD07UH57oY02Ma"  # hashed version of "secret"
     }
@@ -41,10 +41,11 @@ def create_access_token(data: dict):
 def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ENCODING_ALGORITHM])
+        print("Decoded payload:", payload.get("sub"))       
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
-        return username
+        return users_db.get(username)
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
