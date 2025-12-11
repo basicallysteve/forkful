@@ -56,8 +56,8 @@ function renderWithProviders(
 // Helper to create valid pantry items with all required fields
 function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
-    quantity: 1,
-    quantityLeft: 1,
+    id: overrides.id,
+    food: overrides.food,
     originalSize: { size: 1, unit: 'oz' },
     currentSize: { size: 1, unit: 'oz' },
     expirationDate: new Date(),
@@ -154,16 +154,21 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 2, quantityLeft: 2, status: 'good'}),
+        createPantryItem({
+          id: 1,
+          food: mockFoods[0],
+          expirationDate: futureDate,
+          originalSize: { size: 2, unit: 'lb' },
+          currentSize: { size: 1.5, unit: 'lb' },
+          status: 'good'
+        }),
       ]
 
       renderWithProviders(<PantryList />, { items })
 
       expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
-      // Check table rows contain the data (getAllByText since quantity and quantityLeft both show "2")
-      const twos = screen.getAllByText('2')
-      expect(twos.length).toBeGreaterThanOrEqual(2) // At least quantity and quantityLeft
-      // Check for the status badge specifically
+      const sizeDisplays = screen.getAllByText(/2\.00 lb \/ 1\.50 lb/)
+      expect(sizeDisplays.length).toBeGreaterThan(0)
       const statusBadge = document.querySelector('.status-badge.status-good')
       expect(statusBadge).toHaveTextContent('Good')
     })
@@ -173,7 +178,7 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 2, quantityLeft: 2, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -190,8 +195,8 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
+        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -212,8 +217,8 @@ describe('Pantry List Page', () => {
       goodDate.setDate(goodDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: expiredDate, quantity: 1, quantityLeft: 1, status: 'expired'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: goodDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired'}),
+        createPantryItem({id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -238,8 +243,8 @@ describe('Pantry List Page', () => {
       date2.setDate(date2.getDate() + 20)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[1], expirationDate: date2, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[0], expirationDate: date1, quantity: 1, quantityLeft: 1, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[1], expirationDate: date2, status: 'good'}),
+        createPantryItem({id: 2, food: mockFoods[0], expirationDate: date1, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -261,8 +266,8 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
+        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })
@@ -279,7 +284,7 @@ describe('Pantry List Page', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, quantity: 1, quantityLeft: 1, status: 'good'}),
+        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
       ]
 
       renderWithProviders(<PantryList />, { items })

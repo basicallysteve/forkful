@@ -279,8 +279,6 @@ export default function Pantry() {
                       />
                     </th>
                     <th>Food Item</th>
-                    <th>Quantity</th>
-                    <th>Qty Left</th>
                     <th>Size (Orig/Curr)</th>
                     <th>Expiration Date</th>
                     <th>Status</th>
@@ -304,8 +302,6 @@ export default function Pantry() {
                           {item.food.name}
                         </Link>
                       </td>
-                      <td>{item.quantity}</td>
-                      <td>{item.quantityLeft}</td>
                       <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
                       <td>
                         {item.frozenDate ? (
@@ -405,13 +401,9 @@ export default function Pantry() {
                       
                       <div className="card-details">
                         <div className="detail-row">
-                          <span className="detail-label">Quantity:</span>
-                          <span className="detail-value">{item.quantityLeft} / {item.quantity}</span>
-                        </div>
-                        <div className="detail-row">
                           <span className="detail-label">Size:</span>
                           <span className="detail-value">
-                            {item.currentSize.size.toFixed(2)} {item.currentSize.unit} / {item.originalSize.size.toFixed(2)} {item.originalSize.unit}
+                            {item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}
                           </span>
                         </div>
                         <div className="detail-row">

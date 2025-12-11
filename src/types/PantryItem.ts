@@ -13,8 +13,6 @@ export type PantryItem = {
   id: number
   food: Food
   expirationDate: Date | null
-  quantity: number
-  quantityLeft: number
   originalSize: ServingSize
   currentSize: ServingSize
   addedDate: Date

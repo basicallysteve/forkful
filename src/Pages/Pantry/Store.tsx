@@ -21,8 +21,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const calculateItemStatus = usePantryStore((state) => state.calculateItemStatus)
 
   const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
-  const [quantity, setQuantity] = useState<number>(existingItem?.quantity || 1)
-  const [quantityLeft, setQuantityLeft] = useState<number>(existingItem?.quantityLeft || existingItem?.quantity || 1)
   const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
   const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
   const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
@@ -59,8 +57,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     const pantryItem: PantryItem = {
       id: isEditing ? existingItem.id : generateId(),
       food: selectedFood,
-      quantity,
-      quantityLeft,
       originalSize: { size: originalSize, unit: originalUnit },
       currentSize: { size: currentSize, unit: currentUnit },
       expirationDate: expirationDate ? new Date(expirationDate) : null,
@@ -84,13 +80,13 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   // Validation logic
   const hasSelectedFood = !!selectedFood
-  const hasValidQuantity = quantity > 0
-  const quantityLeftValid = quantityLeft <= quantity
+  const hasValidOriginalSize = originalSize > 0
+  const hasValidCurrentSize = currentSize >= 0
   // Validate size based on unit compatibility
-  const sizeValid = canConvert(currentUnit, originalUnit) 
-    ? currentSize <= originalSize 
+  const sizeValid = canConvert(currentUnit, originalUnit)
+    ? currentSize <= originalSize
     : true // If units aren't convertible, skip size validation
-  const isSaveDisabled = !hasSelectedFood || !hasValidQuantity || !quantityLeftValid || !sizeValid
+  const isSaveDisabled = !hasSelectedFood || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
 
   return (
     <div className="pantry-store-page">
@@ -112,43 +108,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
               getOptionLabel={(food) => food.name}
               renderOptionMeta={(food) => `${food.calories} cal`}
               onChange={setFoodName}
-            placeholder="Select a food item"
-            inputAriaLabel="Food item"
-          />
-        </div>
-
-        <div className="form-section">
-          <label htmlFor="quantity">
-            Quantity <span className="required">*</span>
-          </label>
-          <input
-            id="quantity"
-            type="number"
-            min="1"
-            step="1"
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            placeholder="Enter quantity"
-          />
-          <small>Number of items purchased</small>
-        </div>
-
-        <div className="form-section">
-          <label htmlFor="quantity-left">
-            Quantity Left <span className="required">*</span>
-          </label>
-          <input
-            id="quantity-left"
-            type="number"
-            min="0"
-            max={quantity}
-            step="1"
-            value={quantityLeft}
-            onChange={(e) => setQuantityLeft(Number(e.target.value))}
-            placeholder="Enter quantity left"
-          />
-          <small>Number of items remaining</small>
-        </div>
+              placeholder="Select a food item"
+              inputAriaLabel="Food item"
+            />
+          </div>
 
         <div className="form-section">
           <label htmlFor="original-size">

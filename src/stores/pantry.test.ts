@@ -29,6 +29,18 @@ const mockFood2: Food = {
   measurements: ['cup', 'g'],
 }
 
+const createPantryItem = (overrides: Partial<PantryItem> = {}): PantryItem => ({
+  id: 1,
+  food: mockFood1,
+  expirationDate: new Date('2025-12-20'),
+  originalSize: { size: 2, unit: 'lb' },
+  currentSize: { size: 1, unit: 'lb' },
+  addedDate: new Date('2025-12-10'),
+  status: 'good',
+  frozenDate: null,
+  ...overrides,
+})
+
 describe('Pantry Store', () => {
   beforeEach(() => {
     resetPantryStore()
@@ -43,33 +55,23 @@ describe('Pantry Store', () => {
 
   describe('addItem', () => {
     it('should add a new item to the pantry', () => {
-      const newItem: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-20'),
-        quantity: 2,
-        addedDate: new Date('2025-12-10'),
-      }
+      const newItem = createPantryItem()
 
       usePantryStore.getState().addItem(newItem)
       const { items } = usePantryStore.getState()
 
       expect(items).toHaveLength(1)
       expect(items[0].food.id).toBe(1)
-      expect(items[0].quantity).toBe(2)
+      expect(items[0].originalSize.size).toBe(2)
     })
 
     it('should calculate and set status when adding item', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30) // 30 days from now
 
-      const newItem: PantryItem = {
-        id: 1,
-        food: mockFood1,
+      const newItem = createPantryItem({
         expirationDate: futureDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
+      })
 
       usePantryStore.getState().addItem(newItem)
       const { items } = usePantryStore.getState()
@@ -81,13 +83,9 @@ describe('Pantry Store', () => {
       const soonDate = new Date()
       soonDate.setDate(soonDate.getDate() + 5) // 5 days from now
 
-      const newItem: PantryItem = {
-        id: 1,
-        food: mockFood1,
+      const newItem = createPantryItem({
         expirationDate: soonDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
+      })
 
       usePantryStore.getState().addItem(newItem)
       const { items } = usePantryStore.getState()
@@ -99,13 +97,9 @@ describe('Pantry Store', () => {
       const pastDate = new Date()
       pastDate.setDate(pastDate.getDate() - 5) // 5 days ago
 
-      const newItem: PantryItem = {
-        id: 1,
-        food: mockFood1,
+      const newItem = createPantryItem({
         expirationDate: pastDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
+      })
 
       usePantryStore.getState().addItem(newItem)
       const { items } = usePantryStore.getState()
@@ -116,38 +110,26 @@ describe('Pantry Store', () => {
 
   describe('updateItem', () => {
     it('should update an existing item', () => {
-      const item: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-20'),
-        quantity: 2,
-        addedDate: new Date('2025-12-10'),
-      }
+      const item = createPantryItem()
 
       usePantryStore.getState().addItem(item)
 
       const updatedItem: PantryItem = {
         ...item,
-        quantity: 5,
+        currentSize: { size: 0.5, unit: item.currentSize.unit },
       }
 
       usePantryStore.getState().updateItem(updatedItem)
       const { items } = usePantryStore.getState()
 
-      expect(items[0].quantity).toBe(5)
+      expect(items[0].currentSize.size).toBe(0.5)
     })
 
     it('should recalculate status when updating expiration date', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const item: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: futureDate,
-        quantity: 2,
-        addedDate: new Date(),
-      }
+      const item = createPantryItem({ expirationDate: futureDate })
 
       usePantryStore.getState().addItem(item)
 
@@ -168,21 +150,8 @@ describe('Pantry Store', () => {
 
   describe('deleteItem', () => {
     it('should remove an item from the pantry', () => {
-      const item1: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-20'),
-        quantity: 2,
-        addedDate: new Date('2025-12-10'),
-      }
-
-      const item2: PantryItem = {
-        id: 2,
-        food: mockFood2,
-        expirationDate: new Date('2025-12-25'),
-        quantity: 3,
-        addedDate: new Date('2025-12-10'),
-      }
+      const item1 = createPantryItem({ id: 1, food: mockFood1 })
+      const item2 = createPantryItem({ id: 2, food: mockFood2 })
 
       usePantryStore.getState().addItem(item1)
       usePantryStore.getState().addItem(item2)
@@ -197,13 +166,7 @@ describe('Pantry Store', () => {
 
   describe('getItemById', () => {
     it('should retrieve an item by id', () => {
-      const item: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-20'),
-        quantity: 2,
-        addedDate: new Date('2025-12-10'),
-      }
+      const item = createPantryItem({ id: 1 })
 
       usePantryStore.getState().addItem(item)
       const retrievedItem = usePantryStore.getState().getItemById(1)
@@ -229,29 +192,9 @@ describe('Pantry Store', () => {
       const goodDate = new Date()
       goodDate.setDate(goodDate.getDate() + 30)
 
-      const item1: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: expiredDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
-
-      const item2: PantryItem = {
-        id: 2,
-        food: mockFood2,
-        expirationDate: soonDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
-
-      const item3: PantryItem = {
-        id: 3,
-        food: mockFood1,
-        expirationDate: goodDate,
-        quantity: 1,
-        addedDate: new Date(),
-      }
+      const item1 = createPantryItem({ id: 1, food: mockFood1, expirationDate: expiredDate })
+      const item2 = createPantryItem({ id: 2, food: mockFood2, expirationDate: soonDate })
+      const item3 = createPantryItem({ id: 3, food: mockFood1, expirationDate: goodDate })
 
       usePantryStore.getState().addItem(item1)
       usePantryStore.getState().addItem(item2)
@@ -279,29 +222,9 @@ describe('Pantry Store', () => {
 
   describe('getItemsByFood', () => {
     it('should filter items by food id', () => {
-      const item1: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-20'),
-        quantity: 1,
-        addedDate: new Date(),
-      }
-
-      const item2: PantryItem = {
-        id: 2,
-        food: mockFood2,
-        expirationDate: new Date('2025-12-25'),
-        quantity: 1,
-        addedDate: new Date(),
-      }
-
-      const item3: PantryItem = {
-        id: 3,
-        food: mockFood1,
-        expirationDate: new Date('2025-12-30'),
-        quantity: 2,
-        addedDate: new Date(),
-      }
+      const item1 = createPantryItem({ id: 1, food: mockFood1, expirationDate: new Date('2025-12-20') })
+      const item2 = createPantryItem({ id: 2, food: mockFood2, expirationDate: new Date('2025-12-25') })
+      const item3 = createPantryItem({ id: 3, food: mockFood1, expirationDate: new Date('2025-12-30') })
 
       usePantryStore.getState().addItem(item1)
       usePantryStore.getState().addItem(item2)
@@ -329,13 +252,7 @@ describe('Pantry Store', () => {
       const date = new Date()
       date.setDate(date.getDate() + 5) // Will be expiring-soon
 
-      const item: PantryItem = {
-        id: 1,
-        food: mockFood1,
-        expirationDate: date,
-        quantity: 1,
-        addedDate: new Date(),
-      }
+      const item = createPantryItem({ expirationDate: date })
 
       usePantryStore.getState().addItem(item)
       let { items } = usePantryStore.getState()
@@ -356,20 +273,8 @@ describe('Pantry Store', () => {
       futureDate.setDate(futureDate.getDate() + 30)
 
       const items: PantryItem[] = [
-        {
-          id: 1,
-          food: mockFood1,
-          expirationDate: futureDate,
-          quantity: 1,
-          addedDate: new Date(),
-        },
-        {
-          id: 2,
-          food: mockFood2,
-          expirationDate: futureDate,
-          quantity: 2,
-          addedDate: new Date(),
-        },
+        createPantryItem({ id: 1, food: mockFood1, expirationDate: futureDate }),
+        createPantryItem({ id: 2, food: mockFood2, expirationDate: futureDate }),
       ]
 
       usePantryStore.getState().setItems(items)
