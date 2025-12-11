@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "bcc4452cd4ecfa05576f23edc97fd93cc6732753079467986d9a49ee6a2a2e42"
+            "sha256": "f54a16ad563d44091f105612ac19b7d5a2ce316f91e671ad04479e299d2209d1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -164,11 +164,11 @@
                 "standard"
             ],
             "hashes": [
-                "sha256:54bbb660ca231d3985474498b51c621ddcf8888d9a4c1ecb10aa40ec217e4965",
-                "sha256:a9c708e47c0fa424139cddb8601d0f92d3111b77843c22e9c8d0164d65fe3c97"
+                "sha256:6314385777a507bb19b34bd064829fddaea0eea54436deb632b5de587554055c",
+                "sha256:72e188f01f360e2f59da51c8822cbe4bca210c35daaae6321b1b724109101c00"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==0.123.5"
+            "version": "==0.124.2"
         },
         "fastapi-cli": {
             "extras": [
@@ -188,6 +188,15 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==0.5.2"
+        },
+        "fastapi-sessions": {
+            "hashes": [
+                "sha256:5159023fd548f8a9c198a966cf1086a73a43038cf3b9b79175fe33129f15e64c",
+                "sha256:b7f5642224b8f03661428e9fb45c9d96c4e61a9cdf963c9ba36ce8428629b0bc"
+            ],
+            "index": "pypi",
+            "markers": "python_full_version >= '3.6.1' and python_version < '4.0'",
+            "version": "==0.3.2"
         },
         "fastar": {
             "hashes": [
@@ -429,6 +438,14 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==3.11"
+        },
+        "itsdangerous": {
+            "hashes": [
+                "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef",
+                "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173"
+            ],
+            "markers": "python_version >= '3.8'",
+            "version": "==2.2.0"
         },
         "jinja2": {
             "hashes": [
@@ -785,6 +802,15 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==2.19.2"
+        },
+        "pyjwt": {
+            "hashes": [
+                "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953",
+                "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.9'",
+            "version": "==2.10.1"
         },
         "python-dotenv": {
             "hashes": [
