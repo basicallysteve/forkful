@@ -29,10 +29,11 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
   const displayRecipe = editMode ? editedRecipe : recipe
 
-  // Calculate recipe readiness
+  // Calculate recipe readiness - only when not in edit mode
   const readiness = useMemo(() => {
-    return calculateRecipeReadiness(displayRecipe, pantryItems)
-  }, [displayRecipe, pantryItems])
+    if (editMode) return null
+    return calculateRecipeReadiness(recipe, pantryItems)
+  }, [recipe, pantryItems, editMode])
 
   let publishedText = "Unpublished"
   let isPublished = false

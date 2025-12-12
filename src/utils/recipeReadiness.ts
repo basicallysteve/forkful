@@ -67,7 +67,7 @@ export function calculateIngredientAvailability(
   }
 
   const isSufficient = totalAvailable >= needed
-  const shortage = isSufficient ? 0 : needed - totalAvailable
+  const shortage = Math.max(0, needed - totalAvailable)
 
   return {
     ingredient,
