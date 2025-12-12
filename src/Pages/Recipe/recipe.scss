@@ -569,4 +569,59 @@
   .add-ingredient-button {
     padding: 10px;
   }
+
+  .readiness-summary {
+    padding: 8px;
+  }
+
+  .readiness-text {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .missing-ingredients {
+    margin-top: 12px;
+  }
+
+  .missing-ingredients-title {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+  }
+}
+
+.readiness-summary {
+  padding: 16px;
+  background: rgba(0, 122, 204, 0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 122, 204, 0.2);
+}
+
+.readiness-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--vscode-text);
+}
+
+.missing-ingredients {
+  margin-top: 16px;
+}
+
+.missing-ingredients-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--vscode-text);
+}
+
+.readiness-indicator {
+  font-weight: 500;
+  color: var(--vscode-accent);
+}
+
+.pill-danger {
+  color: #ffffff;
+  border-color: #e81123;
+  background: #e81123;
+  box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
 }

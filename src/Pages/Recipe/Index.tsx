@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import './recipe.scss'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
@@ -7,6 +7,8 @@ import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
+import { usePantryStore } from '@/stores/pantry'
+import { calculateRecipeReadiness } from '@/utils/recipeReadiness'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -18,12 +20,20 @@ interface RecipeProps {
 }
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const foods = useFoodStore((state) => state.foods)
+  const pantryItems = usePantryStore((state) => state.items)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
+
+  const displayRecipe = editMode ? editedRecipe : recipe
+
+  // Calculate recipe readiness - only when not in edit mode
+  const readiness = useMemo(() => {
+    if (editMode) return null
+    return calculateRecipeReadiness(recipe, pantryItems)
+  }, [recipe, pantryItems, editMode])
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -34,8 +44,6 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     publishedText = daysSincePublished > 1 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
-
-  const displayRecipe = editMode ? editedRecipe : recipe
 
   const totalCalories = displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
@@ -350,6 +358,73 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
             )}
           </div>
         </section>
+
+        {!editMode && readiness && readiness.totalIngredients > 0 && (
+          <section className="recipe-panel">
+            <div className="panel-toolbar">
+              <div className="toolbar-tabs">
+                <span className="tab is-active">Pantry Readiness</span>
+                <span className="tab">{readiness.readinessScore}% ready</span>
+              </div>
+            </div>
+
+            <div className="panel-content">
+              <div className="readiness-summary">
+                <p className="readiness-text">
+                  <strong>{readiness.availableIngredients}</strong> of <strong>{readiness.totalIngredients}</strong> ingredients fully available
+                  {readiness.partialIngredients > 0 && (
+                    <>, <strong>{readiness.partialIngredients}</strong> partially available</>
+                  )}
+                  {readiness.missingIngredients > 0 && (
+                    <>, <strong>{readiness.missingIngredients}</strong> missing</>
+                  )}
+                </p>
+              </div>
+
+              {(readiness.missingIngredients > 0 || readiness.partialIngredients > 0) && (
+                <div className="missing-ingredients">
+                  <h3 className="missing-ingredients-title">Items Needed</h3>
+                  <table className="ingredient-table">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th>Status</th>
+                        <th className="quantity-col">Available</th>
+                        <th className="quantity-col">Needed</th>
+                        <th className="quantity-col">Shortage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {readiness.ingredientDetails
+                        .filter(detail => !detail.isSufficient)
+                        .map((detail, index) => (
+                          <tr key={`missing-${index}`}>
+                            <td>{detail.ingredient.food.name}</td>
+                            <td>
+                              {detail.available === 0 ? (
+                                <span className="pill pill-danger">Missing</span>
+                              ) : (
+                                <span className="pill pill-warning">Insufficient</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.available.toFixed(2)} {detail.unit}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.needed.toFixed(2)} {detail.unit}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.shortage.toFixed(2)} {detail.unit}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )
