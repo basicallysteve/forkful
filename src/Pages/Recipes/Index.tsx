@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useRecipeStore } from '@/stores/recipes'
 import { usePantryStore } from '@/stores/pantry'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
-import { calculateRecipesReadiness, type RecipeReadiness } from '@/utils/recipeReadiness'
+import { calculateRecipesReadiness } from '@/utils/recipeReadiness'
 import './recipes.scss'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published' | 'readiness'
@@ -23,11 +23,8 @@ export default function Recipes() {
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   // Calculate readiness for all recipes
-  const [readinessMap, setReadinessMap] = useState<Map<number, RecipeReadiness>>(new Map())
-
-  useEffect(() => {
-    const newReadinessMap = calculateRecipesReadiness(recipes, pantryItems)
-    setReadinessMap(newReadinessMap)
+  const readinessMap = useMemo(() => {
+    return calculateRecipesReadiness(recipes, pantryItems)
   }, [recipes, pantryItems])
 
   const filteredAndSortedRecipes = useMemo(() => {

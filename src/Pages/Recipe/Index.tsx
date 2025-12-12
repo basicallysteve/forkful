@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import './recipe.scss'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
@@ -8,7 +8,7 @@ import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
 import { usePantryStore } from '@/stores/pantry'
-import { calculateRecipeReadiness, type RecipeReadiness } from '@/utils/recipeReadiness'
+import { calculateRecipeReadiness } from '@/utils/recipeReadiness'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -20,7 +20,6 @@ interface RecipeProps {
 }
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const foods = useFoodStore((state) => state.foods)
   const pantryItems = usePantryStore((state) => state.items)
@@ -31,11 +30,8 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
   const displayRecipe = editMode ? editedRecipe : recipe
 
   // Calculate recipe readiness
-  const [readiness, setReadiness] = useState<RecipeReadiness | null>(null)
-
-  useEffect(() => {
-    const newReadiness = calculateRecipeReadiness(displayRecipe, pantryItems)
-    setReadiness(newReadiness)
+  const readiness = useMemo(() => {
+    return calculateRecipeReadiness(displayRecipe, pantryItems)
   }, [displayRecipe, pantryItems])
 
   let publishedText = "Unpublished"
