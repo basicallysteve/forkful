@@ -6,19 +6,24 @@ import Login from "@/Pages/Login/Login"
 import FoodsList from "@/Pages/Foods/Index"
 import FoodStore from "@/Pages/Food/Store"
 import FoodIndex from "@/Pages/Food/Index"
+import PantryList from "@/Pages/Pantry/Index"
+import PantryStore from "@/Pages/Pantry/Store"
 import ToolBar from "@/components/ToolBar"
 import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import Home from "@/Pages/Home"
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
+import { usePantryStore } from '@/stores/pantry'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+import type { PantryItem } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
 
 function App() {
   const recipes = useRecipeStore((state) => state.recipes)
   const foods = useFoodStore((state) => state.foods)
+  const pantryItems = usePantryStore((state) => state.items)
 
   const menuOptions = [
     {
@@ -40,6 +45,14 @@ function App() {
       children: [
           { label: 'Browse All Foods', action: () => { console.log('Browse All Foods clicked') }, to: '/foods' },
           { label: 'Add New Food', action: () => { console.log('Add New Food clicked') }, to: '/foods/new' },
+    ]
+    },
+    {
+      label: 'Pantry',
+      action: () => { console.log('Pantry clicked') },
+      children: [
+          { label: 'Browse Pantry', action: () => { console.log('Browse Pantry clicked') }, to: '/pantry' },
+          { label: 'Add Pantry Item', action: () => { console.log('Add Pantry Item clicked') }, to: '/pantry/new' },
     ]
     },
     {
@@ -74,6 +87,8 @@ function App() {
         <Route path="/recipes/new" element={<RecipeStore />} />
         <Route path="/foods" element={<FoodsList />} />
         <Route path="/foods/new" element={<FoodStore />} />
+        <Route path="/pantry" element={<PantryList />} />
+        <Route path="/pantry/new" element={<PantryStore />} />
         { 
           recipes.map((recipe: Recipe) => (
             <Route key={recipe.id} path={`/recipes/${toSlug(recipe.name)}`} element={<RecipeIndex recipe={recipe} />} />
@@ -87,6 +102,11 @@ function App() {
         {
           foods.map((food: Food) => (
             <Route key={`${food.id}-edit`} path={`/foods/${toSlug(food.name)}/edit`} element={<FoodStore existingFood={food} />} />
+          ))
+        }
+        {
+          pantryItems.map((item: PantryItem) => (
+            <Route key={`${item.id}-edit`} path={`/pantry/${item.id}/edit`} element={<PantryStore existingItem={item} />} />
           ))
         }
       </Routes>

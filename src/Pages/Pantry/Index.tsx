@@ -1,0 +1,464 @@
+import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { usePantryStore } from '@/stores/pantry'
+import type { PantryItemStatus } from '@/types/PantryItem'
+import { toSlug } from '@/utils/slug'
+import './pantry.scss'
+
+type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
+type SortDirection = 'asc' | 'desc'
+type StatusFilter = 'all' | PantryItemStatus
+
+// Status priority order for sorting
+const STATUS_ORDER: Record<PantryItemStatus, number> = {
+  'expired': 0,
+  'expiring-soon': 1,
+  'good': 2,
+}
+
+export default function Pantry() {
+  const items = usePantryStore((state) => state.items)
+  const deleteItem = usePantryStore((state) => state.deleteItem)
+  const freezeItem = usePantryStore((state) => state.freezeItem)
+  const unfreezeItem = usePantryStore((state) => state.unfreezeItem)
+  const refreshItemStatuses = usePantryStore((state) => state.refreshItemStatuses)
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+  const [sortBy, setSortBy] = useState<SortOption>('expirationDate')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
+  // Refresh statuses when component mounts or periodically
+  useEffect(() => {
+    refreshItemStatuses()
+  }, [refreshItemStatuses])
+
+  const filteredAndSortedItems = useMemo(() => {
+    let filtered = items
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.food.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((item) => item.status === statusFilter)
+    }
+
+    // Sort items
+    return filtered.sort((a, b) => {
+      let comparison = 0
+      switch (sortBy) {
+        case 'name': {
+          comparison = a.food.name.localeCompare(b.food.name)
+          break
+        }
+        case 'expirationDate': {
+          // Handle null expiration dates - put them at the end
+          if (!a.expirationDate && !b.expirationDate) {
+            comparison = 0
+          } else if (!a.expirationDate) {
+            comparison = 1
+          } else if (!b.expirationDate) {
+            comparison = -1
+          } else {
+            comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
+          }
+          break
+        }
+        case 'addedDate': {
+          comparison = new Date(a.addedDate).getTime() - new Date(b.addedDate).getTime()
+          break
+        }
+        case 'status': {
+          comparison = STATUS_ORDER[a.status || 'good'] - STATUS_ORDER[b.status || 'good']
+          break
+        }
+      }
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [items, sortBy, sortDirection, searchTerm, statusFilter])
+
+  function handleSelectItem(itemId: number) {
+    const newSelected = new Set(selectedItems)
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId)
+    } else {
+      newSelected.add(itemId)
+    }
+    setSelectedItems(newSelected)
+  }
+
+  function handleSelectAll() {
+    if (selectedItems.size === filteredAndSortedItems.length) {
+      setSelectedItems(new Set())
+    } else {
+      setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)))
+    }
+  }
+
+  function handleDeleteSelected() {
+    if (selectedItems.size === 0) return
+
+    selectedItems.forEach((id) => {
+      deleteItem(id)
+    })
+    setSelectedItems(new Set())
+  }
+
+  function formatDate(date: Date | null): string {
+    if (!date) return 'No expiration'
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  function getStatusLabel(status: PantryItemStatus): string {
+    switch (status) {
+      case 'expired':
+        return 'Expired'
+      case 'expiring-soon':
+        return 'Expiring Soon'
+      case 'good':
+        return 'Good'
+      default:
+        return 'Unknown'
+    }
+  }
+
+  function getStatusClass(status: PantryItemStatus): string {
+    switch (status) {
+      case 'expired':
+        return 'status-expired'
+      case 'expiring-soon':
+        return 'status-expiring-soon'
+      case 'good':
+        return 'status-good'
+      default:
+        return ''
+    }
+  }
+
+  const expiredCount = items.filter((item) => item.status === 'expired').length
+  const expiringSoonCount = items.filter((item) => item.status === 'expiring-soon').length
+  const goodCount = items.filter((item) => item.status === 'good').length
+
+  return (
+    <div className="pantry-list">
+      <div className="pantry-titlebar">
+        <span className="title">Pantry</span>
+      </div>
+
+      <div className="pantry-content">
+        <div className="pantry-header">
+          <div>
+            <p className="pantry-label">Pantry Management</p>
+            <h1 className="pantry-name">Pantry</h1>
+          </div>
+          <div className="pantry-meta">
+            <Link to="/pantry/new" className="pill pill-primary">
+              Add Item
+            </Link>
+          </div>
+        </div>
+
+        <div className="pantry-stats">
+          <div className="stat-card">
+            <span className="stat-label">Total Items</span>
+            <span className="stat-value">{items.length}</span>
+          </div>
+          <div className="stat-card stat-good">
+            <span className="stat-label">Good</span>
+            <span className="stat-value">{goodCount}</span>
+          </div>
+          <div className="stat-card stat-warning">
+            <span className="stat-label">Expiring Soon</span>
+            <span className="stat-value">{expiringSoonCount}</span>
+          </div>
+          <div className="stat-card stat-danger">
+            <span className="stat-label">Expired</span>
+            <span className="stat-value">{expiredCount}</span>
+          </div>
+        </div>
+
+        <div className="pantry-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-filters">
+              <div className="filter-group">
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Search pantry items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search pantry items"
+                />
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Status:</span>
+                <select
+                  className="filter-select"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All</option>
+                  <option value="good">Good</option>
+                  <option value="expiring-soon">Expiring Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Sort by:</span>
+                <select
+                  className="filter-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  aria-label="Sort by"
+                >
+                  <option value="expirationDate">Expiration Date</option>
+                  <option value="name">Name</option>
+                  <option value="addedDate">Date Added</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+                className="sort-direction-button"
+                aria-label="Toggle sort direction"
+              >
+                {sortDirection === 'asc' ? '↑' : '↓'}
+              </button>
+            </div>
+
+            {selectedItems.size > 0 && (
+              <div className="toolbar-actions">
+                <button onClick={handleDeleteSelected} className="danger-button">
+                  Delete ({selectedItems.size})
+                </button>
+              </div>
+            )}
+          </div>
+
+          {selectedItems.size > 0 && (
+            <div className="bulk-actions-bar">
+              <span>{selectedItems.size} item(s) selected</span>
+            </div>
+          )}
+
+          {filteredAndSortedItems.length === 0 ? (
+            <div className="panel-content">
+              <div className="empty-state">
+                <p>No pantry items found.</p>
+                <Link to="/pantry/new" className="primary-button">
+                  Add your first item
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="panel-content">
+              {/* Desktop table view */}
+              <table className="pantry-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                        onChange={handleSelectAll}
+                        aria-label="Select all items"
+                      />
+                    </th>
+                    <th>Food Item</th>
+                    <th>Size (Orig/Curr)</th>
+                    <th>Expiration Date</th>
+                    <th>Status</th>
+                    <th>Added Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedItems.map((item) => (
+                    <tr key={item.id} className={getStatusClass(item.status)}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.has(item.id)}
+                          onChange={() => handleSelectItem(item.id)}
+                          aria-label={`Select ${item.food.name}`}
+                        />
+                      </td>
+                      <td>
+                        <Link to={`/foods/${toSlug(item.food.name)}`}>
+                          {item.food.name}
+                        </Link>
+                      </td>
+                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
+                      <td>
+                        {item.frozenDate ? (
+                          <span className="status-badge status-frozen">Frozen</span>
+                        ) : (
+                          formatDate(item.expirationDate)
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(item.status)}`}>
+                          {getStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td>{formatDate(item.addedDate)}</td>
+                      <td>
+                        <div className="item-actions">
+                          {item.frozenDate ? (
+                            <button
+                              onClick={() => unfreezeItem(item.id)}
+                              className="btn-small btn-info"
+                              title="Unfreeze item"
+                            >
+                              Thaw
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => freezeItem(item.id)}
+                              className="btn-small btn-info"
+                              title="Freeze item"
+                            >
+                              Freeze
+                            </button>
+                          )}
+                          <Link
+                            to={`/pantry/${item.id}/edit`}
+                            className="btn-small btn-secondary"
+                          >
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="btn-small btn-danger"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile card view */}
+              <div className="select-all-row">
+                <label className="select-all-label">
+                  <input
+                    type="checkbox"
+                    className="select-all-checkbox"
+                    checked={
+                      selectedItems.size === filteredAndSortedItems.length &&
+                      filteredAndSortedItems.length > 0
+                    }
+                    onChange={handleSelectAll}
+                  />
+                  <span className="checkbox-text">Select all</span>
+                </label>
+              </div>
+              <div className="pantry-cards">
+                {filteredAndSortedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
+                  >
+                    <div className="card-checkbox">
+                      <input
+                        type="checkbox"
+                        className="item-checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={() => handleSelectItem(item.id)}
+                        aria-label={`Select ${item.food.name}`}
+                      />
+                    </div>
+                    <div className="card-content">
+                      <div className="card-header">
+                        <Link to={`/foods/${toSlug(item.food.name)}`} className="card-title">
+                          {item.food.name}
+                        </Link>
+                        <div className="card-badges">
+                          <span className={`status-badge ${getStatusClass(item.status)}`}>
+                            {getStatusLabel(item.status)}
+                          </span>
+                          {item.frozenDate && (
+                            <span className="status-badge status-frozen">Frozen</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="card-details">
+                        <div className="detail-row">
+                          <span className="detail-label">Size:</span>
+                          <span className="detail-value">
+                            {item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">
+                            {item.frozenDate ? 'Frozen:' : 'Expires:'}
+                          </span>
+                          <span className="detail-value">
+                            {item.frozenDate ? formatDate(item.frozenDate) : formatDate(item.expirationDate)}
+                          </span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="detail-label">Added:</span>
+                          <span className="detail-value">{formatDate(item.addedDate)}</span>
+                        </div>
+                      </div>
+
+                      <div className="card-actions">
+                        {item.frozenDate ? (
+                          <button
+                            onClick={() => unfreezeItem(item.id)}
+                            className="btn-small btn-info"
+                            title="Unfreeze item"
+                          >
+                            Thaw
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => freezeItem(item.id)}
+                            className="btn-small btn-info"
+                            title="Freeze item"
+                          >
+                            Freeze
+                          </button>
+                        )}
+                        <Link
+                          to={`/pantry/${item.id}/edit`}
+                          className="btn-small btn-secondary"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          className="btn-small btn-danger"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
