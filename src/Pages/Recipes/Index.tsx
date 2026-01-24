@@ -1,23 +1,31 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useRecipeStore } from '@/stores/recipes'
+import { usePantryStore } from '@/stores/pantry'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
+import { calculateRecipesReadiness } from '@/utils/recipeReadiness'
 import './recipes.scss'
 
-type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
+type SortOption = 'name' | 'date_added' | 'meal' | 'date_published' | 'readiness'
 type SortDirection = 'asc' | 'desc'
 
 export default function Recipes() {
   const recipes = useRecipeStore((state) => state.recipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
+  const pantryItems = usePantryStore((state) => state.items)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
+
+  // Calculate readiness for all recipes
+  const readinessMap = useMemo(() => {
+    return calculateRecipesReadiness(recipes, pantryItems)
+  }, [recipes, pantryItems])
 
   const filteredAndSortedRecipes = useMemo(() => {
     let filtered = filterMeal === 'all'
@@ -53,12 +61,18 @@ export default function Recipes() {
         case 'meal':
           comparison = (a.meal || '').localeCompare(b.meal || '')
           break
+        case 'readiness': {
+          const readinessA = readinessMap.get(a.id)?.readinessScore ?? 0
+          const readinessB = readinessMap.get(b.id)?.readinessScore ?? 0
+          comparison = readinessA - readinessB
+          break
+        }
       }
 
       
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [recipes, filterMeal, sortBy, sortDirection, searchTerm])
+  }, [recipes, filterMeal, sortBy, sortDirection, searchTerm, readinessMap])
 
   function handleSelectRecipe(recipeId: number) {
     const newSelected = new Set(selectedRecipes)
@@ -165,6 +179,7 @@ export default function Recipes() {
                   <option value="date_published">Published Date</option>
                   <option value="name">Name</option>
                   <option value="meal">Category</option>
+                  <option value="readiness">Readiness</option>
                 </select>
               </label>
               
@@ -216,37 +231,46 @@ export default function Recipes() {
                   </label>
                 </div>
                 <div className="recipe-cards">
-                  {filteredAndSortedRecipes.map((recipe) => (
-                    <div key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
-                      <div className="card-checkbox">
-                        <input
-                          type="checkbox"
-                          className="recipe-checkbox"
-                          checked={selectedRecipes.has(recipe.id)}
-                          onChange={() => handleSelectRecipe(recipe.id)}
-                          aria-label={`Select ${recipe.name}`}
-                        />
-                      </div>
-                      <Link to={`/recipes/${toSlug(recipe.name)}`} className="card-content">
-                          <div className="card-header">
-                            <h3 className="card-title">{recipe.name}</h3>
-                            <div className="card-badges">
-                              {recipe.meal && (
-                                <span className="pill pill-ghost">{recipe.meal}</span>
-                              )}
-                              {recipe.date_published === null && (
-                                <span className="pill pill-warning">Unpublished</span>
-                              )}
-                            </div>
-                          </div>
-                        <p className="card-description">{recipe.description}</p>
-                        <div className="card-footer">
-                          <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
-                          <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
+                  {filteredAndSortedRecipes.map((recipe) => {
+                    const readiness = readinessMap.get(recipe.id)
+                    return (
+                      <div key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
+                        <div className="card-checkbox">
+                          <input
+                            type="checkbox"
+                            className="recipe-checkbox"
+                            checked={selectedRecipes.has(recipe.id)}
+                            onChange={() => handleSelectRecipe(recipe.id)}
+                            aria-label={`Select ${recipe.name}`}
+                          />
                         </div>
-                      </Link>
-                    </div>
-                  ))}
+                        <Link to={`/recipes/${toSlug(recipe.name)}`} className="card-content">
+                            <div className="card-header">
+                              <h3 className="card-title">{recipe.name}</h3>
+                              <div className="card-badges">
+                                {recipe.meal && (
+                                  <span className="pill pill-ghost">{recipe.meal}</span>
+                                )}
+                                {recipe.date_published === null && (
+                                  <span className="pill pill-warning">Unpublished</span>
+                                )}
+                              </div>
+                            </div>
+                          <p className="card-description">{recipe.description}</p>
+                          <div className="card-footer">
+                            <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
+                            {readiness && (
+                              <span className="card-meta readiness-indicator">
+                                {readiness.availableIngredients}/{readiness.totalIngredients} available
+                                {readiness.partialIngredients > 0 && ` (${readiness.partialIngredients} partial)`}
+                              </span>
+                            )}
+                            <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )
+                  })}
                 </div>
               </>
             )}

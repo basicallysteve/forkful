@@ -103,6 +103,18 @@
     box-shadow: 0 4px 12px rgba(240, 173, 78, 0.35);
   }
 
+  .pill-danger {
+    color: #ffffff;
+    border-color: #e81123;
+    background: #e81123;
+    box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
+  }
+
+  .readiness-indicator {
+    font-weight: 500;
+    color: var(--vscode-accent);
+  }
+
   .recipes-panel {
     border: 1px solid var(--vscode-border);
     border-radius: 12px;

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import './recipe.scss'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
@@ -7,6 +7,8 @@ import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
+import { usePantryStore } from '@/stores/pantry'
+import { calculateRecipeReadiness } from '@/utils/recipeReadiness'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -18,12 +20,20 @@ interface RecipeProps {
 }
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const foods = useFoodStore((state) => state.foods)
+  const pantryItems = usePantryStore((state) => state.items)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
+
+  const displayRecipe = editMode ? editedRecipe : recipe
+
+  // Calculate recipe readiness - only when not in edit mode
+  const readiness = useMemo(() => {
+    if (editMode) return null
+    return calculateRecipeReadiness(recipe, pantryItems)
+  }, [recipe, pantryItems, editMode])
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -34,8 +44,6 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     publishedText = daysSincePublished > 1 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
-
-  const displayRecipe = editMode ? editedRecipe : recipe
 
   const totalCalories = displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
@@ -350,6 +358,179 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
             )}
           </div>
         </section>
+
+        {!editMode && readiness && readiness.totalIngredients > 0 && (
+          <>
+            {/* Available Ingredients Section */}
+            {readiness.availableIngredients > 0 && (
+              <section className="recipe-panel">
+                <div className="panel-toolbar">
+                  <div className="toolbar-tabs">
+                    <span className="tab is-active">What You Have</span>
+                    <span className="tab">{readiness.availableIngredients} of {readiness.totalIngredients} ingredients</span>
+                  </div>
+                </div>
+
+                <div className="panel-content">
+                  <div className="ingredient-cards">
+                    {readiness.ingredientDetails
+                      .filter(detail => detail.isSufficient)
+                      .map((detail, index) => (
+                        <div key={`available-${index}`} className="ingredient-card available-card">
+                          <div className="card-icon">✓</div>
+                          <div className="card-details">
+                            <h4 className="card-ingredient-name">
+                              {detail.ingredient.food.name}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-badge">Frozen - Thaw before use</span>
+                              )}
+                            </h4>
+                            <p className="card-quantity">
+                              Have: {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-detail"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                            </p>
+                            <p className="card-quantity-needed">Need: {detail.needed.toFixed(2)} {detail.unit}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Desktop table view */}
+                  <table className="ingredient-table desktop-only">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th className="quantity-col">Available</th>
+                        <th className="quantity-col">Needed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {readiness.ingredientDetails
+                        .filter(detail => detail.isSufficient)
+                        .map((detail, index) => (
+                          <tr key={`available-table-${index}`}>
+                            <td>
+                              {detail.ingredient.food.name}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-note"> (frozen - thaw before use)</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-info"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.needed.toFixed(2)} {detail.unit}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* Missing/Needed Ingredients Section */}
+            {(readiness.missingIngredients > 0 || readiness.partialIngredients > 0) && (
+              <section className="recipe-panel">
+                <div className="panel-toolbar">
+                  <div className="toolbar-tabs">
+                    <span className="tab is-active">What You Need</span>
+                    <span className="tab">{readiness.readinessScore}% ready</span>
+                  </div>
+                </div>
+
+                <div className="panel-content">
+                  <div className="ingredient-cards">
+                    {readiness.ingredientDetails
+                      .filter(detail => !detail.isSufficient)
+                      .map((detail, index) => (
+                        <div key={`missing-${index}`} className={`ingredient-card ${detail.available === 0 ? 'missing-card' : 'partial-card'}`}>
+                          <div className="card-icon">{detail.available === 0 ? '×' : '!'}</div>
+                          <div className="card-details">
+                            <h4 className="card-ingredient-name">
+                              {detail.ingredient.food.name}
+                              {detail.needsThawing && (
+                                <span className="thaw-badge">Thaw frozen items</span>
+                              )}
+                            </h4>
+                            <div className="card-status">
+                              {detail.available === 0 ? (
+                                <span className="pill pill-danger">Missing</span>
+                              ) : (
+                                <span className="pill pill-warning">Insufficient</span>
+                              )}
+                            </div>
+                            <p className="card-quantity">
+                              Have: {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-detail"> (frozen)</span>
+                              )}
+                            </p>
+                            <p className="card-quantity-needed">Need: {detail.needed.toFixed(2)} {detail.unit}</p>
+                            <p className="card-shortage">Get: {detail.shortage.toFixed(2)} {detail.unit} more</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Desktop table view */}
+                  <table className="ingredient-table desktop-only">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th>Status</th>
+                        <th className="quantity-col">Available</th>
+                        <th className="quantity-col">Needed</th>
+                        <th className="quantity-col">Shortage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {readiness.ingredientDetails
+                        .filter(detail => !detail.isSufficient)
+                        .map((detail, index) => (
+                          <tr key={`missing-table-${index}`}>
+                            <td>
+                              {detail.ingredient.food.name}
+                              {detail.needsThawing && (
+                                <span className="frozen-note"> (needs thawing)</span>
+                              )}
+                            </td>
+                            <td>
+                              {detail.available === 0 ? (
+                                <span className="pill pill-danger">Missing</span>
+                              ) : (
+                                <span className="pill pill-warning">Insufficient</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-info"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity === detail.available && (
+                                <span className="frozen-info"> (frozen)</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.needed.toFixed(2)} {detail.unit}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.shortage.toFixed(2)} {detail.unit}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

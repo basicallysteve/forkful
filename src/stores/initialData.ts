@@ -1,5 +1,6 @@
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
+import type { PantryItem } from '@/types/PantryItem'
 
 export const DEFAULT_SERVING_UNIT = 'g'
 
@@ -57,3 +58,45 @@ export const buildInitialRecipes = (foods: Food[]): Recipe[] => {
 
 export const getInitialRecipes = (foods: Food[] = getInitialFoods()): Recipe[] =>
   JSON.parse(JSON.stringify(buildInitialRecipes(foods)))
+
+export const buildInitialPantryItems = (foods: Food[]): PantryItem[] => {
+  const findFood = (name: string) => {
+    const food = foods.find((f) => f.name.toLowerCase() === name.toLowerCase())
+    if (!food) throw new Error(`Missing seed food: ${name}`)
+    return food
+  }
+
+  const breadFood = findFood('Bread')
+  const groundBeefFood = findFood('Ground Beef')
+
+  const now = new Date()
+  const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const twoWeeksFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+
+  return [
+    {
+      id: 1,
+      food: breadFood,
+      expirationDate: oneWeekFromNow,
+      originalSize: { size: 20, unit: 'slice' },
+      currentSize: { size: 5, unit: 'slice' },
+      addedDate: now,
+      status: 'expiring-soon' as const,
+      frozenDate: null,
+    },
+    {
+      id: 2,
+      food: groundBeefFood,
+      expirationDate: twoWeeksFromNow,
+      originalSize: { size: 500, unit: 'g' },
+      currentSize: { size: 300, unit: 'g' },
+      addedDate: now,
+      status: 'good' as const,
+      frozenDate: now, // This one is frozen
+    },
+  ]
+}
+
+export const getInitialPantryItems = (foods: Food[] = getInitialFoods()): PantryItem[] =>
+  JSON.parse(JSON.stringify(buildInitialPantryItems(foods)))
+

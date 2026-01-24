@@ -87,16 +87,19 @@ describe('Recipe View Page', () => {
 
     it('displays all ingredients in the table', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
-      expect(screen.getByText('Ham')).toBeInTheDocument()
-      expect(screen.getByText('Cheese')).toBeInTheDocument()
+      const allHam = screen.getAllByText('Ham')
+      const allCheese = screen.getAllByText('Cheese')
+      expect(allHam.length).toBeGreaterThan(0)
+      expect(allCheese.length).toBeGreaterThan(0)
     })
 
     it('displays ingredient quantities', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
-      const table = screen.getByRole('table')
+      const tables = screen.getAllByRole('table')
+      const ingredientTable = tables[0] // First table is the ingredient list
       // Quantities now include the serving unit
-      expect(within(table).getByText('2 slice')).toBeInTheDocument()
-      expect(within(table).getByText('1 slice')).toBeInTheDocument()
+      expect(within(ingredientTable).getByText('2 slice')).toBeInTheDocument()
+      expect(within(ingredientTable).getByText('1 slice')).toBeInTheDocument()
     })
 
     it('displays total calories', () => {

@@ -569,4 +569,212 @@
   .add-ingredient-button {
     padding: 10px;
   }
+
+  .readiness-summary {
+    padding: 8px;
+  }
+
+  .readiness-text {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .missing-ingredients {
+    margin-top: 12px;
+  }
+
+  .missing-ingredients-title {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+  }
+}
+
+.readiness-summary {
+  padding: 16px;
+  background: rgba(0, 122, 204, 0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 122, 204, 0.2);
+}
+
+.readiness-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--vscode-text);
+}
+
+.missing-ingredients {
+  margin-top: 16px;
+}
+
+.missing-ingredients-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--vscode-text);
+}
+
+.readiness-indicator {
+  font-weight: 500;
+  color: var(--vscode-accent);
+}
+
+.pill-danger {
+  color: #ffffff;
+  border-color: #e81123;
+  background: #e81123;
+  box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
+}
+
+.frozen-note {
+  font-size: 12px;
+  color: #4fc3f7;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+.frozen-info {
+  font-size: 11px;
+  color: #4fc3f7;
+  margin-left: 4px;
+}
+
+/* Ingredient cards for mobile */
+.ingredient-cards {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ingredient-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 2px solid;
+  background: rgba(255, 255, 255, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ingredient-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.available-card {
+  border-color: #27c93f;
+  background: rgba(39, 201, 63, 0.05);
+}
+
+.available-card .card-icon {
+  background: #27c93f;
+  color: white;
+}
+
+.missing-card {
+  border-color: #e81123;
+  background: rgba(232, 17, 35, 0.05);
+}
+
+.missing-card .card-icon {
+  background: #e81123;
+  color: white;
+}
+
+.partial-card {
+  border-color: #f0ad4e;
+  background: rgba(240, 173, 78, 0.05);
+}
+
+.partial-card .card-icon {
+  background: #f0ad4e;
+  color: white;
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.card-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-ingredient-name {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-status {
+  margin-bottom: 8px;
+}
+
+.card-quantity,
+.card-quantity-needed,
+.card-shortage {
+  margin: 4px 0;
+  font-size: 14px;
+  color: var(--vscode-muted);
+}
+
+.card-quantity strong,
+.card-quantity-needed strong,
+.card-shortage strong {
+  color: var(--vscode-text);
+}
+
+.frozen-badge,
+.thaw-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #4fc3f7;
+  color: #1e1e1e;
+}
+
+.thaw-badge {
+  background: #ff9800;
+  color: white;
+}
+
+.frozen-detail {
+  font-size: 12px;
+  color: #4fc3f7;
+  margin-left: 4px;
+}
+
+/* Hide cards on desktop, show table */
+.desktop-only {
+  display: table;
+}
+
+.ingredient-cards {
+  display: none;
+}
+
+/* Mobile: hide table, show cards */
+@media (max-width: 720px) {
+  .desktop-only {
+    display: none;
+  }
+
+  .ingredient-cards {
+    display: grid;
+  }
 }
