@@ -399,7 +399,12 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                         .filter(detail => !detail.isSufficient)
                         .map((detail, index) => (
                           <tr key={`missing-${index}`}>
-                            <td>{detail.ingredient.food.name}</td>
+                            <td>
+                              {detail.ingredient.food.name}
+                              {detail.needsThawing && (
+                                <span className="frozen-note"> (needs thawing)</span>
+                              )}
+                            </td>
                             <td>
                               {detail.available === 0 ? (
                                 <span className="pill pill-danger">Missing</span>
@@ -409,6 +414,12 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                             </td>
                             <td className="quantity-col">
                               {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-info"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity === detail.available && (
+                                <span className="frozen-info"> (frozen)</span>
+                              )}
                             </td>
                             <td className="quantity-col">
                               {detail.needed.toFixed(2)} {detail.unit}

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
+import { getInitialPantryItems } from './initialData'
 
 type PantryStore = {
   items: PantryItem[]
@@ -42,7 +43,7 @@ const calculateStatus = (expirationDate: Date | null): PantryItemStatus => {
 }
 
 export const usePantryStore = create<PantryStore>((set, get) => ({
-  items: [],
+  items: getInitialPantryItems(),
   setItems: (items: PantryItem[]) => {
     const itemsWithStatus = items.map(item => ({
       ...item,

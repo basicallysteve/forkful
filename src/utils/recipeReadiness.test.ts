@@ -408,5 +408,99 @@ describe('recipeReadiness', () => {
       expect(result.get(1)?.readinessScore).toBe(100)
       expect(result.get(2)?.readinessScore).toBe(0)
     })
+
+    it('should track frozen quantities when pantry items are frozen', () => {
+      const ingredient = {
+        food: mockChicken,
+        quantity: 200,
+        calories: 330,
+        servingUnit: 'g',
+      }
+      const pantryItems: PantryItem[] = [
+        {
+          id: 1,
+          food: mockChicken,
+          expirationDate: new Date('2025-12-31'),
+          originalSize: { size: 300, unit: 'g' },
+          currentSize: { size: 300, unit: 'g' },
+          addedDate: new Date('2025-01-01'),
+          status: 'good',
+          frozenDate: new Date('2025-01-15'),
+        },
+      ]
+
+      const result = calculateIngredientAvailability(ingredient, pantryItems)
+
+      expect(result.available).toBe(300)
+      expect(result.frozenQuantity).toBe(300)
+      expect(result.needsThawing).toBe(false) // Has enough even though frozen
+      expect(result.isSufficient).toBe(true)
+    })
+
+    it('should indicate thawing needed when frozen items are insufficient', () => {
+      const ingredient = {
+        food: mockChicken,
+        quantity: 200,
+        calories: 330,
+        servingUnit: 'g',
+      }
+      const pantryItems: PantryItem[] = [
+        {
+          id: 1,
+          food: mockChicken,
+          expirationDate: new Date('2025-12-31'),
+          originalSize: { size: 100, unit: 'g' },
+          currentSize: { size: 100, unit: 'g' },
+          addedDate: new Date('2025-01-01'),
+          status: 'good',
+          frozenDate: new Date('2025-01-15'),
+        },
+      ]
+
+      const result = calculateIngredientAvailability(ingredient, pantryItems)
+
+      expect(result.available).toBe(100)
+      expect(result.frozenQuantity).toBe(100)
+      expect(result.needsThawing).toBe(true)
+      expect(result.isSufficient).toBe(false)
+    })
+
+    it('should handle mix of frozen and non-frozen pantry items', () => {
+      const ingredient = {
+        food: mockChicken,
+        quantity: 300,
+        calories: 495,
+        servingUnit: 'g',
+      }
+      const pantryItems: PantryItem[] = [
+        {
+          id: 1,
+          food: mockChicken,
+          expirationDate: new Date('2025-12-31'),
+          originalSize: { size: 100, unit: 'g' },
+          currentSize: { size: 100, unit: 'g' },
+          addedDate: new Date('2025-01-01'),
+          status: 'good',
+          frozenDate: null,
+        },
+        {
+          id: 2,
+          food: mockChicken,
+          expirationDate: new Date('2025-12-31'),
+          originalSize: { size: 150, unit: 'g' },
+          currentSize: { size: 150, unit: 'g' },
+          addedDate: new Date('2025-01-01'),
+          status: 'good',
+          frozenDate: new Date('2025-01-15'),
+        },
+      ]
+
+      const result = calculateIngredientAvailability(ingredient, pantryItems)
+
+      expect(result.available).toBe(250)
+      expect(result.frozenQuantity).toBe(150)
+      expect(result.needsThawing).toBe(true) // Not sufficient, has frozen
+      expect(result.isSufficient).toBe(false)
+    })
   })
 })
