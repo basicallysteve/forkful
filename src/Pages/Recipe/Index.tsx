@@ -360,31 +360,126 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
         </section>
 
         {!editMode && readiness && readiness.totalIngredients > 0 && (
-          <section className="recipe-panel">
-            <div className="panel-toolbar">
-              <div className="toolbar-tabs">
-                <span className="tab is-active">Pantry Readiness</span>
-                <span className="tab">{readiness.readinessScore}% ready</span>
-              </div>
-            </div>
+          <>
+            {/* Available Ingredients Section */}
+            {readiness.availableIngredients > 0 && (
+              <section className="recipe-panel">
+                <div className="panel-toolbar">
+                  <div className="toolbar-tabs">
+                    <span className="tab is-active">What You Have</span>
+                    <span className="tab">{readiness.availableIngredients} of {readiness.totalIngredients} ingredients</span>
+                  </div>
+                </div>
 
-            <div className="panel-content">
-              <div className="readiness-summary">
-                <p className="readiness-text">
-                  <strong>{readiness.availableIngredients}</strong> of <strong>{readiness.totalIngredients}</strong> ingredients fully available
-                  {readiness.partialIngredients > 0 && (
-                    <>, <strong>{readiness.partialIngredients}</strong> partially available</>
-                  )}
-                  {readiness.missingIngredients > 0 && (
-                    <>, <strong>{readiness.missingIngredients}</strong> missing</>
-                  )}
-                </p>
-              </div>
+                <div className="panel-content">
+                  <div className="ingredient-cards">
+                    {readiness.ingredientDetails
+                      .filter(detail => detail.isSufficient)
+                      .map((detail, index) => (
+                        <div key={`available-${index}`} className="ingredient-card available-card">
+                          <div className="card-icon">✓</div>
+                          <div className="card-details">
+                            <h4 className="card-ingredient-name">
+                              {detail.ingredient.food.name}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-badge">Frozen - Thaw before use</span>
+                              )}
+                            </h4>
+                            <p className="card-quantity">
+                              Have: {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-detail"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                            </p>
+                            <p className="card-quantity-needed">Need: {detail.needed.toFixed(2)} {detail.unit}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
 
-              {(readiness.missingIngredients > 0 || readiness.partialIngredients > 0) && (
-                <div className="missing-ingredients">
-                  <h3 className="missing-ingredients-title">Items Needed</h3>
-                  <table className="ingredient-table">
+                  {/* Desktop table view */}
+                  <table className="ingredient-table desktop-only">
+                    <thead>
+                      <tr>
+                        <th>Ingredient</th>
+                        <th className="quantity-col">Available</th>
+                        <th className="quantity-col">Needed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {readiness.ingredientDetails
+                        .filter(detail => detail.isSufficient)
+                        .map((detail, index) => (
+                          <tr key={`available-table-${index}`}>
+                            <td>
+                              {detail.ingredient.food.name}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-note"> (frozen - thaw before use)</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && detail.frozenQuantity < detail.available && (
+                                <span className="frozen-info"> ({detail.frozenQuantity.toFixed(2)} frozen)</span>
+                              )}
+                            </td>
+                            <td className="quantity-col">
+                              {detail.needed.toFixed(2)} {detail.unit}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* Missing/Needed Ingredients Section */}
+            {(readiness.missingIngredients > 0 || readiness.partialIngredients > 0) && (
+              <section className="recipe-panel">
+                <div className="panel-toolbar">
+                  <div className="toolbar-tabs">
+                    <span className="tab is-active">What You Need</span>
+                    <span className="tab">{readiness.readinessScore}% ready</span>
+                  </div>
+                </div>
+
+                <div className="panel-content">
+                  <div className="ingredient-cards">
+                    {readiness.ingredientDetails
+                      .filter(detail => !detail.isSufficient)
+                      .map((detail, index) => (
+                        <div key={`missing-${index}`} className={`ingredient-card ${detail.available === 0 ? 'missing-card' : 'partial-card'}`}>
+                          <div className="card-icon">{detail.available === 0 ? '×' : '!'}</div>
+                          <div className="card-details">
+                            <h4 className="card-ingredient-name">
+                              {detail.ingredient.food.name}
+                              {detail.needsThawing && (
+                                <span className="thaw-badge">Thaw frozen items</span>
+                              )}
+                            </h4>
+                            <div className="card-status">
+                              {detail.available === 0 ? (
+                                <span className="pill pill-danger">Missing</span>
+                              ) : (
+                                <span className="pill pill-warning">Insufficient</span>
+                              )}
+                            </div>
+                            <p className="card-quantity">
+                              Have: {detail.available.toFixed(2)} {detail.unit}
+                              {detail.frozenQuantity > 0 && (
+                                <span className="frozen-detail"> (frozen)</span>
+                              )}
+                            </p>
+                            <p className="card-quantity-needed">Need: {detail.needed.toFixed(2)} {detail.unit}</p>
+                            <p className="card-shortage">Get: {detail.shortage.toFixed(2)} {detail.unit} more</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Desktop table view */}
+                  <table className="ingredient-table desktop-only">
                     <thead>
                       <tr>
                         <th>Ingredient</th>
@@ -398,7 +493,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                       {readiness.ingredientDetails
                         .filter(detail => !detail.isSufficient)
                         .map((detail, index) => (
-                          <tr key={`missing-${index}`}>
+                          <tr key={`missing-table-${index}`}>
                             <td>
                               {detail.ingredient.food.name}
                               {detail.needsThawing && (
@@ -432,9 +527,9 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                     </tbody>
                   </table>
                 </div>
-              )}
-            </div>
-          </section>
+              </section>
+            )}
+          </>
         )}
       </div>
     </div>
