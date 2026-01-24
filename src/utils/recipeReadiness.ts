@@ -10,6 +10,8 @@ export type IngredientAvailability = {
   unit: string // Unit for both available and needed
   isSufficient: boolean
   shortage: number // How much is missing (0 if sufficient)
+  frozenQuantity: number // How much of the available quantity is frozen
+  needsThawing: boolean // Whether user needs to thaw frozen items
 }
 
 export type RecipeReadiness = {
@@ -33,6 +35,7 @@ export function calculateIngredientAvailability(
   const unit = ingredient.servingUnit
 
   // Find all pantry items matching this ingredient's food
+  // Note: This filters out expired items (status === 'expired')
   const matchingItems = pantryItems.filter(
     (item) => item.food.id === ingredient.food.id && item.status !== 'expired'
   )
@@ -45,29 +48,42 @@ export function calculateIngredientAvailability(
       unit,
       isSufficient: false,
       shortage: needed,
+      frozenQuantity: 0,
+      needsThawing: false,
     }
   }
 
   // Sum up available quantity from all matching pantry items
   let totalAvailable = 0
+  let totalFrozen = 0
   for (const item of matchingItems) {
     const itemQuantity = item.currentSize.size
     const itemUnit = item.currentSize.unit || ingredient.food.servingUnit || 'g'
 
     // Try to convert pantry item quantity to ingredient's unit
+    let convertedQuantity = 0
     if (itemUnit === unit) {
-      totalAvailable += itemQuantity
+      convertedQuantity = itemQuantity
     } else if (canConvert(itemUnit, unit)) {
       const converted = convertUnit(itemQuantity, itemUnit, unit)
       if (converted !== null) {
-        totalAvailable += converted
+        convertedQuantity = converted
       }
     }
     // If units are incompatible, we can't count this pantry item
+    
+    if (convertedQuantity > 0) {
+      totalAvailable += convertedQuantity
+      // Track if this item is frozen
+      if (item.frozenDate !== null) {
+        totalFrozen += convertedQuantity
+      }
+    }
   }
 
   const isSufficient = totalAvailable >= needed
   const shortage = Math.max(0, needed - totalAvailable)
+  const needsThawing = totalFrozen > 0 && !isSufficient
 
   return {
     ingredient,
@@ -76,6 +92,8 @@ export function calculateIngredientAvailability(
     unit,
     isSufficient,
     shortage,
+    frozenQuantity: totalFrozen,
+    needsThawing,
   }
 }
 
