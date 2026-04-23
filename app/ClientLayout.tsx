@@ -2,16 +2,11 @@
 
 import ToolBar from '@/components/ToolBar'
 import { useRecipeStore } from '@/stores/recipes'
-import { useFoodStore } from '@/stores/food'
-import { usePantryStore } from '@/stores/pantry'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
-import type { Food } from '@/types/Food'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const recipes = useRecipeStore((state) => state.recipes)
-  const foods = useFoodStore((state) => state.foods)
-  usePantryStore((state) => state.items)
 
   const menuOptions = [
     {
@@ -33,11 +28,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       children: [
         { label: 'Browse All Foods', action: () => { console.log('Browse All Foods clicked') }, to: '/foods' },
         { label: 'Add New Food', action: () => { console.log('Add New Food clicked') }, to: '/foods/new' },
-        ...foods.map((food: Food) => ({
-          label: food.name,
-          to: `/foods/${toSlug(food.name)}`,
-          action: () => { console.log(`Food clicked: ${food.name}`) },
-        })),
       ],
     },
     {
