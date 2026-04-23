@@ -1,6 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import './recipe.scss'
+import Link from 'next/link'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
@@ -172,7 +173,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
       <div className="recipe-content">
         <header className="recipe-header">
           <div className="recipe-header-container">
-            <Link to="/recipes" className="back-link">← All Recipes</Link>
+            <Link href="/recipes" className="back-link">← All Recipes</Link>
             <p className="recipe-label">Recipe</p>
             {editMode ? (
               <input

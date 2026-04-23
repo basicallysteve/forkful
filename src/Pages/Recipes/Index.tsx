@@ -1,9 +1,10 @@
+'use client'
+
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { useRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
-import './recipes.scss'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
@@ -227,7 +228,7 @@ export default function Recipes() {
                           aria-label={`Select ${recipe.name}`}
                         />
                       </div>
-                      <Link to={`/recipes/${toSlug(recipe.name)}`} className="card-content">
+                      <Link href={`/recipes/${toSlug(recipe.name)}`} className="card-content">
                           <div className="card-header">
                             <h3 className="card-title">{recipe.name}</h3>
                             <div className="card-badges">

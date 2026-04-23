@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import Store from './Store'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
@@ -62,7 +61,7 @@ function renderWithProviders(
     getFoodByName: getFoodByName ?? state.getFoodByName,
   }))
 
-  return render(<BrowserRouter>{ui}</BrowserRouter>)
+  return render(ui)
 }
 
 describe('Food Store Page - Add Food', () => {

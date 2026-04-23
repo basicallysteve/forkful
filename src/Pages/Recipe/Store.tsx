@@ -1,5 +1,8 @@
+'use client'
+
 import { useState, useMemo } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
@@ -8,7 +11,6 @@ import { toSlug } from "@/utils/slug"
 import { calculateCalories } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
-import "./store.scss"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -110,7 +112,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   if (!ingredient && !storedIngredient) {
     return (
       <div className="ingredient-input">
-        <span className="no-foods-message">No foods available. <Link to="/foods/new">Add a food</Link> first.</span>
+        <span className="no-foods-message">No foods available. <Link href="/foods/new">Add a food</Link> first.</span>
       </div>
     )
   }
@@ -226,7 +228,7 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 }
 
 function Store() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
   const foods = useFoodStore((state) => state.foods)
@@ -315,7 +317,7 @@ function Store() {
     
     const newRecipe = createRecipe(false)
     addRecipeToStore(newRecipe)
-    navigate(`/recipes/${toSlug(newRecipe.name)}`)
+    router.push(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   function handlePublishRecipe() {
@@ -323,7 +325,7 @@ function Store() {
     
     const newRecipe = createRecipe(true)
     addRecipeToStore(newRecipe)
-    navigate(`/recipes/${toSlug(newRecipe.name)}`)
+    router.push(`/recipes/${toSlug(newRecipe.name)}`)
   }
 
   const detailsTabContent = (<form className="store-form">
@@ -413,7 +415,7 @@ function Store() {
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <Link to={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link href={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}

@@ -1,11 +1,12 @@
+'use client'
+
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
-import './store.scss'
 
 interface FoodStoreProps {
   existingFood?: Food
@@ -15,7 +16,7 @@ function Store({ existingFood }: FoodStoreProps) {
   const foods = useFoodStore((state) => state.foods)
   const addFood = useFoodStore((state) => state.addFood)
   const updateFood = useFoodStore((state) => state.updateFood)
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const isEditing = !!existingFood
 
@@ -158,10 +159,10 @@ function Store({ existingFood }: FoodStoreProps) {
 
     if (isEditing && existingFood) {
       updateFood({ ...foodData, id: existingFood.id })
-      navigate(`/foods/${toSlug(food.name!)}`)
+      router.push(`/foods/${toSlug(food.name!)}`)
     } else {
       addFood(foodData)
-      navigate(`/foods/${toSlug(food.name!)}`)
+      router.push(`/foods/${toSlug(food.name!)}`)
     }
   }
 
@@ -399,7 +400,7 @@ function Store({ existingFood }: FoodStoreProps) {
                   <button
                     type="button"
                     className="ghost-button"
-                    onClick={() => navigate('/foods')}
+                    onClick={() => router.push('/foods')}
                   >
                     Cancel
                   </button>

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import Foods from './Index'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
@@ -73,7 +72,7 @@ function renderWithProviders(
   }))
   useRecipeStore.setState((state) => ({ ...state, recipes }))
 
-  return render(<BrowserRouter>{ui}</BrowserRouter>)
+  return render(ui)
 }
 
 describe('Foods List Page', () => {
@@ -234,7 +233,7 @@ describe('Foods List Page', () => {
       const deleteButton = screen.getByRole('button', { name: /^delete$/i })
       await user.click(deleteButton)
 
-      expect(deleteFood).toHaveBeenCalledWith(1, mockRecipes)
+      expect(deleteFood).toHaveBeenCalledWith(1)
     })
 
     it('shows error when trying to delete food used in recipe', async () => {

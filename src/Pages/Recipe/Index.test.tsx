@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import Recipe from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
@@ -60,7 +59,7 @@ function renderWithStores(
   useRecipeStore.setState((state) => ({ ...state, recipes }))
   useFoodStore.setState((state) => ({ ...state, foods }))
 
-  return render(<BrowserRouter>{ui}</BrowserRouter>)
+  return render(ui)
 }
 
 describe('Recipe View Page', () => {

@@ -1,19 +1,20 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
-import './pantry.scss'
 
 interface PantryStoreProps {
   existingItem?: PantryItem
 }
 
 export default function PantryStore({ existingItem }: PantryStoreProps) {
-  const navigate = useNavigate()
+  const router = useRouter()
   const foods = useFoodStore((state) => state.foods)
   const addItem = usePantryStore((state) => state.addItem)
   const updateItem = usePantryStore((state) => state.updateItem)
@@ -71,11 +72,11 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
       addItem(pantryItem)
     }
 
-    navigate('/pantry')
+    router.push('/pantry')
   }
 
   function handleCancel() {
-    navigate('/pantry')
+    router.push('/pantry')
   }
 
   // Validation logic

@@ -1,10 +1,12 @@
+'use client'
+
 import { useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
-import './food.scss'
 
 interface FoodIndexProps {
   food: Food
@@ -14,14 +16,13 @@ export default function FoodIndex({ food }: FoodIndexProps) {
   const deleteFood = useFoodStore((state) => state.deleteFood)
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
-  const navigate = useNavigate()
+  const router = useRouter()
   const isUsedInRecipe = useMemo(() => isFoodUsedInRecipe(food.id, recipes), [food.id, recipes, isFoodUsedInRecipe])
 
   function handleDelete() {
     if (isUsedInRecipe) return
-    if (deleteFood(food.id, recipes)) {
-      navigate('/foods')
-    }
+    deleteFood(food.id)
+    router.push('/foods')
   }
 
   function formatMacros(): string {
@@ -42,7 +43,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
       <div className="food-content">
         <header className="food-header">
           <div className="food-header-container">
-            <Link to="/foods" className="back-link">
+            <Link href="/foods" className="back-link">
               ← All Foods
             </Link>
             <p className="food-label">Food</p>
@@ -75,7 +76,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               >
                 Delete
               </button>
-              <Link to={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
+              <Link href={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
                 Edit
               </Link>
             </div>

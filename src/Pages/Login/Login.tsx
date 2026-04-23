@@ -1,7 +1,8 @@
+'use client'
+
 import { useState, useMemo } from "react"
-import { Link } from "react-router-dom"
+import Link from "next/link"
 import { useSettingsStore } from "@/stores/settings"
-import "./login.scss"
 
 function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("")
@@ -39,7 +40,7 @@ function Login() {
           <div className="success-message">
             <h2>Welcome back! 👋</h2>
             <p>You have successfully logged in.</p>
-            <Link to="/" className="primary-button">Go to Home</Link>
+            <Link href="/" className="primary-button">Go to Home</Link>
           </div>
         </div>
       </div>
@@ -108,7 +109,7 @@ function Login() {
 
               <div className="form-footer">
                 <div className="footer-actions">
-                  <Link to="/" className="ghost-button">Cancel</Link>
+                  <Link href="/" className="ghost-button">Cancel</Link>
                   <button type="submit" className="primary-button" disabled={!canSubmit}>
                     Login
                   </button>
@@ -118,10 +119,10 @@ function Login() {
 
             <div className="form-links">
               <p>
-                <Link to="/forgot-password">Forgot Password?</Link>
+                <Link href="/forgot-password">Forgot Password?</Link>
               </p>
               <p>
-                Don't have an account? <Link to="/create-account">Create Account</Link>
+                Don't have an account? <Link href="/create-account">Create Account</Link>
               </p>
             </div>
           </div>

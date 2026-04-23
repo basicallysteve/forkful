@@ -1,10 +1,11 @@
+'use client'
+
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
-import './foods.scss'
 
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
@@ -84,7 +85,7 @@ export default function Foods() {
     })
 
     // Delete foods that are not in use
-    foodsToDelete.forEach((id) => deleteFood(id, recipes))
+    foodsToDelete.forEach((id) => deleteFood(id))
 
     // Show error for foods that couldn't be deleted
     if (foodsInUse.length > 0) {
@@ -166,7 +167,7 @@ export default function Foods() {
               </button>
             </div>
             <div className="toolbar-actions">
-              <Link to="/foods/new" className="primary-button">
+              <Link href="/foods/new" className="primary-button">
                 + Add Food
               </Link>
               {selectedFoods.size > 0 && (
@@ -221,7 +222,7 @@ export default function Foods() {
                           aria-label={`Select ${food.name}`}
                         />
                       </div>
-                      <Link to={`/foods/${toSlug(food.name)}`} className="card-content">
+                      <Link href={`/foods/${toSlug(food.name)}`} className="card-content">
                         <div className="card-header">
                           <h3 className="card-title">{food.name}</h3>
                           <div className="card-badges">

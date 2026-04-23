@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import PantryList from './Index'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
@@ -50,7 +49,7 @@ function renderWithProviders(
   useFoodStore.setState({ foods })
   usePantryStore.setState({ items })
 
-  return render(<BrowserRouter>{ui}</BrowserRouter>)
+  return render(ui)
 }
 
 // Helper to create valid pantry items with all required fields

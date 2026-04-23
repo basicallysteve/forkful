@@ -1,6 +1,7 @@
+'use client'
+
 import { useState, useMemo } from "react"
-import { Link } from "react-router-dom"
-import "./createAccount.scss"
+import Link from "next/link"
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
@@ -100,7 +101,7 @@ function CreateAccount() {
           <div className="success-message">
             <h2>Welcome to Forkful! 🎉</h2>
             <p>Your account has been created successfully.</p>
-            <Link to="/" className="primary-button">Go to Home</Link>
+            <Link href="/" className="primary-button">Go to Home</Link>
           </div>
         </div>
       </div>
@@ -279,7 +280,7 @@ function CreateAccount() {
 
               <div className="form-footer">
                 <div className="footer-actions">
-                  <Link to="/" className="ghost-button">Cancel</Link>
+                  <Link href="/" className="ghost-button">Cancel</Link>
                   <button type="submit" className="primary-button" disabled={!canSubmit}>
                     Create Account
                   </button>

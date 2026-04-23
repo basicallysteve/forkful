@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import Store from './Store'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
@@ -60,7 +59,7 @@ function renderWithProviders(
   useFoodStore.setState({ foods })
   useRecipeStore.setState((state) => ({ ...state, recipes }))
 
-  return render(<BrowserRouter>{ui}</BrowserRouter>)
+  return render(ui)
 }
 
 describe('Store Page - Recipe Creation', () => {
@@ -417,20 +416,18 @@ describe('Recipes List - Card Layout', () => {
     ]
 
     const { container } = render(
-      <BrowserRouter>
-        <div className="recipes-list">
-          <div className="recipe-card">
-            <div className="card-content">
-              <div className="card-header">
-                <h3 className="card-title">Test Recipe</h3>
-                <div className="card-badges">
-                  <span className="pill pill-ghost">Lunch</span>
-                </div>
+      <div className="recipes-list">
+        <div className="recipe-card">
+          <div className="card-content">
+            <div className="card-header">
+              <h3 className="card-title">Test Recipe</h3>
+              <div className="card-badges">
+                <span className="pill pill-ghost">Lunch</span>
               </div>
             </div>
           </div>
         </div>
-      </BrowserRouter>
+      </div>
     )
 
     const cardHeader = container.querySelector('.card-header')

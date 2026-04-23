@@ -1,9 +1,10 @@
+'use client'
+
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
-import './pantry.scss'
 
 type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
 type SortDirection = 'asc' | 'desc'
@@ -162,7 +163,7 @@ export default function Pantry() {
             <h1 className="pantry-name">Pantry</h1>
           </div>
           <div className="pantry-meta">
-            <Link to="/pantry/new" className="pill pill-primary">
+            <Link href="/pantry/new" className="pill pill-primary">
               Add Item
             </Link>
           </div>
@@ -259,7 +260,7 @@ export default function Pantry() {
             <div className="panel-content">
               <div className="empty-state">
                 <p>No pantry items found.</p>
-                <Link to="/pantry/new" className="primary-button">
+                <Link href="/pantry/new" className="primary-button">
                   Add your first item
                 </Link>
               </div>
@@ -298,7 +299,7 @@ export default function Pantry() {
                         />
                       </td>
                       <td>
-                        <Link to={`/foods/${toSlug(item.food.name)}`}>
+                        <Link href={`/foods/${toSlug(item.food.name)}`}>
                           {item.food.name}
                         </Link>
                       </td>
@@ -336,7 +337,7 @@ export default function Pantry() {
                             </button>
                           )}
                           <Link
-                            to={`/pantry/${item.id}/edit`}
+                            href={`/pantry/${item.id}/edit`}
                             className="btn-small btn-secondary"
                           >
                             Edit
@@ -386,7 +387,7 @@ export default function Pantry() {
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        <Link to={`/foods/${toSlug(item.food.name)}`} className="card-title">
+                        <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
                           {item.food.name}
                         </Link>
                         <div className="card-badges">
@@ -439,7 +440,7 @@ export default function Pantry() {
                           </button>
                         )}
                         <Link
-                          to={`/pantry/${item.id}/edit`}
+                            href={`/pantry/${item.id}/edit`}
                           className="btn-small btn-secondary"
                         >
                           Edit
