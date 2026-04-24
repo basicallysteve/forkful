@@ -1,6 +1,6 @@
 'use client'
 
-import FoodsList from '@/Pages/Foods/Index'
+import FoodsList from '@/views/Foods/Index'
 
 export default function FoodsPage() {
   return <FoodsList />

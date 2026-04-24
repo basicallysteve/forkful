@@ -1,6 +1,6 @@
 'use client'
 
-import PantryStore from '@/Pages/Pantry/Store'
+import PantryStore from '@/views/Pantry/Store'
 
 export default function NewPantryItemPage() {
   return <PantryStore />

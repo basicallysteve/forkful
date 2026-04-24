@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useRecipeStore } from '@/stores/recipes'
 import { toSlug } from '@/utils/slug'
-import RecipeIndex from '@/Pages/Recipe/Index'
+import RecipeIndex from '@/views/Recipe/Index'
 import { notFound } from 'next/navigation'
 
 export default function RecipePage() {

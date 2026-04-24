@@ -1,6 +1,6 @@
 'use client'
 
-import RecipesList from '@/Pages/Recipes/Index'
+import RecipesList from '@/views/Recipes/Index'
 
 export default function RecipesPage() {
   return <RecipesList />

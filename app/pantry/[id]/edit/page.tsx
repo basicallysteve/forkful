@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation'
 import { usePantryStore } from '@/stores/pantry'
-import PantryStore from '@/Pages/Pantry/Store'
+import PantryStore from '@/views/Pantry/Store'
 import { notFound } from 'next/navigation'
 
 export default function EditPantryItemPage() {

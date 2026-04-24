@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import { toSlug } from '@/utils/slug'
-import FoodIndex from '@/Pages/Food/Index'
+import FoodIndex from '@/views/Food/Index'
 import { notFound } from 'next/navigation'
 
 export default function FoodPage() {
