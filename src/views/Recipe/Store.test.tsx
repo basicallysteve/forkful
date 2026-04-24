@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
@@ -405,15 +405,6 @@ describe('Store Page - Recipe Creation', () => {
 
 describe('Recipes List - Card Layout', () => {
   it('renders card header with title and badges on the same row', () => {
-    const recipes: Recipe[] = [
-      {
-        id: 1,
-        name: 'Test Recipe',
-        meal: 'Lunch',
-        description: 'Test description',
-        ingredients: [],
-      },
-    ]
 
     const { container } = render(
       <div className="recipes-list">

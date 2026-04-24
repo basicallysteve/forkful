@@ -246,10 +246,6 @@ describe('Recipe View Page', () => {
     it('updates calories when quantity changes for existing ingredient', async () => {
       const user = userEvent.setup()
       // Provide existing ingredients with per-unit calories (75 calories per unit for Ham)
-      const existingIngredients = [
-        { food: mockFoods[0], quantity: 1, calories: 75, servingUnit: 'slice' },
-        { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
-      ]
       renderWithStores(<Recipe recipe={mockRecipe} />)
 
       await user.click(screen.getByRole('button', { name: /edit/i }))

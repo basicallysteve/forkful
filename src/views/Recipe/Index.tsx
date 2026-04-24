@@ -19,7 +19,6 @@ interface RecipeProps {
 }
 
 export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const foods = useFoodStore((state) => state.foods)
 

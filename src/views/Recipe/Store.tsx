@@ -231,7 +231,6 @@ function Store() {
   const router = useRouter()
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
-  const foods = useFoodStore((state) => state.foods)
   
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",

@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Recipe } from '@/types/Recipe'
-import type { Food } from '@/types/Food'
 import { calculateCalories } from '@/utils/unitConversion'
 import { buildInitialRecipes, getInitialFoods } from './initialData'
 
