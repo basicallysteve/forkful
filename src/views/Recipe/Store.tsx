@@ -318,7 +318,7 @@ function Store() {
     const newRecipe = createRecipe(false)
     addRecipeToStore(newRecipe)
     router.push(`/recipes/${toSlug(newRecipe.name)}`)
-    try { await apiCreateRecipe(newRecipe) } catch {}
+    try { await apiCreateRecipe(newRecipe) } catch (err) { console.error('Failed to persist new recipe:', err) }
   }
 
   async function handlePublishRecipe() {
@@ -327,7 +327,7 @@ function Store() {
     const newRecipe = createRecipe(true)
     addRecipeToStore(newRecipe)
     router.push(`/recipes/${toSlug(newRecipe.name)}`)
-    try { await apiCreateRecipe(newRecipe) } catch {}
+    try { await apiCreateRecipe(newRecipe) } catch (err) { console.error('Failed to persist published recipe:', err) }
   }
 
   const detailsTabContent = (<form className="store-form">

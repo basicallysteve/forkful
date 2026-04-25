@@ -162,11 +162,11 @@ function Store({ existingFood }: FoodStoreProps) {
       const updatedFood = { ...foodData, id: existingFood.id }
       updateFood(updatedFood)
       router.push(`/foods/${toSlug(foodData.name)}`)
-      try { await apiUpdateFood(updatedFood) } catch {}
+      try { await apiUpdateFood(updatedFood) } catch (err) { console.error('Failed to persist food update:', err) }
     } else {
       addFood(foodData)
       router.push(`/foods/${toSlug(foodData.name)}`)
-      try { await apiCreateFood(foodData) } catch {}
+      try { await apiCreateFood(foodData) } catch (err) { console.error('Failed to persist new food:', err) }
     }
   }
 

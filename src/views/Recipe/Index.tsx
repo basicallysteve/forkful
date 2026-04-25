@@ -51,7 +51,7 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
 
     updateRecipeInStore(updatedRecipe)
     setEditMode(false)
-    try { await apiUpdateRecipe(updatedRecipe) } catch {}
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe update:', err) }
   }
 
   function handleCancel() {
@@ -147,14 +147,14 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     const updatedRecipe = { ...editedRecipe, date_published: now }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch {}
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
   }
 
   async function unpublishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch {}
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
   }
 
   const publishedButton = !isPublished ? (

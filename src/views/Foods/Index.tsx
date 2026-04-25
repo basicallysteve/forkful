@@ -99,7 +99,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
     foodsToDelete.forEach(food => deleteFood(food.id))
     try {
       await Promise.all(foodsToDelete.map(food => apiDeleteFood(toSlug(food.name))))
-    } catch {}
+    } catch (err) { console.error('Failed to delete foods from server:', err) }
 
     if (foodsInUse.length > 0) {
       setDeleteError(

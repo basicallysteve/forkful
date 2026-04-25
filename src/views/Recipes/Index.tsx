@@ -97,7 +97,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
     toDelete.forEach(recipe => deleteRecipe(recipe.id))
     try {
       await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
-    } catch {}
+    } catch (err) { console.error('Failed to delete recipes from server:', err) }
     setSelectedRecipes(new Set())
   }
 
@@ -109,7 +109,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
     toUpdate.forEach(recipe => updateRecipe(recipe))
     try {
       await Promise.all(toUpdate.map(recipe => apiUpdateRecipe(recipe)))
-    } catch {}
+    } catch (err) { console.error('Failed to unpublish recipes on server:', err) }
     setSelectedRecipes(new Set())
   }
 
