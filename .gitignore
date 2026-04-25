@@ -12,6 +12,7 @@ dist
 dist-ssr
 .next
 *.local
+backend/.env
 
 # Editor directories and files
 .vscode/*

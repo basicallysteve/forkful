@@ -1,61 +1,52 @@
 'use client'
 
 import ToolBar from '@/components/ToolBar'
-import { useRecipeStore } from '@/stores/recipes'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const recipes = useRecipeStore((state) => state.recipes)
+interface ClientLayoutProps {
+  children: React.ReactNode
+  recipes: Recipe[]
+}
 
+export default function ClientLayout({ children, recipes }: ClientLayoutProps) {
   const menuOptions = [
     {
       label: 'Recipes',
-      action: () => { console.log('Recipes clicked') },
+      to: '/recipes',
+      action: () => {},
       children: [
-        { label: 'Browse All Recipes', action: () => { console.log('Browse All Recipes clicked') }, to: '/recipes' },
-        { label: 'Add New Recipe', action: () => { console.log('Add New Recipe clicked') }, to: '/recipes/new' },
+        { label: 'Browse All Recipes', to: '/recipes', action: () => {} },
+        { label: 'Add New Recipe', to: '/recipes/new', action: () => {} },
         ...recipes.map((recipe: Recipe) => ({
           label: recipe.name,
           to: `/recipes/${toSlug(recipe.name)}`,
-          action: () => { console.log(`Recipe clicked: ${recipe.name}`) },
+          action: () => {},
         })),
       ],
     },
     {
       label: 'Foods',
-      action: () => { console.log('Foods clicked') },
+      to: '/foods',
+      action: () => {},
       children: [
-        { label: 'Browse All Foods', action: () => { console.log('Browse All Foods clicked') }, to: '/foods' },
-        { label: 'Add New Food', action: () => { console.log('Add New Food clicked') }, to: '/foods/new' },
+        { label: 'Browse All Foods', to: '/foods', action: () => {} },
+        { label: 'Add New Food', to: '/foods/new', action: () => {} },
       ],
     },
     {
       label: 'Pantry',
-      action: () => { console.log('Pantry clicked') },
+      to: '/pantry',
+      action: () => {},
       children: [
-        { label: 'Browse Pantry', action: () => { console.log('Browse Pantry clicked') }, to: '/pantry' },
-        { label: 'Add Pantry Item', action: () => { console.log('Add Pantry Item clicked') }, to: '/pantry/new' },
-      ],
-    },
-    {
-      label: 'Settings',
-      action: () => { console.log('Settings clicked') },
-      children: [
-        {
-          label: 'Profile',
-          action: () => { console.log('Profile clicked') },
-        },
-        {
-          label: 'Preferences',
-          action: () => { console.log('Preferences clicked') },
-        },
+        { label: 'Browse Pantry', to: '/pantry', action: () => {} },
+        { label: 'Add Pantry Item', to: '/pantry/new', action: () => {} },
       ],
     },
     {
       label: 'Login',
       to: '/login',
-      action: () => { console.log('Login clicked') },
+      action: () => {},
     },
   ]
 

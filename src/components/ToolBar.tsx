@@ -3,7 +3,7 @@
 import Link from 'next/link'
 type MenuOption = {
     label: string;
-    action: () => void;
+    action?: () => void;
     children?: MenuOption[];
     to?: string; // Optional for direct links
 }

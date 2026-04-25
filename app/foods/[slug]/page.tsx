@@ -1,20 +1,14 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useFoodStore } from '@/stores/food'
-import { toSlug } from '@/utils/slug'
-import FoodIndex from '@/views/Food/Index'
 import { notFound } from 'next/navigation'
+import { getFoodBySlug } from '@/lib/foods'
+import FoodIndex from '@/views/Food/Index'
 
-export default function FoodPage() {
-  const params = useParams()
-  const slug = params.slug as string
-  const foods = useFoodStore((state) => state.foods)
-  const food = foods.find((f) => toSlug(f.name) === slug)
+type Props = { params: Promise<{ slug: string }> }
 
-  if (!food) {
-    notFound()
-  }
+export default async function FoodPage({ params }: Props) {
+  const { slug } = await params
+  const food = await getFoodBySlug(slug)
+
+  if (!food) notFound()
 
   return <FoodIndex food={food!} />
 }

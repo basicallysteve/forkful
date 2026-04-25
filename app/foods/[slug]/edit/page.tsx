@@ -1,20 +1,14 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useFoodStore } from '@/stores/food'
-import { toSlug } from '@/utils/slug'
-import FoodStore from '@/views/Food/Store'
 import { notFound } from 'next/navigation'
+import { getFoodBySlug } from '@/lib/foods'
+import FoodStore from '@/views/Food/Store'
 
-export default function EditFoodPage() {
-  const params = useParams()
-  const slug = params.slug as string
-  const foods = useFoodStore((state) => state.foods)
-  const food = foods.find((f) => toSlug(f.name) === slug)
+type Props = { params: Promise<{ slug: string }> }
 
-  if (!food) {
-    notFound()
-  }
+export default async function EditFoodPage({ params }: Props) {
+  const { slug } = await params
+  const food = await getFoodBySlug(slug)
+
+  if (!food) notFound()
 
   return <FoodStore existingFood={food!} />
 }
