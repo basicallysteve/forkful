@@ -79,8 +79,8 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
         let cmp = 0
         if (options.sortBy === 'date_published') {
           const da = a.date_published ? new Date(a.date_published).getTime() : 0
-          const db2 = b.date_published ? new Date(b.date_published).getTime() : 0
-          cmp = da - db2
+          const dateB = b.date_published ? new Date(b.date_published).getTime() : 0
+          cmp = da - dateB
         } else if (options.sortBy === 'calories') {
           const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
           const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)

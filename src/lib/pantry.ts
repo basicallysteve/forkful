@@ -4,6 +4,7 @@ import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
 
+// ms → s → min → hr → day
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
