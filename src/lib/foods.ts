@@ -4,6 +4,12 @@ import { foods } from '@/db/schema'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
+export type FoodQueryOptions = {
+  search?: string
+  sortBy?: 'name' | 'calories' | 'protein'
+  sortDir?: 'asc' | 'desc'
+}
+
 function mapFood(row: typeof foods.$inferSelect): Food {
   return {
     id: row.id,
@@ -19,9 +25,22 @@ function mapFood(row: typeof foods.$inferSelect): Food {
   }
 }
 
-export async function getFoods(): Promise<Food[]> {
+export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
   try {
-    const rows = await db.select().from(foods)
+    let rows = await db.select().from(foods)
+    if (options.search) {
+      const term = options.search.toLowerCase()
+      rows = rows.filter(r => r.name.toLowerCase().includes(term))
+    }
+    if (options.sortBy) {
+      rows = rows.sort((a, b) => {
+        let cmp = 0
+        if (options.sortBy === 'name') cmp = a.name.localeCompare(b.name)
+        else if (options.sortBy === 'calories') cmp = a.calories - b.calories
+        else if (options.sortBy === 'protein') cmp = Number(a.protein ?? 0) - Number(b.protein ?? 0)
+        return options.sortDir === 'desc' ? -cmp : cmp
+      })
+    }
     return rows.map(mapFood)
   } catch {
     return []

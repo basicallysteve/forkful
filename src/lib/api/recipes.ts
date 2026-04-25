@@ -1,8 +1,21 @@
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
 
-export async function apiFetchRecipes(): Promise<Recipe[]> {
-  const res = await fetch('/api/recipes')
+export type RecipeQueryOptions = {
+  ingredient?: string
+  published?: boolean
+  sortBy?: 'date_published' | 'calories'
+  sortDir?: 'asc' | 'desc'
+}
+
+export async function apiFetchRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
+  const params = new URLSearchParams()
+  if (options.ingredient) params.set('ingredient', options.ingredient)
+  if (options.published !== undefined) params.set('published', String(options.published))
+  if (options.sortBy) params.set('sortBy', options.sortBy)
+  if (options.sortDir) params.set('sortDir', options.sortDir)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const res = await fetch(`/api/recipes${query}`)
   if (!res.ok) throw new Error('Failed to fetch recipes')
   return res.json()
 }
