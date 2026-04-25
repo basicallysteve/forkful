@@ -10,5 +10,5 @@ export default async function EditFoodPage({ params }: Props) {
 
   if (!food) notFound()
 
-  return <FoodStore existingFood={food!} />
+  return <FoodStore existingFood={food} />
 }

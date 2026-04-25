@@ -10,5 +10,5 @@ export default async function FoodPage({ params }: Props) {
 
   if (!food) notFound()
 
-  return <FoodIndex food={food!} />
+  return <FoodIndex food={food} />
 }

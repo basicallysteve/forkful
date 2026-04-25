@@ -14,39 +14,34 @@ export default function ClientLayout({ children, recipes }: ClientLayoutProps) {
     {
       label: 'Recipes',
       to: '/recipes',
-      action: () => {},
       children: [
-        { label: 'Browse All Recipes', to: '/recipes', action: () => {} },
-        { label: 'Add New Recipe', to: '/recipes/new', action: () => {} },
+        { label: 'Browse All Recipes', to: '/recipes' },
+        { label: 'Add New Recipe', to: '/recipes/new' },
         ...recipes.map((recipe: Recipe) => ({
           label: recipe.name,
           to: `/recipes/${toSlug(recipe.name)}`,
-          action: () => {},
         })),
       ],
     },
     {
       label: 'Foods',
       to: '/foods',
-      action: () => {},
       children: [
-        { label: 'Browse All Foods', to: '/foods', action: () => {} },
-        { label: 'Add New Food', to: '/foods/new', action: () => {} },
+        { label: 'Browse All Foods', to: '/foods' },
+        { label: 'Add New Food', to: '/foods/new' },
       ],
     },
     {
       label: 'Pantry',
       to: '/pantry',
-      action: () => {},
       children: [
-        { label: 'Browse Pantry', to: '/pantry', action: () => {} },
-        { label: 'Add Pantry Item', to: '/pantry/new', action: () => {} },
+        { label: 'Browse Pantry', to: '/pantry' },
+        { label: 'Add Pantry Item', to: '/pantry/new' },
       ],
     },
     {
       label: 'Login',
       to: '/login',
-      action: () => {},
     },
   ]
 
