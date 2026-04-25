@@ -17,5 +17,5 @@ export const buildInitialRecipes = (): Recipe[] => {
   return []
 }
 
-export const getInitialRecipes = (foods: Food[] = getInitialFoods()): Recipe[] =>
-  JSON.parse(JSON.stringify(buildInitialRecipes(foods)))
+export const getInitialRecipes = (_foods: Food[] = getInitialFoods()): Recipe[] =>
+  JSON.parse(JSON.stringify(buildInitialRecipes()))

@@ -17,7 +17,7 @@ type RecipeStore = {
 }
 
 export const useRecipeStore = create<RecipeStore>((set, get) => ({
-  recipes: buildInitialRecipes(getInitialFoods()),
+  recipes: buildInitialRecipes(),
   existingIngredients: () => get().recipes.flatMap(recipe => recipe.ingredients)
       .filter((ingredient, index, self) =>
         index === self.findIndex((ing) => ing.food.name === ingredient.food.name)
@@ -123,7 +123,6 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 }))
 
 export const resetRecipeStore = () => {
-  const foods = getInitialFoods()
-  useRecipeStore.setState({ recipes: buildInitialRecipes(foods) })
+  useRecipeStore.setState({ recipes: buildInitialRecipes() })
 }
     

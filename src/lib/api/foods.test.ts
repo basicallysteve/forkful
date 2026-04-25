@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiCreateFood, apiUpdateFood, apiDeleteFood } from './foods'
+import { apiFetchFoods, apiFetchFood, apiCreateFood, apiUpdateFood, apiDeleteFood } from './foods'
 import type { Food } from '@/types/Food'
 
 const mockFood: Food = {
@@ -17,6 +17,50 @@ const mockFood: Food = {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('apiFetchFoods', () => {
+  it('fetches all foods with no params', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [mockFood],
+    } as Response)
+    const result = await apiFetchFoods()
+    expect(result).toEqual([mockFood])
+    expect(fetch).toHaveBeenCalledWith('/api/foods')
+  })
+
+  it('appends search query param', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] } as Response)
+    await apiFetchFoods({ search: 'ham' })
+    expect(fetch).toHaveBeenCalledWith('/api/foods?search=ham')
+  })
+
+  it('appends sortBy and sortDir params', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] } as Response)
+    await apiFetchFoods({ sortBy: 'calories', sortDir: 'desc' })
+    expect(fetch).toHaveBeenCalledWith('/api/foods?sortBy=calories&sortDir=desc')
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
+    await expect(apiFetchFoods()).rejects.toThrow('Failed to fetch foods')
+  })
+})
+
+describe('apiFetchFood', () => {
+  it('fetches a single food by slug', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockFood } as Response)
+    const result = await apiFetchFood('ham')
+    expect(result).toEqual(mockFood)
+    expect(fetch).toHaveBeenCalledWith('/api/foods/ham')
+  })
+
+  it('returns null on 404', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
+    const result = await apiFetchFood('nonexistent')
+    expect(result).toBeNull()
+  })
 })
 
 describe('apiCreateFood', () => {

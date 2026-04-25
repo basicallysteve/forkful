@@ -6,6 +6,13 @@ import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
+export type RecipeQueryOptions = {
+  ingredient?: string
+  published?: boolean
+  sortBy?: 'date_published' | 'calories'
+  sortDir?: 'asc' | 'desc'
+}
+
 function mapFood(row: typeof foods.$inferSelect): Food {
   return {
     id: row.id,
@@ -48,10 +55,42 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
   }
 }
 
-export async function getRecipes(): Promise<Recipe[]> {
+export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
     const rows = await db.select().from(recipes).where(isNull(recipes.dateDeleted))
-    return Promise.all(rows.map(buildRecipe))
+    const built = await Promise.all(rows.map(buildRecipe))
+    let result = built
+
+    if (options.published !== undefined) {
+      result = result.filter(r =>
+        options.published ? r.date_published !== null : r.date_published === null
+      )
+    }
+
+    if (options.ingredient) {
+      const term = options.ingredient.toLowerCase()
+      result = result.filter(r =>
+        r.ingredients.some(ing => ing.food.name.toLowerCase().includes(term))
+      )
+    }
+
+    if (options.sortBy) {
+      result = result.sort((a, b) => {
+        let cmp = 0
+        if (options.sortBy === 'date_published') {
+          const dateA = a.date_published ? new Date(a.date_published).getTime() : 0
+          const dateB = b.date_published ? new Date(b.date_published).getTime() : 0
+          cmp = dateA - dateB
+        } else if (options.sortBy === 'calories') {
+          const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+          const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+          cmp = calsA - calsB
+        }
+        return options.sortDir === 'desc' ? -cmp : cmp
+      })
+    }
+
+    return result
   } catch {
     return []
   }

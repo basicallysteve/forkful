@@ -41,3 +41,18 @@ export const ingredients = pgTable('ingredients', {
   dateUpdated: timestamp('date_updated'),
   dateDeleted: timestamp('date_deleted'),
 });
+
+export const pantryItems = pgTable('pantry_items', {
+  id: serial('id').primaryKey(),
+  foodId: integer('food_id')
+    .notNull()
+    .references(() => foods.id, { onDelete: 'cascade' }),
+  expirationDate: timestamp('expiration_date'),
+  originalSizeAmount: numeric('original_size_amount', { precision: 10, scale: 2 }).notNull(),
+  originalSizeUnit: varchar('original_size_unit', { length: 50 }),
+  currentSizeAmount: numeric('current_size_amount', { precision: 10, scale: 2 }).notNull(),
+  currentSizeUnit: varchar('current_size_unit', { length: 50 }),
+  addedDate: timestamp('added_date').defaultNow().notNull(),
+  frozenDate: timestamp('frozen_date'),
+  dateDeleted: timestamp('date_deleted'),
+});
