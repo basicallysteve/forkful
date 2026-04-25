@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import ClientLayout from './ClientLayout'
+import { getRecipes } from '@/lib/recipes'
+import type { Recipe } from '@/types/Recipe'
 import './globals.scss'
 
 export const metadata: Metadata = {
@@ -10,15 +12,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const recipes: Recipe[] = await getRecipes()
+
   return (
     <html lang="en">
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout recipes={recipes}>{children}</ClientLayout>
       </body>
     </html>
   )

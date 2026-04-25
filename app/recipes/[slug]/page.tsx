@@ -1,20 +1,14 @@
-'use client'
-
-import { useParams } from 'next/navigation'
-import { useRecipeStore } from '@/stores/recipes'
-import { toSlug } from '@/utils/slug'
-import RecipeIndex from '@/views/Recipe/Index'
 import { notFound } from 'next/navigation'
+import { getRecipeBySlug } from '@/lib/recipes'
+import RecipeIndex from '@/views/Recipe/Index'
 
-export default function RecipePage() {
-  const params = useParams()
-  const slug = params.slug as string
-  const recipes = useRecipeStore((state) => state.recipes)
-  const recipe = recipes.find((r) => toSlug(r.name) === slug)
+type Props = { params: Promise<{ slug: string }> }
 
-  if (!recipe) {
-    notFound()
-  }
+export default async function RecipePage({ params }: Props) {
+  const { slug } = await params
+  const recipe = await getRecipeBySlug(slug)
 
-  return <RecipeIndex recipe={recipe!} />
+  if (!recipe) notFound()
+
+  return <RecipeIndex recipe={recipe} />
 }
