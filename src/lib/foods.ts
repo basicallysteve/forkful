@@ -20,8 +20,12 @@ function mapFood(row: typeof foods.$inferSelect): Food {
 }
 
 export async function getFoods(): Promise<Food[]> {
-  const rows = await db.select().from(foods)
-  return rows.map(mapFood)
+  try {
+    const rows = await db.select().from(foods)
+    return rows.map(mapFood)
+  } catch {
+    return []
+  }
 }
 
 export async function getFoodBySlug(slug: string): Promise<Food | null> {

@@ -49,8 +49,12 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 }
 
 export async function getRecipes(): Promise<Recipe[]> {
-  const rows = await db.select().from(recipes)
-  return Promise.all(rows.map(buildRecipe))
+  try {
+    const rows = await db.select().from(recipes)
+    return Promise.all(rows.map(buildRecipe))
+  } catch {
+    return []
+  }
 }
 
 export async function getRecipeBySlug(slug: string): Promise<Recipe | null> {

@@ -48,10 +48,13 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     )
 
     const updatedRecipe = { ...editedRecipe, ingredients: sanitizedIngredients }
-
-    updateRecipeInStore(updatedRecipe)
-    setEditMode(false)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe update:', err) }
+    try {
+      const result = await apiUpdateRecipe(updatedRecipe)
+      updateRecipeInStore(result)
+      setEditMode(false)
+    } catch (err) {
+      console.error('Failed to persist recipe update:', err)
+    }
   }
 
   function handleCancel() {

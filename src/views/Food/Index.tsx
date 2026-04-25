@@ -22,9 +22,13 @@ export default function FoodIndex({ food }: FoodIndexProps) {
 
   async function handleDelete() {
     if (isUsedInRecipe) return
-    deleteFood(food.id)
-    router.push('/foods')
-    try { await apiDeleteFood(toSlug(food.name)) } catch (err) { console.error('Failed to delete food from server:', err) }
+    try {
+      await apiDeleteFood(toSlug(food.name))
+      deleteFood(food.id)
+      router.push('/foods')
+    } catch (err) {
+      console.error('Failed to delete food from server:', err)
+    }
   }
 
   function formatMacros(): string {

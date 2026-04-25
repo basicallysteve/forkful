@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import type { Metadata } from 'next'
 import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
