@@ -11,7 +11,7 @@ const EXPIRING_SOON_THRESHOLD_DAYS = 7
 function calculateStatus(expirationDate: Date | null): PantryItem['status'] {
   if (!expirationDate) return 'good'
   const now = new Date()
-  const daysUntilExpiration = Math.ceil((new Date(expirationDate).getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
+  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
   if (daysUntilExpiration < 0) return 'expired'
   if (daysUntilExpiration <= EXPIRING_SOON_THRESHOLD_DAYS) return 'expiring-soon'
   return 'good'
