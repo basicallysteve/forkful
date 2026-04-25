@@ -46,7 +46,7 @@ describe('TaskRunner', () => {
   it('should wrap tasks in a database transaction by default', async () => {
     const runner = new TaskRunner<string>();
     
-    runner.add((payload, tx: any) => {
+    runner.add((payload, tx: unknown) => {
       // Verify that the mock transaction object was passed instead of the db
       expect(tx).toHaveProperty('_isMockTx', true);
       return payload + ' processed';
@@ -60,7 +60,7 @@ describe('TaskRunner', () => {
   it('should run without transaction if transactional is false', async () => {
     const runner = new TaskRunner<number>({ transactional: false });
     
-    runner.add((payload, tx: any) => {
+    runner.add((payload, tx: unknown) => {
       // Verify that the main db object was passed
       expect(tx).toHaveProperty('_isMockDb', true);
       return payload + 1;
@@ -72,7 +72,7 @@ describe('TaskRunner', () => {
   });
 
   it('should propagate errors and reject the promise', async () => {
-    const runner = new TaskRunner<any>();
+    const runner = new TaskRunner<unknown>();
     
     runner.add(() => { throw new Error('Task Failed'); });
     runner.add(() => { return 'should not reach here'; });

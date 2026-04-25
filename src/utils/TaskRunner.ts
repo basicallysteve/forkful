@@ -18,7 +18,7 @@ export class TaskRunner<T, Tx = any> {
   async run(initialPayload: T): Promise<T> {
     if (!this.transactional) {
       for (const task of this.tasks) {
-        initialPayload = await task(initialPayload, db);
+        initialPayload = await task(initialPayload, db as unknown as Tx);
       }
       return initialPayload;
     }
