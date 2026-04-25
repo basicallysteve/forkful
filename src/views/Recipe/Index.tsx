@@ -15,13 +15,13 @@ const DEFAULT_SERVING_UNIT = 'g'
 
 interface RecipeProps {
   recipe: Recipe
+  foods: Food[]
   isEditing?: boolean
   canEdit?: boolean
 }
 
-export default function Recipe({ recipe, isEditing = false, canEdit = true }: RecipeProps) {
+export default function Recipe({ recipe, foods, isEditing = false, canEdit = true }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
-  const foods = useFoodStore((state) => state.foods)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
@@ -284,6 +284,19 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
                               const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
                               if (food) {
                                 handleIngredientFoodChange(index, food)
+                              }else if(next === '') {
+                                  handleIngredientFoodChange(index, {
+                                    id: -1, // Temporary ID for non-existing food
+                                    name: "",
+                                    calories: 0,
+                                    protein: 0,
+                                    carbs: 0,
+                                    fat: 0,
+                                    fiber: 0,
+                                    servingSize: 1,
+                                    servingUnit: "g",
+                                    measurements: []
+                                  })
                               }
                             }}
                             onSelect={(opt) => handleIngredientFoodChange(index, opt)}
