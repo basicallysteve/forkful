@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
+import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
@@ -142,7 +143,7 @@ function Store({ existingFood }: FoodStoreProps) {
     })
   }
 
-  function handleSaveFood() {
+  async function handleSaveFood() {
     if (!canSave) return
 
     const foodData: Omit<Food, 'id'> = {
@@ -158,11 +159,21 @@ function Store({ existingFood }: FoodStoreProps) {
     }
 
     if (isEditing && existingFood) {
-      updateFood({ ...foodData, id: existingFood.id })
-      router.push(`/foods/${toSlug(food.name!)}`)
+      try {
+        const updatedFood = await apiUpdateFood({ ...foodData, id: existingFood.id })
+        updateFood(updatedFood)
+        router.push(`/foods/${toSlug(updatedFood.name)}`)
+      } catch (err) {
+        console.error('Failed to persist food update:', err)
+      }
     } else {
-      addFood(foodData)
-      router.push(`/foods/${toSlug(food.name!)}`)
+      try {
+        const createdFood = await apiCreateFood(foodData)
+        addFood(foodData)
+        router.push(`/foods/${toSlug(createdFood.name)}`)
+      } catch (err) {
+        console.error('Failed to persist new food:', err)
+      }
     }
   }
 

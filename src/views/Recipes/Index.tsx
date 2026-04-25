@@ -1,16 +1,22 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useRecipeStore } from '@/stores/recipes'
+import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
 
-export default function Recipes() {
+interface RecipesProps {
+  initialRecipes?: Recipe[]
+}
+
+export default function Recipes({ initialRecipes }: RecipesProps) {
   const recipes = useRecipeStore((state) => state.recipes)
+  const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
@@ -19,6 +25,12 @@ export default function Recipes() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
+
+  useEffect(() => {
+    if (initialRecipes) {
+      setRecipes(initialRecipes)
+    }
+  }, [initialRecipes, setRecipes])
 
   const filteredAndSortedRecipes = useMemo(() => {
     let filtered = filterMeal === 'all'
@@ -79,19 +91,25 @@ export default function Recipes() {
     }
   }
 
-  function handleDeleteSelected() {
+  async function handleDeleteSelected() {
     if (selectedRecipes.size === 0) return
-    selectedRecipes.forEach((id) => deleteRecipe(id))
+    const toDelete = recipes.filter((recipe) => selectedRecipes.has(recipe.id))
+    toDelete.forEach(recipe => deleteRecipe(recipe.id))
+    try {
+      await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
+    } catch (err) { console.error('Failed to delete recipes from server:', err) }
     setSelectedRecipes(new Set())
   }
 
-  function handleUnpublishSelected() {
+  async function handleUnpublishSelected() {
     if (selectedRecipes.size === 0) return
-    recipes.forEach((recipe) => {
-      if (selectedRecipes.has(recipe.id)) {
-        updateRecipe({ ...recipe, date_published: null })
-      }
-    })
+    const toUpdate = recipes
+      .filter((recipe) => selectedRecipes.has(recipe.id))
+      .map(recipe => ({ ...recipe, date_published: null }))
+    toUpdate.forEach(recipe => updateRecipe(recipe))
+    try {
+      await Promise.all(toUpdate.map(recipe => apiUpdateRecipe(recipe)))
+    } catch (err) { console.error('Failed to unpublish recipes on server:', err) }
     setSelectedRecipes(new Set())
   }
 

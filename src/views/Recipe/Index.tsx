@@ -8,6 +8,7 @@ import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
+import { apiUpdateRecipe } from '@/lib/api/recipes'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -41,15 +42,19 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     return total + (ingredient.calories || 0)
   }, 0)
 
-  function handleSave() {
+  async function handleSave() {
     const sanitizedIngredients = editedRecipe.ingredients.filter(
       ing => ing.food && ing.calories !== undefined && !Number.isNaN(ing.calories)
     )
 
     const updatedRecipe = { ...editedRecipe, ingredients: sanitizedIngredients }
-
-    updateRecipeInStore(updatedRecipe)
-    setEditMode(false)
+    try {
+      const result = await apiUpdateRecipe(updatedRecipe)
+      updateRecipeInStore(result)
+      setEditMode(false)
+    } catch (err) {
+      console.error('Failed to persist recipe update:', err)
+    }
   }
 
   function handleCancel() {
@@ -140,17 +145,19 @@ export default function Recipe({ recipe, isEditing = false, canEdit = true }: Re
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
 
-  function publishRecipe() {
+  async function publishRecipe() {
     const now = new Date()
     const updatedRecipe = { ...editedRecipe, date_published: now }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
   }
 
-  function unpublishRecipe() {
+  async function unpublishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
   }
 
   const publishedButton = !isPublished ? (
