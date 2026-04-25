@@ -3,7 +3,6 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Recipes from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
-import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 

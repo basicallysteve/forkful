@@ -25,3 +25,5 @@ backend/.env
 *.sln
 *.sw?
 .bak
+.env
+.env.local
