@@ -1,8 +1,8 @@
 import { db } from '@/db/index';
 
-export type Task<T, Tx = any> = (payload: T, tx: Tx) => Promise<T> | T;
+export type Task<T, Tx = unknown> = (payload: T, tx: Tx) => Promise<T> | T;
 
-export class TaskRunner<T, Tx = any> {
+export class TaskRunner<T, Tx = unknown> {
   private tasks: Task<T, Tx>[] = [];
   private transactional: boolean;
 
