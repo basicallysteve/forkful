@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, } from 'drizzle-orm/pg-core';
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -56,4 +56,23 @@ export const pantryItems = pgTable('pantry_items', {
   addedDate: timestamp('added_date').defaultNow().notNull(),
   frozenDate: timestamp('frozen_date'),
   dateDeleted: timestamp('date_deleted'),
+});
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 255 }).notNull(),
+  password: varchar('password', { length: 255, }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateDeleted: timestamp('date_deleted'),
+});
+
+export const login_attempts = pgTable('login_attempts', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  ipAddress: varchar('ip_address', { length: 45 }).notNull(),
+  successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
 });
