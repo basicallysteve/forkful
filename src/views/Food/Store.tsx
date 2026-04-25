@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
+import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
@@ -142,7 +143,7 @@ function Store({ existingFood }: FoodStoreProps) {
     })
   }
 
-  function handleSaveFood() {
+  async function handleSaveFood() {
     if (!canSave) return
 
     const foodData: Omit<Food, 'id'> = {
@@ -158,11 +159,14 @@ function Store({ existingFood }: FoodStoreProps) {
     }
 
     if (isEditing && existingFood) {
-      updateFood({ ...foodData, id: existingFood.id })
-      router.push(`/foods/${toSlug(food.name!)}`)
+      const updatedFood = { ...foodData, id: existingFood.id }
+      updateFood(updatedFood)
+      router.push(`/foods/${toSlug(foodData.name)}`)
+      try { await apiUpdateFood(updatedFood) } catch {}
     } else {
       addFood(foodData)
-      router.push(`/foods/${toSlug(food.name!)}`)
+      router.push(`/foods/${toSlug(foodData.name)}`)
+      try { await apiCreateFood(foodData) } catch {}
     }
   }
 

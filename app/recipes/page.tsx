@@ -1,7 +1,7 @@
-'use client'
-
+import { getRecipes } from '@/lib/recipes'
 import RecipesList from '@/views/Recipes/Index'
 
-export default function RecipesPage() {
-  return <RecipesList />
+export default async function RecipesPage() {
+  const recipes = await getRecipes()
+  return <RecipesList initialRecipes={recipes} />
 }

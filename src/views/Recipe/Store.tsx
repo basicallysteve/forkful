@@ -11,6 +11,7 @@ import { toSlug } from "@/utils/slug"
 import { calculateCalories } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
+import { apiCreateRecipe } from "@/lib/api/recipes"
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -311,20 +312,22 @@ function Store() {
     }
   }
 
-  function handleSaveRecipe() {
+  async function handleSaveRecipe() {
     if (!canSave) return
-    
+
     const newRecipe = createRecipe(false)
     addRecipeToStore(newRecipe)
     router.push(`/recipes/${toSlug(newRecipe.name)}`)
+    try { await apiCreateRecipe(newRecipe) } catch {}
   }
 
-  function handlePublishRecipe() {
+  async function handlePublishRecipe() {
     if (!canPublish) return
-    
+
     const newRecipe = createRecipe(true)
     addRecipeToStore(newRecipe)
     router.push(`/recipes/${toSlug(newRecipe.name)}`)
+    try { await apiCreateRecipe(newRecipe) } catch {}
   }
 
   const detailsTabContent = (<form className="store-form">

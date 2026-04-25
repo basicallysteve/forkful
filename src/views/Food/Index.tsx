@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
+import { apiDeleteFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
@@ -19,10 +20,11 @@ export default function FoodIndex({ food }: FoodIndexProps) {
   const router = useRouter()
   const isUsedInRecipe = useMemo(() => isFoodUsedInRecipe(food.id, recipes), [food.id, recipes, isFoodUsedInRecipe])
 
-  function handleDelete() {
+  async function handleDelete() {
     if (isUsedInRecipe) return
     deleteFood(food.id)
     router.push('/foods')
+    try { await apiDeleteFood(toSlug(food.name)) } catch {}
   }
 
   function formatMacros(): string {

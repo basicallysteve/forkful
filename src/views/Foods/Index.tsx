@@ -1,17 +1,23 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
+import { apiDeleteFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
 
-export default function Foods() {
+interface FoodsProps {
+  initialFoods?: Food[]
+}
+
+export default function Foods({ initialFoods }: FoodsProps) {
   const foods = useFoodStore((state) => state.foods)
+  const setFoods = useFoodStore((state) => state.setFoods)
   const deleteFood = useFoodStore((state) => state.deleteFood)
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
@@ -20,6 +26,12 @@ export default function Foods() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (initialFoods) {
+      setFoods(initialFoods)
+    }
+  }, [initialFoods, setFoods])
 
   const filteredAndSortedFoods = useMemo(() => {
     let filtered = foods
@@ -68,26 +80,27 @@ export default function Foods() {
     setDeleteError(null)
   }
 
-  function handleDeleteSelected() {
+  async function handleDeleteSelected() {
     if (selectedFoods.size === 0) return
     setDeleteError(null)
 
     const foodsInUse: string[] = []
-    const foodsToDelete: number[] = []
+    const foodsToDelete: Food[] = []
 
     selectedFoods.forEach((id) => {
       const food = foods.find((f) => f.id === id)
       if (food && isFoodUsedInRecipe(id, recipes)) {
         foodsInUse.push(food.name)
-      } else {
-        foodsToDelete.push(id)
+      } else if (food) {
+        foodsToDelete.push(food)
       }
     })
 
-    // Delete foods that are not in use
-    foodsToDelete.forEach((id) => deleteFood(id))
+    foodsToDelete.forEach(food => deleteFood(food.id))
+    try {
+      await Promise.all(foodsToDelete.map(food => apiDeleteFood(toSlug(food.name))))
+    } catch {}
 
-    // Show error for foods that couldn't be deleted
     if (foodsInUse.length > 0) {
       setDeleteError(
         `Cannot delete "${foodsInUse.join('", "')}" because ${
@@ -96,9 +109,8 @@ export default function Foods() {
       )
     }
 
-    // Clear selection for successfully deleted items
     const newSelected = new Set(selectedFoods)
-    foodsToDelete.forEach((id) => newSelected.delete(id))
+    foodsToDelete.forEach((food) => newSelected.delete(food.id))
     setSelectedFoods(newSelected)
   }
 
