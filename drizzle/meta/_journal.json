@@ -8,6 +8,20 @@
       "when": 1777085203568,
       "tag": "0000_talented_sabra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777122130802,
+      "tag": "0001_plain_moira_mactaggert",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777123299600,
+      "tag": "0002_famous_champions",
+      "breakpoints": true
     }
   ]
 }

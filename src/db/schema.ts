@@ -11,6 +11,9 @@ export const foods = pgTable('foods', {
   servingSize: numeric('serving_size', { precision: 10, scale: 2 }).notNull().default('1'),
   servingUnit: varchar('serving_unit', { length: 50 }),
   measurements: jsonb('measurements').$type<string[]>().default([]),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateUpdated: timestamp('date_updated'),
+  dateDeleted: timestamp('date_deleted'),
 });
 
 export const recipes = pgTable('recipes', {
@@ -20,6 +23,7 @@ export const recipes = pgTable('recipes', {
   description: text('description'),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),
+  dateDeleted: timestamp('date_deleted'),
 });
 
 export const ingredients = pgTable('ingredients', {
@@ -33,4 +37,7 @@ export const ingredients = pgTable('ingredients', {
   quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
   calories: integer('calories').notNull(),
   servingUnit: varchar('serving_unit', { length: 50 }),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateUpdated: timestamp('date_updated'),
+  dateDeleted: timestamp('date_deleted'),
 });

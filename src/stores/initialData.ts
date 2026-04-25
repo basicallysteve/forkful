@@ -13,46 +13,8 @@ export const initialFoodsData: Food[] = [
 
 export const getInitialFoods = (): Food[] => JSON.parse(JSON.stringify(initialFoodsData))
 
-export const buildInitialRecipes = (foods: Food[]): Recipe[] => {
-  const findFood = (name: string) => {
-    const food = foods.find((f) => f.name.toLowerCase() === name.toLowerCase())
-    if (!food) throw new Error(`Missing seed food: ${name}`)
-    return food
-  }
-
-  const hamFood = findFood('Ham')
-  const cheeseFood = findFood('Cheese')
-  const breadFood = findFood('Bread')
-  const spaghettiFood = findFood('Spaghetti')
-  const groundBeefFood = findFood('Ground Beef')
-
-  return [
-    {
-      id: 1,
-      name: 'Ham and Cheese Sandwich',
-      meal: 'Lunch',
-      description: 'A delicious sandwich made with ham and cheese.',
-      ingredients: [
-        { food: hamFood, quantity: 2, calories: 150, servingUnit: hamFood.servingUnit || DEFAULT_SERVING_UNIT },
-        { food: cheeseFood, quantity: 1, calories: 100, servingUnit: cheeseFood.servingUnit || DEFAULT_SERVING_UNIT },
-        { food: breadFood, quantity: 2, calories: 200, servingUnit: breadFood.servingUnit || DEFAULT_SERVING_UNIT },
-      ],
-      date_added: new Date('2025-11-21'),
-      date_published: new Date('2025-11-22'),
-    },
-    {
-      id: 2,
-      name: 'Spaghetti Bolognese',
-      meal: 'Dinner',
-      description: 'A classic Italian pasta dish with a rich meat sauce.',
-      ingredients: [
-        { food: spaghettiFood, quantity: 1, calories: 350, servingUnit: spaghettiFood.servingUnit || DEFAULT_SERVING_UNIT },
-        { food: groundBeefFood, quantity: 2, calories: 400, servingUnit: groundBeefFood.servingUnit || DEFAULT_SERVING_UNIT },
-      ],
-      date_added: new Date('2025-12-01'),
-      date_published: new Date('2025-12-02'),
-    },
-  ]
+export const buildInitialRecipes = (): Recipe[] => {
+  return []
 }
 
 export const getInitialRecipes = (foods: Food[] = getInitialFoods()): Recipe[] =>

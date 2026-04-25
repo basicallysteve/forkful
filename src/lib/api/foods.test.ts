@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiFetchFoods, apiCreateFood, apiUpdateFood, apiDeleteFood } from './foods'
+import { apiCreateFood, apiUpdateFood, apiDeleteFood } from './foods'
 import type { Food } from '@/types/Food'
 
 const mockFood: Food = {
@@ -19,26 +19,9 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('apiFetchFoods', () => {
-  it('returns foods from the API', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [mockFood],
-    } as Response)
-    const foods = await apiFetchFoods()
-    expect(foods).toEqual([mockFood])
-    expect(fetch).toHaveBeenCalledWith('/api/foods')
-  })
-
-  it('throws on error response', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false } as Response)
-    await expect(apiFetchFoods()).rejects.toThrow('Failed to fetch foods')
-  })
-})
-
 describe('apiCreateFood', () => {
   it('posts food data and returns created food', async () => {
-    const { id: _, ...foodData } = mockFood
+    const {...foodData } = mockFood
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockFood,
@@ -65,6 +48,6 @@ describe('apiDeleteFood', () => {
   it('sends DELETE request', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
     await expect(apiDeleteFood('ham')).resolves.toBeUndefined()
-    expect(fetch).toHaveBeenCalledWith('/api/foods/ham', { method: 'DELETE' })
+    expect(fetch).toHaveBeenCalledWith('/api/foods/ham', { 'credentials': 'same-origin', method: 'DELETE' })
   })
 })

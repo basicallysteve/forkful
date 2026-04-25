@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -50,7 +50,7 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 
 export async function getRecipes(): Promise<Recipe[]> {
   try {
-    const rows = await db.select().from(recipes)
+    const rows = await db.select().from(recipes).where(isNull(recipes.dateDeleted))
     return Promise.all(rows.map(buildRecipe))
   } catch {
     return []
@@ -116,6 +116,6 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
 }
 
 export async function deleteRecipe(id: number): Promise<boolean> {
-  const deleted = await db.delete(recipes).where(eq(recipes.id, id)).returning()
-  return deleted.length > 0
+  const updated = await db.update(recipes).set({ dateDeleted: new Date() }).where(eq(recipes.id, id)).returning()
+  return updated.length > 0
 }

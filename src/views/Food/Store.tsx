@@ -169,7 +169,7 @@ function Store({ existingFood }: FoodStoreProps) {
     } else {
       try {
         const createdFood = await apiCreateFood(foodData)
-        addFood(foodData)
+        addFood(createdFood)
         router.push(`/foods/${toSlug(createdFood.name)}`)
       } catch (err) {
         console.error('Failed to persist new food:', err)
