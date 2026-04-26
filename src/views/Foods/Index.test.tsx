@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Foods from './Index'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
+
+vi.mock('@/lib/api/foods', () => ({
+  apiDeleteFood: vi.fn(async () => {}),
+}))
 
 const mockFoods: Food[] = [
   {
@@ -233,7 +237,9 @@ describe('Foods List Page', () => {
       const deleteButton = screen.getByRole('button', { name: /^delete$/i })
       await user.click(deleteButton)
 
-      expect(deleteFood).toHaveBeenCalledWith(1)
+      await waitFor(() => {
+        expect(deleteFood).toHaveBeenCalledWith(1)
+      })
     })
 
     it('shows error when trying to delete food used in recipe', async () => {

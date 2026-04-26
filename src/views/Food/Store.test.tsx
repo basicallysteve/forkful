@@ -1,9 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
+
+vi.mock('@/lib/api/foods', () => ({
+  apiCreateFood: vi.fn(async (f) => ({ ...f, id: 999 })),
+  apiUpdateFood: vi.fn(async (f) => f),
+}))
 
 const mockFoods: Food[] = [
   {
@@ -242,13 +247,15 @@ describe('Food Store Page - Add Food', () => {
       const saveButton = screen.getByRole('button', { name: /save food/i })
       await user.click(saveButton)
 
-      expect(addFood).toHaveBeenCalledTimes(1)
-      expect(addFood).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'New Food',
-          calories: 150,
-        })
-      )
+      await waitFor(() => {
+        expect(addFood).toHaveBeenCalledTimes(1)
+        expect(addFood).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'New Food',
+            calories: 150,
+          })
+        )
+      })
     })
 
     it('calls updateFood when saving an edited food', async () => {
@@ -263,13 +270,15 @@ describe('Food Store Page - Add Food', () => {
       const saveButton = screen.getByRole('button', { name: /update food/i })
       await user.click(saveButton)
 
-      expect(updateFood).toHaveBeenCalledTimes(1)
-      expect(updateFood).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 1,
-          name: 'Updated Chicken',
-        })
-      )
+      await waitFor(() => {
+        expect(updateFood).toHaveBeenCalledTimes(1)
+        expect(updateFood).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 1,
+            name: 'Updated Chicken',
+          })
+        )
+      })
     })
   })
 

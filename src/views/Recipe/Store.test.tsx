@@ -1,11 +1,15 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+
+vi.mock('@/lib/api/recipes', () => ({
+  apiCreateRecipe: vi.fn(async (r) => ({ ...r, id: 3 })),
+}))
 
 // Mock foods
 const mockFoods: Food[] = [
@@ -322,14 +326,16 @@ describe('Store Page - Recipe Creation', () => {
       const saveButton = screen.getByRole('button', { name: /save recipe/i })
       await user.click(saveButton)
 
-      const newRecipes = useRecipeStore.getState().recipes
-      expect(newRecipes).toHaveLength(3) // 2 existing + 1 new
-
-      const newRecipe = newRecipes[newRecipes.length - 1]
-      expect(newRecipe.name).toBe('New Test Recipe')
-      expect(newRecipe.meal).toBe('Lunch')
-      expect(newRecipe.description).toBe('A test description')
-      expect(newRecipe.date_published).toBeNull() // Saved as draft
+      await waitFor(() => {
+        const newRecipes = useRecipeStore.getState().recipes
+        expect(newRecipes).toHaveLength(3) // 2 existing + 1 new
+  
+        const newRecipe = newRecipes[newRecipes.length - 1]
+        expect(newRecipe.name).toBe('New Test Recipe')
+        expect(newRecipe.meal).toBe('Lunch')
+        expect(newRecipe.description).toBe('A test description')
+        expect(newRecipe.date_published).toBeNull() // Saved as draft
+      })
     })
 
     it('saves a published recipe when Publish is clicked', async () => {
@@ -371,12 +377,14 @@ describe('Store Page - Recipe Creation', () => {
       const publishButton = screen.getByRole('button', { name: /publish/i })
       await user.click(publishButton)
 
-      const newRecipes = useRecipeStore.getState().recipes
-      expect(newRecipes).toHaveLength(3)
-      
-      const newRecipe = newRecipes[newRecipes.length - 1]
-      expect(newRecipe.name).toBe('Published Recipe')
-      expect(newRecipe.date_published).not.toBeNull() // Published with date
+      await waitFor(() => {
+        const newRecipes = useRecipeStore.getState().recipes
+        expect(newRecipes).toHaveLength(3)
+        
+        const newRecipe = newRecipes[newRecipes.length - 1]
+        expect(newRecipe.name).toBe('Published Recipe')
+        expect(newRecipe.date_published).not.toBeNull() // Published with date
+      })
     })
 
     it('Publish button is disabled when no ingredients are added', async () => {

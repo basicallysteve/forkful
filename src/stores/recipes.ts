@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Recipe } from '@/types/Recipe'
 import { calculateCalories } from '@/utils/unitConversion'
-import { buildInitialRecipes, getInitialFoods } from './initialData'
+import { buildInitialRecipes } from './initialData'
 
 type RecipeStore = {
   recipes: Recipe[],

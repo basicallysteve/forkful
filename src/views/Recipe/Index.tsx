@@ -7,7 +7,6 @@ import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
-import { useFoodStore } from '@/stores/food'
 import { apiUpdateRecipe } from '@/lib/api/recipes'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]

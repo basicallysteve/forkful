@@ -68,7 +68,7 @@ describe('apiFetchRecipe', () => {
 describe('apiCreateRecipe', () => {
   it('posts recipe data and returns created recipe', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRecipe } as Response)
-    const { id: _id, ...recipeData } = mockRecipe
+    const { ...recipeData } = mockRecipe
     const result = await apiCreateRecipe(recipeData)
     expect(result).toEqual(mockRecipe)
     expect(fetch).toHaveBeenCalledWith('/api/recipes', expect.objectContaining({ method: 'POST' }))

@@ -1,11 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { cloneElement } from 'react'
 import Recipe from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe as RecipeType } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+
+vi.mock('@/lib/api/recipes', () => ({
+  apiUpdateRecipe: vi.fn(async (r) => r),
+}))
 
 // Mock foods
 const mockFoods: Food[] = [
@@ -59,7 +64,8 @@ function renderWithStores(
   useRecipeStore.setState((state) => ({ ...state, recipes }))
   useFoodStore.setState((state) => ({ ...state, foods }))
 
-  return render(ui)
+  const uiWithProps = cloneElement(ui as any, { foods: (ui.props as any).foods || foods })
+  return render(uiWithProps)
 }
 
 describe('Recipe View Page', () => {
@@ -274,8 +280,10 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /save/i }))
 
-      const updatedRecipes = useRecipeStore.getState().recipes
-      expect(updatedRecipes.find(r => r.id === 1)?.name).toBe('Updated Sandwich')
+      await waitFor(() => {
+        const updatedRecipes = useRecipeStore.getState().recipes
+        expect(updatedRecipes.find(r => r.id === 1)?.name).toBe('Updated Sandwich')
+      })
     })
 
     it('exits edit mode after saving', async () => {
@@ -285,7 +293,9 @@ describe('Recipe View Page', () => {
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /save/i }))
 
-      expect(screen.queryByRole('textbox', { name: /recipe name/i })).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByRole('textbox', { name: /recipe name/i })).not.toBeInTheDocument()
+      })
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
     })
 
@@ -365,9 +375,12 @@ describe('Recipe View Page', () => {
 
       // Save the recipe
       await user.click(screen.getByRole('button', { name: /save/i }))
-      const updatedRecipes = useRecipeStore.getState().recipes
-      const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
-      expect(updatedRecipe?.ingredients).toHaveLength(3)
+      
+      await waitFor(() => {
+        const updatedRecipes = useRecipeStore.getState().recipes
+        const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
+        expect(updatedRecipe?.ingredients).toHaveLength(3)
+      })
     })
 
     it('does not add ingredient when foods list is empty', async () => {
@@ -446,9 +459,11 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /publish/i }))
 
-      const updatedRecipes = useRecipeStore.getState().recipes
-      const updatedRecipe = updatedRecipes.find(r => r.id === unpublishedRecipe.id)
-      expect(updatedRecipe?.date_published).toBeInstanceOf(Date)
+      await waitFor(() => {
+        const updatedRecipes = useRecipeStore.getState().recipes
+        const updatedRecipe = updatedRecipes.find(r => r.id === unpublishedRecipe.id)
+        expect(updatedRecipe?.date_published).toBeInstanceOf(Date)
+      })
     })
 
     it('unpublishes the recipe when Unpublish is clicked', async () => {
@@ -457,9 +472,11 @@ describe('Recipe View Page', () => {
 
       await user.click(screen.getByRole('button', { name: /unpublish/i }))
 
-      const updatedRecipes = useRecipeStore.getState().recipes
-      const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
-      expect(updatedRecipe?.date_published).toBeNull()
+      await waitFor(() => {
+        const updatedRecipes = useRecipeStore.getState().recipes
+        const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
+        expect(updatedRecipe?.date_published).toBeNull()
+      })
     })
   })
 })
