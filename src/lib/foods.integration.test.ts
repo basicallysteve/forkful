@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
 import { getFoods, getFoodBySlug, createFood, updateFood, deleteFood } from './foods'
 
