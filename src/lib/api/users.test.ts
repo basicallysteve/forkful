@@ -53,6 +53,14 @@ describe('apiSignUp', () => {
     ).rejects.toThrow('Registration failed')
   })
 
+  it('propagates fetch network errors', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+
+    await expect(
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+    ).rejects.toThrow('Network error')
+  })
+
   it('sends correct Content-Type header', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
