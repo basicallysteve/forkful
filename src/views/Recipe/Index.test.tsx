@@ -64,7 +64,8 @@ function renderWithStores(
   useRecipeStore.setState((state) => ({ ...state, recipes }))
   useFoodStore.setState((state) => ({ ...state, foods }))
 
-  const uiWithProps = cloneElement(ui as any, { foods: (ui.props as any).foods || foods })
+  const existingFoods = (ui.props as { foods?: Food[] }).foods
+  const uiWithProps = cloneElement(ui, { foods: existingFoods ?? foods })
   return render(uiWithProps)
 }
 
