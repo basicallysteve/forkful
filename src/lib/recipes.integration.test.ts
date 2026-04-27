@@ -153,7 +153,7 @@ describe('recipes data layer (integration)', () => {
     expect(updated?.name).toBe('Test UpdateMe')
   })
 
-  it.only('soft-deletes a recipe', async () => {
+  it('soft-deletes a recipe', async () => {
     const created = await createRecipe({ name: 'Test DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null })
     const deleted = await deleteRecipe(created.id)
     expect(deleted).toBe(true)
