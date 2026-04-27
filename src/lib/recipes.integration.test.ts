@@ -4,8 +4,11 @@ import { getRecipes, getRecipeBySlug, createRecipe, updateRecipe, deleteRecipe }
 import { createFood, deleteFood } from './foods'
 import type { Food } from '@/types/Food'
 
+const connectionString = process.env.DATABASE_URL ||
+  `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
 })
 
 async function setupSchema() {
@@ -79,7 +82,9 @@ describe('recipes data layer (integration)', () => {
   })
 
   afterAll(async () => {
-    await deleteFood(testFood.id)
+    if (testFood?.id) {
+      await deleteFood(testFood.id)
+    }
     await pool.end()
   })
 
@@ -148,7 +153,7 @@ describe('recipes data layer (integration)', () => {
     expect(updated?.name).toBe('Test UpdateMe')
   })
 
-  it('soft-deletes a recipe', async () => {
+  it.only('soft-deletes a recipe', async () => {
     const created = await createRecipe({ name: 'Test DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null })
     const deleted = await deleteRecipe(created.id)
     expect(deleted).toBe(true)

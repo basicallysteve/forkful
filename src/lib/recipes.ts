@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm'
+import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -33,7 +33,13 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
     .select()
     .from(ingredients)
     .innerJoin(foods, eq(ingredients.foodId, foods.id))
-    .where(eq(ingredients.recipeId, recipeId))
+    .where(
+      and(
+        eq(ingredients.recipeId, recipeId),
+        isNull(ingredients.dateDeleted),
+        isNull(foods.dateDeleted)
+      )
+    )
   return rows.map((row) => ({
     food: mapFood(row.foods),
     quantity: Number(row.ingredients.quantity),
@@ -97,19 +103,19 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
 }
 
 export async function getRecipeBySlug(slug: string): Promise<Recipe | null> {
-  const rows = await db.select().from(recipes)
-  const row = rows.find((r) => toSlug(r.name) === slug)
+  const [row] = await db.select().from(recipes).where(and(eq(recipes.slug, slug), isNull(recipes.dateDeleted)))
   return row ? buildRecipe(row) : null
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {
-  const [row] = await db.select().from(recipes).where(eq(recipes.id, id))
+  const [row] = await db.select().from(recipes).where(and(eq(recipes.id, id), isNull(recipes.dateDeleted)))
   return row ? buildRecipe(row) : null
 }
 
 export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
   const [row] = await db.insert(recipes).values({
     name: data.name,
+    slug: toSlug(data.name),
     meal: data.meal,
     description: data.description,
     dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
@@ -131,7 +137,10 @@ export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
 
 export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>): Promise<Recipe | null> {
   const updates: Partial<typeof recipes.$inferInsert> = {}
-  if (data.name !== undefined) updates.name = data.name
+  if (data.name !== undefined) {
+    updates.name = data.name
+    updates.slug = toSlug(data.name)
+  }
   if (data.meal !== undefined) updates.meal = data.meal
   if (data.description !== undefined) updates.description = data.description
   if (data.date_published !== undefined) updates.datePublished = data.date_published ? new Date(data.date_published) : null

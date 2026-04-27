@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm'
+import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
@@ -58,7 +58,12 @@ export async function getPantryItems(): Promise<PantryItem[]> {
       .select()
       .from(pantryItems)
       .innerJoin(foods, eq(pantryItems.foodId, foods.id))
-      .where(isNull(pantryItems.dateDeleted))
+      .where(
+        and(
+          isNull(pantryItems.dateDeleted),
+          isNull(foods.dateDeleted)
+        )
+      )
     return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
   } catch {
     return []
@@ -71,7 +76,13 @@ export async function getPantryItemById(id: number): Promise<PantryItem | null> 
       .select()
       .from(pantryItems)
       .innerJoin(foods, eq(pantryItems.foodId, foods.id))
-      .where(eq(pantryItems.id, id))
+      .where(
+        and(
+          eq(pantryItems.id, id),
+          isNull(pantryItems.dateDeleted),
+          isNull(foods.dateDeleted)
+        )
+      )
     if (!row) return null
     return mapPantryItem(row.pantry_items, mapFood(row.foods))
   } catch {

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
 import type { Food } from '@/types/Food'
@@ -27,7 +27,7 @@ function mapFood(row: typeof foods.$inferSelect): Food {
 
 export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
   try {
-    let rows = await db.select().from(foods)
+    let rows = await db.select().from(foods).where(isNull(foods.dateDeleted))
     if (options.search) {
       const term = options.search.toLowerCase()
       rows = rows.filter(r => r.name.toLowerCase().includes(term))
@@ -48,19 +48,19 @@ export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> 
 }
 
 export async function getFoodBySlug(slug: string): Promise<Food | null> {
-  const rows = await db.select().from(foods)
-  const row = rows.find((f) => toSlug(f.name) === slug)
+  const [row] = await db.select().from(foods).where(and(eq(foods.slug, slug), isNull(foods.dateDeleted)))
   return row ? mapFood(row) : null
 }
 
 export async function getFoodById(id: number): Promise<Food | null> {
-  const [row] = await db.select().from(foods).where(eq(foods.id, id))
+  const [row] = await db.select().from(foods).where(and(eq(foods.id, id), isNull(foods.dateDeleted)))
   return row ? mapFood(row) : null
 }
 
 export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
   const [row] = await db.insert(foods).values({
     name: data.name,
+    slug: toSlug(data.name),
     calories: data.calories,
     protein: String(data.protein ?? 0),
     carbs: String(data.carbs ?? 0),
@@ -75,7 +75,10 @@ export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
 
 export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): Promise<Food | null> {
   const updates: Partial<typeof foods.$inferInsert> = {}
-  if (data.name !== undefined) updates.name = data.name
+  if (data.name !== undefined) {
+    updates.name = data.name
+    updates.slug = toSlug(data.name)
+  }
   if (data.calories !== undefined) updates.calories = data.calories
   if (data.protein !== undefined) updates.protein = String(data.protein)
   if (data.carbs !== undefined) updates.carbs = String(data.carbs)

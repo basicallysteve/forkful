@@ -3,6 +3,7 @@ import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, } f
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique(),
   calories: integer('calories').notNull(),
   protein: numeric('protein', { precision: 10, scale: 2 }).notNull().default('0'),
   carbs: numeric('carbs', { precision: 10, scale: 2 }).notNull().default('0'),
@@ -19,6 +20,7 @@ export const foods = pgTable('foods', {
 export const recipes = pgTable('recipes', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique(),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
   isPublic: integer('is_public').notNull().default(0), // 0 = false, 1 = true
