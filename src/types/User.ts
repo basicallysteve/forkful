@@ -1,5 +1,7 @@
 export type User = {
-  user_id: string
+  id: string
   username: string
   email: string
+  dateAdded: Date
+  dateDeleted: Date | null
 }
