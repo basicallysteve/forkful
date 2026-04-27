@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { apiSignUp } from "@/lib/api/users"
+import './createAccount.scss'
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
@@ -56,6 +58,8 @@ function CreateAccount() {
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string>("")
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const passwordValidation = useMemo(() => validatePassword(password), [password])
   const passwordIsValid = useMemo(() => isPasswordValid(passwordValidation), [passwordValidation])
@@ -83,12 +87,19 @@ function CreateAccount() {
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
-    
-    // For now, just show success message
-    setSubmitted(true)
+    setSubmitError(null)
+    setIsSubmitting(true)
+    try {
+      await apiSignUp({ username, email, password })
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Registration failed')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -281,12 +292,21 @@ function CreateAccount() {
               <div className="form-footer">
                 <div className="footer-actions">
                   <Link href="/" className="ghost-button">Cancel</Link>
-                  <button type="submit" className="primary-button" disabled={!canSubmit}>
-                    Create Account
+                  <button type="submit" className="primary-button" disabled={!canSubmit || isSubmitting}>
+                    {isSubmitting ? 'Creating Account…' : 'Create Account'}
                   </button>
                 </div>
+                {submitError && (
+                  <p className="field-error" role="alert">{submitError}</p>
+                )}
               </div>
             </form>
+
+            <div className="form-links">
+              <p>
+                Already have an account? <Link href="/login">Login</Link>
+              </p>
+            </div>
           </div>
         </section>
       </div>

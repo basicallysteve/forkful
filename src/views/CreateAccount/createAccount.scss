@@ -304,9 +304,8 @@
 
   .form-footer {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
+    flex-direction: column;
+    gap: 8px;
     padding: 12px;
     margin-top: 6px;
     border: 1px solid var(--vscode-border);
@@ -319,6 +318,7 @@
   .footer-actions {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
   }
 
@@ -364,6 +364,22 @@
     p {
       color: var(--vscode-muted);
       margin-bottom: 24px;
+    }
+  }
+
+  .form-links {
+    margin-top: 12px;
+    text-align: center;
+    color: var(--vscode-muted);
+    font-size: 13px;
+
+    a {
+      color: var(--vscode-accent);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
     }
   }
 

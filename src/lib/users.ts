@@ -6,14 +6,7 @@ import bcrypt from 'bcrypt'
 
 async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
-    bcrypt.genSalt(saltRounds, (err: unknown, salt: string) => {
-        if (err) throw err
-        bcrypt.hash(password, salt, (err: unknown, hash: string) => {
-            if (err) throw err
-            return hash
-        })
-    })
-    return ''
+    return bcrypt.hash(password, saltRounds)
 }
 
 export async function signUp(user: { username: string; email: string; password: string }): Promise<User> {
