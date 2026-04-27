@@ -11,50 +11,6 @@ const pool = new Pool({
   connectionString,
 })
 
-async function setupSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "foods" (
-      "id" serial PRIMARY KEY NOT NULL,
-      "name" varchar(255) NOT NULL,
-      "calories" integer NOT NULL,
-      "protein" numeric(10,2) NOT NULL DEFAULT '0',
-      "carbs" numeric(10,2) NOT NULL DEFAULT '0',
-      "fat" numeric(10,2) NOT NULL DEFAULT '0',
-      "fiber" numeric(10,2) NOT NULL DEFAULT '0',
-      "serving_size" numeric(10,2) NOT NULL DEFAULT '1',
-      "serving_unit" varchar(50),
-      "measurements" jsonb DEFAULT '[]',
-      "date_added" timestamp DEFAULT now(),
-      "date_updated" timestamp,
-      "date_deleted" timestamp
-    )
-  `)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "recipes" (
-      "id" serial PRIMARY KEY NOT NULL,
-      "name" varchar(255) NOT NULL,
-      "meal" varchar(50),
-      "description" text,
-      "date_added" timestamp DEFAULT now(),
-      "date_published" timestamp,
-      "date_deleted" timestamp
-    )
-  `)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "ingredients" (
-      "id" serial PRIMARY KEY NOT NULL,
-      "recipe_id" integer NOT NULL REFERENCES "recipes"("id") ON DELETE cascade,
-      "food_id" integer NOT NULL REFERENCES "foods"("id") ON DELETE cascade,
-      "quantity" numeric(10,2) NOT NULL,
-      "calories" integer NOT NULL,
-      "serving_unit" varchar(50),
-      "date_added" timestamp DEFAULT now(),
-      "date_updated" timestamp,
-      "date_deleted" timestamp
-    )
-  `)
-}
-
 let testFood: Food
 
 async function cleanupRecipes() {
@@ -63,7 +19,6 @@ async function cleanupRecipes() {
 
 describe('recipes data layer (integration)', () => {
   beforeAll(async () => {
-    await setupSchema()
     testFood = await createFood({
       name: 'Test Ingredient Food',
       calories: 100,

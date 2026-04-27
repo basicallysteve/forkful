@@ -8,35 +8,11 @@ const pool = new Pool({
 })
 
 
-async function setupSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS "foods" (
-      "id" serial PRIMARY KEY NOT NULL,
-      "name" varchar(255) NOT NULL,
-      "calories" integer NOT NULL,
-      "protein" numeric(10,2) NOT NULL DEFAULT '0',
-      "carbs" numeric(10,2) NOT NULL DEFAULT '0',
-      "fat" numeric(10,2) NOT NULL DEFAULT '0',
-      "fiber" numeric(10,2) NOT NULL DEFAULT '0',
-      "serving_size" numeric(10,2) NOT NULL DEFAULT '1',
-      "serving_unit" varchar(50),
-      "measurements" jsonb DEFAULT '[]',
-      "date_added" timestamp DEFAULT now(),
-      "date_updated" timestamp,
-      "date_deleted" timestamp
-    )
-  `)
-}
-
 async function cleanupFoods() {
   await pool.query(`DELETE FROM "foods" WHERE name LIKE 'Test%'`)
 }
 
 describe('foods data layer (integration)', () => {
-  beforeAll(async () => {
-    await setupSchema()
-  })
-
   afterEach(async () => {
     await cleanupFoods()
   })
