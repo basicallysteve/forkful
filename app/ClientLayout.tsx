@@ -3,6 +3,7 @@
 import ToolBar from '@/components/ToolBar'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
+import { PrimeReactProvider } from 'primereact/api'
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -46,9 +47,11 @@ export default function ClientLayout({ children, recipes }: ClientLayoutProps) {
   ]
 
   return (
-    <div className="app-shell">
-      <ToolBar menuOptions={menuOptions} />
-      {children}
-    </div>
+    <PrimeReactProvider>
+      <div className="app-shell">
+        <ToolBar menuOptions={menuOptions} />
+        {children}
+      </div>
+    </PrimeReactProvider>
   )
 }
