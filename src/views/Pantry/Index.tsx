@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Card } from 'primereact/card'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
@@ -372,10 +373,10 @@ export default function Pantry() {
               </div>
               <div className="pantry-cards">
                 {filteredAndSortedItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
-                  >
+                    <Card
+                      key={item.id}
+                      className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
+                    >
                     <div className="card-checkbox">
                       <input
                         type="checkbox"
@@ -453,9 +454,8 @@ export default function Pantry() {
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                    </Card>
+                  ))}              </div>
             </div>
           )}
         </div>

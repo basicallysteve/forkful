@@ -530,6 +530,9 @@
     padding: 14px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 
+    // Reset PrimeReact Card default styles
+    color: inherit;
+
     &.is-selected {
       border-color: var(--vscode-accent);
       background: rgba(0, 122, 204, 0.08);
@@ -541,6 +544,12 @@
 
     &.status-expiring-soon {
       border-left: 3px solid var(--vscode-warning);
+    }
+
+    // Make PrimeReact Card wrappers transparent to layout
+    .p-card-body,
+    .p-card-content {
+      display: contents;
     }
 
     .card-checkbox {

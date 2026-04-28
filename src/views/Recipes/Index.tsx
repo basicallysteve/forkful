@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Card } from 'primereact/card'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
@@ -236,7 +237,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                 </div>
                 <div className="recipe-cards">
                   {filteredAndSortedRecipes.map((recipe) => (
-                    <div key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
+                    <Card key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
                       <div className="card-checkbox">
                         <input
                           type="checkbox"
@@ -264,7 +265,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
                         </div>
                       </Link>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </>

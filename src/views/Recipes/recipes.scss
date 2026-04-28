@@ -294,6 +294,10 @@
     background: rgba(255, 255, 255, 0.02);
     transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
 
+    // Reset PrimeReact Card default styles
+    box-shadow: none;
+    color: inherit;
+
     &:hover {
       border-color: rgba(0, 122, 204, 0.5);
       background: rgba(0, 122, 204, 0.04);
@@ -303,6 +307,12 @@
       border-color: var(--vscode-accent);
       background: rgba(0, 122, 204, 0.08);
       box-shadow: 0 0 0 1px var(--vscode-accent);
+    }
+
+    // Make PrimeReact Card wrappers transparent to layout
+    .p-card-body,
+    .p-card-content {
+      display: contents;
     }
   }
 

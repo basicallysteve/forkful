@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Card } from 'primereact/card'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood } from '@/lib/api/foods'
@@ -219,7 +220,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
                 </div>
                 <div className="food-cards">
                   {filteredAndSortedFoods.map((food) => (
-                    <div
+                    <Card
                       key={food.id}
                       className={`food-card ${selectedFoods.has(food.id) ? 'is-selected' : ''} ${
                         isFoodUsedInRecipe(food.id, recipes) ? 'is-used' : ''
@@ -257,7 +258,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
                           )}
                         </div>
                       </Link>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </>
