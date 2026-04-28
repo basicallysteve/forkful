@@ -278,7 +278,6 @@ function Store({ existingFood }: FoodStoreProps) {
                         (m) => !([...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS] as string[]).includes(m)
                       ) ?? []),
                     ].map((unit) => ({ label: unit, value: unit }))}
-                    aria-label="Serving unit"
                     ariaLabel="Serving unit"
                   />
                   <span className="field-hint">Unit of measurement. {servingUnitCategory !== 'custom' ? `Changing this will filter measurements to ${servingUnitCategory} units.` : ''}</span>

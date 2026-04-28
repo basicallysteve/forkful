@@ -344,7 +344,7 @@ function Store() {
               <div className="form-grid">
                 <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
                   <span className="field-label">Name</span>
-                  <input
+                  <InputText
                     className={`text-input ${isDuplicateName ? 'input-error' : ''}`}
                     type="text"
                     value={recipe.name}
@@ -368,14 +368,13 @@ function Store() {
                         key={option}
                         className={`radio-option ${recipe.meal === option ? "is-active" : ""}`}
                       >
-                        <input
+                        <RadioButton
                           className="radio-input"
-                          type="radio"
                           name="meal"
                           value={option}
                           checked={recipe.meal === option}
                           onChange={(e) =>
-                            setRecipe({ ...recipe, meal: e.target.value as Recipe["meal"] })
+                            setRecipe({ ...recipe, meal: e.value as Recipe["meal"] })
                           }
                         />
                         <span className="radio-dot" />

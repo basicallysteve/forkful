@@ -155,7 +155,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             <InputNumber
               inputId="current-size"
               min={0}
-              max={canConvert(currentUnit, originalUnit) ? originalSize : undefined}
               minFractionDigits={0}
               maxFractionDigits={2}
               value={currentSize}
