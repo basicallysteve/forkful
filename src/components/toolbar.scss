@@ -1,15 +1,11 @@
-// Shared toolbar CSS variables
-:root {
+// Override PrimeReact MegaMenu to match the dark toolbar theme
+.toolbar.p-megamenu {
   --toolbar-bg: #1e1e1e;
   --toolbar-panel: #252526;
   --toolbar-border: #3c3c3c;
   --toolbar-accent: #007acc;
   --toolbar-text: #d4d4d4;
   --toolbar-muted: #9da5b4;
-}
-
-// Override PrimeReact MegaMenu to match the dark toolbar theme
-.toolbar.p-megamenu {
   display: flex;
   align-items: center;
   gap: 14px;
