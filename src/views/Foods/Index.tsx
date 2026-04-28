@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood } from '@/lib/api/foods'
@@ -135,9 +136,9 @@ export default function Foods({ initialFoods }: FoodsProps) {
             <h2 className="foods-name">All Foods</h2>
           </div>
           <div className="foods-meta">
-            <span className="pill pill-primary">{foods.length} foods</span>
+            <Tag value={`${foods.length} foods`} rounded />
             {selectedFoods.size > 0 && (
-              <span className="pill pill-ghost">{selectedFoods.size} selected</span>
+              <Tag value={`${selectedFoods.size} selected`} severity="secondary" rounded />
             )}
           </div>
         </header>
@@ -238,9 +239,9 @@ export default function Foods({ initialFoods }: FoodsProps) {
                         <div className="card-header">
                           <h3 className="card-title">{food.name}</h3>
                           <div className="card-badges">
-                            <span className="pill pill-ghost">{food.calories} cal</span>
+                            <Tag value={`${food.calories} cal`} severity="secondary" rounded />
                             {isFoodUsedInRecipe(food.id, recipes) && (
-                              <span className="pill pill-info">In use</span>
+                              <Tag value="In use" severity="info" rounded />
                             )}
                           </div>
                         </div>

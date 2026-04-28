@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
 import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
@@ -193,7 +194,7 @@ function Store({ existingFood }: FoodStoreProps) {
             </p>
           </div>
           <div className="store-meta">
-            <span className="pill pill-primary">{isEditing ? 'Editing' : 'New'}</span>
+            <Tag value={isEditing ? 'Editing' : 'New'} rounded />
           </div>
         </header>
 

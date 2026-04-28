@@ -150,24 +150,29 @@
   gap: 8px;
 }
 
-.pill {
+.p-tag {
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
-  border: 1px solid var(--vscode-border);
-  background: var(--vscode-panel);
-  color: var(--vscode-muted);
-}
-
-.pill-primary {
-  color: #ffffff;
-  border-color: var(--vscode-accent);
+  border: 1px solid var(--vscode-accent);
   background: var(--vscode-accent);
+  color: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
-}
+  font-family: inherit;
 
-.pill-ghost {
-  background: rgba(255, 255, 255, 0.04);
+  &.p-tag-secondary {
+    border-color: var(--vscode-border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--vscode-muted);
+    box-shadow: none;
+  }
+
+  &.p-tag-warning {
+    border-color: var(--vscode-warning, #f0ad4e);
+    background: var(--vscode-warning, #f0ad4e);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(240, 173, 78, 0.35);
+  }
 }
 
 .recipe-description {

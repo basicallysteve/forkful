@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Tag } from "primereact/tag"
 import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
@@ -447,8 +448,8 @@ function Store() {
             </p>
           </div>
           <div className="store-meta">
-            <span className="pill pill-primary">Draft</span>
-            <span className="pill pill-ghost">{ingredientCount} ingredients</span>
+            <Tag value="Draft" rounded />
+            <Tag value={`${ingredientCount} ingredients`} severity="secondary" rounded />
           </div>
         </header>
 

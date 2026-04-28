@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Tag } from 'primereact/tag'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
@@ -146,6 +147,19 @@ export default function Pantry() {
     }
   }
 
+  function getStatusSeverity(status: PantryItemStatus): 'success' | 'warning' | 'danger' | undefined {
+    switch (status) {
+      case 'expired':
+        return 'danger'
+      case 'expiring-soon':
+        return 'warning'
+      case 'good':
+        return 'success'
+      default:
+        return undefined
+    }
+  }
+
   const expiredCount = items.filter((item) => item.status === 'expired').length
   const expiringSoonCount = items.filter((item) => item.status === 'expiring-soon').length
   const goodCount = items.filter((item) => item.status === 'good').length
@@ -163,7 +177,7 @@ export default function Pantry() {
             <h1 className="pantry-name">Pantry</h1>
           </div>
           <div className="pantry-meta">
-            <Link href="/pantry/new" className="pill pill-primary">
+            <Link href="/pantry/new" className="primary-button">
               Add Item
             </Link>
           </div>
@@ -306,15 +320,13 @@ export default function Pantry() {
                       <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
                       <td>
                         {item.frozenDate ? (
-                          <span className="status-badge status-frozen">Frozen</span>
+                          <Tag value="Frozen" severity="info" rounded />
                         ) : (
                           formatDate(item.expirationDate)
                         )}
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusClass(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
+                        <Tag value={getStatusLabel(item.status)} severity={getStatusSeverity(item.status)} rounded />
                       </td>
                       <td>{formatDate(item.addedDate)}</td>
                       <td>
@@ -391,11 +403,9 @@ export default function Pantry() {
                           {item.food.name}
                         </Link>
                         <div className="card-badges">
-                          <span className={`status-badge ${getStatusClass(item.status)}`}>
-                            {getStatusLabel(item.status)}
-                          </span>
+                          <Tag value={getStatusLabel(item.status)} severity={getStatusSeverity(item.status)} rounded />
                           {item.frozenDate && (
-                            <span className="status-badge status-frozen">Frozen</span>
+                            <Tag value="Frozen" severity="info" rounded />
                           )}
                         </div>
                       </div>
