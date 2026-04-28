@@ -58,7 +58,6 @@ function CreateAccount() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string>("")
-  const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
