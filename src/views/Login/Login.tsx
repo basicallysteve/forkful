@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useSettingsStore } from "@/stores/settings"
 import { InputText } from 'primereact/inputtext'
+import { Password } from 'primereact/password'
 
 function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("")
@@ -93,12 +94,13 @@ function Login() {
 
                 <label className="form-field form-field-full">
                   <span className="field-label">Password</span>
-                  <InputText
+                  <Password
                     className="text-input"
-                    type="password"
                     value={password}
                     placeholder="Enter your password"
                     onChange={(e) => setPassword(e.target.value)}
+                    toggleMask
+                    feedback={false}
                     aria-describedby="password-hint"
                     autoComplete="current-password"
                   />

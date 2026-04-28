@@ -81,6 +81,15 @@ describe('Recipe View Page', () => {
       expect(screen.getByText('A delicious sandwich made with ham and cheese.')).toBeInTheDocument()
     })
 
+    it('renders HTML description safely in view mode', () => {
+      const htmlRecipe = { ...mockRecipe, description: '<p>Rich <strong>bolognese</strong> sauce.</p>' }
+      const { container } = renderWithStores(<Recipe recipe={htmlRecipe} />)
+      const descriptionEl = container.querySelector('.recipe-description')
+      expect(descriptionEl).not.toBeNull()
+      expect(descriptionEl?.querySelector('strong')).not.toBeNull()
+      expect(descriptionEl?.textContent).toContain('bolognese')
+    })
+
     it('displays meal category', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('Lunch')).toBeInTheDocument()

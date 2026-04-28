@@ -6,6 +6,7 @@ import { apiSignUp } from "@/lib/api/users"
 import { InputText } from 'primereact/inputtext'
 import { Checkbox } from 'primereact/checkbox'
 import { RadioButton } from 'primereact/radiobutton'
+import { Password } from 'primereact/password'
 import './createAccount.scss'
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
@@ -186,12 +187,13 @@ function CreateAccount() {
 
                 <label className={`form-field ${password.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                   <span className="field-label">Password</span>
-                  <InputText
+                  <Password
                     className={`text-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
-                    type="password"
                     value={password}
                     placeholder="Create a strong password"
                     onChange={(e) => setPassword(e.target.value)}
+                    toggleMask
+                    feedback
                     aria-invalid={password.length > 0 && !passwordIsValid}
                     aria-describedby="password-requirements"
                     autoComplete="new-password"
@@ -220,14 +222,15 @@ function CreateAccount() {
 
                 <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                   <span className="field-label">Confirm Password</span>
-                  <InputText
+                  <Password
                     className={`text-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
-                    type="password"
                     value={confirmPassword}
                     placeholder="Confirm your password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    toggleMask
+                    feedback={false}
                     aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
-                    aria-describedby={confirmPassword.length > 0 && !passwordsMatch ? "confirm-error" : "confirm-hint"}
+                    aria-describedby={confirmPassword.length > 0 && !passwordsMatch ? 'confirm-error' : 'confirm-hint'}
                     autoComplete="new-password"
                   />
                   {confirmPassword.length > 0 && !passwordsMatch ? (

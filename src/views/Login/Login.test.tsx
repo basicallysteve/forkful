@@ -128,6 +128,29 @@ describe('Login Page', () => {
       expect(passwordInput).toHaveAttribute('type', 'password')
     })
 
+    it('password field has toggle mask button', () => {
+      renderWithProviders(<Login />)
+
+      const toggleButton = screen.getByRole('switch', { name: /show password/i })
+      expect(toggleButton).toBeInTheDocument()
+    })
+
+    it('toggle mask button reveals and hides password', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Login />)
+
+      const passwordInput = screen.getByPlaceholderText('Enter your password')
+      expect(passwordInput).toHaveAttribute('type', 'password')
+
+      const toggleButton = screen.getByRole('switch', { name: /show password/i })
+      await user.click(toggleButton)
+
+      expect(passwordInput).toHaveAttribute('type', 'text')
+
+      await user.click(screen.getByRole('switch', { name: /hide password/i }))
+      expect(passwordInput).toHaveAttribute('type', 'password')
+    })
+
     it('username field has correct autocomplete attribute', () => {
       renderWithProviders(<Login />)
 
