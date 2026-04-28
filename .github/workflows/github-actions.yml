@@ -21,7 +21,7 @@ jobs:
       - name: Run Linter
         run: bunx eslint .
       - name: Run Vitest
-        run: bunx vitest run --changed origin/{{ github.base_ref }}
+        run: bunx vitest run --changed origin/{{ github.event.pull_request.base.sha }}
 
   test-integration:
     runs-on: ubuntu-latest
@@ -55,7 +55,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/forkful_test
       - name: Run Integration Tests
-        run: bunx vitest run --config vitest.integration.config.ts --changed origin/{{ github.base_ref }}
+        run: bunx vitest run --config vitest.integration.config.ts --changed origin/{{ github.event.pull_request.base.sha }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forkful_test
           NODE_ENV: test
