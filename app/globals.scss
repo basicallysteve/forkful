@@ -71,6 +71,7 @@ button:focus-visible {
 }
 
 /* Global application styles – imported once from app/layout.tsx */
+@import '../src/assets/styles/primereact-dark.scss';
 @import '../src/components/toolbar.scss';
 @import '../src/components/Autocomplete/autocomplete.scss';
 @import '../src/views/Login/login.scss';
