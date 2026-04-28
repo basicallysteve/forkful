@@ -3,6 +3,9 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { apiSignUp } from "@/lib/api/users"
+import { InputText } from 'primereact/inputtext'
+import { Checkbox } from 'primereact/checkbox'
+import { RadioButton } from 'primereact/radiobutton'
 import './createAccount.scss'
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
@@ -144,7 +147,7 @@ function CreateAccount() {
               <div className="form-grid">
                 <label className="form-field">
                   <span className="field-label">Username</span>
-                  <input
+                  <InputText
                     className="text-input"
                     type="text"
                     value={username}
@@ -160,7 +163,7 @@ function CreateAccount() {
 
                 <label className={`form-field ${email.length > 0 && !isValidEmail ? 'has-error' : ''}`}>
                   <span className="field-label">Email</span>
-                  <input
+                  <InputText
                     className={`text-input ${email.length > 0 && !isValidEmail ? 'input-error' : ''}`}
                     type="email"
                     value={email}
@@ -183,7 +186,7 @@ function CreateAccount() {
 
                 <label className={`form-field ${password.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                   <span className="field-label">Password</span>
-                  <input
+                  <InputText
                     className={`text-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
                     type="password"
                     value={password}
@@ -217,7 +220,7 @@ function CreateAccount() {
 
                 <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                   <span className="field-label">Confirm Password</span>
-                  <input
+                  <InputText
                     className={`text-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
                     type="password"
                     value={confirmPassword}
@@ -246,9 +249,8 @@ function CreateAccount() {
                         key={cuisine}
                         className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? "is-active" : ""}`}
                       >
-                        <input
+                        <Checkbox
                           className="checkbox-input"
-                          type="checkbox"
                           checked={cuisinePreferences.includes(cuisine)}
                           onChange={() => handleCuisineToggle(cuisine)}
                         />
@@ -268,13 +270,12 @@ function CreateAccount() {
                         key={option}
                         className={`radio-option ${dietaryRestrictions === option ? "is-active" : ""}`}
                       >
-                        <input
+                        <RadioButton
                           className="radio-input"
-                          type="radio"
                           name="dietary"
                           value={option}
                           checked={dietaryRestrictions === option}
-                          onChange={(e) => setDietaryRestrictions(e.target.value)}
+                          onChange={(e) => setDietaryRestrictions(e.value)}
                         />
                         <span className="radio-dot" />
                         {option}

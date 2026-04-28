@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useSettingsStore } from "@/stores/settings"
+import { InputText } from 'primereact/inputtext'
 
 function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("")
@@ -76,7 +77,7 @@ function Login() {
               <div className="form-grid">
                 <label className="form-field form-field-full">
                   <span className="field-label">Username or Email</span>
-                  <input
+                  <InputText
                     className="text-input"
                     type="text"
                     value={usernameOrEmail}
@@ -92,7 +93,7 @@ function Login() {
 
                 <label className="form-field form-field-full">
                   <span className="field-label">Password</span>
-                  <input
+                  <InputText
                     className="text-input"
                     type="password"
                     value={password}
