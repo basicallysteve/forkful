@@ -36,6 +36,13 @@
       "when": 1777302831586,
       "tag": "0004_fair_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777337007686,
+      "tag": "0005_bouncy_liz_osborn",
+      "breakpoints": true
     }
   ]
 }

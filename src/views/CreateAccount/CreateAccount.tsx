@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { apiSignUp } from "@/lib/api/users"
+import './createAccount.scss'
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
@@ -55,7 +57,8 @@ function CreateAccount() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string>("")
-  const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const passwordValidation = useMemo(() => validatePassword(password), [password])
   const passwordIsValid = useMemo(() => isPasswordValid(passwordValidation), [passwordValidation])
@@ -71,9 +74,10 @@ function CreateAccount() {
       username.trim().length >= 3 &&
       isValidEmail &&
       passwordIsValid &&
-      passwordsMatch
+      passwordsMatch &&
+      !isSubmitting
     )
-  }, [username, isValidEmail, passwordIsValid, passwordsMatch])
+  }, [username, isValidEmail, passwordIsValid, passwordsMatch, isSubmitting])
 
   function handleCuisineToggle(cuisine: string) {
     if (cuisinePreferences.includes(cuisine)) {
@@ -83,29 +87,32 @@ function CreateAccount() {
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
-    
-    // For now, just show success message
-    setSubmitted(true)
-  }
+    setSubmitError(null)
+    setIsSubmitting(true)
+    try {
+      // The database schema expects dietaryRestrictions to be an array of strings
+      const finalDietaryRestrictions =
+        dietaryRestrictions && dietaryRestrictions !== "None"
+          ? [dietaryRestrictions]
+          : []
 
-  if (submitted) {
-    return (
-      <div className="create-account">
-        <div className="account-titlebar" aria-hidden="true">
-          <span className="title">Forkful — Account Created</span>
-        </div>
-        <div className="account-content">
-          <div className="success-message">
-            <h2>Welcome to Forkful! 🎉</h2>
-            <p>Your account has been created successfully.</p>
-            <Link href="/" className="primary-button">Go to Home</Link>
-          </div>
-        </div>
-      </div>
-    )
+      await apiSignUp({
+        username,
+        email,
+        password,
+        cuisinePreferences,
+        dietaryRestrictions: finalDietaryRestrictions,
+      })
+    
+      window.location.href = '/login'
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Registration failed')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -281,12 +288,21 @@ function CreateAccount() {
               <div className="form-footer">
                 <div className="footer-actions">
                   <Link href="/" className="ghost-button">Cancel</Link>
-                  <button type="submit" className="primary-button" disabled={!canSubmit}>
-                    Create Account
+                  <button type="submit" className="primary-button" disabled={!canSubmit || isSubmitting}>
+                    {isSubmitting ? 'Creating Account…' : 'Create Account'}
                   </button>
                 </div>
+                {submitError && (
+                  <p className="field-error" role="alert">{submitError}</p>
+                )}
               </div>
             </form>
+
+            <div className="form-links">
+              <p>
+                Already have an account? <Link href="/login">Login</Link>
+              </p>
+            </div>
           </div>
         </section>
       </div>

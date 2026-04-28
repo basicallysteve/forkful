@@ -1,11 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CreateAccount from './CreateAccount'
 
+vi.mock('@/lib/api/users', () => ({
+  apiSignUp: vi.fn(),
+}))
+
+import { apiSignUp } from '@/lib/api/users'
+
 function renderWithProviders(ui: React.ReactElement) {
   return render(ui)
 }
+
+beforeEach(() => {
+  vi.mocked(apiSignUp).mockResolvedValue({ id: '1', username: 'testuser', email: 'test@example.com' })
+})
 
 describe('CreateAccount Page', () => {
   describe('Form Rendering', () => {
@@ -197,25 +207,6 @@ describe('CreateAccount Page', () => {
       expect(submitButton).not.toBeDisabled()
     })
 
-    it('shows success message after successful submission', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<CreateAccount />)
-
-      // Fill all required fields
-      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
-      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
-      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
-      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
-
-      const submitButton = screen.getByRole('button', { name: /create account/i })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('Welcome to Forkful! 🎉')).toBeInTheDocument()
-        expect(screen.getByText('Your account has been created successfully.')).toBeInTheDocument()
-      })
-    })
-
     it('does not submit when username is too short', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
@@ -377,7 +368,16 @@ describe('CreateAccount Page', () => {
       expect(cancelButton).toHaveAttribute('href', '/')
     })
 
-    it('shows go to home link after successful account creation', async () => {
+    it('renders login link', () => {
+      renderWithProviders(<CreateAccount />)
+
+      const loginLink = screen.getByRole('link', { name: /login/i })
+      expect(loginLink).toHaveAttribute('href', '/login')
+    })
+
+    it('redirects to login page after successful account creation', async () => {
+      vi.stubGlobal('location', { href: '/' })
+
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
 
@@ -389,9 +389,96 @@ describe('CreateAccount Page', () => {
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
       await waitFor(() => {
-        const homeLink = screen.getByRole('link', { name: /go to home/i })
-        expect(homeLink).toHaveAttribute('href', '/')
+        expect(window.location.href).toBe('/login')
       })
+
+      vi.unstubAllGlobals()
+    })
+  })
+
+  describe('API Integration', () => {
+    it('calls apiSignUp with form data on submit', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      await waitFor(() => {
+        expect(apiSignUp).toHaveBeenCalledWith({
+          username: 'testuser',
+          email: 'test@example.com',
+          password: 'StrongPass1!',
+          cuisinePreferences: [],
+          dietaryRestrictions: [],
+        })
+      })
+    })
+
+    it('calls apiSignUp with selected preferences', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+
+      await user.click(screen.getByRole('checkbox', { name: /italian/i }))
+      await user.click(screen.getByRole('radio', { name: /vegan/i }))
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      await waitFor(() => {
+        expect(apiSignUp).toHaveBeenCalledWith({
+          username: 'testuser',
+          email: 'test@example.com',
+          password: 'StrongPass1!',
+          cuisinePreferences: ['Italian'],
+          dietaryRestrictions: ['Vegan'],
+        })
+      })
+    })
+
+    it('shows error message when API returns an error', async () => {
+      vi.mocked(apiSignUp).mockRejectedValue(new Error('Email already in use'))
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'taken@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Email already in use')
+      })
+    })
+
+    it('disables submit button while submitting', async () => {
+      let resolve!: (value: { id: string; username: string; email: string }) => void
+      vi.mocked(apiSignUp).mockReturnValue(new Promise((r) => { resolve = r }))
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /creating account/i })).toBeDisabled()
+      })
+
+      resolve({ id: '1', username: 'testuser', email: 'test@example.com' })
     })
   })
 })

@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    exclude: ['**/*.integration.test.ts', 'node_modules/**'],
+    exclude: ['**/*.integration.test.ts', 'node_modules/**', '.next/**'],
     alias: {
       'next/link': path.resolve(__dirname, './src/test/mocks/next-link.tsx'),
       'next/navigation': path.resolve(__dirname, './src/test/mocks/next-navigation.ts'),

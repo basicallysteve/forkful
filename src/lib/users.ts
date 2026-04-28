@@ -1,33 +1,36 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts } from '@/db/schema'
 import type { User } from '@/types/User'
 import bcrypt from 'bcrypt'
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
-    bcrypt.genSalt(saltRounds, (err: unknown, salt: string) => {
-        if (err) throw err
-        bcrypt.hash(password, salt, (err: unknown, hash: string) => {
-            if (err) throw err
-            return hash
-        })
-    })
-    return ''
+    return bcrypt.hash(password, saltRounds)
 }
 
-export async function signUp(user: { username: string; email: string; password: string }): Promise<User> {
+export async function signUp(user: { username: string; email: string; password: string, cuisinePreferences: string[], dietaryRestrictions: string[]}): Promise<User> {
+    console.log('Signing up user:', user)
     let newUser: User | null = null;
-        const [existingUser] = await db.select().from(users).where(eq(users.email, user.email))
+        const [existingUser] = await db.select().from(users).where(or(eq(users.email, user.email), eq(users.username, user.username)))
         if (existingUser) {
-            throw new Error('Email already in use')
+            if(existingUser.email === user.email) {
+                throw new Error('Email already in use')
+            }
+            if(existingUser.username === user.username) {
+                throw new Error('Username already in use')
+            }
         }
+
+       
 
         const hashedPassword = await hashPassword(user.password)
         const [data] = await db.insert(users).values({
             username: user.username,
             email: user.email,
             password: hashedPassword,
+            cuisinePreferences: user.cuisinePreferences,
+            dietaryRestrictions: user.dietaryRestrictions,
             dateAdded: new Date(),
             dateDeleted: null,
         }).returning();
@@ -36,6 +39,9 @@ export async function signUp(user: { username: string; email: string; password: 
             id: String(data.id),
             username: data.username,
             email: data.email,
+            cuisinePreferences: data.cuisinePreferences,
+            dietaryRestrictions: data.dietaryRestrictions,
+            password: hashedPassword,
             dateAdded: data.dateAdded!,
             dateDeleted: data.dateDeleted,
         }
