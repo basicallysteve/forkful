@@ -93,27 +93,22 @@
     justify-content: flex-end;
   }
 
-  .pill {
+  .p-tag {
     border-radius: 999px;
     padding: 6px 10px;
     font-size: 12px;
-    border: 1px solid var(--vscode-border);
-    background: var(--vscode-panel);
-    color: var(--vscode-muted);
-  }
-
-  .pill-primary {
-    color: #ffffff;
-    border-color: var(--vscode-accent);
+    border: 1px solid var(--vscode-accent);
     background: var(--vscode-accent);
-    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
-  }
-
-  .pill-info {
     color: #ffffff;
-    border-color: var(--vscode-info);
-    background: var(--vscode-info);
-    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.35);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
+    font-family: inherit;
+
+    &.p-tag-info {
+      border-color: var(--vscode-info);
+      background: var(--vscode-info);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(23, 162, 184, 0.35);
+    }
   }
 
   .food-panel {

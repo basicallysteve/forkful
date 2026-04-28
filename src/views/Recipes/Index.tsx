@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Tag } from 'primereact/tag'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
@@ -135,9 +136,9 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
             <h2 className="recipes-name">All Recipes</h2>
           </div>
           <div className="recipes-meta">
-            <span className="pill pill-primary">{recipes.length} recipes</span>
+            <Tag value={`${recipes.length} recipes`} rounded />
             {selectedRecipes.size > 0 && (
-              <span className="pill pill-ghost">{selectedRecipes.size} selected</span>
+              <Tag value={`${selectedRecipes.size} selected`} severity="secondary" rounded />
             )}
           </div>
         </header>
@@ -251,10 +252,10 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                             <h3 className="card-title">{recipe.name}</h3>
                             <div className="card-badges">
                               {recipe.meal && (
-                                <span className="pill pill-ghost">{recipe.meal}</span>
+                                <Tag value={recipe.meal} severity="secondary" rounded />
                               )}
                               {recipe.date_published === null && (
-                                <span className="pill pill-warning">Unpublished</span>
+                                <Tag value="Unpublished" severity="warning" rounded />
                               )}
                             </div>
                           </div>

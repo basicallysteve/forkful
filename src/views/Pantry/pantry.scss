@@ -78,45 +78,70 @@
     justify-content: flex-end;
   }
 
-  .pill {
+  .primary-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    background: var(--vscode-accent);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
+
+    &:hover {
+      background: #1ea3ff;
+    }
+  }
+
+  .p-tag {
     border-radius: 999px;
     padding: clamp(0.3rem, 1vw, 0.5rem) clamp(0.3rem, 1.5vw, 0.5rem);
     font-size: clamp(0.3rem, 2vw, 0.75rem);
-    border: 1px solid var(--vscode-border);
-    background: var(--vscode-panel);
-    color: var(--vscode-muted);
-  }
-
-  .pill-primary {
-    color: #ffffff;
-    border-color: var(--vscode-accent);
+    border: 1px solid var(--vscode-accent);
     background: var(--vscode-accent);
+    color: #ffffff;
     box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
-  }
+    font-family: inherit;
 
-  .pill-ghost {
-    background: rgba(255, 255, 255, 0.04);
-  }
+    &.p-tag-secondary {
+      border-color: var(--vscode-border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--vscode-muted);
+      box-shadow: none;
+    }
 
-  .pill-success {
-    color: #ffffff;
-    border-color: var(--vscode-success);
-    background: var(--vscode-success);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
-  }
+    &.p-tag-success {
+      border-color: var(--vscode-success);
+      background: var(--vscode-success);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+    }
 
-  .pill-warning {
-    color: #ffffff;
-    border-color: var(--vscode-warning);
-    background: var(--vscode-warning);
-    box-shadow: 0 4px 12px rgba(240, 173, 78, 0.35);
-  }
+    &.p-tag-warning {
+      border-color: var(--vscode-warning);
+      background: var(--vscode-warning);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(240, 173, 78, 0.35);
+    }
 
-  .pill-danger {
-    color: #ffffff;
-    border-color: var(--vscode-danger);
-    background: var(--vscode-danger);
-    box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
+    &.p-tag-danger {
+      border-color: var(--vscode-danger);
+      background: var(--vscode-danger);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
+    }
+
+    &.p-tag-info {
+      border-color: #17a2b8;
+      background: rgba(23, 162, 184, 0.15);
+      color: #17a2b8;
+      box-shadow: none;
+    }
   }
 
   .pantry-stats {
@@ -401,41 +426,6 @@
         accent-color: var(--vscode-accent);
         cursor: pointer;
       }
-    }
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid;
-
-    &.status-good {
-      background: rgba(34, 197, 94, 0.15);
-      color: #4ade80;
-      border-color: #22c55e;
-    }
-
-    &.status-expiring-soon {
-      background: rgba(240, 173, 78, 0.15);
-      color: #fbbf24;
-      border-color: var(--vscode-warning);
-    }
-
-    &.status-expired {
-      background: rgba(232, 17, 35, 0.15);
-      color: #ff6b6b;
-      border-color: var(--vscode-danger);
-    }
-
-    &.status-frozen {
-      background: rgba(23, 162, 184, 0.15);
-      color: #17a2b8;
-      border-color: #17a2b8;
     }
   }
 

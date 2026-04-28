@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood } from '@/lib/api/foods'
@@ -56,8 +57,8 @@ export default function FoodIndex({ food }: FoodIndexProps) {
             <h2 className="food-name">{food.name}</h2>
           </div>
           <div className="food-meta">
-            <span className="pill pill-primary">{food.calories} calories</span>
-            {isUsedInRecipe && <span className="pill pill-info">Used in recipes</span>}
+            <Tag value={`${food.calories} calories`} rounded />
+            {isUsedInRecipe && <Tag value="Used in recipes" severity="info" rounded />}
           </div>
         </header>
 

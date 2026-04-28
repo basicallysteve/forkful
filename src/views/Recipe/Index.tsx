@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Tag } from 'primereact/tag'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
@@ -194,10 +195,8 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
             )}
           </div>
           <div className="recipe-meta">
-            <span className="pill pill-primary">{publishedText}</span>
-            <span className="pill pill-ghost">
-              {displayRecipe.ingredients.length} ingredients
-            </span>
+            <Tag value={publishedText} severity={isPublished ? undefined : 'warning'} rounded />
+            <Tag value={`${displayRecipe.ingredients.length} ingredients`} severity="secondary" rounded />
           </div>
         </header>
 

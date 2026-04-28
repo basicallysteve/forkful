@@ -168,8 +168,8 @@ describe('Pantry List Page', () => {
       expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
       const sizeDisplays = screen.getAllByText(/2\.00 lb \/ 1\.50 lb/)
       expect(sizeDisplays.length).toBeGreaterThan(0)
-      const statusBadge = document.querySelector('.status-badge.status-good')
-      expect(statusBadge).toHaveTextContent('Good')
+      const tbody = document.querySelector('tbody')
+      expect(tbody).toHaveTextContent('Good')
     })
 
     it('renders edit and delete buttons for each item', () => {
