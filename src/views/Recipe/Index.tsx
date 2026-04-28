@@ -195,7 +195,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
             )}
           </div>
           <div className="recipe-meta">
-            <Tag value={publishedText} severity={isPublished ? undefined : 'warning'} rounded />
+            <Tag value={publishedText} severity={isPublished ? null : 'warning'} rounded />
             <Tag value={`${displayRecipe.ingredients.length} ingredients`} severity="secondary" rounded />
           </div>
         </header>
