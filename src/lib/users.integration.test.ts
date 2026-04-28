@@ -70,4 +70,18 @@ describe('users integration tests', () => {
         const newUser = await signUp(user)
         expect(newUser.password).not.toBe(user.password)
     })
+
+    it('should store cuisine preferences and dietary restrictions', async () => {
+        const user = {
+            username: 'testuser',
+            email: 'testUser@gmail.com',
+            password: 'password123',
+            cuisinePreferences: ['Italian', 'Mexican'],
+            dietaryRestrictions: ['Vegetarian', 'Gluten-Free'],
+        }
+        const newUser = await signUp(user)
+        expect(newUser.cuisinePreferences).toEqual(user.cuisinePreferences)
+        expect(newUser.dietaryRestrictions).toEqual(user.dietaryRestrictions)
+    })
+
 })

@@ -394,7 +394,9 @@ describe('CreateAccount Page', () => {
       expect(loginLink).toHaveAttribute('href', '/login')
     })
 
-    it('shows go to home link after successful account creation', async () => {
+    it('redirects to login page after successful account creation', async () => {
+      vi.stubGlobal('location', { href: '/' })
+
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
 
@@ -406,9 +408,10 @@ describe('CreateAccount Page', () => {
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
       await waitFor(() => {
-        const homeLink = screen.getByRole('link', { name: /go to home/i })
-        expect(homeLink).toHaveAttribute('href', '/')
+        expect(window.location.href).toBe('/login')
       })
+
+      vi.unstubAllGlobals()
     })
   })
 
@@ -429,6 +432,33 @@ describe('CreateAccount Page', () => {
           username: 'testuser',
           email: 'test@example.com',
           password: 'StrongPass1!',
+          cuisinePreferences: [],
+          dietaryRestrictions: [],
+        })
+      })
+    })
+
+    it('calls apiSignUp with selected preferences', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+
+      await user.click(screen.getByRole('checkbox', { name: /italian/i }))
+      await user.click(screen.getByRole('radio', { name: /vegan/i }))
+
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+
+      await waitFor(() => {
+        expect(apiSignUp).toHaveBeenCalledWith({
+          username: 'testuser',
+          email: 'test@example.com',
+          password: 'StrongPass1!',
+          cuisinePreferences: ['Italian'],
+          dietaryRestrictions: ['Vegan'],
         })
       })
     })

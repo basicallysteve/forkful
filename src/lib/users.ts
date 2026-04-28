@@ -9,7 +9,7 @@ export async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, saltRounds)
 }
 
-export async function signUp(user: { username: string; email: string; password: string }): Promise<User> {
+export async function signUp(user: { username: string; email: string; password: string, cuisinePreferences: string[], dietaryRestrictions: string[]}): Promise<User> {
     let newUser: User | null = null;
         const [existingUser] = await db.select().from(users).where(or(eq(users.email, user.email), eq(users.username, user.username)))
         if (existingUser) {
@@ -28,6 +28,8 @@ export async function signUp(user: { username: string; email: string; password: 
             username: user.username,
             email: user.email,
             password: hashedPassword,
+            cuisinePreferences: user.cuisinePreferences,
+            dietaryRestrictions: user.dietaryRestrictions,
             dateAdded: new Date(),
             dateDeleted: null,
         }).returning();
@@ -36,6 +38,9 @@ export async function signUp(user: { username: string; email: string; password: 
             id: String(data.id),
             username: data.username,
             email: data.email,
+            cuisinePreferences: data.cuisinePreferences,
+            dietaryRestrictions: data.dietaryRestrictions,
+            password: hashedPassword,
             dateAdded: data.dateAdded!,
             dateDeleted: data.dateDeleted,
         }

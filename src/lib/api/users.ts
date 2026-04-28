@@ -2,12 +2,15 @@ export type SignUpData = {
   username: string
   email: string
   password: string
+  cuisinePreferences: string[]
+  dietaryRestrictions: string[]
 }
 
 export type SignUpResult = {
   id: string
   username: string
   email: string
+  
 }
 
 export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { apiSignUp } from "@/lib/api/users"
 import './createAccount.scss'
+import { is } from "drizzle-orm"
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
 const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
@@ -75,9 +76,10 @@ function CreateAccount() {
       username.trim().length >= 3 &&
       isValidEmail &&
       passwordIsValid &&
-      passwordsMatch
+      passwordsMatch &&
+      !isSubmitting
     )
-  }, [username, isValidEmail, passwordIsValid, passwordsMatch])
+  }, [username, isValidEmail, passwordIsValid, passwordsMatch, isSubmitting])
 
   function handleCuisineToggle(cuisine: string) {
     if (cuisinePreferences.includes(cuisine)) {
@@ -93,30 +95,26 @@ function CreateAccount() {
     setSubmitError(null)
     setIsSubmitting(true)
     try {
-      await apiSignUp({ username, email, password })
-      setSubmitted(true)
+      // The database schema expects dietaryRestrictions to be an array of strings
+      const finalDietaryRestrictions =
+        dietaryRestrictions && dietaryRestrictions !== "None"
+          ? [dietaryRestrictions]
+          : []
+
+      await apiSignUp({
+        username,
+        email,
+        password,
+        cuisinePreferences,
+        dietaryRestrictions: finalDietaryRestrictions,
+      })
+    
+      window.location.href = '/login'
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Registration failed')
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (submitted) {
-    return (
-      <div className="create-account">
-        <div className="account-titlebar" aria-hidden="true">
-          <span className="title">Forkful — Account Created</span>
-        </div>
-        <div className="account-content">
-          <div className="success-message">
-            <h2>Welcome to Forkful! 🎉</h2>
-            <p>Your account has been created successfully.</p>
-            <Link href="/" className="primary-button">Go to Home</Link>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (
