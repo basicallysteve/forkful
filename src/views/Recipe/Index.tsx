@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
@@ -212,7 +213,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
         ) : (
           <div
             className="recipe-description"
-            dangerouslySetInnerHTML={{ __html: displayRecipe.description }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
           />
         )}
 

@@ -100,7 +100,7 @@ function Login() {
                     placeholder="Enter your password"
                     onChange={(e) => setPassword(e.target.value)}
                     toggleMask
-                    feedback
+                    feedback={false}
                     aria-describedby="password-hint"
                     autoComplete="current-password"
                   />
