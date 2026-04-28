@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { MegaMenu } from 'primereact/megamenu'
+import type { MenuItem } from 'primereact/menuitem'
+
 type MenuOption = {
     label: string;
     action?: () => void;
@@ -11,53 +14,33 @@ type MenuOption = {
 const logoSrc = "/forkful-logo.svg"
 
 function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
+    const router = useRouter()
 
-    function renderMenuOption(option: MenuOption) {
-        const hasChildren = !!(option.children && option.children.length > 0)
-
-        return (
-            <div className="menu-option" key={option.label}>
-                <Link href={option.to || "#"} className="menu-option__link" onClick={option.action}>
-                <button
-                    type="button"
-                    className="menu-option__trigger"
-                    onClick={option.action}
-                >
-                    <span className="menu-option__label">{option.label}</span>
-                    {hasChildren && <span className="menu-option__caret">▾</span>}
-                </button>
-                </Link>
-                {hasChildren && (
-                    <div className="submenu" role="menu">
-                        {option.children!.map((childOption) => (
-                            <Link
-                                key={childOption.label}
-                                className="submenu-option"
-                                href={childOption.to || "#"}
-                                onClick={childOption.action}
-                            >
-                                {childOption.label}
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
+    function toMenuItem(option: MenuOption): MenuItem {
+        return {
+            label: option.label,
+            command: option.action ?? (option.to ? () => router.push(option.to!) : undefined),
+            items: option.children && option.children.length > 0
+                ? [option.children.map(toMenuItem)]
+                : undefined,
+        }
     }
 
-    return (
-        <div className="toolbar">
-            <div className="toolbar-brand">
-                <img src={logoSrc} alt="Forkful logo" className="toolbar-logo" />
-                <div className="toolbar-title">
-                    <span className="toolbar-name">Forkful</span>
-                    <span className="toolbar-tagline">Recipes worth repeating</span>
-                </div>
-            </div>
-            <div className="menu">
-                {menuOptions && menuOptions.map((option) => renderMenuOption(option))}
+    const model: MenuItem[] = (menuOptions ?? []).map(toMenuItem)
+
+    const start = (
+        <div className="toolbar-brand">
+            <img src={logoSrc} alt="Forkful logo" className="toolbar-logo" />
+            <div className="toolbar-title">
+                <span className="toolbar-name">Forkful</span>
+                <span className="toolbar-tagline">Recipes worth repeating</span>
             </div>
         </div>
     )
+
+    return (
+        <MegaMenu model={model} start={start} className="toolbar" />
+    )
 }
+
 export default ToolBar
