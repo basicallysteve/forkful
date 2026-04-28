@@ -1,6 +1,16 @@
 .autocomplete {
   position: relative;
   width: 100%;
+
+  // Make PrimeReact's autocomplete span fill width
+  .p-autocomplete {
+    width: 100%;
+  }
+
+  // Style PrimeReact's inner input
+  .p-autocomplete-input {
+    width: 100%;
+  }
 }
 
 .autocomplete-clear {
@@ -15,45 +25,53 @@
   font-size: 16px;
   line-height: 1;
   padding: 2px 4px;
+  z-index: 1;
 
   &:hover {
     color: var(--vscode-text, #d4d4d4);
   }
 }
 
-.autocomplete-suggestions {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 4px 0;
-  list-style: none;
+// PrimeReact autocomplete panel (portal-rendered)
+.p-autocomplete-panel {
   background: var(--vscode-panel-strong, #1f1f23);
   border: 1px solid var(--vscode-border, #3c3c3c);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  max-height: 240px;
-  overflow-y: auto;
+  z-index: 10;
+
+  .p-autocomplete-items-wrapper {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .p-autocomplete-items {
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+  }
+
+  .p-autocomplete-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--vscode-text, #d4d4d4);
+
+    &:hover,
+    &.p-focus {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &[aria-selected='true'] {
+      background: rgba(0, 122, 204, 0.14);
+      border-left: 2px solid var(--vscode-accent, #007acc);
+    }
+  }
 }
 
-.autocomplete-suggestions li {
+.autocomplete-item-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
-  cursor: pointer;
-  color: var(--vscode-text, #d4d4d4);
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  &.is-active {
-    background: rgba(0, 122, 204, 0.14);
-    border-left: 2px solid var(--vscode-accent, #007acc);
-  }
 }
 
 .suggestion-name {
