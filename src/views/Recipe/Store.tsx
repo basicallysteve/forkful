@@ -389,6 +389,7 @@ function Store() {
                 <div className="form-field form-field-full">
                   <span className="field-label">Description</span>
                   <Editor
+                    className="recipe-editor"
                     value={recipe.description}
                     onTextChange={(e) => setRecipe({ ...recipe, description: e.htmlValue ?? '' })}
                     placeholder="Describe flavors, prep time, or serving ideas."

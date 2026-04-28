@@ -205,6 +205,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
         {editMode ? (
           <Editor
+            className="recipe-editor"
             value={editedRecipe.description}
             onTextChange={(e) => setEditedRecipe({ ...editedRecipe, description: e.htmlValue ?? '' })}
             aria-label="Recipe description"

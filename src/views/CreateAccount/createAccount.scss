@@ -186,6 +186,16 @@
     }
   }
 
+  .password-input {
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    // padding: 10px 12px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    font-size: 14px;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
   .text-input {
     border: 1px solid var(--vscode-border);
     border-radius: 8px;

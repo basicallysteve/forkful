@@ -231,7 +231,7 @@ function Store({ existingFood }: FoodStoreProps) {
                 <label className="form-field">
                   <span className="field-label">Calories (per serving)</span>
                   <InputNumber
-                    className="text-input"
+                    className="number-input"
                     min={0}
                     value={food.calories ?? 0}
                     onValueChange={(e) =>
@@ -248,7 +248,7 @@ function Store({ existingFood }: FoodStoreProps) {
                 <label className="form-field">
                   <span className="field-label">Serving Size</span>
                   <InputNumber
-                    className="text-input"
+                    className="number-input"
                     min={0}
                     minFractionDigits={0}
                     maxFractionDigits={2}
@@ -267,7 +267,7 @@ function Store({ existingFood }: FoodStoreProps) {
                 <label className="form-field">
                   <span className="field-label">Serving Unit</span>
                   <Dropdown
-                    className="text-input"
+                    className="dropdown-input"
                     value={food.servingUnit}
                     onChange={(e) => handleServingUnitChange(e.value)}
                     options={[
@@ -289,7 +289,7 @@ function Store({ existingFood }: FoodStoreProps) {
                     <label className="macro-field">
                       <span className="macro-label">Protein</span>
                       <InputNumber
-                        className="text-input macro-input"
+                        className="number-input macro-input"
                         min={0}
                         minFractionDigits={0}
                         maxFractionDigits={1}
@@ -301,7 +301,7 @@ function Store({ existingFood }: FoodStoreProps) {
                     <label className="macro-field">
                       <span className="macro-label">Carbs</span>
                       <InputNumber
-                        className="text-input macro-input"
+                        className="number-input macro-input"
                         min={0}
                         minFractionDigits={0}
                         maxFractionDigits={1}
@@ -313,7 +313,7 @@ function Store({ existingFood }: FoodStoreProps) {
                     <label className="macro-field">
                       <span className="macro-label">Fat</span>
                       <InputNumber
-                        className="text-input macro-input"
+                        className="number-input macro-input"
                         min={0}
                         minFractionDigits={0}
                         maxFractionDigits={1}
@@ -325,7 +325,7 @@ function Store({ existingFood }: FoodStoreProps) {
                     <label className="macro-field">
                       <span className="macro-label">Fiber</span>
                       <InputNumber
-                        className="text-input macro-input"
+                        className="number-input macro-input"
                         min={0}
                         minFractionDigits={0}
                         maxFractionDigits={1}

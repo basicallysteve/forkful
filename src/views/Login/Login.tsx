@@ -95,7 +95,7 @@ function Login() {
                 <label className="form-field form-field-full">
                   <span className="field-label">Password</span>
                   <Password
-                    className="text-input"
+                    className="password-input"
                     value={password}
                     placeholder="Enter your password"
                     onChange={(e) => setPassword(e.target.value)}

@@ -188,7 +188,7 @@ function CreateAccount() {
                 <label className={`form-field ${password.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                   <span className="field-label">Password</span>
                   <Password
-                    className={`text-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
+                    className={`password-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
                     value={password}
                     placeholder="Create a strong password"
                     onChange={(e) => setPassword(e.target.value)}
@@ -223,7 +223,7 @@ function CreateAccount() {
                 <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                   <span className="field-label">Confirm Password</span>
                   <Password
-                    className={`text-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
+                    className={`password-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
                     value={confirmPassword}
                     placeholder="Confirm your password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
