@@ -3,48 +3,28 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useSettingsStore } from "@/stores/settings"
-
+import { apiLogin } from "@/lib/api/users"
 function Login() {
-  const [usernameOrEmail, setUsernameOrEmail] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [submitted, setSubmitted] = useState(false)
-  const setUser = useSettingsStore((state) => state.setUser)
-
+  const [ error, setError] = useState<string | null>(null)
   const canSubmit = useMemo(() => {
-    return usernameOrEmail.trim().length > 0 && password.length > 0
-  }, [usernameOrEmail, password])
+    return email.trim().length > 0 && password.length > 0
+  }, [email, password])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
     if (!canSubmit) return
     
     // TODO: Replace with actual authentication logic
-    // For now, create a mock user and store it in the settings store
-    const isEmail = usernameOrEmail.includes('@')
-    setUser({
-      user_id: `user_${Date.now()}`, // Temporary mock ID
-      username: isEmail ? usernameOrEmail.split('@')[0] : usernameOrEmail,
-      email: isEmail ? usernameOrEmail : `${usernameOrEmail}@example.com`,
-    })
-    
-    setSubmitted(true)
-  }
-
-  if (submitted) {
-    return (
-      <div className="login">
-        <div className="account-titlebar" aria-hidden="true">
-          <span className="title">Forkful — Logged In</span>
-        </div>
-        <div className="account-content">
-          <div className="success-message">
-            <h2>Welcome back! 👋</h2>
-            <p>You have successfully logged in.</p>
-            <Link href="/" className="primary-button">Go to Home</Link>
-          </div>
-        </div>
-      </div>
-    )
+    try{
+      let res = await apiLogin({ username: email, password })
+      window.location.href = "/"
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   return (
@@ -75,13 +55,13 @@ function Login() {
             <form className="account-form" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <label className="form-field form-field-full">
-                  <span className="field-label">Username or Email</span>
+                  <span className="field-label">Username</span>
                   <input
                     className="text-input"
                     type="text"
-                    value={usernameOrEmail}
-                    placeholder="Enter your username or email"
-                    onChange={(e) => setUsernameOrEmail(e.target.value)}
+                    value={email}
+                    placeholder="Enter your username"
+                    onChange={(e) => setEmail(e.target.value)}
                     aria-describedby="username-hint"
                     autoComplete="username"
                   />
@@ -106,7 +86,7 @@ function Login() {
                   </span>
                 </label>
               </div>
-
+              {error && <div className="form-error">{error}</div>}
               <div className="form-footer">
                 <div className="footer-actions">
                   <Link href="/" className="ghost-button">Cancel</Link>

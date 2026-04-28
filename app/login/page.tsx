@@ -3,5 +3,7 @@
 import Login from '@/views/Login/Login'
 
 export default function LoginPage() {
-  return <Login />
+
+
+  return <Login onSubmit={() => {}} />
 }

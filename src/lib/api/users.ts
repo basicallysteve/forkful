@@ -26,3 +26,24 @@ export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {
   }
   return res.json()
 }
+
+type LoginData = {
+  username: string
+  password: string
+}
+
+export async function apiLogin(data: LoginData ): Promise<{ password: string; user: { id: string; username: string;} }> {
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    credentials: 'same-origin',
+  })
+  
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? 'Login failed')
+  }
+
+  return res.json()
+}

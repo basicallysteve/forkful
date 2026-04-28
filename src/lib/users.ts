@@ -1,4 +1,4 @@
-import { eq, and, or } from 'drizzle-orm'
+import { eq, and, or, gte } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts } from '@/db/schema'
 import type { User } from '@/types/User'
@@ -10,7 +10,6 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function signUp(user: { username: string; email: string; password: string, cuisinePreferences: string[], dietaryRestrictions: string[]}): Promise<User> {
-    console.log('Signing up user:', user)
     let newUser: User | null = null;
         const [existingUser] = await db.select().from(users).where(or(eq(users.email, user.email), eq(users.username, user.username)))
         if (existingUser) {
@@ -49,37 +48,49 @@ export async function signUp(user: { username: string; email: string; password: 
     
 }
 
-export async function login(email: string, password: string): Promise<User> {
+export async function login(username: string, password: string): Promise<User> {
     // if there have been 5 or more failed login attempts for this email in the last hour, block the login attempt
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-    const [user] = await db.select().from(users).where(eq(users.email, email))
+    const [user] = await db.select().from(users).where(eq(users.username, username))
 
     const recentFailedAttempts = await db.select().from(login_attempts)
         .where(and(
             eq(login_attempts.userId, user?.id ?? -1),
             eq(login_attempts.successful, 0),
-            login_attempts.timestamp.gte(oneHourAgo)
+            gte(login_attempts.dateAdded, oneHourAgo)
         ))
     
     if (recentFailedAttempts.length >= 5) {
         throw new Error('Too many failed login attempts. Please try again later.')
     }
     if (!user) {
-        throw new Error('Invalid email or password')
+        throw new Error('Invalid username or password')
     }
     
     const passwordMatch = await bcrypt.compare(password, user.password)
     if (!passwordMatch) {
-        throw new Error('Invalid email or password')
+        throw new Error('Invalid username or password')
     }
     
     return {
         id: String(user.id),
         username: user.username,
         email: user.email,
+        cuisinePreferences: user.cuisinePreferences,
+        dietaryRestrictions: user.dietaryRestrictions,
+        password: user.password,
         dateAdded: user.dateAdded!,
         dateDeleted: user.dateDeleted,
     }
+}
+
+export async function trackLoginAttempt({ userId, successful, ipAddress }: { userId: number; successful: boolean; ipAddress: string }) {
+    await db.insert(login_attempts).values({
+        userId,
+        successful: successful ? 1 : 0,
+        ipAddress,
+        dateAdded: new Date(),
+    })
 }
 
 export async function resetPassword(email: string, newPassword: string): Promise<void> {

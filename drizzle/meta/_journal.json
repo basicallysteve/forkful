@@ -43,6 +43,13 @@
       "when": 1777337007686,
       "tag": "0005_bouncy_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777389279204,
+      "tag": "0006_powerful_guardsmen",
+      "breakpoints": true
     }
   ]
 }
