@@ -1,20 +1,27 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts } from '@/db/schema'
 import type { User } from '@/types/User'
 import bcrypt from 'bcrypt'
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
     return bcrypt.hash(password, saltRounds)
 }
 
 export async function signUp(user: { username: string; email: string; password: string }): Promise<User> {
     let newUser: User | null = null;
-        const [existingUser] = await db.select().from(users).where(eq(users.email, user.email))
+        const [existingUser] = await db.select().from(users).where(or(eq(users.email, user.email), eq(users.username, user.username)))
         if (existingUser) {
-            throw new Error('Email already in use')
+            if(existingUser.email === user.email) {
+                throw new Error('Email already in use')
+            }
+            if(existingUser.username === user.username) {
+                throw new Error('Username already in use')
+            }
         }
+
+       
 
         const hashedPassword = await hashPassword(user.password)
         const [data] = await db.insert(users).values({
