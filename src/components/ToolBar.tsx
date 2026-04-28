@@ -1,8 +1,9 @@
-import './toolbar.scss'
-import { Link } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
 type MenuOption = {
     label: string;
-    action: () => void;
+    action?: () => void;
     children?: MenuOption[];
     to?: string; // Optional for direct links
 }
@@ -16,6 +17,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
 
         return (
             <div className="menu-option" key={option.label}>
+                <Link href={option.to || "#"} className="menu-option__link" onClick={option.action}>
                 <button
                     type="button"
                     className="menu-option__trigger"
@@ -24,13 +26,14 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                     <span className="menu-option__label">{option.label}</span>
                     {hasChildren && <span className="menu-option__caret">▾</span>}
                 </button>
+                </Link>
                 {hasChildren && (
                     <div className="submenu" role="menu">
                         {option.children!.map((childOption) => (
                             <Link
                                 key={childOption.label}
                                 className="submenu-option"
-                                to={childOption.to || "#"}
+                                href={childOption.to || "#"}
                                 onClick={childOption.action}
                             >
                                 {childOption.label}

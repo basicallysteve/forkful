@@ -1,9 +1,8 @@
 import { create } from 'zustand'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Recipe } from '@/types/Recipe'
-import type { Food } from '@/types/Food'
 import { calculateCalories } from '@/utils/unitConversion'
-import { buildInitialRecipes, getInitialFoods } from './initialData'
+import { buildInitialRecipes } from './initialData'
 
 type RecipeStore = {
   recipes: Recipe[],
@@ -18,7 +17,7 @@ type RecipeStore = {
 }
 
 export const useRecipeStore = create<RecipeStore>((set, get) => ({
-  recipes: buildInitialRecipes(getInitialFoods()),
+  recipes: buildInitialRecipes(),
   existingIngredients: () => get().recipes.flatMap(recipe => recipe.ingredients)
       .filter((ingredient, index, self) =>
         index === self.findIndex((ing) => ing.food.name === ingredient.food.name)
@@ -124,7 +123,6 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 }))
 
 export const resetRecipeStore = () => {
-  const foods = getInitialFoods()
-  useRecipeStore.setState({ recipes: buildInitialRecipes(foods) })
+  useRecipeStore.setState({ recipes: buildInitialRecipes() })
 }
     
