@@ -10,6 +10,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function signUp(user: { username: string; email: string; password: string, cuisinePreferences: string[], dietaryRestrictions: string[]}): Promise<User> {
+    console.log('Signing up user:', user)
     let newUser: User | null = null;
         const [existingUser] = await db.select().from(users).where(or(eq(users.email, user.email), eq(users.username, user.username)))
         if (existingUser) {

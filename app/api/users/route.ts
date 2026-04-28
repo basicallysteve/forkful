@@ -5,7 +5,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function POST(request: Request) {
   try {
-    const body: { username?: string; email?: string; password?: string } = await request.json()
+    const body: { username?: string; email?: string; password?: string; cuisinePreferences?: string[]; dietaryRestrictions?: string[] } = await request.json()
 
     if (!body.username || typeof body.username !== 'string' || body.username.trim().length < 3) {
       return NextResponse.json({ error: 'Username must be at least 3 characters' }, { status: 400 })
@@ -21,6 +21,8 @@ export async function POST(request: Request) {
       username: body.username.trim(),
       email: body.email,
       password: body.password,
+      cuisinePreferences: body.cuisinePreferences ?? [],
+      dietaryRestrictions: body.dietaryRestrictions ?? [],
     })
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
