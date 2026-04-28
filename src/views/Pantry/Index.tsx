@@ -2,8 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { DataTable } from 'primereact/datatable'
+import { Column } from 'primereact/column'
 import { usePantryStore } from '@/stores/pantry'
-import type { PantryItemStatus } from '@/types/PantryItem'
+import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
 
 type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
@@ -268,92 +270,102 @@ export default function Pantry() {
           ) : (
             <div className="panel-content">
               {/* Desktop table view */}
-              <table className="pantry-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
-                        onChange={handleSelectAll}
-                        aria-label="Select all items"
-                      />
-                    </th>
-                    <th>Food Item</th>
-                    <th>Size (Orig/Curr)</th>
-                    <th>Expiration Date</th>
-                    <th>Status</th>
-                    <th>Added Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAndSortedItems.map((item) => (
-                    <tr key={item.id} className={getStatusClass(item.status)}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food.name}`}
-                        />
-                      </td>
-                      <td>
-                        <Link href={`/foods/${toSlug(item.food.name)}`}>
-                          {item.food.name}
-                        </Link>
-                      </td>
-                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
-                      <td>
-                        {item.frozenDate ? (
-                          <span className="status-badge status-frozen">Frozen</span>
-                        ) : (
-                          formatDate(item.expirationDate)
-                        )}
-                      </td>
-                      <td>
-                        <span className={`status-badge ${getStatusClass(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
-                      </td>
-                      <td>{formatDate(item.addedDate)}</td>
-                      <td>
-                        <div className="item-actions">
-                          {item.frozenDate ? (
-                            <button
-                              onClick={() => unfreezeItem(item.id)}
-                              className="btn-small btn-info"
-                              title="Unfreeze item"
-                            >
-                              Thaw
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => freezeItem(item.id)}
-                              className="btn-small btn-info"
-                              title="Freeze item"
-                            >
-                              Freeze
-                            </button>
-                          )}
-                          <Link
-                            href={`/pantry/${item.id}/edit`}
-                            className="btn-small btn-secondary"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => deleteItem(item.id)}
-                            className="btn-small btn-danger"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                value={filteredAndSortedItems}
+                className="pantry-table"
+                rowClassName={(item: PantryItem) => getStatusClass(item.status)}
+              >
+                <Column
+                  header={
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                      onChange={handleSelectAll}
+                      aria-label="Select all items"
+                    />
+                  }
+                  body={(item: PantryItem) => (
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => handleSelectItem(item.id)}
+                      aria-label={`Select ${item.food.name}`}
+                    />
+                  )}
+                />
+                <Column
+                  header="Food Item"
+                  body={(item: PantryItem) => (
+                    <Link href={`/foods/${toSlug(item.food.name)}`}>
+                      {item.food.name}
+                    </Link>
+                  )}
+                />
+                <Column
+                  header="Size (Orig/Curr)"
+                  body={(item: PantryItem) =>
+                    `${item.originalSize.size.toFixed(2)} ${item.originalSize.unit} / ${item.currentSize.size.toFixed(2)} ${item.currentSize.unit}`
+                  }
+                />
+                <Column
+                  header="Expiration Date"
+                  body={(item: PantryItem) =>
+                    item.frozenDate ? (
+                      <span className="status-badge status-frozen">Frozen</span>
+                    ) : (
+                      formatDate(item.expirationDate)
+                    )
+                  }
+                />
+                <Column
+                  header="Status"
+                  body={(item: PantryItem) => (
+                    <span className={`status-badge ${getStatusClass(item.status)}`}>
+                      {getStatusLabel(item.status)}
+                    </span>
+                  )}
+                />
+                <Column
+                  header="Added Date"
+                  body={(item: PantryItem) => formatDate(item.addedDate)}
+                />
+                <Column
+                  header="Actions"
+                  body={(item: PantryItem) => (
+                    <div className="item-actions">
+                      {item.frozenDate ? (
+                        <button
+                          onClick={() => unfreezeItem(item.id)}
+                          className="btn-small btn-info"
+                          title="Unfreeze item"
+                        >
+                          Thaw
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => freezeItem(item.id)}
+                          className="btn-small btn-info"
+                          title="Freeze item"
+                        >
+                          Freeze
+                        </button>
+                      )}
+                      <Link
+                        href={`/pantry/${item.id}/edit`}
+                        className="btn-small btn-secondary"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        className="btn-small btn-danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                />
+              </DataTable>
 
               {/* Mobile card view */}
               <div className="select-all-row">
