@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { apiLogin } from "@/lib/api/users"
+import { redirect } from "next/navigation"
 function Login() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -19,7 +20,8 @@ function Login() {
     // TODO: Replace with actual authentication logic
     try{
       await apiLogin({ username: username, password })
-      window.location.href = "/"
+      //navigate using next.js
+      redirect("/")
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message)

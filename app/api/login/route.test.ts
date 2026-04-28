@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
 import { POST } from './route'
 import { login, trackLoginAttempt } from '@/lib/users'
 import { encrypt } from '@/lib/session'
-import { cookies } from 'next/headers'
 
 vi.mock('@/lib/users', () => ({
   login: vi.fn(),
@@ -20,7 +19,7 @@ vi.mock('next/headers', () => ({
   })),
 }))
 
-function createRequest(body: any, headers: Record<string, string> = {}) {
+function createRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/login', {
     method: 'POST',
     headers: {
@@ -55,8 +54,8 @@ describe('POST /api/login', () => {
 
   it('returns 200 and sets cookie on successful login', async () => {
     const mockUser = { id: 1, username: 'testuser' };
-    (login as any).mockResolvedValue(mockUser);
-    (encrypt as any).mockResolvedValue('mock-encrypted-token')
+    (login as Mock).mockResolvedValue(mockUser);
+    (encrypt as Mock).mockResolvedValue('mock-encrypted-token')
 
     const req = createRequest({ username: 'testuser', password: 'password123' })
     const res = await POST(req)
@@ -76,7 +75,7 @@ describe('POST /api/login', () => {
   })
 
   it('returns 401 on invalid credentials error', async () => {
-    (login as any).mockRejectedValue(new Error('Invalid username or password'))
+    (login as Mock).mockRejectedValue(new Error('Invalid username or password'))
     
     const req = createRequest({ username: 'testuser', password: 'wrongpassword' })
     const res = await POST(req)
@@ -87,7 +86,7 @@ describe('POST /api/login', () => {
   })
 
   it('returns 429 on too many failed attempts error', async () => {
-    (login as any).mockRejectedValue(new Error('Too many failed login attempts. Please try again later.'))
+    (login as Mock).mockRejectedValue(new Error('Too many failed login attempts. Please try again later.'))
     
     const req = createRequest({ username: 'testuser', password: 'password123' })
     const res = await POST(req)
@@ -98,7 +97,7 @@ describe('POST /api/login', () => {
   })
 
   it('returns 401 and tracks attempt if login returns null', async () => {
-    (login as any).mockResolvedValue(null)
+    (login as Mock).mockResolvedValue(null)
     
     const req = createRequest({ username: 'testuser', password: 'password123' }, { 'x-forwarded-for': '192.168.1.1' })
     const res = await POST(req)
