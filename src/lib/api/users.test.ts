@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp } from './users'
+import { apiSignUp, apiLogin } from './users'
 
 const mockUser = {
   id: '1',
@@ -75,5 +75,34 @@ describe('apiSignUp', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     )
+  })
+})
+
+describe('apiLogin', () => {
+  it('posts login data and returns user on success', async () => {
+    const mockLoginResult = { password: 'hashedpassword', user: { id: '1', username: 'testuser' } }
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockLoginResult,
+    } as Response)
+
+    const result = await apiLogin({ username: 'testuser', password: 'StrongPass1!' })
+
+    expect(result).toEqual(mockLoginResult)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/login',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'testuser', password: 'StrongPass1!' }) })
+    )
+  })
+
+  it('throws error on invalid credentials', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Invalid credentials' }),
+    } as Response)
+
+    await expect(
+      apiLogin({ username: 'testuser', password: 'wrongpassword' })
+    ).rejects.toThrow('Invalid credentials')
   })
 })

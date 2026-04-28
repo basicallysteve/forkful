@@ -1,7 +1,7 @@
-import { NextResponse} from 'next/server'
+import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { login, trackLoginAttempt } from '@/lib/users'
-
+import { encrypt } from '@/lib/session'
 export async function POST(request: Request) {
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
@@ -22,11 +22,20 @@ export async function POST(request: Request) {
             }
             await trackLoginAttempt({ userId: user.id, successful: true, ipAddress })
             const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
-            let cookieStore = await cookies()
-            cookieStore.set('session', { userId: user.id }, { httpOnly: true, secure: true, sameSite: 'strict', expires: expiresAt })
+            const cookieStore = await cookies()
+            const sessionData = { userId: user.id, expiresAt: expiresAt.toISOString() }
+            cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure: true, sameSite: 'strict', expires: expiresAt })
             return NextResponse.json(user, { status: 200 })
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Login failed'
-            return NextResponse.json({ error: message }, { status: 400 })
+
+            let statusCode = 400
+            if (message === 'Invalid username or password') {
+                statusCode = 401
+            } else if (message === 'Too many failed login attempts. Please try again later.') {
+                statusCode = 429
+            }
+
+            return NextResponse.json({ error: message }, { status: statusCode })
     }
 }

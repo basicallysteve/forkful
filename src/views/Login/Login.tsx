@@ -2,16 +2,14 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { useSettingsStore } from "@/stores/settings"
 import { apiLogin } from "@/lib/api/users"
 function Login() {
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [submitted, setSubmitted] = useState(false)
   const [ error, setError] = useState<string | null>(null)
   const canSubmit = useMemo(() => {
-    return email.trim().length > 0 && password.length > 0
-  }, [email, password])
+    return username.trim().length > 0 && password.length > 0
+  }, [username, password])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,10 +18,14 @@ function Login() {
     
     // TODO: Replace with actual authentication logic
     try{
-      let res = await apiLogin({ username: email, password })
+      await apiLogin({ username: username, password })
       window.location.href = "/"
-    } catch (err) {
-      setError(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError("An unknown error occurred")
+      }
     }
   }
 
@@ -59,14 +61,14 @@ function Login() {
                   <input
                     className="text-input"
                     type="text"
-                    value={email}
+                    value={username}
                     placeholder="Enter your username"
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setUsername(e.target.value)}
                     aria-describedby="username-hint"
                     autoComplete="username"
                   />
                   <span id="username-hint" className="field-hint">
-                    Enter your username or email address.
+                    Enter your username.
                   </span>
                 </label>
 

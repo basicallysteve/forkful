@@ -78,7 +78,6 @@ export async function login(username: string, password: string): Promise<User> {
         email: user.email,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
-        password: user.password,
         dateAdded: user.dateAdded!,
         dateDeleted: user.dateDeleted,
     }
