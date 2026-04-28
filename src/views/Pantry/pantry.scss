@@ -791,7 +791,7 @@
         flex: 1;
       }
       
-      // Style select dropdowns within size-unit
+      // Style select dropdowns within size-unit (native <select>)
       select.size-unit {
         cursor: pointer;
         appearance: none;
@@ -799,6 +799,19 @@
         background-repeat: no-repeat;
         background-position: right 8px center;
         padding-right: 28px;
+      }
+
+      // PrimeReact Dropdown used as size-unit has no inherited border/background,
+      // so apply the same appearance as the native <input> siblings.
+      .p-dropdown.size-unit {
+        border: 1px solid var(--vscode-border);
+        border-radius: 8px;
+        background: var(--vscode-panel);
+        color: var(--vscode-text);
+        font-size: 13px;
+        cursor: pointer;
+        box-sizing: border-box;
+        transition: border-color 120ms ease, box-shadow 120ms ease;
       }
     }
 
