@@ -8,6 +8,9 @@ import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import { InputText } from 'primereact/inputtext'
+import { InputNumber } from 'primereact/inputnumber'
+import { Dropdown } from 'primereact/dropdown'
 
 interface FoodStoreProps {
   existingFood?: Food
@@ -82,12 +85,10 @@ function Store({ existingFood }: FoodStoreProps) {
     )
   }, [food, isDuplicateName])
 
-  function handleMacroChange(field: 'protein' | 'carbs' | 'fat' | 'fiber', value: string) {
-    const numValue = Number(value)
-    const nextValue = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
+  function handleMacroChange(field: 'protein' | 'carbs' | 'fat' | 'fiber', value: number | null) {
     setFood({
       ...food,
-      [field]: nextValue,
+      [field]: Math.max(0, value ?? 0),
     })
   }
 
@@ -209,7 +210,7 @@ function Store({ existingFood }: FoodStoreProps) {
               <div className="form-grid">
                 <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
                   <span className="field-label">Name</span>
-                  <input
+                  <InputText
                     className={`text-input ${isDuplicateName ? 'input-error' : ''}`}
                     type="text"
                     value={food.name}
@@ -229,15 +230,14 @@ function Store({ existingFood }: FoodStoreProps) {
 
                 <label className="form-field">
                   <span className="field-label">Calories (per serving)</span>
-                  <input
+                  <InputNumber
                     className="text-input"
-                    type="number"
                     min={0}
-                    value={food.calories}
-                    onChange={(e) =>
+                    value={food.calories ?? 0}
+                    onValueChange={(e) =>
                       setFood({
                         ...food,
-                        calories: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)),
+                        calories: Math.max(0, e.value ?? 0),
                       })
                     }
                     aria-label="Calories"
@@ -247,17 +247,16 @@ function Store({ existingFood }: FoodStoreProps) {
 
                 <label className="form-field">
                   <span className="field-label">Serving Size</span>
-                  <input
+                  <InputNumber
                     className="text-input"
-                    type="number"
                     min={0}
-                    step="0.1"
-                    value={food.servingSize}
-                    onChange={(e) =>
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    value={food.servingSize ?? 1}
+                    onValueChange={(e) =>
                       setFood({
                         ...food,
-                        servingSize:
-                          e.target.value === '' ? 1 : Math.max(0.1, Number(e.target.value)),
+                        servingSize: Math.max(0.1, e.value ?? 1),
                       })
                     }
                     aria-label="Serving size"
@@ -267,44 +266,21 @@ function Store({ existingFood }: FoodStoreProps) {
 
                 <label className="form-field">
                   <span className="field-label">Serving Unit</span>
-                  <select
+                  <Dropdown
                     className="text-input"
                     value={food.servingUnit}
-                    onChange={(e) => handleServingUnitChange(e.target.value)}
+                    onChange={(e) => handleServingUnitChange(e.value)}
+                    options={[
+                      ...MASS_UNITS,
+                      ...VOLUME_UNITS,
+                      ...CUSTOM_UNITS,
+                      ...(food.measurements?.filter(
+                        (m) => !([...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS] as string[]).includes(m)
+                      ) ?? []),
+                    ].map((unit) => ({ label: unit, value: unit }))}
                     aria-label="Serving unit"
-                  >
-                    <optgroup label="Mass">
-                      {MASS_UNITS.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Volume">
-                      {VOLUME_UNITS.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Custom">
-                      {CUSTOM_UNITS.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </optgroup>
-                    {food.measurements
-                      ?.filter((m) => {
-                        const allStandardUnits: string[] = [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS]
-                        return !allStandardUnits.includes(m)
-                      })
-                      .map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                  </select>
+                    ariaLabel="Serving unit"
+                  />
                   <span className="field-hint">Unit of measurement. {servingUnitCategory !== 'custom' ? `Changing this will filter measurements to ${servingUnitCategory} units.` : ''}</span>
                 </label>
 
@@ -313,49 +289,49 @@ function Store({ existingFood }: FoodStoreProps) {
                   <div className="macro-grid">
                     <label className="macro-field">
                       <span className="macro-label">Protein</span>
-                      <input
+                      <InputNumber
                         className="text-input macro-input"
-                        type="number"
                         min={0}
-                        step="0.1"
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
                         value={food.protein || 0}
-                        onChange={(e) => handleMacroChange('protein', e.target.value)}
+                        onValueChange={(e) => handleMacroChange('protein', e.value)}
                         aria-label="Protein"
                       />
                     </label>
                     <label className="macro-field">
                       <span className="macro-label">Carbs</span>
-                      <input
+                      <InputNumber
                         className="text-input macro-input"
-                        type="number"
                         min={0}
-                        step="0.1"
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
                         value={food.carbs || 0}
-                        onChange={(e) => handleMacroChange('carbs', e.target.value)}
+                        onValueChange={(e) => handleMacroChange('carbs', e.value)}
                         aria-label="Carbohydrates"
                       />
                     </label>
                     <label className="macro-field">
                       <span className="macro-label">Fat</span>
-                      <input
+                      <InputNumber
                         className="text-input macro-input"
-                        type="number"
                         min={0}
-                        step="0.1"
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
                         value={food.fat || 0}
-                        onChange={(e) => handleMacroChange('fat', e.target.value)}
+                        onValueChange={(e) => handleMacroChange('fat', e.value)}
                         aria-label="Fat"
                       />
                     </label>
                     <label className="macro-field">
                       <span className="macro-label">Fiber</span>
-                      <input
+                      <InputNumber
                         className="text-input macro-input"
-                        type="number"
                         min={0}
-                        step="0.1"
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
                         value={food.fiber || 0}
-                        onChange={(e) => handleMacroChange('fiber', e.target.value)}
+                        onValueChange={(e) => handleMacroChange('fiber', e.value)}
                         aria-label="Fiber"
                       />
                     </label>

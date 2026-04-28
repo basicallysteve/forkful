@@ -8,6 +8,8 @@ import type { PantryItem } from '@/types/PantryItem'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
+import { InputNumber } from 'primereact/inputnumber'
+import { Dropdown } from 'primereact/dropdown'
 
 interface PantryStoreProps {
   existingItem?: PantryItem
@@ -119,45 +121,28 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             Original Size <span className="required">*</span>
           </label>
           <div className="size-input-group">
-            <input
-              id="original-size"
-              type="number"
-              min="0.01"
-              step="0.01"
+            <InputNumber
+              inputId="original-size"
+              min={0.01}
+              minFractionDigits={0}
+              maxFractionDigits={2}
               value={originalSize}
-              onChange={(e) => setOriginalSize(Number(e.target.value))}
+              onValueChange={(e) => setOriginalSize(e.value ?? 1)}
               placeholder="Enter size"
               className="size-number"
             />
-            <select
-              id="original-unit"
+            <Dropdown
+              inputId="original-unit"
               value={originalUnit}
-              onChange={(e) => handleOriginalUnitChange(e.target.value)}
+              onChange={(e) => handleOriginalUnitChange(e.value)}
               className="size-unit"
-              aria-label="Original size unit"
-            >
-              <optgroup label="Mass">
-                {MASS_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Volume">
-                {VOLUME_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Custom">
-                {CUSTOM_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+              ariaLabel="Original size unit"
+              options={[
+                ...MASS_UNITS,
+                ...VOLUME_UNITS,
+                ...CUSTOM_UNITS,
+              ].map((unit) => ({ label: unit, value: unit }))}
+            />
           </div>
           <small>Original size of each item (e.g., 16 oz box)</small>
         </div>
@@ -167,46 +152,29 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             Current Size <span className="required">*</span>
           </label>
           <div className="size-input-group">
-            <input
-              id="current-size"
-              type="number"
-              min="0"
+            <InputNumber
+              inputId="current-size"
+              min={0}
               max={canConvert(currentUnit, originalUnit) ? originalSize : undefined}
-              step="0.01"
+              minFractionDigits={0}
+              maxFractionDigits={2}
               value={currentSize}
-              onChange={(e) => setCurrentSize(Number(e.target.value))}
+              onValueChange={(e) => setCurrentSize(e.value ?? 0)}
               placeholder="Enter size"
               className="size-number"
             />
-            <select
-              id="current-unit"
+            <Dropdown
+              inputId="current-unit"
               value={currentUnit}
-              onChange={(e) => handleCurrentUnitChange(e.target.value)}
+              onChange={(e) => handleCurrentUnitChange(e.value)}
               className="size-unit"
-              aria-label="Current size unit"
-            >
-              <optgroup label="Mass">
-                {MASS_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Volume">
-                {VOLUME_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Custom">
-                {CUSTOM_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+              ariaLabel="Current size unit"
+              options={[
+                ...MASS_UNITS,
+                ...VOLUME_UNITS,
+                ...CUSTOM_UNITS,
+              ].map((unit) => ({ label: unit, value: unit }))}
+            />
           </div>
           <small>Remaining size of each item (e.g., 8 oz left)</small>
         </div>
