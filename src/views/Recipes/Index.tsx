@@ -9,6 +9,7 @@ import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import DOMPurify  from 'dompurify'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
@@ -260,7 +261,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                               )}
                             </div>
                           </div>
-                        <p className="card-description">{recipe.description}</p>
+                        <div className="card-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description) }}></div>
                         <div className="card-footer">
                           <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
                           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
