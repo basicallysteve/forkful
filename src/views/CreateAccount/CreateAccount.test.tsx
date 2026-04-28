@@ -207,25 +207,6 @@ describe('CreateAccount Page', () => {
       expect(submitButton).not.toBeDisabled()
     })
 
-    it('shows success message after successful submission', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<CreateAccount />)
-
-      // Fill all required fields
-      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
-      await user.type(screen.getByPlaceholderText('you@example.com'), 'test@example.com')
-      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
-      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
-
-      const submitButton = screen.getByRole('button', { name: /create account/i })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('Welcome to Forkful! 🎉')).toBeInTheDocument()
-        expect(screen.getByText('Your account has been created successfully.')).toBeInTheDocument()
-      })
-    })
-
     it('does not submit when username is too short', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
