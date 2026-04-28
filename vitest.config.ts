@@ -18,6 +18,7 @@ export default defineConfig({
     alias: {
       'next/link': path.resolve(__dirname, './src/test/mocks/next-link.tsx'),
       'next/navigation': path.resolve(__dirname, './src/test/mocks/next-navigation.ts'),
+      'primereact/editor': path.resolve(__dirname, './src/test/mocks/primereact-editor.tsx'),
     },
   },
 })

@@ -97,6 +97,29 @@ describe('CreateAccount Page', () => {
       expect(screen.getByText('✓ Not a common password')).toBeInTheDocument()
     })
 
+    it('password field has toggle mask button', () => {
+      renderWithProviders(<CreateAccount />)
+
+      const toggleButtons = screen.getAllByRole('switch', { name: /show password/i })
+      expect(toggleButtons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('toggle mask reveals and hides the password field', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+
+      const passwordInput = screen.getByPlaceholderText('Create a strong password')
+      expect(passwordInput).toHaveAttribute('type', 'password')
+
+      const [toggleButton] = screen.getAllByRole('switch', { name: /show password/i })
+      await user.click(toggleButton)
+
+      expect(passwordInput).toHaveAttribute('type', 'text')
+
+      await user.click(screen.getAllByRole('switch', { name: /hide password/i })[0])
+      expect(passwordInput).toHaveAttribute('type', 'password')
+    })
+
     it('shows requirements as valid when password meets criteria', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)

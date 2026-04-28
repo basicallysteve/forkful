@@ -16,6 +16,7 @@ import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { RadioButton } from 'primereact/radiobutton'
+import { Editor } from 'primereact/editor'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -385,16 +386,16 @@ function Store() {
                   <span className="field-hint">Pick where this dish fits best.</span>
                 </div>
 
-                <label className="form-field form-field-full">
+                <div className="form-field form-field-full">
                   <span className="field-label">Description</span>
-                  <textarea
-                    className="text-area"
+                  <Editor
                     value={recipe.description}
+                    onTextChange={(e) => setRecipe({ ...recipe, description: e.htmlValue ?? '' })}
                     placeholder="Describe flavors, prep time, or serving ideas."
-                    onChange={(e) => setRecipe({ ...recipe, description: e.target.value })}
+                    style={{ height: '200px' }}
                   />
                   <span className="field-hint">Keep it short—add detailed steps later.</span>
-                </label>
+                </div>
               </div>
 
               <div className="form-footer">
