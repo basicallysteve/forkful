@@ -17,41 +17,70 @@
 // The Quill (Editor) section overrides colours hard-coded by the Quill Snow
 // theme that break on a dark background (notably the placeholder).
 
+$bg-dark: #252526;
+$border-dark: #3c3c3c;
+$text-main: #d4d4d4;
+$text-muted: #9da5b4;
+$focus-color: #007acc;
+$focus-bg: rgba(0, 122, 204, 0.06);
+$focus-shadow: rgba(0, 122, 204, 0.35);
+$hover-bg: rgba(0, 122, 204, 0.2);
+$white: #ffffff;
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Shared Input Base
+// ──────────────────────────────────────────────────────────────────────────────
+
+.p-inputnumber,
+.p-dropdown,
+.p-password {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0;
+
+  &:focus-within {
+    border-color: $focus-color;
+    box-shadow: 0 0 0 1px $focus-shadow;
+    outline: none;
+  }
+}
+
+.p-inputnumber,
+.p-password {
+  &:focus-within {
+    background: $focus-bg;
+  }
+}
+
+.p-inputnumber-input,
+.p-dropdown-label,
+.p-password-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.p-inputnumber-input,
+.p-password-input {
+  width: 100%;
+  padding: 10px 12px;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // InputNumber
 // ──────────────────────────────────────────────────────────────────────────────
 
 .p-inputnumber {
-  display: flex;
-  align-items: stretch;
-  // Remove outer padding so there is no gap between the wrapper background
-  // and the inner <input> element.
-  padding: 0;
-
-  .p-inputnumber-input {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: 100%;
-    padding: 10px 12px;
-    background: transparent;
-    color: inherit;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    font-size: inherit;
-
-    &::placeholder {
-      color: #9da5b4;
-    }
-  }
-
-  // Re-apply focus ring on the wrapper since the <input> has no visible border.
-  &:focus-within {
-    border-color: #007acc;
-    background: rgba(0, 122, 204, 0.06);
-    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
-    outline: none;
-  }
+  display: flex; // Overrides inline-flex from shared base
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -59,28 +88,18 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 .p-dropdown {
-  display: inline-flex;
-  align-items: center;
-  // Remove outer padding so label text sits flush inside the styled border.
-  padding: 0;
+  align-items: center; // Overrides stretch from shared base
 
   .p-dropdown-label {
-    flex: 1 1 auto;
-    min-width: 0;
     padding: 8px 12px;
-    color: inherit;
-    background: transparent;
-    border: none;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    font-family: inherit;
-    font-size: inherit;
     cursor: pointer;
 
     // Placeholder state
     &.p-placeholder {
-      color: #9da5b4;
+      color: $text-muted;
     }
   }
 
@@ -90,24 +109,16 @@
     align-items: center;
     justify-content: center;
     padding: 0 10px;
-    color: #9da5b4;
-  }
-
-  &:focus-within {
-    border-color: #007acc;
-    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
-    outline: none;
+    color: $text-muted;
   }
 }
 
-// Dropdown overlay panel – rendered outside the component tree, needs explicit
-// dark-theme colours.
 .p-dropdown-panel {
-  background: #252526;
-  border: 1px solid #3c3c3c;
+  background: $bg-dark;
+  border: 1px solid $border-dark;
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-  color: #d4d4d4;
+  color: $text-main;
   z-index: 1100;
 
   .p-dropdown-items-wrapper {
@@ -125,14 +136,14 @@
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 13px;
-    color: #d4d4d4;
+    color: $text-main;
     cursor: pointer;
     transition: background-color 120ms ease;
 
     &:hover,
     &.p-highlight {
-      background: rgba(0, 122, 204, 0.2);
-      color: #ffffff;
+      background: $hover-bg;
+      color: $white;
     }
   }
 }
@@ -142,72 +153,36 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 .p-password {
-  display: inline-flex;
-  align-items: stretch;
   position: relative;
-  padding: 0;
 
-  // The inner <input> rendered by InputText inside Password.
   .p-password-input {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: 100%;
-    padding: 10px 12px;
-    // Pad-right leaves room for the toggle icon.
     padding-right: 2.5rem;
-    background: transparent;
-    color: inherit;
-    border: none;
-    outline: none;
-    font-family: inherit;
-    font-size: inherit;
-
-    &::placeholder {
-      color: #9da5b4;
-    }
   }
 
-  // Show/hide mask icon (SVG with role="switch") – position inside the field.
   .p-icon {
     position: absolute;
     right: 0.6rem;
     top: 50%;
     transform: translateY(-50%);
-    color: #9da5b4;
+    color: $text-muted;
     cursor: pointer;
 
     &:hover {
-      color: #d4d4d4;
+      color: $text-main;
     }
-  }
-
-  &:focus-within {
-    border-color: #007acc;
-    background: rgba(0, 122, 204, 0.06);
-    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
-    outline: none;
   }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Quill / Editor
 // ──────────────────────────────────────────────────────────────────────────────
-//
-// PrimeReact's Editor injects the full Quill Snow CSS at runtime via a <style>
-// tag. Several rules hard-code light colours that break the dark theme.
-// The selectors below are more specific than the Quill rules so they win
-// regardless of load order.
 
 .p-editor-container {
-  // ── Toolbar ──────────────────────────────────────────────────────────────
-
   .ql-toolbar.ql-snow {
-    background: #252526;
-    border-color: #3c3c3c;
+    background: $bg-dark;
+    border-color: $border-dark;
     border-radius: 8px 8px 0 0;
 
-    // The global app `button` rule adds border-radius/padding to ALL <button>
-    // elements; override those here so toolbar buttons keep Quill's sizing.
     button {
       background: none;
       border: none;
@@ -218,57 +193,55 @@
 
       &:hover,
       &.ql-active {
-        background: rgba(0, 122, 204, 0.2);
+        background: $hover-bg;
       }
     }
 
     .ql-stroke {
-      stroke: #9da5b4;
+      stroke: $text-muted;
     }
 
     .ql-fill {
-      fill: #9da5b4;
+      fill: $text-muted;
     }
 
-    button:hover .ql-stroke,
-    button.ql-active .ql-stroke,
-    .ql-picker-label:hover .ql-stroke,
-    .ql-picker-label.ql-active .ql-stroke {
-      stroke: #d4d4d4;
-    }
-
-    button:hover .ql-fill,
-    button.ql-active .ql-fill,
-    .ql-picker-label:hover .ql-fill,
-    .ql-picker-label.ql-active .ql-fill {
-      fill: #d4d4d4;
+    button:hover,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active {
+      .ql-stroke {
+        stroke: $text-main;
+      }
+      .ql-fill {
+        fill: $text-main;
+      }
     }
 
     .ql-picker {
-      color: #9da5b4;
+      color: $text-muted;
 
       .ql-picker-label {
-        color: #9da5b4;
-        border-color: #3c3c3c;
+        color: $text-muted;
+        border-color: $border-dark;
 
         &:hover {
-          color: #d4d4d4;
+          color: $text-main;
         }
       }
 
       .ql-picker-options {
-        background: #252526;
-        border-color: #3c3c3c;
+        background: $bg-dark;
+        border-color: $border-dark;
         border-radius: 6px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 
         .ql-picker-item {
-          color: #d4d4d4;
+          color: $text-main;
 
           &:hover,
           &.ql-selected {
-            color: #ffffff;
-            background: rgba(0, 122, 204, 0.2);
+            color: $white;
+            background: $hover-bg;
             border-radius: 4px;
           }
         }
@@ -276,26 +249,34 @@
     }
   }
 
-  // ── Editor body ───────────────────────────────────────────────────────────
-
   .ql-container.ql-snow {
-    background: #252526;
-    border-color: #3c3c3c;
+    background: $bg-dark;
+    border-color: $border-dark;
     border-radius: 0 0 8px 8px;
     border-top: none;
 
     .ql-editor {
-      color: #d4d4d4;
+      color: $text-main;
       line-height: 1.6;
       font-family: inherit;
       font-size: 14px;
 
-      // Quill hard-codes this to rgba(0,0,0,.6) which is nearly invisible on a
-      // dark background.  Override with a light muted colour.
       &.ql-blank::before {
-        color: #9da5b4;
+        color: $text-muted;
         font-style: normal;
       }
     }
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Specific Component Overrides
+// ──────────────────────────────────────────────────────────────────────────────
+
+.recipe-store .recipe-editor {
+  height: 200px;
+}
+
+.recipe-view .recipe-editor {
+  height: 160px;
 }

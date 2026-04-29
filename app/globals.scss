@@ -70,6 +70,98 @@ button:focus-visible {
   }
 }
 
+.number-input {
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    // padding: 10px 12px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    font-size: 14px;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
+  .text-input,
+  .text-area {
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    font-size: 14px;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
+  .text-input::placeholder,
+  .text-area::placeholder {
+    color: var(--vscode-muted);
+  }
+
+  .text-input:focus,
+  .text-area:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    background: rgba(0, 122, 204, 0.06);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+
+  .text-area {
+    min-height: 140px;
+    resize: vertical;
+  }
+
+  .radio-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .radio-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--vscode-muted);
+    cursor: pointer;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease,
+      color 120ms ease;
+
+    &:hover {
+      border-color: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &.is-active {
+      border-color: var(--vscode-accent);
+      color: #ffffff;
+      background: rgba(0, 122, 204, 0.1);
+      box-shadow: 0 6px 18px rgba(0, 122, 204, 0.25);
+
+      .radio-dot {
+        border-color: var(--vscode-accent);
+        background: var(--vscode-accent);
+      }
+    }
+  }
+
+  .radio-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 2px solid var(--vscode-muted);
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+
 /* Global application styles – imported once from app/layout.tsx */
 @import '../src/assets/styles/primereact-dark.scss';
 @import '../src/components/toolbar.scss';

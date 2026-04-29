@@ -209,7 +209,6 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
             value={editedRecipe.description}
             onTextChange={(e) => setEditedRecipe({ ...editedRecipe, description: e.htmlValue ?? '' })}
             aria-label="Recipe description"
-            style={{ height: '160px' }}
           />
         ) : (
           <div
