@@ -47,3 +47,10 @@ export async function apiLogin(data: LoginData ): Promise<{ password: string; us
 
   return res.json()
 }
+
+export async function apiLogout(): Promise<void> {
+  await fetch('/api/logout', {
+    method: 'GET',
+    credentials: 'same-origin',
+  })
+}

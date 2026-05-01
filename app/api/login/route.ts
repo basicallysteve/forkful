@@ -25,7 +25,7 @@ export async function POST(request: Request) {
             const cookieStore = await cookies()
             const sessionData = { userId: user.id, expiresAt: expiresAt.toISOString() }
             cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure: true, sameSite: 'strict', expires: expiresAt })
-            return NextResponse.json(user, { status: 200 })
+            return NextResponse.redirect(new URL('/', request.url)) // Redirect to home page after successful login
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Login failed'
 

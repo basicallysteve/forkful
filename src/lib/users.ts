@@ -101,3 +101,18 @@ export async function resetPassword(email: string, newPassword: string): Promise
     const hashedPassword = await hashPassword(newPassword)
     await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id))
 }
+
+export async function getUser(userId: number): Promise<User | null> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId))
+    if (!user) {
+        return null
+    }
+    return {
+        username: user.username,
+        email: user.email,
+        cuisinePreferences: user.cuisinePreferences,
+        dietaryRestrictions: user.dietaryRestrictions,
+        dateAdded: user.dateAdded!,
+        dateDeleted: user.dateDeleted,
+    }
+}
