@@ -24,9 +24,9 @@
 }
 
 .recipe-editor {
-  .ql-toolbar {
-    border-top: 1px solid var(--vscode-border);
-  }
+  margin: 14px 0 18px;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .recipe-titlebar {

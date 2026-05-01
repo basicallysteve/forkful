@@ -179,7 +179,7 @@ $white: #ffffff;
 
 .p-editor-container {
   .ql-toolbar.ql-snow {
-    background: $bg-dark;
+    background: rgba(255, 255, 255, 0.02);
     border-color: $border-dark;
     border-radius: 8px 8px 0 0;
 
@@ -198,11 +198,11 @@ $white: #ffffff;
     }
 
     .ql-stroke {
-      stroke: $text-muted;
+      stroke: $text-main;
     }
 
     .ql-fill {
-      fill: $text-muted;
+      fill: $text-main;
     }
 
     button:hover,
@@ -210,22 +210,22 @@ $white: #ffffff;
     .ql-picker-label:hover,
     .ql-picker-label.ql-active {
       .ql-stroke {
-        stroke: $text-main;
+        stroke: $white;
       }
       .ql-fill {
-        fill: $text-main;
+        fill: $white;
       }
     }
 
     .ql-picker {
-      color: $text-muted;
+      color: $text-main;
 
       .ql-picker-label {
-        color: $text-muted;
+        color: $text-main;
         border-color: $border-dark;
 
         &:hover {
-          color: $text-main;
+          color: $white;
         }
       }
 
@@ -250,7 +250,7 @@ $white: #ffffff;
   }
 
   .ql-container.ql-snow {
-    background: $bg-dark;
+    background: rgba(255, 255, 255, 0.04);
     border-color: $border-dark;
     border-radius: 0 0 8px 8px;
     border-top: none;
@@ -273,10 +273,10 @@ $white: #ffffff;
 // Specific Component Overrides
 // ──────────────────────────────────────────────────────────────────────────────
 
-.recipe-store .recipe-editor {
-  height: 200px;
-}
-
-.recipe-view .recipe-editor {
-  height: 160px;
+.recipe-editor {
+  // height is set via the style prop on the Editor so it targets .p-editor-content
+  // (the Quill container), keeping the toolbar outside the bounded height region
+  // and preventing overflow into adjacent sections.
+  overflow: hidden;
+  border-radius: 8px;
 }

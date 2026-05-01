@@ -39,30 +39,6 @@
     }
   }
 
-.recipe-editor {
-  border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-
-  .ql {
-    button: {
-      color: var(--vscode-text);
-    }
-  }
-  .ql-toolbar {
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-  }
-
-
-  .ql-snow {
-    // set the border-top radius to 8px
-    
-
-    color: var(--vscode-text)!important;
-  }
-}
-
-
   .window-dots {
     display: flex;
     align-items: center;
