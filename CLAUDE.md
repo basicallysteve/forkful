@@ -4,23 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All commands use `npm run` or the `bun` equivalents:
-
 ```bash
-npm run dev              # Start Next.js dev server
-npm run build            # Production build
-npm run lint             # ESLint
-npm run test             # Run unit tests (vitest, jsdom)
-npm run test:watch       # Unit tests in watch mode
-npm run test:integration # Integration tests against a real Postgres DB (requires .env.local)
+bun dev              # Start Next.js dev server
+bun build            # Production build
+bun lint             # ESLint
+bun test             # Run unit tests (vitest, jsdom)
+bun test:watch       # Unit tests in watch mode
+bun test:integration # Integration tests against a real Postgres DB (requires .env.local)
 
 # Run a single test file
-npx vitest run src/stores/pantry.test.ts
+bunx vitest run src/stores/pantry.test.ts
 
 # Database schema management
-npm run db:generate      # Generate new Drizzle migration from schema changes
-npm run db:push          # Push schema to DB (used in CI; skips migration files)
-npm run db:studio        # Open Drizzle Studio UI
+bun db:generate      # Generate new Drizzle migration from schema changes
+bun db:push          # Push schema to DB (used in CI; skips migration files)
+bun db:studio        # Open Drizzle Studio UI
 ```
 
 CI uses Bun (`bun install --frozen-lockfile`, `bunx vitest run --changed`).
