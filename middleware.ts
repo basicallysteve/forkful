@@ -6,15 +6,14 @@ import { decrypt } from '@/lib/session'
 const protectedRoutes = ['/recipes/new', '/foods/new', '/pantry', '/foods', '/recipes']
 
 export async function middleware(request: NextRequest) {
-  
-  await redirectPrivateRoutes(request)
+  const redirect = await redirectPrivateRoutes(request)
+  if (redirect) return redirect
 
-  let user = await getUserFromSession(request)
-
-  let response =  NextResponse.next()
+  const user = await getUserFromSession(request)
+  const response = NextResponse.next()
 
   if (user) {
-    response.cookies.set('user', JSON.stringify({ id: user.id, username: user.username }), { httpOnly: false, secure: true, sameSite: 'strict' })
+    response.cookies.set('user', JSON.stringify({ username: user.username }), { httpOnly: false, secure: true, sameSite: 'strict' })
   } else {
     response.cookies.delete('user')
   }
@@ -22,16 +21,17 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
-async function redirectPrivateRoutes(request: NextRequest) {
+async function redirectPrivateRoutes(request: NextRequest): Promise<NextResponse | null> {
     const path = request.nextUrl.pathname
     const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route))
 
     const sessionCookie = request.cookies.get('session')?.value
     const session = sessionCookie ? await decrypt(sessionCookie).catch(() => null) : null
 
-    if (isProtectedRoute && !session?.userId) {
+    if (isProtectedRoute && !(session as any)?.userId) {
       return NextResponse.redirect(new URL('/login', request.nextUrl))
     }
+    return null
 }
 
 async function getUserFromSession(request: NextRequest): Promise<{ id: string | number, username: string } | null> {

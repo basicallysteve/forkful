@@ -23,9 +23,9 @@ export async function POST(request: Request) {
             await trackLoginAttempt({ userId: user.id, successful: true, ipAddress })
             const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
             const cookieStore = await cookies()
-            const sessionData = { userId: user.id, expiresAt: expiresAt.toISOString() }
+            const sessionData = { userId: user.id, username: user.username, expiresAt: expiresAt.toISOString() }
             cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure: true, sameSite: 'strict', expires: expiresAt })
-            return NextResponse.redirect(new URL('/', request.url)) // Redirect to home page after successful login
+            return NextResponse.json({ username: user.username, email: user.email })
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Login failed'
 

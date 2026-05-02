@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { apiLogin } from "@/lib/api/users"
-import { redirect } from "next/navigation"
+
 function Login() {
+  const router = useRouter()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [ error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const canSubmit = useMemo(() => {
     return username.trim().length > 0 && password.length > 0
   }, [username, password])
@@ -16,12 +18,9 @@ function Login() {
     e.preventDefault()
     setError(null)
     if (!canSubmit) return
-    
-    // TODO: Replace with actual authentication logic
-    try{
-      await apiLogin({ username: username, password })
-      //navigate using next.js
-      redirect("/")
+    try {
+      await apiLogin({ username, password })
+      router.push("/")
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message)
