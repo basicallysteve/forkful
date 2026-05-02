@@ -7,7 +7,7 @@ async function Home() {
     let username: string | null = null
 
     if (sessionCookie) {
-        const session = await decrypt(sessionCookie).catch(() => null) as any
+        const session = await decrypt(sessionCookie).catch(() => null) as { username?: string; expiresAt?: string } | null
         if (session?.username && session?.expiresAt && new Date(session.expiresAt) > new Date()) {
             username = session.username
         }

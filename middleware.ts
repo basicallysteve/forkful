@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { decrypt } from '@/lib/session'
 
+type SessionPayload = { userId: string | number; username: string; expiresAt: string }
+
 // Define the routes you want to protect
 const protectedRoutes = ['/recipes/new', '/foods/new', '/pantry', '/foods', '/recipes']
 
@@ -28,7 +30,7 @@ async function redirectPrivateRoutes(request: NextRequest): Promise<NextResponse
     const sessionCookie = request.cookies.get('session')?.value
     const session = sessionCookie ? await decrypt(sessionCookie).catch(() => null) : null
 
-    if (isProtectedRoute && !(session as any)?.userId) {
+    if (isProtectedRoute && !(session as SessionPayload)?.userId) {
       return NextResponse.redirect(new URL('/login', request.nextUrl))
     }
     return null
@@ -37,7 +39,7 @@ async function redirectPrivateRoutes(request: NextRequest): Promise<NextResponse
 async function getUserFromSession(request: NextRequest): Promise<{ id: string | number, username: string } | null> {
     const sessionCookie = request.cookies.get('session')?.value
     if (sessionCookie) {
-      let session = await decrypt(sessionCookie) as any;
+      const session = await decrypt(sessionCookie) as SessionPayload;
       if (session && session.expiresAt && new Date(session.expiresAt) > new Date()) {
         return { id: session.userId, username: session.username }
       }

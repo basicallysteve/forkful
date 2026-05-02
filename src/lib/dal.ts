@@ -15,7 +15,7 @@ export const verifySession = cache(async () => {
   try {
     const payload = await decrypt(sessionCookie) as { userId: number, expiresAt: string }
     return payload
-  } catch (error) {
+  } catch {
     return null
   }
 })
