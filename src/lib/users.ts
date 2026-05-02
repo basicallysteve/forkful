@@ -49,7 +49,7 @@ export async function signUp(user: { username: string; email: string; password: 
 }
 
 export async function login(username: string, password: string): Promise<User> {
-    // if there have been 5 or more failed login attempts for this email in the last hour, block the login attempt
+    // if there have been 5 or more failed login attempts for this username in the last hour, block the login attempt
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
     const [user] = await db.select().from(users).where(eq(users.username, username))
 
