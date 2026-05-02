@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
+import { decrypt } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
 import './globals.scss'
 
@@ -21,10 +23,18 @@ export default async function RootLayout({
 }) {
   const recipes: Recipe[] = await getRecipes()
 
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get('session')?.value
+  let isLoggedIn = false
+  if (sessionCookie) {
+    const session = await decrypt(sessionCookie).catch(() => null) as { expiresAt?: string } | null
+    isLoggedIn = !!(session?.expiresAt && new Date(session.expiresAt) > new Date())
+  }
+
   return (
     <html lang="en">
       <body>
-        <ClientLayout recipes={recipes}>{children}</ClientLayout>
+        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn}>{children}</ClientLayout>
       </body>
     </html>
   )

@@ -21,6 +21,7 @@ function Login() {
     try {
       await apiLogin({ username, password })
       router.push("/")
+      router.refresh()
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message)

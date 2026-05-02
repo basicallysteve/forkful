@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogin } from './users'
+import { apiSignUp, apiLogin, apiLogout } from './users'
 
 const mockUser = {
   id: '1',
@@ -104,5 +104,19 @@ describe('apiLogin', () => {
     await expect(
       apiLogin({ username: 'testuser', password: 'wrongpassword' })
     ).rejects.toThrow('Invalid credentials')
+  })
+})
+
+
+describe('apiLogout', () => {
+  it('sends a POST request to /api/logout', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true } as Response)
+
+    await apiLogout()
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/logout',
+      expect.objectContaining({ method: 'POST', credentials: 'same-origin' })
+    )
   })
 })
