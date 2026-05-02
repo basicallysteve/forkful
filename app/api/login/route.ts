@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { login, trackLoginAttempt } from '@/lib/users'
 import { encrypt } from '@/lib/session'
+
+const secure = process.env.NODE_ENV === 'production'
+
 export async function POST(request: Request) {
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
@@ -16,21 +19,18 @@ export async function POST(request: Request) {
             }
             const user = await login(body.username.trim(), body.password)
 
-            if (!user) {
-                await trackLoginAttempt({ userId: -1, successful: false, ipAddress })
-            return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-            }
-            await trackLoginAttempt({ userId: user.id, successful: true, ipAddress })
+            await trackLoginAttempt({ userId: Number(user.id), successful: true, ipAddress })
             const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
             const cookieStore = await cookies()
             const sessionData = { userId: user.id, username: user.username, expiresAt: expiresAt.toISOString() }
-            cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure: true, sameSite: 'strict', expires: expiresAt })
+            cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure, sameSite: 'strict', expires: expiresAt })
             return NextResponse.json({ username: user.username, email: user.email })
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Login failed'
 
             let statusCode = 400
             if (message === 'Invalid username or password') {
+                await trackLoginAttempt({ userId: -1, successful: false, ipAddress })
                 statusCode = 401
             } else if (message === 'Too many failed login attempts. Please try again later.') {
                 statusCode = 429

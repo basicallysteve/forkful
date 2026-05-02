@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRouter } from 'next/navigation'
 import Login from './Login'
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -165,6 +166,9 @@ describe('Login Page', () => {
     })
 
     it('redirects to home after successful login', async () => {
+      const mockPush = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() })
+
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
@@ -174,7 +178,7 @@ describe('Login Page', () => {
       await user.click(screen.getByRole('button', { name: /^login$/i }))
 
       await waitFor(() => {
-        expect(window.location.pathname).toBe('/')
+        expect(mockPush).toHaveBeenCalledWith('/')
       })
     })
   })

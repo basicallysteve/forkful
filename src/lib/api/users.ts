@@ -50,7 +50,7 @@ export async function apiLogin(data: LoginData): Promise<{ username: string; ema
 
 export async function apiLogout(): Promise<void> {
   await fetch('/api/logout', {
-    method: 'GET',
+    method: 'POST',
     credentials: 'same-origin',
   })
 }

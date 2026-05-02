@@ -80,7 +80,7 @@ describe('apiSignUp', () => {
 
 describe('apiLogin', () => {
   it('posts login data and returns user on success', async () => {
-    const mockLoginResult = { password: 'hashedpassword', user: { id: '1', username: 'testuser' } }
+    const mockLoginResult = { username: 'testuser', email: 'test@example.com' }
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockLoginResult,

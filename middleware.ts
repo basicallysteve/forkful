@@ -4,8 +4,8 @@ import { decrypt } from '@/lib/session'
 
 type SessionPayload = { userId: string | number; username: string; expiresAt: string }
 
-// Define the routes you want to protect
 const protectedRoutes = ['/recipes/new', '/foods/new', '/pantry', '/foods', '/recipes']
+const secure = process.env.NODE_ENV === 'production'
 
 export async function middleware(request: NextRequest) {
   const redirect = await redirectPrivateRoutes(request)
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
   if (user) {
-    response.cookies.set('user', JSON.stringify({ username: user.username }), { httpOnly: false, secure: true, sameSite: 'strict' })
+    response.cookies.set('user', JSON.stringify({ username: user.username }), { httpOnly: false, secure, sameSite: 'strict' })
   } else {
     response.cookies.delete('user')
   }
@@ -39,8 +39,8 @@ async function redirectPrivateRoutes(request: NextRequest): Promise<NextResponse
 async function getUserFromSession(request: NextRequest): Promise<{ id: string | number, username: string } | null> {
     const sessionCookie = request.cookies.get('session')?.value
     if (sessionCookie) {
-      const session = await decrypt(sessionCookie) as SessionPayload;
-      if (session && session.expiresAt && new Date(session.expiresAt) > new Date()) {
+      const session = await decrypt(sessionCookie).catch(() => null) as SessionPayload | null
+      if (session?.expiresAt && new Date(session.expiresAt) > new Date()) {
         return { id: session.userId, username: session.username }
       }
     }

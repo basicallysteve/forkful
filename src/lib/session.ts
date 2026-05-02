@@ -1,7 +1,9 @@
 import 'server-only'
 import { SignJWT, jwtVerify } from 'jose'
 
-const encodedKey = new TextEncoder().encode(process.env.JWT_SECRET );
+const secret = process.env.JWT_SECRET
+if (!secret) throw new Error('JWT_SECRET environment variable is not set')
+const encodedKey = new TextEncoder().encode(secret)
 
 export async function encrypt(data: object): Promise<string> {
     const jwt = await new SignJWT(data)

@@ -53,16 +53,16 @@ describe('POST /api/login', () => {
   })
 
   it('returns 200 and sets cookie on successful login', async () => {
-    const mockUser = { id: 1, username: 'testuser' };
+    const mockUser = { id: 1, username: 'testuser', email: 'test@example.com' };
     (login as Mock).mockResolvedValue(mockUser);
     (encrypt as Mock).mockResolvedValue('mock-encrypted-token')
 
     const req = createRequest({ username: 'testuser', password: 'password123' })
     const res = await POST(req)
-    
+
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json).toEqual(mockUser)
+    expect(json).toEqual({ username: 'testuser', email: 'test@example.com' })
 
     expect(login).toHaveBeenCalledWith('testuser', 'password123')
     expect(trackLoginAttempt).toHaveBeenCalledWith({ userId: 1, successful: true, ipAddress: 'unknown' })
@@ -70,19 +70,20 @@ describe('POST /api/login', () => {
     expect(mockCookieSet).toHaveBeenCalledWith(
       'session',
       'mock-encrypted-token',
-      expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'strict' })
+      expect.objectContaining({ httpOnly: true, secure: false, sameSite: 'strict' })
     )
   })
 
-  it('returns 401 on invalid credentials error', async () => {
+  it('returns 401 and tracks failed attempt on invalid credentials', async () => {
     (login as Mock).mockRejectedValue(new Error('Invalid username or password'))
-    
-    const req = createRequest({ username: 'testuser', password: 'wrongpassword' })
+
+    const req = createRequest({ username: 'testuser', password: 'wrongpassword' }, { 'x-forwarded-for': '10.0.0.1' })
     const res = await POST(req)
-    
+
     expect(res.status).toBe(401)
     const json = await res.json()
     expect(json.error).toBe('Invalid username or password')
+    expect(trackLoginAttempt).toHaveBeenCalledWith({ userId: -1, successful: false, ipAddress: '10.0.0.1' })
   })
 
   it('returns 429 on too many failed attempts error', async () => {
@@ -96,15 +97,4 @@ describe('POST /api/login', () => {
     expect(json.error).toBe('Too many failed login attempts. Please try again later.')
   })
 
-  it('returns 401 and tracks attempt if login returns null', async () => {
-    (login as Mock).mockResolvedValue(null)
-    
-    const req = createRequest({ username: 'testuser', password: 'password123' }, { 'x-forwarded-for': '192.168.1.1' })
-    const res = await POST(req)
-    
-    expect(res.status).toBe(401)
-    const json = await res.json()
-    expect(json.error).toBe('Invalid credentials')
-    expect(trackLoginAttempt).toHaveBeenCalledWith({ userId: -1, successful: false, ipAddress: '192.168.1.1' })
-  })
 })
