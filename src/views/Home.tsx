@@ -7,8 +7,8 @@ async function Home() {
     let username: string | null = null
 
     if (sessionCookie) {
-        const session = await decrypt(sessionCookie).catch(() => null) as { username?: string; expiresAt?: string } | null
-        if (session?.username && session?.expiresAt && new Date(session.expiresAt) > new Date()) {
+        const session = await decrypt(sessionCookie).catch(() => null) as { username?: string } | null
+        if (session?.username) {
             username = session.username
         }
     }

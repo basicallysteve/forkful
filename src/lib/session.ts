@@ -5,12 +5,13 @@ const secret = process.env.JWT_SECRET
 if (!secret) throw new Error('JWT_SECRET environment variable is not set')
 const encodedKey = new TextEncoder().encode(secret)
 
+export const SESSION_DURATION_MS = 60 * 60 * 1000 // 1 hour
+
 export async function encrypt(data: object): Promise<string> {
-    const jwt = await new SignJWT(data)
+    return new SignJWT(data as Parameters<typeof SignJWT>[0])
         .setProtectedHeader({ alg: 'HS256' })
-        .setExpirationTime('1h')
+        .setExpirationTime(Math.floor((Date.now() + SESSION_DURATION_MS) / 1000))
         .sign(encodedKey)
-    return jwt
 }
 
 export async function decrypt(token: string): Promise<object> {

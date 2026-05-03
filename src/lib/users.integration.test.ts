@@ -106,12 +106,12 @@ describe('users integration tests', () => {
             dietaryRestrictions: []
         }
         await signUp(user)
-        const loggedIn = await login('testlogin', 'password123')
+        const loggedIn = await login('testlogin', 'password123', '127.0.0.1')
         expect(loggedIn.username).toBe('testlogin')
     })
 
     it('should reject login for non-existent user', async () => {
-        await expect(login('testnonexistent', 'password123')).rejects.toThrow('Invalid username or password')
+        await expect(login('testnonexistent', 'password123', '127.0.0.1')).rejects.toThrow('Invalid username or password')
     })
 
     it('should reject login with wrong password', async () => {
@@ -123,23 +123,60 @@ describe('users integration tests', () => {
             dietaryRestrictions: []
         }
         await signUp(user)
-        await expect(login('testlogin2', 'wrongpassword')).rejects.toThrow('Invalid username or password')
+        await expect(login('testlogin2', 'wrongpassword', '127.0.0.1')).rejects.toThrow('Invalid username or password')
     })
 
-    it('should block login after 5 failed attempts', async () => {
-        const user = { 
-            username: 'testlogin3', 
-            email: 'testlogin3@gmail.com', 
-            password: 'password123', 
-            cuisinePreferences: [], 
-            dietaryRestrictions: [] 
+    it('should block login after 5 failed attempts for the same user', async () => {
+        const user = {
+            username: 'testlogin3',
+            email: 'testlogin3@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: []
         }
         const newUser = await signUp(user)
 
         for (let i = 0; i < 5; i++) {
-            await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '127.0.0.1' })
+            await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '10.0.0.1' })
         }
 
-        await expect(login('testlogin3', 'password123')).rejects.toThrow('Too many failed login attempts. Please try again later.')
+        await expect(login('testlogin3', 'password123', '10.0.0.2')).rejects.toThrow('Too many failed login attempts. Please try again later.')
+    })
+
+    it('should block login after 5 failed attempts from the same IP', async () => {
+        const user = {
+            username: 'testlogin4',
+            email: 'testlogin4@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: []
+        }
+        const newUser = await signUp(user)
+
+        for (let i = 0; i < 5; i++) {
+            await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '192.168.1.1' })
+        }
+
+        // Different username, same IP — should still be blocked
+        await expect(login('testnonexistent', 'password123', '192.168.1.1')).rejects.toThrow('Too many failed login attempts. Please try again later.')
+    })
+
+    it('should not block login attempts from a different IP', async () => {
+        const user = {
+            username: 'testlogin5',
+            email: 'testlogin5@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: []
+        }
+        const newUser = await signUp(user)
+
+        for (let i = 0; i < 5; i++) {
+            await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '192.168.2.1' })
+        }
+
+        // Different IP — should not be blocked
+        const loggedIn = await login('testlogin5', 'password123', '192.168.2.2')
+        expect(loggedIn.username).toBe('testlogin5')
     })
 })

@@ -27,8 +27,8 @@ export default async function RootLayout({
   const sessionCookie = cookieStore.get('session')?.value
   let isLoggedIn = false
   if (sessionCookie) {
-    const session = await decrypt(sessionCookie).catch(() => null) as { expiresAt?: string } | null
-    isLoggedIn = !!(session?.expiresAt && new Date(session.expiresAt) > new Date())
+    const session = await decrypt(sessionCookie).catch(() => null)
+    isLoggedIn = !!session
   }
 
   return (
