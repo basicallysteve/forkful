@@ -164,7 +164,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       <label className="form-field">
         <span className="field-label">Quantity</span>
         <InputNumber
-          className="number-input ingredient-quantity-input"
+          className="ingredient-quantity-input"
           min={0}
           value={ingredient.quantity}
           onValueChange={(e) => setIngredientQuantity(e.value)}
@@ -175,7 +175,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       <label className="form-field">
         <span className="field-label">Unit</span>
         <Dropdown
-          className="number-input ingredient-unit-select"
+          className="ingredient-unit-select"
           value={ingredient.servingUnit}
           onChange={(e) => handleUnitChange(e.value)}
           disabled={readOnly}
@@ -191,7 +191,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       <label className="form-field">
         <span className="field-label">Calories</span>
         <InputNumber
-            className="number-input ingredient-calories-input"
+            className="ingredient-calories-input"
             min={0}
             value={ingredient.calories}
             readOnly={readOnly}
@@ -346,7 +346,7 @@ function Store() {
                 <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
                   <span className="field-label">Name</span>
                   <InputText
-                    className={`text-input ${isDuplicateName ? 'input-error' : ''}`}
+                    className={isDuplicateName ? 'input-error' : undefined}
                     type="text"
                     value={recipe.name}
                     placeholder="e.g. Smoky chipotle chili"

@@ -1,13 +1,4 @@
 .recipes-list {
-  --vscode-bg: #1e1e1e;
-  --vscode-panel: #252526;
-  --vscode-panel-strong: #2d2d30;
-  --vscode-border: #3c3c3c;
-  --vscode-accent: #007acc;
-  --vscode-text: #d4d4d4;
-  --vscode-muted: #9da5b4;
-  --vscode-warning: #f0ad4e;
-
   color: var(--vscode-text);
   background: radial-gradient(circle at 20% 20%, rgba(0, 122, 204, 0.08), transparent 35%),
     radial-gradient(circle at 80% 0%, rgba(0, 122, 204, 0.12), transparent 30%),
@@ -145,7 +136,6 @@
   .filter-select {
     border: 1px solid var(--vscode-border);
     border-radius: 8px;
-    padding: 8px 12px;
     background: var(--vscode-panel);
     color: var(--vscode-text);
     font-size: 13px;
