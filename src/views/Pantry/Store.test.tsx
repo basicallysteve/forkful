@@ -83,9 +83,9 @@ describe('Pantry Store Page', () => {
       renderWithProviders(<PantryStore />)
       expect(screen.getByLabelText(/food item/i)).toBeInTheDocument()
       expect(screen.getByRole("spinbutton", { name: /original size/i })).toBeInTheDocument()
-      expect(screen.getByRole("combobox", { name: /original size unit/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /original size unit/i })).toBeInTheDocument()
       expect(screen.getByRole("spinbutton", { name: /current size/i })).toBeInTheDocument()
-      expect(screen.getByRole("combobox", { name: /current size unit/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /current size unit/i })).toBeInTheDocument()
       expect(screen.getByLabelText(/expiration date/i)).toBeInTheDocument()
     })
 
@@ -259,6 +259,7 @@ describe('Pantry Store Page', () => {
       const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '2')
+      await user.tab()
 
       const addButton = screen.getByRole('button', { name: /add item/i })
       expect(addButton).toBeDisabled()
