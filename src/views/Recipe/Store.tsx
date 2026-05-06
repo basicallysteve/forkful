@@ -370,7 +370,6 @@ function Store() {
                         className={`radio-option ${recipe.meal === option ? "is-active" : ""}`}
                       >
                         <RadioButton
-                          className="radio-input"
                           name="meal"
                           value={option}
                           checked={recipe.meal === option}
@@ -394,6 +393,7 @@ function Store() {
                     onTextChange={(e) => setRecipe({ ...recipe, description: e.htmlValue ?? '' })}
                     placeholder="Describe flavors, prep time, or serving ideas."
                     style={{ height: '160px' }}
+                    aria-label="Recipe description"
                   />
                   <span className="field-hint">Keep it short—add detailed steps later.</span>
                 </div>

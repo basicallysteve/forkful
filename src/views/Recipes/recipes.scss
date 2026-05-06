@@ -263,10 +263,18 @@
   }
 
   .recipe-checkbox {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--vscode-accent);
     cursor: pointer;
+
+    .p-checkbox-box {
+      width: 16px;
+      height: 16px;
+      border-color: var(--vscode-accent);
+    }
+
+    &.p-checkbox-checked .p-checkbox-box {
+      background: var(--vscode-accent);
+      border-color: var(--vscode-accent);
+    }
   }
 
   .recipe-cards {

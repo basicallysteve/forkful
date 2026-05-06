@@ -265,7 +265,6 @@ function Store({ existingFood }: FoodStoreProps) {
                 <label className="form-field">
                   <span className="field-label">Serving Unit</span>
                   <Dropdown
-                    className={undefined}
                     value={food.servingUnit}
                     onChange={(e) => handleServingUnitChange(e.value)}
                     options={[

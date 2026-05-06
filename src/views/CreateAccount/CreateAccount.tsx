@@ -273,7 +273,6 @@ function CreateAccount() {
                         className={`radio-option ${dietaryRestrictions === option ? "is-active" : ""}`}
                       >
                         <RadioButton
-                          className="radio-input"
                           name="dietary"
                           value={option}
                           checked={dietaryRestrictions === option}
