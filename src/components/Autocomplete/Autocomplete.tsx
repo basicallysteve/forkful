@@ -48,8 +48,9 @@ export default function Autocomplete<T>({
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
-    setSuggestions(filterOptions(value))
-    acRef.current?.search(e, value, 'input')
+    // Pass null as source to bypass PrimeReact's empty-string guard so the
+    // panel opens even when the input is still empty.
+    acRef.current?.search(e, value, null)
   }
 
   function handleSelect(e: AutoCompleteSelectEvent) {
@@ -97,6 +98,7 @@ export default function Autocomplete<T>({
         placeholder={placeholder}
         disabled={disabled}
         readOnly={readOnly}
+        delay={0}
         inputClassName={`text-input ingredient-name-input ${inputClassName}`.trim()}
         pt={{ input: { 'aria-label': inputAriaLabel } }}
       />
