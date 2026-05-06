@@ -140,7 +140,7 @@ export default function Autocomplete<T>({
           onClick={() => {
             onChange('')
             setHighlightedIndex(-1)
-            setIsOpen(false)
+            setIsOpen(true)
             inputRef.current?.focus()
           }}
         >

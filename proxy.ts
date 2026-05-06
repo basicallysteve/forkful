@@ -7,7 +7,7 @@ type SessionPayload = { userId: string | number; username: string }
 const protectedRoutes = ['/recipes/new', '/foods/new', '/pantry', '/foods', '/recipes']
 const secure = process.env.NODE_ENV === 'production'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const session = await getSession(request)
 
   const redirect = redirectIfProtected(request, session)
