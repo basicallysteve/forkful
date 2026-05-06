@@ -71,11 +71,13 @@ export async function login(username: string, password: string, ipAddress: strin
     }
 
     if (!user) {
+        await trackLoginAttempt({ ipAddress, successful: false })
         throw new Error('Invalid username or password')
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password)
     if (!passwordMatch) {
+        await trackLoginAttempt({ userId: user.id, ipAddress, successful: false })
         throw new Error('Invalid username or password')
     }
 

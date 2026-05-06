@@ -72,14 +72,14 @@ describe('POST /api/login', () => {
     expect(login).toHaveBeenCalledWith(expect.any(String), expect.any(String), '5.5.5.5')
   })
 
-  it('returns 401 and tracks failed attempt on invalid credentials', async () => {
+  it('returns 401 on invalid credentials and does not call trackLoginAttempt (tracking is handled inside login())', async () => {
     (login as Mock).mockRejectedValue(new Error('Invalid username or password'))
 
     const res = await POST(createRequest({ username: 'testuser', password: 'wrongpassword' }, { 'x-forwarded-for': '10.0.0.1' }))
 
     expect(res.status).toBe(401)
     expect((await res.json()).error).toBe('Invalid username or password')
-    expect(trackLoginAttempt).toHaveBeenCalledWith({ successful: false, ipAddress: '10.0.0.1' })
+    expect(trackLoginAttempt).not.toHaveBeenCalled()
   })
 
   it('returns 429 on too many failed attempts and does not track another attempt', async () => {
