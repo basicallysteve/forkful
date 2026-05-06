@@ -169,13 +169,15 @@ describe('users integration tests', () => {
             cuisinePreferences: [],
             dietaryRestrictions: []
         }
-        const newUser = await signUp(user)
+        await signUp(user)
 
+        // Record 5 failures against the source IP only (no userId), so the IP rate limit
+        // triggers for 192.168.2.1 without also hitting the per-user rate limit.
         for (let i = 0; i < 5; i++) {
-            await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '192.168.2.1' })
+            await trackLoginAttempt({ successful: false, ipAddress: '192.168.2.1' })
         }
 
-        // Different IP — should not be blocked
+        // Different IP — should not be blocked by the IP rate limit or per-user rate limit
         const loggedIn = await login('testlogin5', 'password123', '192.168.2.2')
         expect(loggedIn.username).toBe('testlogin5')
     })
