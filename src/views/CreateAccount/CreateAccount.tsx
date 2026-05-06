@@ -149,7 +149,6 @@ function CreateAccount() {
                 <label className="form-field">
                   <span className="field-label">Username</span>
                   <InputText
-                    className="text-input"
                     type="text"
                     value={username}
                     placeholder="Choose a username"
@@ -165,7 +164,7 @@ function CreateAccount() {
                 <label className={`form-field ${email.length > 0 && !isValidEmail ? 'has-error' : ''}`}>
                   <span className="field-label">Email</span>
                   <InputText
-                    className={`text-input ${email.length > 0 && !isValidEmail ? 'input-error' : ''}`}
+                    className={email.length > 0 && !isValidEmail ? 'input-error' : undefined}
                     type="email"
                     value={email}
                     placeholder="you@example.com"
@@ -274,7 +273,6 @@ function CreateAccount() {
                         className={`radio-option ${dietaryRestrictions === option ? "is-active" : ""}`}
                       >
                         <RadioButton
-                          className="radio-input"
                           name="dietary"
                           value={option}
                           checked={dietaryRestrictions === option}

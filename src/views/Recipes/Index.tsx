@@ -9,7 +9,7 @@ import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
-import DOMPurify  from 'dompurify'
+import DOMPurify from 'dompurify'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'

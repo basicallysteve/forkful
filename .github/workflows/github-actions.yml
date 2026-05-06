@@ -59,3 +59,4 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forkful_test
           NODE_ENV: test
+          JWT_SECRET: testsecret

@@ -1,183 +1,19 @@
-// PrimeReact dark theme overrides
+// Quill / Editor dark-theme overrides.
 //
-// PrimeReact components use wrapper elements for InputNumber, Dropdown, and
-// Password. The `className` prop lands on those wrappers, which then receive
-// styling (border, background, padding) from our view-level SCSS classes such
-// as .text-input, .filter-select, and .number-input. The inner functional
-// elements (.p-inputnumber-input, .p-dropdown-label, .p-password-input) do
-// not receive those classes and fall back to browser defaults, producing a
-// white inner element inside a dark-styled wrapper.
-//
-// These rules fix that by:
-//   - Removing padding from wrapper so the inner element fills it completely.
-//   - Making inner element backgrounds transparent (inherits the wrapper's dark
-//     background).
-//   - Restoring the focus ring on the wrapper via :focus-within.
-//
-// The Quill (Editor) section overrides colours hard-coded by the Quill Snow
-// theme that break on a dark background (notably the placeholder).
+// PrimeReact's Editor wraps Quill whose Snow theme hard-codes light colours.
+// These rules restore readability on dark backgrounds.
 
-$bg-dark: #252526;
-$border-dark: #3c3c3c;
-$text-main: #d4d4d4;
-$text-muted: #9da5b4;
-$focus-color: #007acc;
-$focus-bg: rgba(0, 122, 204, 0.06);
-$focus-shadow: rgba(0, 122, 204, 0.35);
-$hover-bg: rgba(0, 122, 204, 0.2);
-$white: #ffffff;
+$border-dark:   var(--surface-border);
+$bg-dark:       var(--surface-a);
+$text-main:     var(--text-color);
+$text-muted:    var(--text-color-secondary);
+$focus-shadow:  var(--focus-ring);
+$hover-bg:      var(--surface-hover);
+$white:         #ffffff;
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Shared Input Base
-// ──────────────────────────────────────────────────────────────────────────────
+// ── Toolbar ───────────────────────────────────────────────────────────────────
 
-.p-inputnumber,
-.p-dropdown,
-.p-password {
-  display: inline-flex;
-  align-items: stretch;
-  padding: 0;
-
-  &:focus-within {
-    border-color: $focus-color;
-    box-shadow: 0 0 0 1px $focus-shadow;
-    outline: none;
-  }
-}
-
-.p-inputnumber,
-.p-password {
-  &:focus-within {
-    background: $focus-bg;
-  }
-}
-
-.p-inputnumber-input,
-.p-dropdown-label,
-.p-password-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  background: transparent;
-  color: inherit;
-  border: none;
-  outline: none;
-  font-family: inherit;
-  font-size: inherit;
-}
-
-.p-inputnumber-input,
-.p-password-input {
-  width: 100%;
-  padding: 10px 12px;
-
-  &::placeholder {
-    color: $text-muted;
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// InputNumber
-// ──────────────────────────────────────────────────────────────────────────────
-
-.p-inputnumber {
-  display: flex; // Overrides inline-flex from shared base
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Dropdown
-// ──────────────────────────────────────────────────────────────────────────────
-
-.p-dropdown {
-  align-items: center; // Overrides stretch from shared base
-
-  .p-dropdown-label {
-    padding: 8px 12px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-    cursor: pointer;
-
-    // Placeholder state
-    &.p-placeholder {
-      color: $text-muted;
-    }
-  }
-
-  .p-dropdown-trigger {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 10px;
-    color: $text-muted;
-  }
-}
-
-.p-dropdown-panel {
-  background: $bg-dark;
-  border: 1px solid $border-dark;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-  color: $text-main;
-  z-index: 1100;
-
-  .p-dropdown-items-wrapper {
-    overflow: auto;
-    border-radius: 8px;
-  }
-
-  .p-dropdown-items {
-    padding: 4px;
-    margin: 0;
-    list-style: none;
-  }
-
-  .p-dropdown-item {
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: $text-main;
-    cursor: pointer;
-    transition: background-color 120ms ease;
-
-    &:hover,
-    &.p-highlight {
-      background: $hover-bg;
-      color: $white;
-    }
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Password
-// ──────────────────────────────────────────────────────────────────────────────
-
-.p-password {
-  position: relative;
-
-  .p-password-input {
-    padding-right: 2.5rem;
-  }
-
-  .p-icon {
-    position: absolute;
-    right: 0.6rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: $text-muted;
-    cursor: pointer;
-
-    &:hover {
-      color: $text-main;
-    }
-  }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Quill / Editor
-// ──────────────────────────────────────────────────────────────────────────────
-
-.p-editor-container {
+[data-pc-name="editor"] {
   .ql-toolbar.ql-snow {
     background: rgba(255, 255, 255, 0.02);
     border-color: $border-dark;
@@ -197,24 +33,15 @@ $white: #ffffff;
       }
     }
 
-    .ql-stroke {
-      stroke: $text-main;
-    }
-
-    .ql-fill {
-      fill: $text-main;
-    }
+    .ql-stroke { stroke: $text-main; }
+    .ql-fill   { fill:   $text-main; }
 
     button:hover,
     button.ql-active,
     .ql-picker-label:hover,
     .ql-picker-label.ql-active {
-      .ql-stroke {
-        stroke: $white;
-      }
-      .ql-fill {
-        fill: $white;
-      }
+      .ql-stroke { stroke: $white; }
+      .ql-fill   { fill:   $white; }
     }
 
     .ql-picker {
@@ -223,10 +50,7 @@ $white: #ffffff;
       .ql-picker-label {
         color: $text-main;
         border-color: $border-dark;
-
-        &:hover {
-          color: $white;
-        }
+        &:hover { color: $white; }
       }
 
       .ql-picker-options {
@@ -249,6 +73,8 @@ $white: #ffffff;
     }
   }
 
+  // ── Content area ────────────────────────────────────────────────────────────
+
   .ql-container.ql-snow {
     background: rgba(255, 255, 255, 0.04);
     border-color: $border-dark;
@@ -269,14 +95,36 @@ $white: #ffffff;
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Specific Component Overrides
-// ──────────────────────────────────────────────────────────────────────────────
+// ── Input background alignment ────────────────────────────────────────────────
+// lara-dark-blue hardcodes a dark-blue input background (#111827) instead of
+// reading --surface-a. Override every PrimeReact input surface to match the
+// native .text-input class so all fields share the same background colour.
+
+.p-inputtext,
+.p-inputnumber-input,
+.p-dropdown,
+.p-password .p-inputtext {
+  background: var(--surface-a);
+}
+
+// ── Compact dropdown (filter controls) ───────────────────────────────────────
+// PrimeReact's theme adds padding to the inner .p-dropdown-label via
+// --content-padding. When .filter-select also sets padding on the wrapper we
+// get double-spacing. Zero out the wrapper and push padding onto the label so
+// filter controls stay the same height as adjacent text inputs.
+
+.filter-select.p-dropdown {
+  padding: 0;
+
+  .p-dropdown-label {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+// ── Editor wrapper ────────────────────────────────────────────────────────────
 
 .recipe-editor {
-  // height is set via the style prop on the Editor so it targets .p-editor-content
-  // (the Quill container), keeping the toolbar outside the bounded height region
-  // and preventing overflow into adjacent sections.
   overflow: hidden;
   border-radius: 8px;
 }
