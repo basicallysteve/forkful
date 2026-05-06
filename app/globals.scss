@@ -1,10 +1,14 @@
+// ── Design tokens + PrimeReact variable overrides ────────────────────────────
+@import '../src/assets/styles/theme.scss';
+
+// ── Global element resets ─────────────────────────────────────────────────────
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--text-color);
+  background-color: var(--vscode-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,16 +21,14 @@ body {
   min-height: 100vh;
   display: block;
   padding: 32px 40px;
-  background-color: #242424;
+  background-color: var(--vscode-bg);
 }
 
 a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  &:hover { color: #535bf2; }
 }
 
 button {
@@ -39,19 +41,13 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  &:hover { border-color: #646cff; }
+  &:focus,
+  &:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
 }
 
 @media (max-width: 720px) {
-  body {
-    padding: 18px;
-  }
+  body { padding: 18px; }
 }
 
 @media (prefers-color-scheme: light) {
@@ -59,18 +55,98 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
-  body {
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+  body { background-color: #ffffff; }
+  a:hover { color: #747bff; }
+  button { background-color: #f9f9f9; }
+}
+
+// ── Native-input utilities ────────────────────────────────────────────────────
+// Used only on native <input>/<textarea> elements (e.g. Autocomplete's inner
+// input). PrimeReact components are styled by the imported theme; these classes
+// ensure hand-rolled inputs match those styles via the same CSS variables.
+
+.text-input,
+.text-area {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  padding: 10px 12px;
+  background: var(--surface-a);
+  color: var(--text-color);
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+
+  &::placeholder { color: var(--text-color-secondary); }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: rgba(0, 122, 204, 0.06);
+    box-shadow: var(--focus-ring);
   }
 }
 
-/* Global application styles – imported once from app/layout.tsx */
+.text-area {
+  min-height: 140px;
+  resize: vertical;
+}
+
+// ── Radio group (custom, not a PrimeReact component) ─────────────────────────
+
+.radio-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.radio-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-color-secondary);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    border-color: var(--primary-color);
+    color: #ffffff;
+  }
+
+  &.is-active {
+    border-color: var(--primary-color);
+    color: #ffffff;
+    background: rgba(0, 122, 204, 0.1);
+    box-shadow: 0 6px 18px rgba(0, 122, 204, 0.25);
+
+    .radio-dot {
+      border-color: var(--primary-color);
+      background: var(--primary-color);
+    }
+  }
+}
+
+.radio-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--text-color-secondary);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+// ── View / component styles ───────────────────────────────────────────────────
+@import '../src/assets/styles/primereact-dark.scss';
 @import '../src/components/toolbar.scss';
 @import '../src/components/Autocomplete/autocomplete.scss';
 @import '../src/views/Login/login.scss';

@@ -6,6 +6,8 @@ import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
 import { decrypt } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
+import 'primereact/resources/themes/lara-dark-blue/theme.css'
+import 'primereact/resources/primereact.min.css'
 import './globals.scss'
 
 export const metadata: Metadata = {

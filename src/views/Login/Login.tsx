@@ -4,6 +4,8 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiLogin } from "@/lib/api/users"
+import { InputText } from 'primereact/inputtext'
+import { Password } from 'primereact/password'
 
 function Login() {
   const router = useRouter()
@@ -60,8 +62,7 @@ function Login() {
               <div className="form-grid">
                 <label className="form-field form-field-full">
                   <span className="field-label">Username</span>
-                  <input
-                    className="text-input"
+                  <InputText
                     type="text"
                     value={username}
                     placeholder="Enter your username"
@@ -76,12 +77,12 @@ function Login() {
 
                 <label className="form-field form-field-full">
                   <span className="field-label">Password</span>
-                  <input
-                    className="text-input"
-                    type="password"
+                  <Password
                     value={password}
                     placeholder="Enter your password"
                     onChange={(e) => setPassword(e.target.value)}
+                    toggleMask
+                    feedback={false}
                     aria-describedby="password-hint"
                     autoComplete="current-password"
                   />
