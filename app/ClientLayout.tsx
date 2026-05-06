@@ -8,9 +8,10 @@ import { PrimeReactProvider } from 'primereact/api'
 interface ClientLayoutProps {
   children: React.ReactNode
   recipes: Recipe[]
+  isLoggedIn: boolean
 }
 
-export default function ClientLayout({ children, recipes }: ClientLayoutProps) {
+export default function ClientLayout({ children, recipes, isLoggedIn }: ClientLayoutProps) {
   const menuOptions = [
     {
       label: 'Recipes',
@@ -40,10 +41,7 @@ export default function ClientLayout({ children, recipes }: ClientLayoutProps) {
         { label: 'Add Pantry Item', to: '/pantry/new' },
       ],
     },
-    {
-      label: 'Login',
-      to: '/login',
-    },
+    ...(isLoggedIn ? [{ label: 'Logout', to: '/logout' }] : [{ label: 'Login', to: '/login' }]),
   ]
 
   return (
