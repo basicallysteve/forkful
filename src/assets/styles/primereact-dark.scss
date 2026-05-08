@@ -95,6 +95,17 @@ $white:         #ffffff;
   }
 }
 
+.p-password {
+  .p-password-input {
+    width: 100%;
+  }
+
+  .p-icon-field-right {
+    width: 100%;
+  }
+}
+
+
 // ── Input background alignment ────────────────────────────────────────────────
 // lara-dark-blue hardcodes a dark-blue input background (#111827) instead of
 // reading --surface-a. Override every PrimeReact input surface to match the
