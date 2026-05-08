@@ -4,7 +4,6 @@ import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
 
-// ms → s → min → hr → day
 const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
@@ -52,7 +51,7 @@ function mapPantryItem(row: typeof pantryItems.$inferSelect, food: Food): Pantry
   }
 }
 
-export async function getPantryItems(): Promise<PantryItem[]> {
+export async function getPantryItems(userId: number): Promise<PantryItem[]> {
   try {
     const rows = await db
       .select()
@@ -60,6 +59,7 @@ export async function getPantryItems(): Promise<PantryItem[]> {
       .innerJoin(foods, eq(pantryItems.foodId, foods.id))
       .where(
         and(
+          eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
           isNull(foods.dateDeleted)
         )
@@ -70,7 +70,7 @@ export async function getPantryItems(): Promise<PantryItem[]> {
   }
 }
 
-export async function getPantryItemById(id: number): Promise<PantryItem | null> {
+export async function getPantryItemById(id: number, userId: number): Promise<PantryItem | null> {
   try {
     const [row] = await db
       .select()
@@ -79,6 +79,7 @@ export async function getPantryItemById(id: number): Promise<PantryItem | null> 
       .where(
         and(
           eq(pantryItems.id, id),
+          eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
           isNull(foods.dateDeleted)
         )
@@ -91,6 +92,7 @@ export async function getPantryItemById(id: number): Promise<PantryItem | null> 
 }
 
 export type CreatePantryItemData = {
+  userId: number
   foodId: number
   expirationDate?: Date | null
   originalSizeAmount: number
@@ -101,6 +103,7 @@ export type CreatePantryItemData = {
 
 export async function createPantryItem(data: CreatePantryItemData): Promise<PantryItem> {
   const [row] = await db.insert(pantryItems).values({
+    userId: data.userId,
     foodId: data.foodId,
     expirationDate: data.expirationDate ?? null,
     originalSizeAmount: String(data.originalSizeAmount),
@@ -108,16 +111,16 @@ export async function createPantryItem(data: CreatePantryItemData): Promise<Pant
     currentSizeAmount: String(data.currentSizeAmount),
     currentSizeUnit: data.currentSizeUnit,
   }).returning()
-  const item = await getPantryItemById(row.id)
+  const item = await getPantryItemById(row.id, data.userId)
   if (!item) throw new Error('Failed to create pantry item')
   return item
 }
 
-export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'foodId'>> & {
+export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'userId' | 'foodId'>> & {
   frozenDate?: Date | null
 }
 
-export async function updatePantryItem(id: number, data: UpdatePantryItemData): Promise<PantryItem | null> {
+export async function updatePantryItem(id: number, userId: number, data: UpdatePantryItemData): Promise<PantryItem | null> {
   const updates: Partial<typeof pantryItems.$inferInsert> = {}
   if (data.expirationDate !== undefined) updates.expirationDate = data.expirationDate ?? null
   if (data.originalSizeAmount !== undefined) updates.originalSizeAmount = String(data.originalSizeAmount)
@@ -125,11 +128,17 @@ export async function updatePantryItem(id: number, data: UpdatePantryItemData): 
   if (data.currentSizeAmount !== undefined) updates.currentSizeAmount = String(data.currentSizeAmount)
   if (data.currentSizeUnit !== undefined) updates.currentSizeUnit = data.currentSizeUnit
   if (data.frozenDate !== undefined) updates.frozenDate = data.frozenDate ?? null
-  await db.update(pantryItems).set(updates).where(eq(pantryItems.id, id))
-  return getPantryItemById(id)
+  await db.update(pantryItems).set(updates).where(
+    and(eq(pantryItems.id, id), eq(pantryItems.userId, userId))
+  )
+  return getPantryItemById(id, userId)
 }
 
-export async function deletePantryItem(id: number): Promise<boolean> {
-  const updated = await db.update(pantryItems).set({ dateDeleted: new Date() }).where(eq(pantryItems.id, id)).returning()
+export async function deletePantryItem(id: number, userId: number): Promise<boolean> {
+  const updated = await db
+    .update(pantryItems)
+    .set({ dateDeleted: new Date() })
+    .where(and(eq(pantryItems.id, id), eq(pantryItems.userId, userId)))
+    .returning()
   return updated.length > 0
 }

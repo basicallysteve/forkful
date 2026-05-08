@@ -45,8 +45,22 @@ export const ingredients = pgTable('ingredients', {
   dateDeleted: timestamp('date_deleted'),
 });
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 255 }).notNull(),
+  password: varchar('password', { length: 255, }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
+  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateDeleted: timestamp('date_deleted'),
+});
+
 export const pantryItems = pgTable('pantry_items', {
   id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   foodId: integer('food_id')
     .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
@@ -60,17 +74,6 @@ export const pantryItems = pgTable('pantry_items', {
   dateDeleted: timestamp('date_deleted'),
 });
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull(),
-  password: varchar('password', { length: 255, }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
-  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
-  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
-  dateAdded: timestamp('date_added').defaultNow(),
-  dateDeleted: timestamp('date_deleted'),
-});
-
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -78,5 +81,5 @@ export const login_attempts = pgTable('login_attempts', {
     .references(() => users.id, { onDelete: 'cascade' }),
   ipAddress: varchar('ip_address', { length: 45 }).notNull(),
   successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
-  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
 });

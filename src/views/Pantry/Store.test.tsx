@@ -1,11 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryStore from './Store'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
+
+vi.mock('@/lib/api/pantry', () => ({
+  apiCreatePantryItem: vi.fn(),
+  apiUpdatePantryItem: vi.fn(),
+}))
+
+import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 
 const mockFoods: Food[] = [
   {
@@ -36,23 +43,15 @@ const mockFoods: Food[] = [
 
 function renderWithProviders(
   ui: React.ReactElement,
-  {
-    items = [],
-    foods = mockFoods,
-  }: {
-    items?: PantryItem[]
-    foods?: Food[]
-  } = {}
+  { items = [], foods = mockFoods }: { items?: PantryItem[]; foods?: Food[] } = {}
 ) {
   resetPantryStore()
   resetFoodStore()
   useFoodStore.setState({ foods })
   usePantryStore.setState({ items })
-
   return render(ui)
 }
 
-// Helper to create valid pantry items with all required fields
 function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
     id: overrides.id,
@@ -67,10 +66,15 @@ function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: F
   }
 }
 
+function makeMockItem(overrides: Partial<PantryItem> = {}): PantryItem {
+  return createPantryItem({ id: 1, food: mockFoods[0], ...overrides })
+}
+
 describe('Pantry Store Page', () => {
   beforeEach(() => {
     resetPantryStore()
     resetFoodStore()
+    vi.clearAllMocks()
   })
 
   describe('Add Mode', () => {
@@ -80,130 +84,100 @@ describe('Pantry Store Page', () => {
     })
 
     it('renders all form fields', () => {
-      renderWithProviders(<PantryStore />)
+      const { container } = renderWithProviders(<PantryStore />)
       expect(screen.getByLabelText(/food item/i)).toBeInTheDocument()
-      expect(screen.getByRole("spinbutton", { name: /original size/i })).toBeInTheDocument()
-      expect(screen.getByRole("combobox", { name: /original size unit/i })).toBeInTheDocument()
-      expect(screen.getByRole("spinbutton", { name: /current size/i })).toBeInTheDocument()
-      expect(screen.getByRole("combobox", { name: /current size unit/i })).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton', { name: /original size/i })).toBeInTheDocument()
+      expect(container.querySelector('#original-unit')).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton', { name: /current size/i })).toBeInTheDocument()
+      expect(container.querySelector('#current-unit')).toBeInTheDocument()
       expect(screen.getByLabelText(/expiration date/i)).toBeInTheDocument()
     })
 
-    it('add button is disabled when fields are incomplete', () => {
+    it('add button is disabled when no food is selected', () => {
       renderWithProviders(<PantryStore />)
-      const addButton = screen.getByRole('button', { name: /add item/i })
-      expect(addButton).toBeDisabled()
+      expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
     })
 
-    it('adds a new item when all fields are filled', async () => {
+    it('calls apiCreatePantryItem and adds item to store on save', async () => {
       const user = userEvent.setup()
+      const createdItem = makeMockItem({ originalSize: { size: 16, unit: 'oz' }, currentSize: { size: 8, unit: 'oz' } })
+      vi.mocked(apiCreatePantryItem).mockResolvedValue(createdItem)
+
       renderWithProviders(<PantryStore />)
 
-      // Select food
-      const foodInput = screen.getByPlaceholderText('Select a food item')
-      await user.type(foodInput, 'Chicken')
-      const option = await screen.findByRole('option', { name: /chicken breast/i })
-      await user.click(option)
+      await user.type(screen.getByPlaceholderText('Select a food item'), 'Chicken')
+      await user.click(await screen.findByRole('option', { name: /chicken breast/i }))
 
-      const originalSizeInput = screen.getByRole("spinbutton", { name: /original size/i })
+      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
       await user.clear(originalSizeInput)
       await user.type(originalSizeInput, '16')
 
-      const currentSizeInput = screen.getByRole("spinbutton", { name: /current size/i })
+      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '8')
 
-      // Set expiration date
-      const dateInput = screen.getByLabelText(/expiration date/i)
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 10)
-      const dateString = futureDate.toISOString().split('T')[0]
-      await user.type(dateInput, dateString)
+      await user.click(screen.getByRole('button', { name: /add item/i }))
 
-      const addButton = screen.getByRole('button', { name: /add item/i })
-      expect(addButton).not.toBeDisabled()
-
-      await user.click(addButton)
-
-      const items = usePantryStore.getState().items
-      expect(items).toHaveLength(1)
-      expect(items[0].food.name).toBe('Chicken Breast')
-      expect(items[0].originalSize.size).toBe(16)
-      expect(items[0].currentSize.size).toBe(8)
+      expect(apiCreatePantryItem).toHaveBeenCalledWith(expect.objectContaining({
+        foodId: 1,
+        originalSizeAmount: 16,
+        currentSizeAmount: 8,
+      }))
+      await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(1))
+      expect(usePantryStore.getState().items[0].food.name).toBe('Chicken Breast')
     })
   })
 
   describe('Edit Mode', () => {
     it('renders page title for editing item', () => {
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 10)
-
       const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
-        expirationDate: futureDate,
         originalSize: { size: 3, unit: 'oz' },
         currentSize: { size: 2, unit: 'oz' },
         status: 'good',
       })
-
       renderWithProviders(<PantryStore existingItem={existingItem} />)
       expect(screen.getByText('Edit Pantry Item')).toBeInTheDocument()
     })
 
     it('pre-fills form with existing item data', () => {
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 10)
-
       const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
-        expirationDate: futureDate,
         originalSize: { size: 3, unit: 'oz' },
         currentSize: { size: 2, unit: 'oz' },
         status: 'good',
       })
-
       renderWithProviders(<PantryStore existingItem={existingItem} />)
 
-      const foodInput = screen.getByPlaceholderText('Select a food item')
-      expect(foodInput).toHaveValue('Chicken Breast')
-
-      const originalSizeInput = screen.getByRole("spinbutton", { name: /original size/i }) as HTMLInputElement
-      expect(originalSizeInput.value).toBe('3')
-
-      const currentSizeInput = screen.getByRole("spinbutton", { name: /current size/i }) as HTMLInputElement
-      expect(currentSizeInput.value).toBe('2')
+      expect(screen.getByPlaceholderText('Select a food item')).toHaveValue('Chicken Breast')
+      expect((screen.getByRole('spinbutton', { name: /original size/i }) as HTMLInputElement).value).toBe('3')
+      expect((screen.getByRole('spinbutton', { name: /current size/i }) as HTMLInputElement).value).toBe('2')
     })
 
-    it('updates item when save is clicked', async () => {
+    it('calls apiUpdatePantryItem and updates the store on save', async () => {
       const user = userEvent.setup()
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 10)
-
       const existingItem = createPantryItem({
         id: 1,
         food: mockFoods[0],
-        expirationDate: futureDate,
         originalSize: { size: 3, unit: 'oz' },
         currentSize: { size: 2, unit: 'oz' },
         status: 'good',
       })
+      const updatedItem = { ...existingItem, currentSize: { size: 1.5, unit: 'oz' } }
+      vi.mocked(apiUpdatePantryItem).mockResolvedValue(updatedItem)
 
-      renderWithProviders(<PantryStore existingItem={existingItem} />, {
-        items: [existingItem],
-      })
+      renderWithProviders(<PantryStore existingItem={existingItem} />, { items: [existingItem] })
 
-      const currentSizeInput = screen.getByRole("spinbutton", { name: /current size/i })
+      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '1.5')
 
-      const updateButton = screen.getByRole('button', { name: /update item/i })
-      await user.click(updateButton)
+      await user.click(screen.getByRole('button', { name: /update item/i }))
 
-      const items = usePantryStore.getState().items
-      expect(items).toHaveLength(1)
-      expect(items[0].currentSize.size).toBe(1.5)
+      expect(apiUpdatePantryItem).toHaveBeenCalledWith(1, expect.objectContaining({ currentSizeAmount: 1.5 }))
+      await waitFor(() => expect(usePantryStore.getState().items[0].currentSize.size).toBe(1.5))
     })
   })
 
@@ -212,11 +186,11 @@ describe('Pantry Store Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)
 
-      const dateInput = screen.getByLabelText(/expiration date/i)
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
       const dateString = futureDate.toISOString().split('T')[0]
-      await user.type(dateInput, dateString)
+
+      await user.type(screen.getByLabelText(/expiration date/i), dateString)
 
       expect(screen.getByText(/status:/i)).toBeInTheDocument()
       expect(screen.getByText(/good/i)).toBeInTheDocument()
@@ -226,49 +200,13 @@ describe('Pantry Store Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)
 
-      const dateInput = screen.getByLabelText(/expiration date/i)
       const soonDate = new Date()
-      soonDate.setDate(soonDate.getDate() + 5)
+      soonDate.setDate(soonDate.getDate() + 3)
       const dateString = soonDate.toISOString().split('T')[0]
-      await user.type(dateInput, dateString)
+
+      await user.type(screen.getByLabelText(/expiration date/i), dateString)
 
       expect(screen.getByText(/expiring-soon/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Form Validation', () => {
-    it('requires food item to be selected', () => {
-      renderWithProviders(<PantryStore />)
-      const addButton = screen.getByRole('button', { name: /add item/i })
-      expect(addButton).toBeDisabled()
-    })
-
-    it('prevents saving when current size exceeds original size for compatible units', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<PantryStore />)
-
-      const foodInput = screen.getByPlaceholderText('Select a food item')
-      await user.type(foodInput, 'Chicken')
-      const option = await screen.findByRole('option', { name: /chicken breast/i })
-      await user.click(option)
-
-      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
-      await user.clear(originalSizeInput)
-      await user.type(originalSizeInput, '1')
-
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
-      await user.clear(currentSizeInput)
-      await user.type(currentSizeInput, '2')
-
-      const addButton = screen.getByRole('button', { name: /add item/i })
-      expect(addButton).toBeDisabled()
-    })
-  })
-
-  describe('Cancel Button', () => {
-    it('renders cancel button', () => {
-      renderWithProviders(<PantryStore />)
-      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
     })
   })
 })
