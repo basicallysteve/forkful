@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryStore from './Store'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
@@ -207,6 +207,74 @@ describe('Pantry Store Page', () => {
       await user.type(screen.getByLabelText(/expiration date/i), dateString)
 
       expect(screen.getByText(/expiring-soon/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('Size Validation', () => {
+    it('disables save button when current size exceeds original size for convertible units', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+
+      await user.type(screen.getByPlaceholderText('Select a food item'), 'Chicken')
+      await user.click(await screen.findByRole('option', { name: /chicken breast/i }))
+
+      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      await user.clear(originalSizeInput)
+      await user.type(originalSizeInput, '10')
+      await user.tab()
+
+      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      await user.clear(currentSizeInput)
+      await user.type(currentSizeInput, '15')
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
+    })
+
+    it('allows save when current size equals original size', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+
+      await user.type(screen.getByPlaceholderText('Select a food item'), 'Chicken')
+      await user.click(await screen.findByRole('option', { name: /chicken breast/i }))
+
+      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      await user.clear(originalSizeInput)
+      await user.type(originalSizeInput, '10')
+      await user.tab()
+
+      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      await user.clear(currentSizeInput)
+      await user.type(currentSizeInput, '10')
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: /add item/i })).not.toBeDisabled()
+    })
+
+    it('allows save when current size exceeds original size for non-convertible units', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+
+      await user.type(screen.getByPlaceholderText('Select a food item'), 'Chicken')
+      await user.click(await screen.findByRole('option', { name: /chicken breast/i }))
+
+      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      await user.clear(originalSizeInput)
+      await user.type(originalSizeInput, '10')
+      await user.tab()
+
+      // Change original unit to 'slice' (custom unit)
+      const originalUnitDropdown = screen.getByRole('button', { name: /original size unit/i })
+      await user.click(originalUnitDropdown)
+      fireEvent.click(await screen.findByRole('option', { name: 'slice', hidden: true }))
+
+      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      await user.clear(currentSizeInput)
+      await user.type(currentSizeInput, '15')
+      await user.tab()
+
+      // Should be enabled because slice and oz are not convertible
+      expect(screen.getByRole('button', { name: /add item/i })).not.toBeDisabled()
     })
   })
 })

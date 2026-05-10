@@ -1,5 +1,18 @@
 import type { PantryItem } from '@/types/PantryItem'
 
+export type CreatePantryItemData = {
+  foodId: number
+  expirationDate?: string | null
+  originalSizeAmount: number
+  originalSizeUnit?: string
+  currentSizeAmount: number
+  currentSizeUnit?: string
+}
+
+export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'foodId'>> & {
+  frozenDate?: string | null
+}
+
 type RawPantryItem = Omit<PantryItem, 'expirationDate' | 'addedDate' | 'frozenDate'> & {
   expirationDate: string | null
   addedDate: string
@@ -15,24 +28,11 @@ function parsePantryItem(raw: RawPantryItem): PantryItem {
   }
 }
 
-export type CreatePantryItemData = {
-  foodId: number
-  expirationDate?: string | null
-  originalSizeAmount: number
-  originalSizeUnit?: string
-  currentSizeAmount: number
-  currentSizeUnit?: string
-}
-
-export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'foodId'>> & {
-  frozenDate?: string | null
-}
-
 export async function apiFetchPantryItems(): Promise<PantryItem[]> {
   const res = await fetch('/api/pantry')
   if (!res.ok) throw new Error('Failed to fetch pantry items')
-  const items: RawPantryItem[] = await res.json()
-  return items.map(parsePantryItem)
+  const raw: RawPantryItem[] = await res.json()
+  return raw.map(parsePantryItem)
 }
 
 export async function apiFetchPantryItem(id: number): Promise<PantryItem | null> {
