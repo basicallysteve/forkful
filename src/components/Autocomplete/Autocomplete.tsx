@@ -50,7 +50,7 @@ export default function Autocomplete<T>({
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     // Pass null as source to bypass PrimeReact's empty-string guard so the
     // panel opens even when the input is still empty.
-    acRef.current?.search(e, value, null)
+    acRef.current?.search(e, value)
   }
 
   function handleSelect(e: AutoCompleteSelectEvent) {
@@ -84,6 +84,10 @@ export default function Autocomplete<T>({
     )
   }
 
+  function focus() {
+    acRef.current?.getInput()?.focus?.()
+  }
+
   return (
     <div className="autocomplete">
       <AutoComplete
@@ -113,7 +117,7 @@ export default function Autocomplete<T>({
           }}
           onClick={() => {
             onChange('')
-            acRef.current?.getElement()?.querySelector('input')?.focus()
+            focus()
           }}
         >
           ×
