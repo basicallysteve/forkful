@@ -103,7 +103,7 @@ export default function Autocomplete<T>({
         disabled={disabled}
         readOnly={readOnly}
         delay={0}
-        inputClassName={`text-input ingredient-name-input ${inputClassName}`.trim()}
+        inputClassName={`text-input ingredient-name-input ${inputClassName ?? ''}`.trim()}
         pt={{ input: { 'aria-label': inputAriaLabel } }}
       />
       {allowClear && !!value && !readOnly && !disabled && (
