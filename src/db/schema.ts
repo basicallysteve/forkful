@@ -77,7 +77,6 @@ export const pantryItems = pgTable('pantry_items', {
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
-    .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   ipAddress: varchar('ip_address', { length: 45 }).notNull(),
   successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
