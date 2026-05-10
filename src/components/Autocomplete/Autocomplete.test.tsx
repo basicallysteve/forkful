@@ -133,7 +133,6 @@ describe('Autocomplete component', () => {
 
   it('does not render clear button when allowClear is false', async () => {
     const user = userEvent.setup()
-    const [value] = [{ current: '' }, { current: (v: string) => { value.current = v } }]
     render(
       <Autocomplete
         value=""

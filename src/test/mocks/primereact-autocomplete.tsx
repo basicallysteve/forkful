@@ -29,7 +29,7 @@ interface AutoCompleteProps<T = unknown> {
 }
 
 export const AutoComplete = React.forwardRef<
-  { search: (event: unknown, query: string, source?: string | null) => void; getElement: () => HTMLSpanElement | null },
+  { search: (event: unknown, query: string, source?: string | null) => void; getElement: () => HTMLSpanElement | null; getInput: () => HTMLInputElement | null },
   AutoCompleteProps
 >(function AutoComplete(
   {
@@ -49,25 +49,22 @@ export const AutoComplete = React.forwardRef<
   ref
 ) {
   const [panelForcedClosed, setPanelForcedClosed] = useState(false)
-  // After — derived value, no effect needed
-const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
+  const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const spanRef = useRef<HTMLSpanElement>(null)
 
   useImperativeHandle(ref, () => ({
     search(_event: unknown, query: string) {
+      setPanelForcedClosed(false)
       completeMethod?.({ query })
     },
     getElement() {
       return spanRef.current
     },
+    getInput() {
+      return spanRef.current?.querySelector('input') ?? null
+    },
   }))
-
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const query = e.target.value
-    onChange?.({ value: query })
-    completeMethod?.({ query })
-  }
 
   function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
       setPanelForcedClosed(false)
@@ -80,6 +77,13 @@ const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
     setHighlightedIndex(-1)
     onSelect?.({ value: option })
     onChange?.({ value: option })
+  }
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const query = e.target.value
+    setPanelForcedClosed(false)
+    onChange?.({ value: query })
+    completeMethod?.({ query })
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -96,7 +100,7 @@ const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
         handleSelectOption(suggestions[highlightedIndex])
       }
     } else if (e.key === 'Escape') {
-      setIsOpen(false)
+      setPanelForcedClosed(true)
       setHighlightedIndex(-1)
     }
   }
