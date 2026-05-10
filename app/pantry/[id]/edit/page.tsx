@@ -12,6 +12,8 @@ export default function EditPantryItemPage() {
   const params = useParams()
   const id = Number(params.id)
 
+  if (!Number.isFinite(id) || !Number.isInteger(id)) notFound()
+
   const itemFromStore = usePantryStore((state) => state.items.find((i) => i.id === id))
   const [item, setItem] = useState<PantryItem | null | undefined>(itemFromStore)
 

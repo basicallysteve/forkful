@@ -32,10 +32,12 @@ export default function Pantry() {
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     apiFetchPantryItems()
       .then(setItems)
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false))
   }, [setItems])
 
@@ -56,7 +58,7 @@ export default function Pantry() {
       filtered = filtered.filter((item) => item.status === statusFilter)
     }
 
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let comparison = 0
       switch (sortBy) {
         case 'name': {
@@ -97,8 +99,10 @@ export default function Pantry() {
 
   async function handleDeleteSelected() {
     if (selectedItems.size === 0) return
-    await Promise.all([...selectedItems].map(id => apiDeletePantryItem(id)))
-    selectedItems.forEach(id => deleteItem(id))
+    const results = await Promise.allSettled([...selectedItems].map(id => apiDeletePantryItem(id)))
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') deleteItem([...selectedItems][index])
+    })
     setSelectedItems(new Set())
   }
 
@@ -259,6 +263,12 @@ export default function Pantry() {
             <div className="panel-content">
               <div className="empty-state">
                 <p>Loading pantry...</p>
+              </div>
+            </div>
+          ) : fetchError ? (
+            <div className="panel-content">
+              <div className="empty-state">
+                <p>Failed to load pantry items. Please refresh the page.</p>
               </div>
             </div>
           ) : filteredAndSortedItems.length === 0 ? (

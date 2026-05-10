@@ -86,7 +86,7 @@ describe('Food Store Page - Add Food', () => {
       expect(screen.getByPlaceholderText('e.g. Chicken Breast')).toBeInTheDocument()
       expect(screen.getByLabelText('Calories')).toBeInTheDocument()
       expect(screen.getByLabelText('Serving size')).toBeInTheDocument()
-      expect(screen.getByLabelText('Serving unit')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /serving unit/i })).toBeInTheDocument()
       expect(screen.getByLabelText('Protein')).toBeInTheDocument()
       expect(screen.getByLabelText('Carbohydrates')).toBeInTheDocument()
       expect(screen.getByLabelText('Fat')).toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('Food Store Page - Add Food', () => {
       await user.clear(proteinInput)
       await user.type(proteinInput, '25')
 
-      expect(proteinInput).toHaveValue(25)
+      expect(proteinInput).toHaveValue('25')
     })
 
     it('prevents negative macronutrient values', async () => {

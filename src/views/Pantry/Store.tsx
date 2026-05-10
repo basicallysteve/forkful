@@ -34,6 +34,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
       : ''
   )
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const isEditing = !!existingItem
 
@@ -42,6 +43,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   async function handleSave() {
     if (!selectedFood) return
     setSaving(true)
+    setSaveError(null)
     try {
       if (isEditing) {
         const updated = await apiUpdatePantryItem(existingItem.id, {
@@ -64,6 +66,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
         addItem(created)
       }
       router.push('/pantry')
+    } catch {
+      setSaveError('Failed to save pantry item. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -186,6 +190,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             )}
             <small>Optional - leave blank if no expiration date</small>
           </div>
+
+          {saveError && <p className="form-error">{saveError}</p>}
 
           <div className="form-actions">
             <button
