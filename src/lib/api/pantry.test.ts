@@ -8,14 +8,25 @@ import {
 } from './pantry'
 import type { PantryItem } from '@/types/PantryItem'
 
-const mockItem: PantryItem = {
+const mockFood = { id: 1, name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz'] }
+
+// Raw shape returned by the API (dates as ISO strings, as JSON serialization produces)
+const mockRawItem = {
   id: 1,
-  food: { id: 1, name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz'] },
+  food: mockFood,
   originalSize: { size: 16, unit: 'oz' },
   currentSize: { size: 8, unit: 'oz' },
-  expirationDate: new Date('2026-12-31'),
-  addedDate: new Date('2026-01-01'),
+  expirationDate: '2026-12-31T00:00:00.000Z',
+  addedDate: '2026-01-01T00:00:00.000Z',
   status: 'good',
+  frozenDate: null,
+}
+
+// Parsed shape the API client should return (dates as Date objects)
+const mockParsedItem: PantryItem = {
+  ...mockRawItem,
+  expirationDate: new Date('2026-12-31T00:00:00.000Z'),
+  addedDate: new Date('2026-01-01T00:00:00.000Z'),
   frozenDate: null,
 }
 
@@ -24,10 +35,10 @@ beforeEach(() => {
 })
 
 describe('apiFetchPantryItems', () => {
-  it('fetches all pantry items', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [mockItem] } as Response)
+  it('fetches all pantry items and parses dates', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [mockRawItem] } as Response)
     const result = await apiFetchPantryItems()
-    expect(result).toEqual([mockItem])
+    expect(result).toEqual([mockParsedItem])
     expect(fetch).toHaveBeenCalledWith('/api/pantry')
   })
 
@@ -38,10 +49,10 @@ describe('apiFetchPantryItems', () => {
 })
 
 describe('apiFetchPantryItem', () => {
-  it('fetches a single pantry item by id', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockItem } as Response)
+  it('fetches a single pantry item by id and parses dates', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
     const result = await apiFetchPantryItem(1)
-    expect(result).toEqual(mockItem)
+    expect(result).toEqual(mockParsedItem)
     expect(fetch).toHaveBeenCalledWith('/api/pantry/1')
   })
 
@@ -58,8 +69,8 @@ describe('apiFetchPantryItem', () => {
 })
 
 describe('apiCreatePantryItem', () => {
-  it('posts item data and returns created item', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockItem } as Response)
+  it('posts item data and returns created item with parsed dates', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
     const result = await apiCreatePantryItem({
       foodId: 1,
       originalSizeAmount: 16,
@@ -67,7 +78,7 @@ describe('apiCreatePantryItem', () => {
       currentSizeAmount: 8,
       currentSizeUnit: 'oz',
     })
-    expect(result).toEqual(mockItem)
+    expect(result).toEqual(mockParsedItem)
     expect(fetch).toHaveBeenCalledWith('/api/pantry', expect.objectContaining({ method: 'POST' }))
   })
 
@@ -78,15 +89,15 @@ describe('apiCreatePantryItem', () => {
 })
 
 describe('apiUpdatePantryItem', () => {
-  it('puts item data and returns updated item', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockItem } as Response)
+  it('puts item data and returns updated item with parsed dates', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
     const result = await apiUpdatePantryItem(1, { currentSizeAmount: 4 })
-    expect(result).toEqual(mockItem)
+    expect(result).toEqual(mockParsedItem)
     expect(fetch).toHaveBeenCalledWith('/api/pantry/1', expect.objectContaining({ method: 'PUT' }))
   })
 
   it('sends frozenDate in update payload', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockItem } as Response)
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
     await apiUpdatePantryItem(1, { frozenDate: '2026-05-01T00:00:00.000Z' })
     const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body)
     expect(body.frozenDate).toBe('2026-05-01T00:00:00.000Z')
