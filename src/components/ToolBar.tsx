@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { MegaMenu } from 'primereact/megamenu'
 import type { MenuItem } from 'primereact/menuitem'
 
@@ -14,16 +14,26 @@ type MenuOption = {
 const logoSrc = "/forkful-logo.svg"
 
 function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
-    const router = useRouter()
 
     function toMenuItem(option: MenuOption): MenuItem {
-        return {
+        const hasChildren = !!(option.children?.length)
+        const item: MenuItem = {
             label: option.label,
-            command: option.action ?? (option.to ? () => router.push(option.to!) : undefined),
-            items: option.children && option.children.length > 0
-                ? [option.children.map(toMenuItem)]
-                : undefined,
+            items: hasChildren ? [option.children!.map(toMenuItem)] : undefined,
         }
+
+        if (option.to) {
+            item.template = () => (
+                <Link href={option.to!} className="p-menuitem-link" onClick={option.action}>
+                    <span className="p-menuitem-text">{option.label}</span>
+                    {hasChildren && <span className="p-submenu-icon">▾</span>}
+                </Link>
+            )
+        } else if (option.action) {
+            item.command = () => option.action!()
+        }
+
+        return item
     }
 
     const model: MenuItem[] = (menuOptions ?? []).map(toMenuItem)

@@ -6,8 +6,10 @@
   --toolbar-accent: #007acc;
   --toolbar-text: #d4d4d4;
   --toolbar-muted: #9da5b4;
+
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   padding: 14px 18px;
   border-radius: 14px;
@@ -17,17 +19,30 @@
     0 10px 28px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
-  // Grow the menu to fill available space and push it to the right
   .p-megamenu-start {
     flex-shrink: 0;
   }
 
   .p-megamenu-root-list {
-    margin-left: auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
   }
 
-  // Top-level menu items
+  // Reset PrimeReact's container-level hover/focus background so our link styles control appearance
+  .p-menuitem > .p-menuitem-content,
+  .p-menuitem.p-highlight > .p-menuitem-content,
+  .p-menuitem.p-focus > .p-menuitem-content {
+    background: transparent;
+    color: inherit;
+    box-shadow: none;
+  }
+
+  // Top-level menu items — styled to match the original .menu-option__trigger buttons
   .p-menuitem > .p-menuitem-content > .p-menuitem-link {
     display: inline-flex;
     align-items: center;
@@ -86,7 +101,16 @@
       padding: 0;
     }
 
-    // Sub-menu items
+    .p-submenu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    // Sub-menu items — styled to match the original .submenu-option
     .p-submenu-list .p-menuitem > .p-menuitem-content > .p-menuitem-link {
       padding: 10px 12px;
       border-radius: 8px;
@@ -157,7 +181,8 @@
 
 @media (max-width: 720px) {
   .toolbar.p-megamenu {
-    flex-wrap: wrap;
+    align-items: flex-start;
+    flex-direction: column;
 
     .p-megamenu-start {
       width: 100%;
@@ -166,6 +191,7 @@
     .p-megamenu-root-list {
       width: 100%;
       justify-content: flex-start;
+      gap: 8px;
     }
   }
 }
