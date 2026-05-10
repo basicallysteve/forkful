@@ -62,10 +62,6 @@ export default function Autocomplete<T>({
   }
 
   function handleChange(e: AutoCompleteChangeEvent) {
-    if (selectionInProgressRef.current) {
-      selectionInProgressRef.current = false
-      return
-    }
     if (typeof e.value === 'string') {
       onChange(e.value)
     } else if (e.value == null) {
