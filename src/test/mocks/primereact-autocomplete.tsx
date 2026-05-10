@@ -63,7 +63,6 @@ export const AutoComplete = React.forwardRef<
 
   useEffect(() => {
     if (suggestions && suggestions.length > 0) {
-      setIsOpen(true)
       setHighlightedIndex(-1)
     } else {
       setIsOpen(false)
