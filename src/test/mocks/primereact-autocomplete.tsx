@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, useRef } from 'react'
+import React, { useState, useImperativeHandle, useRef } from 'react'
 
 interface AutoCompleteCompleteEvent {
   query: string
@@ -48,7 +48,9 @@ export const AutoComplete = React.forwardRef<
   },
   ref
 ) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [panelForcedClosed, setPanelForcedClosed] = useState(false)
+  // After — derived value, no effect needed
+const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const spanRef = useRef<HTMLSpanElement>(null)
 
@@ -61,14 +63,6 @@ export const AutoComplete = React.forwardRef<
     },
   }))
 
-  useEffect(() => {
-    if (suggestions && suggestions.length > 0) {
-      setHighlightedIndex(-1)
-    } else {
-      setIsOpen(false)
-    }
-  }, [suggestions])
-
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const query = e.target.value
     onChange?.({ value: query })
@@ -76,11 +70,13 @@ export const AutoComplete = React.forwardRef<
   }
 
   function handleInputFocus(e: React.FocusEvent<HTMLInputElement>) {
-    onFocus?.(e)
+      setPanelForcedClosed(false)
+      setHighlightedIndex(-1)
+      onFocus?.(e)
   }
 
   function handleSelectOption(option: unknown) {
-    setIsOpen(false)
+    setPanelForcedClosed(true)
     setHighlightedIndex(-1)
     onSelect?.({ value: option })
     onChange?.({ value: option })
