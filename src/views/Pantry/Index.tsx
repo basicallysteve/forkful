@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
+import { InputText } from 'primereact/inputtext'
+import { Dropdown } from 'primereact/dropdown'
+import { Checkbox } from 'primereact/checkbox'
 
 type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
 type SortDirection = 'asc' | 'desc'
@@ -192,8 +195,7 @@ export default function Pantry() {
           <div className="panel-toolbar">
             <div className="toolbar-filters">
               <div className="filter-group">
-                <input
-                  type="text"
+                <InputText
                   className="filter-input"
                   placeholder="Search pantry items..."
                   value={searchTerm}
@@ -204,32 +206,34 @@ export default function Pantry() {
 
               <div className="filter-group">
                 <span className="filter-label">Status:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All</option>
-                  <option value="good">Good</option>
-                  <option value="expiring-soon">Expiring Soon</option>
-                  <option value="expired">Expired</option>
-                </select>
+                  onChange={(e) => setStatusFilter(e.value as StatusFilter)}
+                  options={[
+                    { label: 'All', value: 'all' },
+                    { label: 'Good', value: 'good' },
+                    { label: 'Expiring Soon', value: 'expiring-soon' },
+                    { label: 'Expired', value: 'expired' },
+                  ]}
+                  ariaLabel="Filter by status"
+                />
               </div>
 
               <div className="filter-group">
                 <span className="filter-label">Sort by:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  aria-label="Sort by"
-                >
-                  <option value="expirationDate">Expiration Date</option>
-                  <option value="name">Name</option>
-                  <option value="addedDate">Date Added</option>
-                  <option value="status">Status</option>
-                </select>
+                  onChange={(e) => setSortBy(e.value as SortOption)}
+                  options={[
+                    { label: 'Expiration Date', value: 'expirationDate' },
+                    { label: 'Name', value: 'name' },
+                    { label: 'Date Added', value: 'addedDate' },
+                    { label: 'Status', value: 'status' },
+                  ]}
+                  ariaLabel="Sort by"
+                />
               </div>
 
               <button
@@ -272,8 +276,7 @@ export default function Pantry() {
                 <thead>
                   <tr>
                     <th>
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
                         onChange={handleSelectAll}
                         aria-label="Select all items"
@@ -291,8 +294,7 @@ export default function Pantry() {
                   {filteredAndSortedItems.map((item) => (
                     <tr key={item.id} className={getStatusClass(item.status)}>
                       <td>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
                           aria-label={`Select ${item.food.name}`}
@@ -358,8 +360,7 @@ export default function Pantry() {
               {/* Mobile card view */}
               <div className="select-all-row">
                 <label className="select-all-label">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="select-all-checkbox"
                     checked={
                       selectedItems.size === filteredAndSortedItems.length &&
@@ -377,8 +378,7 @@ export default function Pantry() {
                     className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
                   >
                     <div className="card-checkbox">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}

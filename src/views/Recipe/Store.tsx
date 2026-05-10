@@ -12,6 +12,11 @@ import { calculateCalories } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
 import { apiCreateRecipe } from "@/lib/api/recipes"
+import { InputText } from 'primereact/inputtext'
+import { InputNumber } from 'primereact/inputnumber'
+import { Dropdown } from 'primereact/dropdown'
+import { RadioButton } from 'primereact/radiobutton'
+import { Editor } from 'primereact/editor'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -63,10 +68,10 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     })
   }
 
-  function setIngredientQuantity(e: React.ChangeEvent<HTMLInputElement>) {
+  function setIngredientQuantity(value: number | null | undefined) {
     if (!ingredient) return
-    const quantity = parseInt(e.target.value)
-    if (isNaN(quantity) || quantity < 0) {
+    const quantity = value ?? 0
+    if (quantity < 0) {
       setIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
@@ -158,42 +163,42 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
-        <input
-          type="number"
-          className="number-input ingredient-quantity-input"
+        <InputNumber
+          className="ingredient-quantity-input"
           min={0}
           value={ingredient.quantity}
-          onChange={setIngredientQuantity}
+          onValueChange={(e) => setIngredientQuantity(e.value)}
           readOnly={readOnly}
-            />
+          aria-label="Quantity"
+        />
         </label>
       <label className="form-field">
         <span className="field-label">Unit</span>
-        <select
-          className="number-input ingredient-unit-select"
+        <Dropdown
+          className="ingredient-unit-select"
           value={ingredient.servingUnit}
-          onChange={(e) => handleUnitChange(e.target.value)}
+          onChange={(e) => handleUnitChange(e.value)}
           disabled={readOnly}
-        >
-          {ingredient.food?.measurements?.map((unit) => (
-            <option key={unit} value={unit}>{unit}</option>
-          ))}
-          {ingredient.food?.measurements && !ingredient.food.measurements.includes(ingredient.servingUnit) && (
-            <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
-          )}
-        </select>
+          options={[
+            ...(ingredient.food?.measurements || []),
+            ...(ingredient.servingUnit && !ingredient.food?.measurements?.includes(ingredient.servingUnit)
+              ? [ingredient.servingUnit]
+              : []),
+          ].map((unit) => ({ label: unit, value: unit }))}
+          ariaLabel="Serving unit"
+        />
       </label>
       <label className="form-field">
         <span className="field-label">Calories</span>
-        <input
-            type="number"
-            className="number-input ingredient-calories-input"
+        <InputNumber
+            className="ingredient-calories-input"
             min={0}
             value={ingredient.calories}
             readOnly={readOnly}
-            onChange={(e) =>
-            setIngredient({ ...ingredient, calories: parseInt(e.target.value) || 0 })
+            onValueChange={(e) =>
+            setIngredient({ ...ingredient, calories: e.value ?? 0 })
             }
+            aria-label="Calories"
         />
         </label>
       {readOnly ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
@@ -340,8 +345,8 @@ function Store() {
               <div className="form-grid">
                 <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
                   <span className="field-label">Name</span>
-                  <input
-                    className={`text-input ${isDuplicateName ? 'input-error' : ''}`}
+                  <InputText
+                    className={isDuplicateName ? 'input-error' : undefined}
                     type="text"
                     value={recipe.name}
                     placeholder="e.g. Smoky chipotle chili"
@@ -364,14 +369,12 @@ function Store() {
                         key={option}
                         className={`radio-option ${recipe.meal === option ? "is-active" : ""}`}
                       >
-                        <input
-                          className="radio-input"
-                          type="radio"
+                        <RadioButton
                           name="meal"
                           value={option}
                           checked={recipe.meal === option}
                           onChange={(e) =>
-                            setRecipe({ ...recipe, meal: e.target.value as Recipe["meal"] })
+                            setRecipe({ ...recipe, meal: e.value as Recipe["meal"] })
                           }
                         />
                         <span className="radio-dot" />
@@ -382,16 +385,18 @@ function Store() {
                   <span className="field-hint">Pick where this dish fits best.</span>
                 </div>
 
-                <label className="form-field form-field-full">
+                <div className="form-field form-field-full">
                   <span className="field-label">Description</span>
-                  <textarea
-                    className="text-area"
+                  <Editor
+                    className="recipe-editor"
                     value={recipe.description}
+                    onTextChange={(e) => setRecipe({ ...recipe, description: e.htmlValue ?? '' })}
                     placeholder="Describe flavors, prep time, or serving ideas."
-                    onChange={(e) => setRecipe({ ...recipe, description: e.target.value })}
+                    style={{ height: '160px' }}
+                    aria-label="Recipe description"
                   />
                   <span className="field-hint">Keep it short—add detailed steps later.</span>
-                </label>
+                </div>
               </div>
 
               <div className="form-footer">
