@@ -19,7 +19,9 @@ export default function EditPantryItemPage() {
 
   useEffect(() => {
     if (item !== undefined) return
-    apiFetchPantryItem(id).then((fetched) => setItem(fetched ?? null))
+    apiFetchPantryItem(id)
+      .then((fetched) => setItem(fetched ?? null))
+      .catch(() => setItem(null))
   }, [id, item])
 
   if (item === undefined) return null // still loading

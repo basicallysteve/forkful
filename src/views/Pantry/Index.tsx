@@ -33,6 +33,7 @@ export default function Pantry() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     apiFetchPantryItems()
@@ -99,26 +100,45 @@ export default function Pantry() {
 
   async function handleDeleteSelected() {
     if (selectedItems.size === 0) return
-    const results = await Promise.allSettled([...selectedItems].map(id => apiDeletePantryItem(id)))
+    setActionError(null)
+    const ids = [...selectedItems]
+    const results = await Promise.allSettled(ids.map(id => apiDeletePantryItem(id)))
     results.forEach((result, index) => {
-      if (result.status === 'fulfilled') deleteItem([...selectedItems][index])
+      if (result.status === 'fulfilled') deleteItem(ids[index])
     })
+    const failCount = results.filter(r => r.status === 'rejected').length
+    if (failCount > 0) setActionError(`Failed to delete ${failCount} item(s). Please try again.`)
     setSelectedItems(new Set())
   }
 
   async function handleDelete(id: number) {
-    await apiDeletePantryItem(id)
-    deleteItem(id)
+    try {
+      setActionError(null)
+      await apiDeletePantryItem(id)
+      deleteItem(id)
+    } catch {
+      setActionError('Failed to delete item. Please try again.')
+    }
   }
 
   async function handleFreeze(id: number) {
-    const updated = await apiUpdatePantryItem(id, { frozenDate: new Date().toISOString() })
-    if (updated) updateItem(updated)
+    try {
+      setActionError(null)
+      const updated = await apiUpdatePantryItem(id, { frozenDate: new Date().toISOString() })
+      if (updated) updateItem(updated)
+    } catch {
+      setActionError('Failed to freeze item. Please try again.')
+    }
   }
 
   async function handleUnfreeze(id: number) {
-    const updated = await apiUpdatePantryItem(id, { frozenDate: null })
-    if (updated) updateItem(updated)
+    try {
+      setActionError(null)
+      const updated = await apiUpdatePantryItem(id, { frozenDate: null })
+      if (updated) updateItem(updated)
+    } catch {
+      setActionError('Failed to thaw item. Please try again.')
+    }
   }
 
   function formatDate(date: Date | null): string {
@@ -256,6 +276,12 @@ export default function Pantry() {
           {selectedItems.size > 0 && (
             <div className="bulk-actions-bar">
               <span>{selectedItems.size} item(s) selected</span>
+            </div>
+          )}
+
+          {actionError && (
+            <div className="panel-content">
+              <p className="form-error">{actionError}</p>
             </div>
           )}
 

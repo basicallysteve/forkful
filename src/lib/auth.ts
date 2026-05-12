@@ -11,7 +11,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   try {
     const payload = await decrypt(sessionCookie) as { userId: string | number; username: string }
     return { userId: Number(payload.userId), username: payload.username }
-  } catch {
+  } catch (err) {
+    console.error('Failed to decrypt session cookie:', err)
     return null
   }
 }
