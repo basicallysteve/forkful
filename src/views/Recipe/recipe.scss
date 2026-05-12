@@ -1,13 +1,4 @@
-@import '@/assets/styles/main.scss';
 .recipe-view {
-  --vscode-bg: #1e1e1e;
-  --vscode-panel: #252526;
-  --vscode-panel-strong: #2d2d30;
-  --vscode-border: #3c3c3c;
-  --vscode-accent: #007acc;
-  --vscode-text: #d4d4d4;
-  --vscode-muted: #9da5b4;
-
   color: var(--vscode-text);
   background: radial-gradient(circle at 20% 20%, rgba(0, 122, 204, 0.08), transparent 35%),
     radial-gradient(circle at 80% 0%, rgba(0, 122, 204, 0.12), transparent 30%),
@@ -21,6 +12,12 @@
   max-width: 1200px;
   margin: 0 auto;
   box-sizing: border-box;
+}
+
+.recipe-editor {
+  margin: 14px 0 18px;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .recipe-titlebar {
@@ -378,12 +375,12 @@
 .ingredient-calories-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 10px;
+  padding: 10px 12px;
   font-size: 14px;
   color: var(--vscode-text);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--vscode-panel);
   border: 1px solid var(--vscode-border);
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: inherit;
 
   &:focus {

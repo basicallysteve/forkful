@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Foods from './Index'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
@@ -156,17 +156,22 @@ describe('Foods List Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Foods />)
 
-      const sortSelect = screen.getByRole('combobox', { name: /sort by/i })
-      await user.selectOptions(sortSelect, 'calories')
+      const sortTrigger = screen.getByRole('button', { name: /sort by/i })
+      await user.click(sortTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'Calories', hidden: true }))
 
-      expect(sortSelect).toHaveValue('calories')
+      // When sorted by calories ascending, Chicken Breast (165) comes before Brown Rice (216)
+      const headings = screen.getAllByRole('heading', { level: 3 })
+      const chickenIdx = headings.findIndex(h => h.textContent === 'Chicken Breast')
+      const riceIdx = headings.findIndex(h => h.textContent === 'Brown Rice')
+      expect(chickenIdx).toBeLessThan(riceIdx)
     })
 
     it('toggles sort direction', async () => {
       const user = userEvent.setup()
       renderWithProviders(<Foods />)
 
-      const sortButton = screen.getByRole('button', { name: /sort/i })
+      const sortButton = screen.getByRole('button', { name: /sort (ascending|descending)/i })
       expect(sortButton).toHaveTextContent('↑')
 
       await user.click(sortButton)

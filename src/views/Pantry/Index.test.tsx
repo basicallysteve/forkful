@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryList from './Index'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
@@ -222,8 +222,9 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      const statusFilter = screen.getByLabelText('Filter by status')
-      await user.selectOptions(statusFilter, 'good')
+      const statusTrigger = screen.getByRole('button', { name: /filter by status/i })
+      await user.click(statusTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'Good', hidden: true }))
 
       expect(screen.getAllByText('Brown Rice')[0]).toBeInTheDocument()
       // Expired item should not be visible
@@ -248,8 +249,10 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      const sortSelect = screen.getByLabelText('Sort by')
-      await user.selectOptions(sortSelect, 'expirationDate')
+      const sortTrigger = screen.getByRole('button', { name: /sort by/i })
+      await user.click(sortTrigger)
+      const panel = await screen.findByRole('listbox', { hidden: true })
+      fireEvent.click(within(panel).getByRole('option', { name: 'Expiration Date', hidden: true }))
 
       // Items should be sorted by expiration date ascending
       const rows = screen.getAllByRole('row')
@@ -271,7 +274,7 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      const selectAllCheckbox = screen.getByLabelText('Select all items')
+      const selectAllCheckbox = screen.getByRole('checkbox', { name: /select all items/i })
       await user.click(selectAllCheckbox)
 
       expect(screen.getByText('2 item(s) selected')).toBeInTheDocument()
@@ -288,7 +291,7 @@ describe('Pantry List Page', () => {
 
       renderWithProviders(<PantryList />, { items })
 
-      const checkbox = screen.getAllByLabelText('Select Chicken Breast')[0]
+      const checkbox = screen.getAllByRole('checkbox', { name: /select chicken breast/i })[0]
       await user.click(checkbox)
 
       const deleteButton = screen.getByRole('button', { name: /delete \(1\)/i })

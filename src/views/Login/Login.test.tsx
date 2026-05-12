@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRouter } from 'next/navigation'
 import Login from './Login'
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -13,7 +14,7 @@ describe('Login Page', () => {
       renderWithProviders(<Login />)
 
       expect(screen.getByText('Login to Your Account')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter your username or email')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('Enter your password')).toBeInTheDocument()
     })
 
@@ -56,7 +57,7 @@ describe('Login Page', () => {
       expect(loginButton).toBeDisabled()
     })
 
-    it('disables login button when username/email is empty', async () => {
+    it('disables login button when username is empty', async () => {
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
@@ -71,7 +72,7 @@ describe('Login Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
-      const usernameInput = screen.getByPlaceholderText('Enter your username or email')
+      const usernameInput = screen.getByPlaceholderText('Enter your username')
       await user.type(usernameInput, 'testuser')
 
       const loginButton = screen.getByRole('button', { name: /^login$/i })
@@ -82,7 +83,7 @@ describe('Login Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
-      await user.type(screen.getByPlaceholderText('Enter your username or email'), 'testuser')
+      await user.type(screen.getByPlaceholderText('Enter your username'), 'testuser')
       await user.type(screen.getByPlaceholderText('Enter your password'), 'password123')
 
       const loginButton = screen.getByRole('button', { name: /^login$/i })
@@ -95,7 +96,7 @@ describe('Login Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
-      const usernameInput = screen.getByPlaceholderText('Enter your username or email')
+      const usernameInput = screen.getByPlaceholderText('Enter your username')
       await user.type(usernameInput, 'testuser')
 
       expect(usernameInput).toHaveValue('testuser')
@@ -105,7 +106,7 @@ describe('Login Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
-      const usernameInput = screen.getByPlaceholderText('Enter your username or email')
+      const usernameInput = screen.getByPlaceholderText('Enter your username')
       await user.type(usernameInput, 'test@example.com')
 
       expect(usernameInput).toHaveValue('test@example.com')
@@ -128,10 +129,33 @@ describe('Login Page', () => {
       expect(passwordInput).toHaveAttribute('type', 'password')
     })
 
+    it('password field has toggle mask button', () => {
+      renderWithProviders(<Login />)
+
+      const toggleButton = screen.getByRole('switch', { name: /show password/i })
+      expect(toggleButton).toBeInTheDocument()
+    })
+
+    it('toggle mask button reveals and hides password', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Login />)
+
+      const passwordInput = screen.getByPlaceholderText('Enter your password')
+      expect(passwordInput).toHaveAttribute('type', 'password')
+
+      const toggleButton = screen.getByRole('switch', { name: /show password/i })
+      await user.click(toggleButton)
+
+      expect(passwordInput).toHaveAttribute('type', 'text')
+
+      await user.click(screen.getByRole('switch', { name: /hide password/i }))
+      expect(passwordInput).toHaveAttribute('type', 'password')
+    })
+
     it('username field has correct autocomplete attribute', () => {
       renderWithProviders(<Login />)
 
-      const usernameInput = screen.getByPlaceholderText('Enter your username or email')
+      const usernameInput = screen.getByPlaceholderText('Enter your username')
       expect(usernameInput).toHaveAttribute('autocomplete', 'username')
     })
 
@@ -144,21 +168,6 @@ describe('Login Page', () => {
   })
 
   describe('Form Submission', () => {
-    it('shows success message after successful login', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Login />)
-
-      await user.type(screen.getByPlaceholderText('Enter your username or email'), 'testuser')
-      await user.type(screen.getByPlaceholderText('Enter your password'), 'password123')
-
-      const loginButton = screen.getByRole('button', { name: /^login$/i })
-      await user.click(loginButton)
-
-      await waitFor(() => {
-        expect(screen.getByText('Welcome back! 👋')).toBeInTheDocument()
-        expect(screen.getByText('You have successfully logged in.')).toBeInTheDocument()
-      })
-    })
 
     it('does not submit form when pressing login with empty fields', () => {
       renderWithProviders(<Login />)
@@ -179,18 +188,20 @@ describe('Login Page', () => {
       expect(cancelButton).toHaveAttribute('href', '/')
     })
 
-    it('shows go to home link after successful login', async () => {
+    it('redirects to home after successful login', async () => {
+      const mockPush = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() })
+
       const user = userEvent.setup()
       renderWithProviders(<Login />)
 
-      await user.type(screen.getByPlaceholderText('Enter your username or email'), 'testuser')
+      await user.type(screen.getByPlaceholderText('Enter your username'), 'testuser')
       await user.type(screen.getByPlaceholderText('Enter your password'), 'password123')
 
       await user.click(screen.getByRole('button', { name: /^login$/i }))
 
       await waitFor(() => {
-        const homeLink = screen.getByRole('link', { name: /go to home/i })
-        expect(homeLink).toHaveAttribute('href', '/')
+        expect(mockPush).toHaveBeenCalledWith('/')
       })
     })
   })
@@ -199,7 +210,7 @@ describe('Login Page', () => {
     it('displays hint for username field', () => {
       renderWithProviders(<Login />)
 
-      expect(screen.getByText('Enter your username or email address.')).toBeInTheDocument()
+      expect(screen.getByText('Enter your username.')).toBeInTheDocument()
     })
 
     it('displays hint for password field', () => {
@@ -211,7 +222,7 @@ describe('Login Page', () => {
     it('username field has proper aria-describedby', () => {
       renderWithProviders(<Login />)
 
-      const usernameInput = screen.getByPlaceholderText('Enter your username or email')
+      const usernameInput = screen.getByPlaceholderText('Enter your username')
       expect(usernameInput).toHaveAttribute('aria-describedby', 'username-hint')
     })
 
