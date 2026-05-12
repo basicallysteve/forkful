@@ -226,8 +226,4 @@ describe('pantry data layer (integration)', () => {
     const deletedCount = await deletePantryItems([], user.id)
     expect(deletedCount).toBe(0)
   })
-
-    const stillExists = await getPantryItemById(item.id, userA.id)
-    expect(stillExists).not.toBeNull()
-  })
 })

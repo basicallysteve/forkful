@@ -171,8 +171,8 @@ describe('DELETE /api/pantry', () => {
   })
 
   it('deletes items scoped to the session user and returns deleted count', async () => {
-    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
-    (deletePantryItems as Mock).mockResolvedValue(2)
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+    ;(deletePantryItems as Mock).mockResolvedValue(2)
 
     const res = await DELETE(createDeleteRequest({ ids: [1, 2] }))
 
