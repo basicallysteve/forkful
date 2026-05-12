@@ -65,17 +65,24 @@
 }
 
 // ── PrimeReact Card ───────────────────────────────────────────────────────────
-// Used in recipe-card, food-card, and pantry-card lists. The body/content
-// wrappers are made transparent to the host flex layout; default box-shadow
-// and color are reset so each view's own theme classes take full control.
+// Used in recipe-card, food-card, and pantry-card lists. Keep the body/content
+// wrappers as real layout boxes for accessibility/browser compatibility, while
+// neutralizing their default spacing so each view's own flex layout stays in control.
 
 .p-card {
   box-shadow: none;
   color: inherit;
 
-  .p-card-body,
+  .p-card-body {
+    padding:    0;
+    background: transparent;
+  }
+
   .p-card-content {
-    display: contents;
+    display:        flex;
+    flex-direction: column;
+    padding:        0;
+    background:     transparent;
   }
 }
 
