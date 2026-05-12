@@ -10,10 +10,11 @@ import type { Food } from '@/types/Food'
 vi.mock('@/lib/api/pantry', () => ({
   apiFetchPantryItems: vi.fn(),
   apiDeletePantryItem: vi.fn().mockResolvedValue(undefined),
+  apiDeletePantryItems: vi.fn().mockResolvedValue(1),
   apiUpdatePantryItem: vi.fn(),
 }))
 
-import { apiFetchPantryItems, apiDeletePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
+import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 
 const mockFoods: Food[] = [
   {
@@ -305,7 +306,7 @@ describe('Pantry List Page', () => {
       await user.click(screen.getAllByRole('checkbox', { name: /select chicken breast/i })[0])
       await user.click(screen.getByRole('button', { name: /delete \(1\)/i }))
 
-      expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
+      expect(apiDeletePantryItems).toHaveBeenCalledWith([1])
       await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
     })
   })

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
-import { GET, POST } from './route'
-import { getPantryItems, createPantryItem } from '@/lib/pantry'
+import { GET, POST, DELETE } from './route'
+import { getPantryItems, createPantryItem, deletePantryItems } from '@/lib/pantry'
 import { getSessionUser } from '@/lib/auth'
 
 vi.mock('@/lib/pantry', () => ({
   getPantryItems: vi.fn(),
   createPantryItem: vi.fn(),
+  deletePantryItems: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({
@@ -26,6 +27,14 @@ const mockItem = {
 function createPostRequest(body: Record<string, unknown>) {
   return new Request('http://localhost/api/pantry', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+function createDeleteRequest(body: Record<string, unknown>) {
+  return new Request('http://localhost/api/pantry', {
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
@@ -120,5 +129,56 @@ describe('POST /api/pantry', () => {
     // The session user (42) must win. Because of object spread order in the
     // handler, userId comes AFTER the spread, so 42 overwrites 999.
     expect(createPantryItem).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }))
+  })
+})
+
+describe('DELETE /api/pantry', () => {
+  it('returns 401 when there is no session', async () => {
+    (getSessionUser as Mock).mockResolvedValue(null)
+
+    const res = await DELETE(createDeleteRequest({ ids: [1, 2] }))
+
+    expect(res.status).toBe(401)
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when ids array is missing', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(createDeleteRequest({}))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('ids array required')
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when ids is not an array', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(createDeleteRequest({ ids: 'not-an-array' }))
+
+    expect(res.status).toBe(400)
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when ids array is empty', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(createDeleteRequest({ ids: [] }))
+
+    expect(res.status).toBe(400)
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('deletes items scoped to the session user and returns deleted count', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
+    (deletePantryItems as Mock).mockResolvedValue(2)
+
+    const res = await DELETE(createDeleteRequest({ ids: [1, 2] }))
+
+    expect(res.status).toBe(200)
+    expect(deletePantryItems).toHaveBeenCalledWith([1, 2], 42)
+    const body = await res.json()
+    expect(body.deletedCount).toBe(2)
   })
 })

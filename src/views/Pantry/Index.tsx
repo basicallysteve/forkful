@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
-import { apiFetchPantryItems, apiDeletePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
+import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
@@ -101,14 +101,17 @@ export default function Pantry() {
   async function handleDeleteSelected() {
     if (selectedItems.size === 0) return
     setActionError(null)
-    const ids = [...selectedItems]
-    const results = await Promise.allSettled(ids.map(id => apiDeletePantryItem(id)))
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') deleteItem(ids[index])
-    })
-    const failCount = results.filter(r => r.status === 'rejected').length
-    if (failCount > 0) setActionError(`Failed to delete ${failCount} item(s). Please try again.`)
-    setSelectedItems(new Set())
+    try {
+      const ids = [...selectedItems]
+      const deletedCount = await apiDeletePantryItems(ids)
+      ids.slice(0, deletedCount).forEach(id => deleteItem(id))
+      if (deletedCount < ids.length) {
+        setActionError(`Failed to delete ${ids.length - deletedCount} item(s). Please try again.`)
+      }
+      setSelectedItems(new Set())
+    } catch {
+      setActionError('Failed to delete items. Please try again.')
+    }
   }
 
   async function handleDelete(id: number) {

@@ -142,3 +142,14 @@ export async function deletePantryItem(id: number, userId: number): Promise<bool
     .returning()
   return updated.length > 0
 }
+
+export async function deletePantryItems(ids: number[], userId: number): Promise<number> {
+  if (ids.length === 0) return 0
+  const { inArray } = await import('drizzle-orm')
+  const updated = await db
+    .update(pantryItems)
+    .set({ dateDeleted: new Date() })
+    .where(and(inArray(pantryItems.id, ids), eq(pantryItems.userId, userId)))
+    .returning()
+  return updated.length
+}

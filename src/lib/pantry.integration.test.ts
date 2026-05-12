@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem } from './pantry'
+import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems } from './pantry'
 import { createFood } from './foods'
 import { signUp } from './users'
 
@@ -177,6 +177,55 @@ describe('pantry data layer (integration)', () => {
     const item = await createPantryItem({ userId: userA.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
     const result = await deletePantryItem(item.id, userB.id)
     expect(result).toBe(false)
+
+    const unchanged = await getPantryItemById(item.id, userA.id)
+    expect(unchanged).not.toBeNull()
+  })
+
+  it('bulk deletes multiple pantry items', async () => {
+    const user = await createTestUser('n')
+    const food = await createTestFood()
+
+    const item1 = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
+    const item2 = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
+    const item3 = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 3, currentSizeAmount: 3 })
+
+    const deletedCount = await deletePantryItems([item1.id, item2.id], user.id)
+    expect(deletedCount).toBe(2)
+
+    const fetched1 = await getPantryItemById(item1.id, user.id)
+    const fetched2 = await getPantryItemById(item2.id, user.id)
+    const fetched3 = await getPantryItemById(item3.id, user.id)
+
+    expect(fetched1).toBeNull()
+    expect(fetched2).toBeNull()
+    expect(fetched3).not.toBeNull()
+  })
+
+  it('bulk delete only deletes items owned by the user', async () => {
+    const userA = await createTestUser('o')
+    const userB = await createTestUser('p')
+    const food = await createTestFood()
+
+    const itemA = await createPantryItem({ userId: userA.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
+    const itemB = await createPantryItem({ userId: userB.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
+
+    const deletedCount = await deletePantryItems([itemA.id, itemB.id], userA.id)
+    expect(deletedCount).toBe(1)
+
+    const fetchedA = await getPantryItemById(itemA.id, userA.id)
+    const fetchedB = await getPantryItemById(itemB.id, userB.id)
+
+    expect(fetchedA).toBeNull()
+    expect(fetchedB).not.toBeNull()
+  })
+
+  it('bulk delete returns 0 for empty array', async () => {
+    const user = await createTestUser('q')
+
+    const deletedCount = await deletePantryItems([], user.id)
+    expect(deletedCount).toBe(0)
+  })
 
     const stillExists = await getPantryItemById(item.id, userA.id)
     expect(stillExists).not.toBeNull()

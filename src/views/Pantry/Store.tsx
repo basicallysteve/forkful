@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
+import type { Food } from '@/types/Food'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
@@ -37,14 +38,53 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<Food[]>([])
 
   useEffect(() => {
     apiFetchFoods().then(setFoods)
   }, [setFoods])
 
+  // Server-side search when local results are insufficient
+  useEffect(() => {
+    const query = foodName.trim().toLowerCase()
+    if (!query) {
+      setSearchResults([])
+      return
+    }
+
+    const localMatches = foods.filter(f => f.name.toLowerCase().includes(query))
+    
+    // If we have enough local matches, don't query the server
+    if (localMatches.length >= 3) {
+      setSearchResults([])
+      return
+    }
+
+    // Query server for additional results
+    const timer = setTimeout(() => {
+      apiFetchFoods({ search: query }).then(serverResults => {
+        // Merge server results with local results, removing duplicates
+        const localIds = new Set(localMatches.map(f => f.id))
+        const additionalResults = serverResults.filter(f => !localIds.has(f.id))
+        setSearchResults(additionalResults)
+      }).catch(() => {
+        setSearchResults([])
+      })
+    }, 300) // Debounce
+
+    return () => clearTimeout(timer)
+  }, [foodName, foods])
+
   const isEditing = !!existingItem
 
-  const selectedFood = foods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
+  // Combine local foods with server search results
+  const allFoods = useMemo(() => {
+    if (searchResults.length === 0) return foods
+    const foodIds = new Set(foods.map(f => f.id))
+    return [...foods, ...searchResults.filter(f => !foodIds.has(f.id))]
+  }, [foods, searchResults])
+
+  const selectedFood = allFoods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
   async function handleSave() {
     if (!selectedFood) return
@@ -107,7 +147,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             </label>
             <Autocomplete
               value={foodName}
-              options={foods}
+              options={allFoods}
               getOptionLabel={(food) => food.name}
               renderOptionMeta={(food) => `${food.calories} cal`}
               onChange={setFoodName}
