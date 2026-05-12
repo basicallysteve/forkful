@@ -56,6 +56,13 @@ describe('apiFetchPantryItem', () => {
     expect(fetch).toHaveBeenCalledWith('/api/pantry/1')
   })
 
+  it('parses frozenDate when present', async () => {
+    const frozenRaw = { ...mockRawItem, frozenDate: '2026-03-01T00:00:00.000Z' }
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => frozenRaw } as Response)
+    const result = await apiFetchPantryItem(1)
+    expect(result!.frozenDate).toBeInstanceOf(Date)
+  })
+
   it('returns null on 404', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
     const result = await apiFetchPantryItem(999)

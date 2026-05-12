@@ -12,7 +12,12 @@ vi.mock('@/lib/api/pantry', () => ({
   apiUpdatePantryItem: vi.fn(),
 }))
 
+vi.mock('@/lib/api/foods', () => ({
+  apiFetchFoods: vi.fn(),
+}))
+
 import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
+import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockFoods: Food[] = [
   {
@@ -49,6 +54,7 @@ function renderWithProviders(
   resetFoodStore()
   useFoodStore.setState({ foods })
   usePantryStore.setState({ items })
+  vi.mocked(apiFetchFoods).mockResolvedValue(foods)
   return render(ui)
 }
 
@@ -211,6 +217,11 @@ describe('Pantry Store Page', () => {
   })
 
   describe('Size Validation', () => {
+    it('requires food item to be selected', () => {
+      renderWithProviders(<PantryStore />)
+      expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
+    })
+
     it('disables save button when current size exceeds original size for convertible units', async () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)

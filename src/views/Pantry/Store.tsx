@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
-import type { PantryItem } from '@/types/PantryItem'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
+import type { PantryItem } from '@/types/PantryItem'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
@@ -19,6 +20,7 @@ interface PantryStoreProps {
 export default function PantryStore({ existingItem }: PantryStoreProps) {
   const router = useRouter()
   const foods = useFoodStore((state) => state.foods)
+  const setFoods = useFoodStore((state) => state.setFoods)
   const addItem = usePantryStore((state) => state.addItem)
   const updateItem = usePantryStore((state) => state.updateItem)
   const calculateItemStatus = usePantryStore((state) => state.calculateItemStatus)
@@ -35,6 +37,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiFetchFoods().then(setFoods)
+  }, [setFoods])
 
   const isEditing = !!existingItem
 
@@ -199,7 +205,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
               disabled={isSaveDisabled}
               className="btn btn-primary"
             >
-              {isEditing ? 'Update Item' : 'Add Item'}
+              {saving ? 'Saving...' : isEditing ? 'Update Item' : 'Add Item'}
             </button>
             <button onClick={handleCancel} className="btn btn-secondary">
               Cancel
