@@ -374,10 +374,10 @@ export default function Pantry() {
               </div>
               <div className="pantry-cards">
                 {filteredAndSortedItems.map((item) => (
-                    <Card
-                      key={item.id}
-                      className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
-                    >
+                  <Card
+                    key={item.id}
+                    className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
+                  >
                     <div className="card-checkbox">
                       <Checkbox
                         className="item-checkbox"
@@ -454,8 +454,9 @@ export default function Pantry() {
                         </button>
                       </div>
                     </div>
-                    </Card>
-                  ))}              </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
