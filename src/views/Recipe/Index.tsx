@@ -141,7 +141,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
       ...updatedIngredients[index],
       food: food,
       quantity: food.servingSize || 1,
-      calories: getPerUnitCalories(food) * updatedIngredients[index].quantity,
+      calories: getPerUnitCalories(food) * (food.servingSize || 1),
       servingUnit: food.servingUnit || updatedIngredients[index].servingUnit
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
