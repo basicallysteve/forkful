@@ -52,9 +52,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: `Cannot delete more than ${MAX_BULK_DELETE_IDS} items at once` }, { status: 400 })
   }
   
-  // Validate all elements are integers
-  if (!body.ids.every(id => typeof id === 'number' && Number.isInteger(id))) {
-    return NextResponse.json({ error: 'All IDs must be integers' }, { status: 400 })
+  // Validate all elements are integers (fail fast)
+  for (const id of body.ids) {
+    if (typeof id !== 'number' || !Number.isInteger(id)) {
+      return NextResponse.json({ error: 'All IDs must be integers' }, { status: 400 })
+    }
   }
   
   const deletedIds = await taskRunner.run(() => deletePantryItems(body.ids, user.userId))
