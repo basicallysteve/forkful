@@ -1,4 +1,6 @@
-import { useMemo, useState, useRef, useId } from 'react'
+import { useState, useRef } from 'react'
+import { AutoComplete } from 'primereact/autocomplete'
+import type { AutoCompleteCompleteEvent, AutoCompleteChangeEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
 import './autocomplete.scss'
 
 type AutocompleteProps<T> = {
@@ -30,102 +32,75 @@ export default function Autocomplete<T>({
   allowClear = true,
   inputClassName = '',
 }: AutocompleteProps<T>) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
-  const listboxId = useId()
-  const blurTimeout = useRef<number | undefined>(undefined)
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [suggestions, setSuggestions] = useState<T[]>([])
+  const acRef = useRef<AutoComplete>(null)
+  const selectionInProgressRef = useRef(false)
 
-  const filteredOptions = useMemo(() => {
-    const query = value.trim().toLowerCase()
-    return !query
+  function filterOptions(query: string): T[] {
+    const q = query.trim().toLowerCase()
+    return !q
       ? options.slice(0, 6)
-      : options
-          .filter((opt) => getOptionLabel(opt).toLowerCase().includes(query))
-          .slice(0, 6)
-  }, [value, options, getOptionLabel])
+      : options.filter((opt) => getOptionLabel(opt).toLowerCase().includes(q)).slice(0, 6)
+  }
 
-  function handleSelect(option: T) {
+  function handleComplete(e: AutoCompleteCompleteEvent) {
+    setSuggestions(filterOptions(e.query))
+  }
+
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    // Pass null as source to bypass PrimeReact's empty-string guard so the
+    // panel opens even when the input is still empty.
+    acRef.current?.search(e, value)
+  }
+
+  function handleSelect(e: AutoCompleteSelectEvent) {
+    const option = e.value as T
     const label = getOptionLabel(option)
+    selectionInProgressRef.current = true
     onChange(label)
     onSelect?.(option)
-    setIsOpen(false)
-    setHighlightedIndex(-1)
   }
 
-  function handleFocus() {
-    if (blurTimeout.current) window.clearTimeout(blurTimeout.current)
-    setIsOpen(true)
+  function handleChange(e: AutoCompleteChangeEvent) {
+    if (typeof e.value === 'string') {
+      onChange(e.value)
+    } else if (e.value == null) {
+      onChange('')
+    }
   }
 
-  function handleBlur() {
-    blurTimeout.current = window.setTimeout(() => setIsOpen(false), 80)
+  const itemTemplate = (option: T) => {
+    const label = getOptionLabel(option)
+    const meta = renderOptionMeta?.(option)
+    return (
+      <div className="autocomplete-item-content">
+        <span className="suggestion-name">{label}</span>
+        {meta ? <span className="suggestion-meta">{meta}</span> : null}
+      </div>
+    )
   }
 
-  const getOptionId = (idx: number) => `${listboxId}-${idx}`
-  const activeIndex = (() => {
-    if (filteredOptions.length === 0) return -1
-    const max = filteredOptions.length - 1
-    return Math.min(Math.max(highlightedIndex, -1), max)
-  })()
+  function focus() {
+    acRef.current?.getInput()?.focus?.()
+  }
 
   return (
     <div className="autocomplete">
-      <input
-        type="text"
-        className={`text-input ingredient-name-input ${inputClassName}`.trim()}
-        ref={inputRef}
+      <AutoComplete
+        ref={acRef}
         value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        suggestions={suggestions}
+        completeMethod={handleComplete}
+        onChange={handleChange}
+        onSelect={handleSelect}
         onFocus={handleFocus}
-        onBlur={handleBlur}
-        aria-label={inputAriaLabel}
-        aria-expanded={isOpen}
-        aria-controls={listboxId}
-        aria-haspopup="listbox"
-        aria-autocomplete="list"
-        aria-activedescendant={
-          activeIndex >= 0 && activeIndex < filteredOptions.length
-            ? getOptionId(activeIndex)
-            : undefined
-        }
-        readOnly={readOnly}
+        itemTemplate={itemTemplate}
+        placeholder={placeholder}
         disabled={disabled}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            if (!isOpen) {
-              setIsOpen(true)
-              setHighlightedIndex(0)
-              return
-            }
-            setHighlightedIndex((prev) => {
-              const max = filteredOptions.length - 1
-              if (max < 0) return -1
-              const next = Math.min(max, prev + 1)
-              return next < 0 ? 0 : next
-            })
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            if (!isOpen) {
-              setIsOpen(true)
-              setHighlightedIndex(filteredOptions.length - 1)
-              return
-            }
-            setHighlightedIndex((prev) => {
-              const max = filteredOptions.length - 1
-              if (max < 0) return -1
-              return Math.max(0, prev - 1)
-            })
-          } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < filteredOptions.length) {
-            e.preventDefault()
-            handleSelect(filteredOptions[activeIndex])
-          } else if (e.key === 'Escape') {
-            setIsOpen(false)
-            setHighlightedIndex(-1)
-          }
-        }}
+        readOnly={readOnly}
+        delay={0}
+        inputClassName={`text-input ingredient-name-input ${inputClassName ?? ''}`.trim()}
+        pt={{ input: { 'aria-label': inputAriaLabel } }}
       />
       {allowClear && !!value && !readOnly && !disabled && (
         <button
@@ -133,7 +108,6 @@ export default function Autocomplete<T>({
           className="autocomplete-clear"
           aria-label="Clear input"
           onMouseDown={(e) => {
-            // Prevent input blur before we clear
             e.preventDefault()
             e.stopPropagation()
           }}
@@ -141,36 +115,11 @@ export default function Autocomplete<T>({
             onChange('')
             setHighlightedIndex(-1)
             setIsOpen(true) // re-open so user can immediately type a new search
-            inputRef.current?.focus()
+            focus()
           }}
         >
           ×
         </button>
-      )}
-      {isOpen && filteredOptions.length > 0 && (
-        <ul className="autocomplete-suggestions" role="listbox" id={listboxId}>
-          {filteredOptions.map((option, index) => {
-            const label = getOptionLabel(option)
-            const meta = renderOptionMeta?.(option)
-            return (
-              <li
-                id={getOptionId(index)}
-                key={`${label}-${index}`}
-                role="option"
-                aria-selected={index === activeIndex}
-                className={index === highlightedIndex ? 'is-active' : undefined}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  handleSelect(option)
-                }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-              >
-                <span className="suggestion-name">{label}</span>
-                {meta ? <span className="suggestion-meta">{meta}</span> : null}
-              </li>
-            )
-          })}
-        </ul>
       )}
     </div>
   )
