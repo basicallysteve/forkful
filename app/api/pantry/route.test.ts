@@ -170,7 +170,7 @@ describe('DELETE /api/pantry', () => {
     expect(deletePantryItems).not.toHaveBeenCalled()
   })
 
-  it('deletes items scoped to the session user and returns deleted count', async () => {
+  it('deletes items scoped to the session user and returns deleted IDs', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
     ;(deletePantryItems as Mock).mockResolvedValue([1, 2])
 
