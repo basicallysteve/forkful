@@ -170,6 +170,37 @@ describe('DELETE /api/pantry', () => {
     expect(deletePantryItems).not.toHaveBeenCalled()
   })
 
+  it('returns 400 when ids contains non-integer values', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(createDeleteRequest({ ids: [1, 'two', 3] }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('must be integers')
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when ids contains floating point numbers', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(createDeleteRequest({ ids: [1, 2.5, 3] }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('must be integers')
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when ids array exceeds maximum length', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+    const tooManyIds = Array.from({ length: 501 }, (_, i) => i + 1)
+
+    const res = await DELETE(createDeleteRequest({ ids: tooManyIds }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('Cannot delete more than 500')
+    expect(deletePantryItems).not.toHaveBeenCalled()
+  })
+
   it('deletes items scoped to the session user and returns deleted IDs', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
     ;(deletePantryItems as Mock).mockResolvedValue([1, 2])
@@ -180,5 +211,16 @@ describe('DELETE /api/pantry', () => {
     expect(deletePantryItems).toHaveBeenCalledWith([1, 2], 42)
     const body = await res.json()
     expect(body.deletedIds).toEqual([1, 2])
+  })
+
+  it('allows deleting up to 500 items', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+    const maxIds = Array.from({ length: 500 }, (_, i) => i + 1)
+    ;(deletePantryItems as Mock).mockResolvedValue(maxIds)
+
+    const res = await DELETE(createDeleteRequest({ ids: maxIds }))
+
+    expect(res.status).toBe(200)
+    expect(deletePantryItems).toHaveBeenCalledWith(maxIds, 42)
   })
 })

@@ -1,4 +1,4 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, and, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
@@ -145,7 +145,6 @@ export async function deletePantryItem(id: number, userId: number): Promise<bool
 
 export async function deletePantryItems(ids: number[], userId: number): Promise<number[]> {
   if (ids.length === 0) return []
-  const { inArray } = await import('drizzle-orm')
   const updated = await db
     .update(pantryItems)
     .set({ dateDeleted: new Date() })

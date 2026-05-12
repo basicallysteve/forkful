@@ -61,18 +61,26 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     }
 
     // Query server for additional results
+    let cancelled = false
     const timer = setTimeout(() => {
       apiFetchFoods({ search: query }).then(serverResults => {
-        // Merge server results with local results, removing duplicates
-        const localIds = new Set(localMatches.map(f => f.id))
-        const additionalResults = serverResults.filter(f => !localIds.has(f.id))
-        setSearchResults(additionalResults)
+        if (!cancelled) {
+          // Merge server results with local results, removing duplicates
+          const localIds = new Set(localMatches.map(f => f.id))
+          const additionalResults = serverResults.filter(f => !localIds.has(f.id))
+          setSearchResults(additionalResults)
+        }
       }).catch(() => {
-        setSearchResults([])
+        if (!cancelled) {
+          setSearchResults([])
+        }
       })
     }, 300) // Debounce
 
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [foodName, foods])
 
   const isEditing = !!existingItem
