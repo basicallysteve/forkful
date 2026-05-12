@@ -113,7 +113,7 @@ export default function Autocomplete<T>({
           }}
           onClick={() => {
             onChange('')
-            focus()
+            focus() // triggers handleFocus which re-opens the panel
           }}
         >
           ×
