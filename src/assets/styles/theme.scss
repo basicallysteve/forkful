@@ -63,3 +63,41 @@
   --inline-spacing:   0.5rem;
   --maskbg:           rgba(0, 0, 0, 0.4);
 }
+
+// ── PrimeReact AutoComplete panel ─────────────────────────────────────────────
+// The suggestions panel is portal-rendered so it must be styled globally.
+
+.p-autocomplete-panel {
+  background:    var(--surface-overlay);
+  border:        1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  box-shadow:    0 10px 24px rgba(0, 0, 0, 0.35);
+  z-index:       10;
+
+  .p-autocomplete-items-wrapper {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .p-autocomplete-items {
+    margin:     0;
+    padding:    4px 0;
+    list-style: none;
+  }
+
+  .p-autocomplete-item {
+    padding: 8px 10px;
+    cursor:  pointer;
+    color:   var(--text-color);
+
+    &:hover,
+    &.p-focus {
+      background: var(--surface-hover);
+    }
+
+    &[aria-selected='true'] {
+      background:   var(--highlight-bg);
+      border-left:  2px solid var(--primary-color);
+    }
+  }
+}
