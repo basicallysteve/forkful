@@ -24,20 +24,20 @@ const mockItem = {
   frozenDate: null,
 }
 
-function createPostRequest(body: Record<string, unknown>) {
+function createRequest(method: string, body: Record<string, unknown>) {
   return new Request('http://localhost/api/pantry', {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 }
 
+function createPostRequest(body: Record<string, unknown>) {
+  return createRequest('POST', body)
+}
+
 function createDeleteRequest(body: Record<string, unknown>) {
-  return new Request('http://localhost/api/pantry', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  return createRequest('DELETE', body)
 }
 
 beforeEach(() => {
@@ -172,13 +172,13 @@ describe('DELETE /api/pantry', () => {
 
   it('deletes items scoped to the session user and returns deleted count', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
-    ;(deletePantryItems as Mock).mockResolvedValue(2)
+    ;(deletePantryItems as Mock).mockResolvedValue([1, 2])
 
     const res = await DELETE(createDeleteRequest({ ids: [1, 2] }))
 
     expect(res.status).toBe(200)
     expect(deletePantryItems).toHaveBeenCalledWith([1, 2], 42)
     const body = await res.json()
-    expect(body.deletedCount).toBe(2)
+    expect(body.deletedIds).toEqual([1, 2])
   })
 })

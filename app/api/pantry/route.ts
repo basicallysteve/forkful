@@ -42,6 +42,6 @@ export async function DELETE(request: Request) {
   if (!body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
     return NextResponse.json({ error: 'Invalid request: ids array required' }, { status: 400 })
   }
-  const deletedCount = await taskRunner.run(() => deletePantryItems(body.ids, user.userId))
-  return NextResponse.json({ deletedCount }, { status: 200 })
+  const deletedIds = await taskRunner.run(() => deletePantryItems(body.ids, user.userId))
+  return NextResponse.json({ deletedIds }, { status: 200 })
 }

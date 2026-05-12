@@ -10,7 +10,7 @@ import type { Food } from '@/types/Food'
 vi.mock('@/lib/api/pantry', () => ({
   apiFetchPantryItems: vi.fn(),
   apiDeletePantryItem: vi.fn().mockResolvedValue(undefined),
-  apiDeletePantryItems: vi.fn().mockResolvedValue(1),
+  apiDeletePantryItems: vi.fn().mockResolvedValue([1]),
   apiUpdatePantryItem: vi.fn(),
 }))
 

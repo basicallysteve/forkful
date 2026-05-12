@@ -103,10 +103,10 @@ export default function Pantry() {
     setActionError(null)
     try {
       const ids = [...selectedItems]
-      const deletedCount = await apiDeletePantryItems(ids)
-      ids.slice(0, deletedCount).forEach(id => deleteItem(id))
-      if (deletedCount < ids.length) {
-        setActionError(`Failed to delete ${ids.length - deletedCount} item(s). Please try again.`)
+      const deletedIds = await apiDeletePantryItems(ids)
+      deletedIds.forEach(id => deleteItem(id))
+      if (deletedIds.length < ids.length) {
+        setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
       }
       setSelectedItems(new Set())
     } catch {

@@ -190,8 +190,8 @@ describe('pantry data layer (integration)', () => {
     const item2 = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
     const item3 = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 3, currentSizeAmount: 3 })
 
-    const deletedCount = await deletePantryItems([item1.id, item2.id], user.id)
-    expect(deletedCount).toBe(2)
+    const deletedIds = await deletePantryItems([item1.id, item2.id], user.id)
+    expect(deletedIds).toEqual([item1.id, item2.id])
 
     const fetched1 = await getPantryItemById(item1.id, user.id)
     const fetched2 = await getPantryItemById(item2.id, user.id)
@@ -210,8 +210,8 @@ describe('pantry data layer (integration)', () => {
     const itemA = await createPantryItem({ userId: userA.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
     const itemB = await createPantryItem({ userId: userB.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
 
-    const deletedCount = await deletePantryItems([itemA.id, itemB.id], userA.id)
-    expect(deletedCount).toBe(1)
+    const deletedIds = await deletePantryItems([itemA.id, itemB.id], userA.id)
+    expect(deletedIds).toEqual([itemA.id])
 
     const fetchedA = await getPantryItemById(itemA.id, userA.id)
     const fetchedB = await getPantryItemById(itemB.id, userB.id)
@@ -220,10 +220,10 @@ describe('pantry data layer (integration)', () => {
     expect(fetchedB).not.toBeNull()
   })
 
-  it('bulk delete returns 0 for empty array', async () => {
+  it('bulk delete returns empty array for empty input', async () => {
     const user = await createTestUser('q')
 
-    const deletedCount = await deletePantryItems([], user.id)
-    expect(deletedCount).toBe(0)
+    const deletedIds = await deletePantryItems([], user.id)
+    expect(deletedIds).toEqual([])
   })
 })

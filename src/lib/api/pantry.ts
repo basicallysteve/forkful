@@ -70,7 +70,7 @@ export async function apiDeletePantryItem(id: number): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete pantry item')
 }
 
-export async function apiDeletePantryItems(ids: number[]): Promise<number> {
+export async function apiDeletePantryItems(ids: number[]): Promise<number[]> {
   const res = await fetch('/api/pantry', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
@@ -78,5 +78,5 @@ export async function apiDeletePantryItems(ids: number[]): Promise<number> {
   })
   if (!res.ok) throw new Error('Failed to delete pantry items')
   const result = await res.json()
-  return result.deletedCount
+  return result.deletedIds
 }
