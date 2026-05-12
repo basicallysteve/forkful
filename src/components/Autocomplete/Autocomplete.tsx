@@ -113,9 +113,7 @@ export default function Autocomplete<T>({
           }}
           onClick={() => {
             onChange('')
-            setHighlightedIndex(-1)
-            setIsOpen(true) // re-open so user can immediately type a new search
-            focus()
+            focus() // triggers handleFocus which re-opens the panel
           }}
         >
           ×
