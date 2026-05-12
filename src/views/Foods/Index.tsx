@@ -8,6 +8,9 @@ import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
+import { InputText } from 'primereact/inputtext'
+import { Dropdown } from 'primereact/dropdown'
+import { Checkbox } from 'primereact/checkbox'
 
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
@@ -148,8 +151,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
             <div className="toolbar-filters">
               <label className="filter-group">
                 <span className="filter-label">Search:</span>
-                <input
-                  type="text"
+                <InputText
                   className="filter-input"
                   placeholder="Search foods..."
                   value={searchTerm}
@@ -159,15 +161,17 @@ export default function Foods({ initialFoods }: FoodsProps) {
 
               <label className="filter-group">
                 <span className="filter-label">Sort by:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                >
-                  <option value="name">Name</option>
-                  <option value="calories">Calories</option>
-                  <option value="protein">Protein</option>
-                </select>
+                  onChange={(e) => setSortBy(e.value as SortOption)}
+                  options={[
+                    { label: 'Name', value: 'name' },
+                    { label: 'Calories', value: 'calories' },
+                    { label: 'Protein', value: 'protein' },
+                  ]}
+                  ariaLabel="Sort by"
+                />
               </label>
 
               <button
@@ -206,14 +210,14 @@ export default function Foods({ initialFoods }: FoodsProps) {
               <>
                 <div className="select-all-row">
                   <label className="checkbox-label">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       className="food-checkbox"
                       checked={
                         selectedFoods.size === filteredAndSortedFoods.length &&
                         filteredAndSortedFoods.length > 0
                       }
                       onChange={handleSelectAll}
+                      aria-label="Select all"
                     />
                     <span className="checkbox-text">Select all</span>
                   </label>
@@ -227,8 +231,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
                       }`}
                     >
                       <div className="card-checkbox">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           className="food-checkbox"
                           checked={selectedFoods.has(food.id)}
                           onChange={() => handleSelectFood(food.id)}

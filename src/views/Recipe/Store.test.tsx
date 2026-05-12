@@ -409,6 +409,24 @@ describe('Store Page - Recipe Creation', () => {
       expect(publishButton).toBeDisabled()
     })
   })
+  describe('Description Editor', () => {
+    it('renders the description editor with placeholder', () => {
+      renderWithProviders(<Store />)
+
+      const descriptionEditor = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      expect(descriptionEditor).toBeInTheDocument()
+    })
+
+    it('accepts text input in the description editor', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />)
+
+      const descriptionEditor = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
+      await user.type(descriptionEditor, 'A tasty recipe description')
+
+      expect(descriptionEditor).toHaveValue('A tasty recipe description')
+    })
+  })
 })
 
 describe('Recipes List - Card Layout', () => {

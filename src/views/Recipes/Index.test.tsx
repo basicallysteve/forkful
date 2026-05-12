@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Recipes from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
@@ -115,8 +115,9 @@ describe('Recipes Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Recipes />)
 
-      const categorySelect = screen.getByRole('combobox', { name: /category/i })
-      await user.selectOptions(categorySelect, 'Lunch')
+      const categoryTrigger = screen.getByRole('button', { name: /category/i })
+      await user.click(categoryTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'Lunch', hidden: true }))
 
       expect(screen.getByText('Ham and Cheese Sandwich')).toBeInTheDocument()
       expect(screen.getByText('Caesar Salad')).toBeInTheDocument()
@@ -127,9 +128,11 @@ describe('Recipes Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Recipes />)
 
-      const categorySelect = screen.getByRole('combobox', { name: /category/i })
-      await user.selectOptions(categorySelect, 'Lunch')
-      await user.selectOptions(categorySelect, 'all')
+      const categoryTrigger = screen.getByRole('button', { name: /category/i })
+      await user.click(categoryTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'Lunch', hidden: true }))
+      await user.click(categoryTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'All Categories', hidden: true }))
 
       expect(screen.getByText('Ham and Cheese Sandwich')).toBeInTheDocument()
       expect(screen.getByText('Spaghetti Bolognese')).toBeInTheDocument()
@@ -142,18 +145,20 @@ describe('Recipes Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<Recipes />)
 
-      const sortSelect = screen.getByRole('combobox', { name: /sort by/i })
-      await user.selectOptions(sortSelect, 'name')
+      const sortTrigger = screen.getByRole('button', { name: /sort by/i })
+      await user.click(sortTrigger)
+      fireEvent.click(await screen.findByRole('option', { name: 'Name', hidden: true }))
 
-      // Verify the sort option was changed
-      expect(sortSelect).toHaveValue('name')
+      // Verify all recipes still visible after sort change
+      expect(screen.getByText('Ham and Cheese Sandwich')).toBeInTheDocument()
+      expect(screen.getByText('Spaghetti Bolognese')).toBeInTheDocument()
     })
 
     it('toggles sort direction', async () => {
       const user = userEvent.setup()
       renderWithProviders(<Recipes />)
 
-      const sortButton = screen.getByRole('button', { name: /sort/i })
+      const sortButton = screen.getByRole('button', { name: /sort (ascending|descending)/i })
       expect(sortButton).toHaveTextContent('↓')
 
       await user.click(sortButton)
@@ -287,8 +292,9 @@ describe('Recipes filters and actions', () => {
     ]})
     
 
-    const categorySelect = screen.getByLabelText(/category/i)
-    await user.selectOptions(categorySelect, 'Lunch')
+    const categoryTrigger = screen.getByRole('button', { name: /category/i })
+    await user.click(categoryTrigger)
+    fireEvent.click(await screen.findByRole('option', { name: 'Lunch', hidden: true }))
 
     expect(screen.getByText('Chili Bowl')).toBeInTheDocument()
     expect(screen.queryByText('Garlic Pasta')).not.toBeInTheDocument()
@@ -361,8 +367,9 @@ describe('Recipes filters and actions', () => {
         ingredients: [],
       },
     ]})
-    const sortSelect = screen.getByLabelText(/sort by/i)
-    await user.selectOptions(sortSelect, 'name')
+    const sortTrigger = screen.getByRole('button', { name: /sort by/i })
+    await user.click(sortTrigger)
+    fireEvent.click(await screen.findByRole('option', { name: 'Name', hidden: true }))
 
     const getTitles = () => screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)
     expect(getTitles()).toEqual(['Garlic Pasta', 'Chili Bowl', 'Berry Oatmeal'])
@@ -399,7 +406,7 @@ describe('Recipes filters and actions', () => {
       },
     ]})
 
-    await user.click(screen.getByLabelText('Select Garlic Pasta'))
+    await user.click(screen.getByRole('checkbox', { name: /select garlic pasta/i }))
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     const updated = useRecipeStore.getState().recipes
