@@ -64,7 +64,28 @@
   --maskbg:           rgba(0, 0, 0, 0.4);
 }
 
-// ── PrimeReact AutoComplete panel ─────────────────────────────────────────────
+// ── PrimeReact Card ───────────────────────────────────────────────────────────
+// Used in recipe-card, food-card, and pantry-card lists. Keep the body/content
+// wrappers as real layout boxes for accessibility/browser compatibility, while
+// neutralizing their default spacing so each view's own flex layout stays in control.
+
+.p-card {
+  box-shadow: none;
+  color: inherit;
+
+  .p-card-body {
+    padding:    0;
+    background: transparent;
+  }
+
+  .p-card-content {
+    display:        flex;
+    flex-direction: column;
+    padding:        0;
+    background:     transparent;
+  }
+}
+
 // The suggestions panel is portal-rendered so it must be styled globally.
 
 .p-autocomplete-panel {
