@@ -45,8 +45,22 @@ export const ingredients = pgTable('ingredients', {
   dateDeleted: timestamp('date_deleted'),
 });
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 255 }).notNull(),
+  password: varchar('password', { length: 255, }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
+  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateDeleted: timestamp('date_deleted'),
+});
+
 export const pantryItems = pgTable('pantry_items', {
   id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   foodId: integer('food_id')
     .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
@@ -57,17 +71,6 @@ export const pantryItems = pgTable('pantry_items', {
   currentSizeUnit: varchar('current_size_unit', { length: 50 }),
   addedDate: timestamp('added_date').defaultNow().notNull(),
   frozenDate: timestamp('frozen_date'),
-  dateDeleted: timestamp('date_deleted'),
-});
-
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull(),
-  password: varchar('password', { length: 255, }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
-  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
-  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
-  dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
 });
 

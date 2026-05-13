@@ -1,11 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryList from './Index'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
+
+vi.mock('@/lib/api/pantry', () => ({
+  apiFetchPantryItems: vi.fn(),
+  apiDeletePantryItem: vi.fn().mockResolvedValue(undefined),
+  apiDeletePantryItems: vi.fn().mockResolvedValue([1]),
+  apiUpdatePantryItem: vi.fn(),
+}))
+
+import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 
 const mockFoods: Food[] = [
   {
@@ -34,25 +43,6 @@ const mockFoods: Food[] = [
   },
 ]
 
-function renderWithProviders(
-  ui: React.ReactElement,
-  {
-    items = [],
-    foods = mockFoods,
-  }: {
-    items?: PantryItem[]
-    foods?: Food[]
-  } = {}
-) {
-  resetPantryStore()
-  resetFoodStore()
-  useFoodStore.setState({ foods })
-  usePantryStore.setState({ items })
-
-  return render(ui)
-}
-
-// Helper to create valid pantry items with all required fields
 function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
     id: overrides.id,
@@ -67,28 +57,44 @@ function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: F
   }
 }
 
+function renderWithItems(items: PantryItem[] = [], foods: Food[] = mockFoods) {
+  resetPantryStore()
+  resetFoodStore()
+  useFoodStore.setState({ foods })
+  vi.mocked(apiFetchPantryItems).mockResolvedValue(items)
+  return render(<PantryList />)
+}
+
 describe('Pantry List Page', () => {
   beforeEach(() => {
     resetPantryStore()
     resetFoodStore()
+    vi.clearAllMocks()
   })
 
-  describe('Empty State', () => {
-    it('renders empty state when no items exist', () => {
-      renderWithProviders(<PantryList />)
-      expect(screen.getByText('No pantry items found.')).toBeInTheDocument()
+  describe('Loading and Empty State', () => {
+    it('shows loading state initially', () => {
+      vi.mocked(apiFetchPantryItems).mockReturnValue(new Promise(() => {}))
+      render(<PantryList />)
+      expect(screen.getByText('Loading pantry...')).toBeInTheDocument()
+    })
+
+    it('renders empty state when no items exist', async () => {
+      renderWithItems([])
+      expect(await screen.findByText('No pantry items found.')).toBeInTheDocument()
       expect(screen.getByText('Add your first item')).toBeInTheDocument()
     })
 
-    it('renders add item button in empty state', () => {
-      renderWithProviders(<PantryList />)
+    it('renders add item button in empty state', async () => {
+      renderWithItems([])
+      await screen.findByText('No pantry items found.')
       const addButtons = screen.getAllByRole('link', { name: /add/i })
       expect(addButtons.length).toBeGreaterThan(0)
     })
   })
 
   describe('Stats Display', () => {
-    it('displays correct counts for each status', () => {
+    it('displays correct counts for each status', async () => {
       const expiredDate = new Date()
       expiredDate.setDate(expiredDate.getDate() - 5)
 
@@ -98,92 +104,107 @@ describe('Pantry List Page', () => {
       const goodDate = new Date()
       goodDate.setDate(goodDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({
-          id: 1,
-          food: mockFoods[0],
-          expirationDate: expiredDate,
-          status: 'expired',
-        }),
-        createPantryItem({
-          id: 2,
-          food: mockFoods[1],
-          expirationDate: soonDate,
-          status: 'expiring-soon',
-        }),
-        createPantryItem({
-          id: 3,
-          food: mockFoods[0],
-          expirationDate: goodDate,
-          status: 'good',
-        }),
-      ]
+      renderWithItems([
+        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired' }),
+        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: soonDate, status: 'expiring-soon' }),
+        createPantryItem({ id: 3, food: mockFoods[0], expirationDate: goodDate, status: 'good' }),
+      ])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Chicken Breast')
 
-      // Check stats using more specific queries
       const stats = document.querySelectorAll('.stat-card')
       expect(stats).toHaveLength(4)
-      
-      // Total items
-      const totalCard = stats[0]
-      expect(totalCard).toHaveTextContent('Total Items')
-      expect(totalCard).toHaveTextContent('3')
-      
-      // Good items
-      const goodCard = stats[1]
-      expect(goodCard).toHaveTextContent('Good')
-      expect(goodCard).toHaveTextContent('1')
-      
-      // Expiring soon items
-      const warnCard = stats[2]
-      expect(warnCard).toHaveTextContent('Expiring Soon')
-      expect(warnCard).toHaveTextContent('1')
-      
-      // Expired items
-      const dangerCard = stats[3]
-      expect(dangerCard).toHaveTextContent('Expired')
-      expect(dangerCard).toHaveTextContent('1')
+      expect(stats[0]).toHaveTextContent('Total Items')
+      expect(stats[0]).toHaveTextContent('3')
+      expect(stats[1]).toHaveTextContent('Good')
+      expect(stats[1]).toHaveTextContent('1')
+      expect(stats[2]).toHaveTextContent('Expiring Soon')
+      expect(stats[2]).toHaveTextContent('1')
+      expect(stats[3]).toHaveTextContent('Expired')
+      expect(stats[3]).toHaveTextContent('1')
     })
   })
 
   describe('Item List', () => {
-    it('renders pantry items in table', () => {
+    it('renders pantry items in table', async () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const items: PantryItem[] = [
+      renderWithItems([
         createPantryItem({
           id: 1,
           food: mockFoods[0],
           expirationDate: futureDate,
           originalSize: { size: 2, unit: 'lb' },
           currentSize: { size: 1.5, unit: 'lb' },
-          status: 'good'
+          status: 'good',
         }),
-      ]
+      ])
 
-      renderWithProviders(<PantryList />, { items })
-
-      expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
-      const sizeDisplays = screen.getAllByText(/2\.00 lb \/ 1\.50 lb/)
-      expect(sizeDisplays.length).toBeGreaterThan(0)
-      const statusBadge = document.querySelector('.status-badge.status-good')
-      expect(statusBadge).toHaveTextContent('Good')
+      expect(await screen.findAllByText('Chicken Breast')).not.toHaveLength(0)
+      expect(screen.getAllByText(/2\.00 lb \/ 1\.50 lb/).length).toBeGreaterThan(0)
+      expect(document.querySelector('.status-badge.status-good')).toHaveTextContent('Good')
     })
 
-    it('renders edit and delete buttons for each item', () => {
+    it('renders edit and delete buttons for each item', async () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
-      ]
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })])
 
-      renderWithProviders(<PantryList />, { items })
-
+      await screen.findAllByText('Chicken Breast')
       expect(screen.getAllByRole('link', { name: /edit/i })[0]).toBeInTheDocument()
       expect(screen.getAllByRole('button', { name: /delete/i })[0]).toBeInTheDocument()
+    })
+  })
+
+  describe('Delete', () => {
+    it('calls the API and removes the item from the store', async () => {
+      const user = userEvent.setup()
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + 30)
+
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })])
+
+      await screen.findAllByText('Chicken Breast')
+      const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
+      await user.click(deleteButtons[0])
+
+      expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
+      await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
+    })
+  })
+
+  describe('Freeze / Unfreeze', () => {
+    it('calls the API and updates the store on freeze', async () => {
+      const user = userEvent.setup()
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + 30)
+
+      const item = createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })
+      vi.mocked(apiUpdatePantryItem).mockResolvedValue({ ...item, frozenDate: new Date() })
+
+      renderWithItems([item])
+      await screen.findAllByText('Chicken Breast')
+
+      await user.click(screen.getAllByRole('button', { name: /freeze/i })[0])
+
+      expect(apiUpdatePantryItem).toHaveBeenCalledWith(1, expect.objectContaining({ frozenDate: expect.any(String) }))
+      await waitFor(() => expect(usePantryStore.getState().items[0].frozenDate).not.toBeNull())
+    })
+
+    it('calls the API and clears frozenDate on thaw', async () => {
+      const user = userEvent.setup()
+      const item = createPantryItem({ id: 1, food: mockFoods[0], status: 'good', frozenDate: new Date() })
+      vi.mocked(apiUpdatePantryItem).mockResolvedValue({ ...item, frozenDate: null })
+
+      renderWithItems([item])
+      await screen.findAllByText('Chicken Breast')
+
+      await user.click(screen.getAllByRole('button', { name: /thaw/i })[0])
+
+      expect(apiUpdatePantryItem).toHaveBeenCalledWith(1, { frozenDate: null })
+      await waitFor(() => expect(usePantryStore.getState().items[0].frozenDate).toBeNull())
     })
   })
 
@@ -193,15 +214,14 @@ describe('Pantry List Page', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good'}),
-      ]
+      renderWithItems([
+        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
+        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
+      ])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Chicken Breast')
 
-      const searchInput = screen.getByPlaceholderText('Search pantry items...')
-      await user.type(searchInput, 'Chicken')
+      await user.type(screen.getByPlaceholderText('Search pantry items...'), 'Chicken')
 
       expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
       expect(screen.queryByText('Brown Rice')).not.toBeInTheDocument()
@@ -215,21 +235,19 @@ describe('Pantry List Page', () => {
       const goodDate = new Date()
       goodDate.setDate(goodDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good'}),
-      ]
+      renderWithItems([
+        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired' }),
+        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good' }),
+      ])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Brown Rice')
 
       const statusTrigger = screen.getByRole('button', { name: /filter by status/i })
       await user.click(statusTrigger)
       fireEvent.click(await screen.findByRole('option', { name: 'Good', hidden: true }))
 
       expect(screen.getAllByText('Brown Rice')[0]).toBeInTheDocument()
-      // Expired item should not be visible
-      const chickens = screen.queryAllByText('Chicken Breast')
-      expect(chickens.length).toBe(0)
+      expect(screen.queryAllByText('Chicken Breast')).toHaveLength(0)
     })
   })
 
@@ -242,21 +260,19 @@ describe('Pantry List Page', () => {
       const date2 = new Date()
       date2.setDate(date2.getDate() + 20)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[1], expirationDate: date2, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[0], expirationDate: date1, status: 'good'}),
-      ]
+      renderWithItems([
+        createPantryItem({ id: 1, food: mockFoods[1], expirationDate: date2, status: 'good' }),
+        createPantryItem({ id: 2, food: mockFoods[0], expirationDate: date1, status: 'good' }),
+      ])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Brown Rice')
 
       const sortTrigger = screen.getByRole('button', { name: /sort by/i })
       await user.click(sortTrigger)
       const panel = await screen.findByRole('listbox', { hidden: true })
       fireEvent.click(within(panel).getByRole('option', { name: 'Expiration Date', hidden: true }))
 
-      // Items should be sorted by expiration date ascending
       const rows = screen.getAllByRole('row')
-      // Skip header row, check first data row
       expect(rows[1]).toHaveTextContent('Chicken Breast')
     })
   })
@@ -267,38 +283,31 @@ describe('Pantry List Page', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
-        createPantryItem({id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good'}),
-      ]
+      renderWithItems([
+        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
+        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
+      ])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Chicken Breast')
 
-      const selectAllCheckbox = screen.getByRole('checkbox', { name: /select all items/i })
-      await user.click(selectAllCheckbox)
-
+      await user.click(screen.getByRole('checkbox', { name: /select all items/i }))
       expect(screen.getByText('2 item(s) selected')).toBeInTheDocument()
     })
 
-    it('can delete selected items', async () => {
+    it('calls the API and removes items from the store on bulk delete', async () => {
       const user = userEvent.setup()
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      const items: PantryItem[] = [
-        createPantryItem({id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good'}),
-      ]
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })])
 
-      renderWithProviders(<PantryList />, { items })
+      await screen.findAllByText('Chicken Breast')
 
-      const checkbox = screen.getAllByRole('checkbox', { name: /select chicken breast/i })[0]
-      await user.click(checkbox)
+      await user.click(screen.getAllByRole('checkbox', { name: /select chicken breast/i })[0])
+      await user.click(screen.getByRole('button', { name: /delete \(1\)/i }))
 
-      const deleteButton = screen.getByRole('button', { name: /delete \(1\)/i })
-      await user.click(deleteButton)
-
-      const storeItems = usePantryStore.getState().items
-      expect(storeItems).toHaveLength(0)
+      expect(apiDeletePantryItems).toHaveBeenCalledWith([1])
+      await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
     })
   })
 })

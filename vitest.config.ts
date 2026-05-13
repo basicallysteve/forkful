@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    exclude: ['**/*.integration.test.ts', 'node_modules/**', '.next/**'],
+    exclude: ['**/*.integration.test.ts', 'node_modules/**', '.next/**', '.claude/worktrees/**'],
     env: {
       JWT_SECRET: 'test-secret-for-unit-tests',
     },
