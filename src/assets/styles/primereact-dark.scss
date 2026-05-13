@@ -3,6 +3,9 @@
 // PrimeReact's Editor wraps Quill whose Snow theme has light defaults.
 // In light mode the defaults work fine; in dark mode we override them
 // to restore readability on dark backgrounds.
+//
+// Each mixin is included under both the @media and html[data-theme]
+// selectors so the manual toggle and OS preference stay in sync.
 
 $border-dark:   var(--surface-border);
 $bg-dark:       var(--surface-a);
@@ -12,9 +15,9 @@ $focus-shadow:  var(--focus-ring);
 $hover-bg:      var(--surface-hover);
 $white:         #ffffff;
 
-// ── Dark-mode Quill overrides ─────────────────────────────────────────────────
+// ── Quill override mixins ─────────────────────────────────────────────────────
 
-@media (prefers-color-scheme: dark) {
+@mixin quill-dark {
   [data-pc-name="editor"] {
     .ql-toolbar.ql-snow {
       background: rgba(255, 255, 255, 0.02);
@@ -96,10 +99,7 @@ $white:         #ffffff;
   }
 }
 
-// ── Light-mode Quill border tidy-up ──────────────────────────────────────────
-// Snow theme borders match our border colour in light mode.
-
-@media (prefers-color-scheme: light) {
+@mixin quill-light {
   [data-pc-name="editor"] {
     .ql-toolbar.ql-snow {
       border-color: var(--surface-border);
@@ -112,6 +112,18 @@ $white:         #ffffff;
     }
   }
 }
+
+// ── Apply via OS preference (no manual override stored) ───────────────────────
+
+@media (prefers-color-scheme: dark)  { @include quill-dark;  }
+@media (prefers-color-scheme: light) { @include quill-light; }
+
+// ── Apply via manual html[data-theme] toggle (takes precedence) ───────────────
+
+html[data-theme='dark']  { @include quill-dark;  }
+html[data-theme='light'] { @include quill-light; }
+
+// ── PrimeReact password field ─────────────────────────────────────────────────
 
 .p-password {
   .p-password-input {

@@ -17,9 +17,12 @@ function getServerSnapshot(): Theme {
 }
 
 function subscribe(callback: () => void): () => void {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  mq.addEventListener('change', callback)
   window.addEventListener(THEME_CHANGE_EVENT, callback)
   window.addEventListener('storage', callback)
   return () => {
+    mq.removeEventListener('change', callback)
     window.removeEventListener(THEME_CHANGE_EVENT, callback)
     window.removeEventListener('storage', callback)
   }
@@ -28,9 +31,16 @@ function subscribe(callback: () => void): () => void {
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
-  // Sync DOM attribute whenever theme changes (updating external system from state — allowed in effects)
+  // Only set data-theme when the user has stored an explicit preference.
+  // Without it, CSS @media (prefers-color-scheme) handles theming naturally,
+  // and OS preference changes are reflected in real time.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      document.documentElement.dataset.theme = stored
+    } else {
+      delete document.documentElement.dataset.theme
+    }
   }, [theme])
 
   function toggleTheme() {
