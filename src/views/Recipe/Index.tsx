@@ -4,12 +4,14 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiUpdateRecipe } from '@/lib/api/recipes'
+import { Editor } from 'primereact/editor'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -140,7 +142,8 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     updatedIngredients[index] = {
       ...updatedIngredients[index],
       food: food,
-      calories: getPerUnitCalories(food) * updatedIngredients[index].quantity,
+      quantity: food.servingSize || 1,
+      calories: getPerUnitCalories(food) * (food.servingSize || 1),
       servingUnit: food.servingUnit || updatedIngredients[index].servingUnit
     }
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
@@ -204,14 +207,18 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
         </header>
 
         {editMode ? (
-          <textarea
-            className="recipe-description-input"
+          <Editor
+            className="recipe-editor"
             value={editedRecipe.description}
-            onChange={(e) => setEditedRecipe({ ...editedRecipe, description: e.target.value })}
+            onTextChange={(e) => setEditedRecipe({ ...editedRecipe, description: e.htmlValue ?? '' })}
             aria-label="Recipe description"
+            style={{ height: '140px' }}
           />
         ) : (
-          <p className="recipe-description">{displayRecipe.description}</p>
+          <div
+            className="recipe-description"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
+          />
         )}
 
         <section className="recipe-panel">

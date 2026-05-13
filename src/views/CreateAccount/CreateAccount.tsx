@@ -3,6 +3,10 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { apiSignUp } from "@/lib/api/users"
+import { InputText } from 'primereact/inputtext'
+import { Checkbox } from 'primereact/checkbox'
+import { RadioButton } from 'primereact/radiobutton'
+import { Password } from 'primereact/password'
 import './createAccount.scss'
 
 const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
@@ -144,8 +148,7 @@ function CreateAccount() {
               <div className="form-grid">
                 <label className="form-field">
                   <span className="field-label">Username</span>
-                  <input
-                    className="text-input"
+                  <InputText
                     type="text"
                     value={username}
                     placeholder="Choose a username"
@@ -160,8 +163,8 @@ function CreateAccount() {
 
                 <label className={`form-field ${email.length > 0 && !isValidEmail ? 'has-error' : ''}`}>
                   <span className="field-label">Email</span>
-                  <input
-                    className={`text-input ${email.length > 0 && !isValidEmail ? 'input-error' : ''}`}
+                  <InputText
+                    className={email.length > 0 && !isValidEmail ? 'input-error' : undefined}
                     type="email"
                     value={email}
                     placeholder="you@example.com"
@@ -183,12 +186,13 @@ function CreateAccount() {
 
                 <label className={`form-field ${password.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                   <span className="field-label">Password</span>
-                  <input
-                    className={`text-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
-                    type="password"
+                  <Password
+                    className={`password-input ${password.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
                     value={password}
                     placeholder="Create a strong password"
                     onChange={(e) => setPassword(e.target.value)}
+                    toggleMask
+                    feedback
                     aria-invalid={password.length > 0 && !passwordIsValid}
                     aria-describedby="password-requirements"
                     autoComplete="new-password"
@@ -217,14 +221,15 @@ function CreateAccount() {
 
                 <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                   <span className="field-label">Confirm Password</span>
-                  <input
-                    className={`text-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
-                    type="password"
+                  <Password
+                    className={`password-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
                     value={confirmPassword}
                     placeholder="Confirm your password"
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    toggleMask
+                    feedback={false}
                     aria-invalid={confirmPassword.length > 0 && !passwordsMatch}
-                    aria-describedby={confirmPassword.length > 0 && !passwordsMatch ? "confirm-error" : "confirm-hint"}
+                    aria-describedby={confirmPassword.length > 0 && !passwordsMatch ? 'confirm-error' : 'confirm-hint'}
                     autoComplete="new-password"
                   />
                   {confirmPassword.length > 0 && !passwordsMatch ? (
@@ -246,9 +251,8 @@ function CreateAccount() {
                         key={cuisine}
                         className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? "is-active" : ""}`}
                       >
-                        <input
+                        <Checkbox
                           className="checkbox-input"
-                          type="checkbox"
                           checked={cuisinePreferences.includes(cuisine)}
                           onChange={() => handleCuisineToggle(cuisine)}
                         />
@@ -268,13 +272,11 @@ function CreateAccount() {
                         key={option}
                         className={`radio-option ${dietaryRestrictions === option ? "is-active" : ""}`}
                       >
-                        <input
-                          className="radio-input"
-                          type="radio"
+                        <RadioButton
                           name="dietary"
                           value={option}
                           checked={dietaryRestrictions === option}
-                          onChange={(e) => setDietaryRestrictions(e.target.value)}
+                          onChange={(e) => setDietaryRestrictions(e.value)}
                         />
                         <span className="radio-dot" />
                         {option}

@@ -2,10 +2,15 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Card } from 'primereact/card'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
+import { InputText } from 'primereact/inputtext'
+import { Dropdown } from 'primereact/dropdown'
+import { Checkbox } from 'primereact/checkbox'
+import DOMPurify from 'dompurify'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
@@ -147,23 +152,21 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
             <div className="toolbar-filters">
               <label className="filter-group">
                 <span className="filter-label">Category:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={filterMeal}
-                  onChange={(e) => setFilterMeal(e.target.value as Recipe['meal'] | 'all')}
-                >
-                  {mealOptions.map((option) => (
-                    <option key={option || 'all'} value={option || 'all'}>
-                      {option === 'all' ? 'All Categories' : option}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(e) => setFilterMeal(e.value as Recipe['meal'] | 'all')}
+                  options={mealOptions.map((option) => ({
+                    label: option === 'all' ? 'All Categories' : option,
+                    value: option || 'all',
+                  }))}
+                  ariaLabel="Category"
+                />
               </label>
 
               <label className="filter-group">
                 <span className="filter-label">Search:</span>
-                <input
-                  type="text"
+                <InputText
                   className="filter-input"
                   placeholder="Search recipes..."
                   onChange={(e) => {
@@ -175,16 +178,18 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
 
               <label className="filter-group">
                 <span className="filter-label">Sort by:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                >
-                  <option value="date_added">Recent</option>
-                  <option value="date_published">Published Date</option>
-                  <option value="name">Name</option>
-                  <option value="meal">Category</option>
-                </select>
+                  onChange={(e) => setSortBy(e.value as SortOption)}
+                  options={[
+                    { label: 'Recent', value: 'date_added' },
+                    { label: 'Published Date', value: 'date_published' },
+                    { label: 'Name', value: 'name' },
+                    { label: 'Category', value: 'meal' },
+                  ]}
+                  ariaLabel="Sort by"
+                />
               </label>
               
               <button
@@ -225,21 +230,20 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
               <>
                 <div className="select-all-row">
                   <label className="checkbox-label">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       className="recipe-checkbox"
                       checked={selectedRecipes.size === filteredAndSortedRecipes.length && filteredAndSortedRecipes.length > 0}
                       onChange={handleSelectAll}
+                      aria-label="Select all"
                     />
                     <span className="checkbox-text">Select all</span>
                   </label>
                 </div>
                 <div className="recipe-cards">
                   {filteredAndSortedRecipes.map((recipe) => (
-                    <div key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
+                    <Card key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
                       <div className="card-checkbox">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           className="recipe-checkbox"
                           checked={selectedRecipes.has(recipe.id)}
                           onChange={() => handleSelectRecipe(recipe.id)}
@@ -258,13 +262,13 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                               )}
                             </div>
                           </div>
-                        <p className="card-description">{recipe.description}</p>
+                        <div className="card-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description) }}></div>
                         <div className="card-footer">
                           <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
                           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
                         </div>
                       </Link>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </>

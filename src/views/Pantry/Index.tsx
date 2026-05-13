@@ -2,17 +2,20 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { DataTable } from 'primereact/datatable'
-import { Column } from 'primereact/column'
+
+import { Card } from 'primereact/card'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
+import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
+import { InputText } from 'primereact/inputtext'
+import { Dropdown } from 'primereact/dropdown'
+import { Checkbox } from 'primereact/checkbox'
 
 type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
 type SortDirection = 'asc' | 'desc'
 type StatusFilter = 'all' | PantryItemStatus
 
-// Status priority order for sorting
 const STATUS_ORDER: Record<PantryItemStatus, number> = {
   'expired': 0,
   'expiring-soon': 1,
@@ -21,17 +24,26 @@ const STATUS_ORDER: Record<PantryItemStatus, number> = {
 
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
+  const setItems = usePantryStore((state) => state.setItems)
   const deleteItem = usePantryStore((state) => state.deleteItem)
-  const freezeItem = usePantryStore((state) => state.freezeItem)
-  const unfreezeItem = usePantryStore((state) => state.unfreezeItem)
+  const updateItem = usePantryStore((state) => state.updateItem)
   const refreshItemStatuses = usePantryStore((state) => state.refreshItemStatuses)
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('expirationDate')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  // Refresh statuses when component mounts or periodically
+  useEffect(() => {
+    apiFetchPantryItems()
+      .then(setItems)
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false))
+  }, [setItems])
+
   useEffect(() => {
     refreshItemStatuses()
   }, [refreshItemStatuses])
@@ -39,21 +51,17 @@ export default function Pantry() {
   const filteredAndSortedItems = useMemo(() => {
     let filtered = items
 
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
-        (item) =>
-          item.food.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (item) => item.food.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter((item) => item.status === statusFilter)
     }
 
-    // Sort items
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let comparison = 0
       switch (sortBy) {
         case 'name': {
@@ -61,16 +69,10 @@ export default function Pantry() {
           break
         }
         case 'expirationDate': {
-          // Handle null expiration dates - put them at the end
-          if (!a.expirationDate && !b.expirationDate) {
-            comparison = 0
-          } else if (!a.expirationDate) {
-            comparison = 1
-          } else if (!b.expirationDate) {
-            comparison = -1
-          } else {
-            comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
-          }
+          if (!a.expirationDate && !b.expirationDate) comparison = 0
+          else if (!a.expirationDate) comparison = 1
+          else if (!b.expirationDate) comparison = -1
+          else comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
           break
         }
         case 'addedDate': {
@@ -88,29 +90,60 @@ export default function Pantry() {
 
   function handleSelectItem(itemId: number) {
     const newSelected = new Set(selectedItems)
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId)
-    } else {
-      newSelected.add(itemId)
-    }
+    if (newSelected.has(itemId)) newSelected.delete(itemId)
+    else newSelected.add(itemId)
     setSelectedItems(newSelected)
   }
 
   function handleSelectAll() {
-    if (selectedItems.size === filteredAndSortedItems.length) {
+    if (selectedItems.size === filteredAndSortedItems.length) setSelectedItems(new Set())
+    else setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)))
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedItems.size === 0) return
+    setActionError(null)
+    try {
+      const ids = [...selectedItems]
+      const deletedIds = await apiDeletePantryItems(ids)
+      deletedIds.forEach(id => deleteItem(id))
+      if (deletedIds.length < ids.length) {
+        setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
+      }
       setSelectedItems(new Set())
-    } else {
-      setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)))
+    } catch {
+      setActionError('Failed to delete items. Please try again.')
     }
   }
 
-  function handleDeleteSelected() {
-    if (selectedItems.size === 0) return
-
-    selectedItems.forEach((id) => {
+  async function handleDelete(id: number) {
+    try {
+      setActionError(null)
+      await apiDeletePantryItem(id)
       deleteItem(id)
-    })
-    setSelectedItems(new Set())
+    } catch {
+      setActionError('Failed to delete item. Please try again.')
+    }
+  }
+
+  async function handleFreeze(id: number) {
+    try {
+      setActionError(null)
+      const updated = await apiUpdatePantryItem(id, { frozenDate: new Date().toISOString() })
+      if (updated) updateItem(updated)
+    } catch {
+      setActionError('Failed to freeze item. Please try again.')
+    }
+  }
+
+  async function handleUnfreeze(id: number) {
+    try {
+      setActionError(null)
+      const updated = await apiUpdatePantryItem(id, { frozenDate: null })
+      if (updated) updateItem(updated)
+    } catch {
+      setActionError('Failed to thaw item. Please try again.')
+    }
   }
 
   function formatDate(date: Date | null): string {
@@ -124,27 +157,19 @@ export default function Pantry() {
 
   function getStatusLabel(status: PantryItemStatus): string {
     switch (status) {
-      case 'expired':
-        return 'Expired'
-      case 'expiring-soon':
-        return 'Expiring Soon'
-      case 'good':
-        return 'Good'
-      default:
-        return 'Unknown'
+      case 'expired': return 'Expired'
+      case 'expiring-soon': return 'Expiring Soon'
+      case 'good': return 'Good'
+      default: return 'Unknown'
     }
   }
 
   function getStatusClass(status: PantryItemStatus): string {
     switch (status) {
-      case 'expired':
-        return 'status-expired'
-      case 'expiring-soon':
-        return 'status-expiring-soon'
-      case 'good':
-        return 'status-good'
-      default:
-        return ''
+      case 'expired': return 'status-expired'
+      case 'expiring-soon': return 'status-expiring-soon'
+      case 'good': return 'status-good'
+      default: return ''
     }
   }
 
@@ -194,8 +219,7 @@ export default function Pantry() {
           <div className="panel-toolbar">
             <div className="toolbar-filters">
               <div className="filter-group">
-                <input
-                  type="text"
+                <InputText
                   className="filter-input"
                   placeholder="Search pantry items..."
                   value={searchTerm}
@@ -206,32 +230,34 @@ export default function Pantry() {
 
               <div className="filter-group">
                 <span className="filter-label">Status:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All</option>
-                  <option value="good">Good</option>
-                  <option value="expiring-soon">Expiring Soon</option>
-                  <option value="expired">Expired</option>
-                </select>
+                  onChange={(e) => setStatusFilter(e.value as StatusFilter)}
+                  options={[
+                    { label: 'All', value: 'all' },
+                    { label: 'Good', value: 'good' },
+                    { label: 'Expiring Soon', value: 'expiring-soon' },
+                    { label: 'Expired', value: 'expired' },
+                  ]}
+                  ariaLabel="Filter by status"
+                />
               </div>
 
               <div className="filter-group">
                 <span className="filter-label">Sort by:</span>
-                <select
+                <Dropdown
                   className="filter-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  aria-label="Sort by"
-                >
-                  <option value="expirationDate">Expiration Date</option>
-                  <option value="name">Name</option>
-                  <option value="addedDate">Date Added</option>
-                  <option value="status">Status</option>
-                </select>
+                  onChange={(e) => setSortBy(e.value as SortOption)}
+                  options={[
+                    { label: 'Expiration Date', value: 'expirationDate' },
+                    { label: 'Name', value: 'name' },
+                    { label: 'Date Added', value: 'addedDate' },
+                    { label: 'Status', value: 'status' },
+                  ]}
+                  ariaLabel="Sort by"
+                />
               </div>
 
               <button
@@ -258,7 +284,25 @@ export default function Pantry() {
             </div>
           )}
 
-          {filteredAndSortedItems.length === 0 ? (
+          {actionError && (
+            <div className="panel-content">
+              <p className="form-error">{actionError}</p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="panel-content">
+              <div className="empty-state">
+                <p>Loading pantry...</p>
+              </div>
+            </div>
+          ) : fetchError ? (
+            <div className="panel-content">
+              <div className="empty-state">
+                <p>Failed to load pantry items. Please refresh the page.</p>
+              </div>
+            </div>
+          ) : filteredAndSortedItems.length === 0 ? (
             <div className="panel-content">
               <div className="empty-state">
                 <p>No pantry items found.</p>
@@ -270,113 +314,83 @@ export default function Pantry() {
           ) : (
             <div className="panel-content">
               {/* Desktop table view */}
-              <DataTable
-                value={filteredAndSortedItems}
-                className="pantry-table"
-                rowClassName={(item: PantryItem) => getStatusClass(item.status)}
-              >
-                <Column
-                  header={
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
-                      onChange={handleSelectAll}
-                      aria-label="Select all items"
-                    />
-                  }
-                  body={(item: PantryItem) => (
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.has(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
-                      aria-label={`Select ${item.food.name}`}
-                    />
-                  )}
-                />
-                <Column
-                  header="Food Item"
-                  body={(item: PantryItem) => (
-                    <Link href={`/foods/${toSlug(item.food.name)}`}>
-                      {item.food.name}
-                    </Link>
-                  )}
-                />
-                <Column
-                  header="Size (Orig/Curr)"
-                  body={(item: PantryItem) =>
-                    `${item.originalSize.size.toFixed(2)} ${item.originalSize.unit} / ${item.currentSize.size.toFixed(2)} ${item.currentSize.unit}`
-                  }
-                />
-                <Column
-                  header="Expiration Date"
-                  body={(item: PantryItem) =>
-                    item.frozenDate ? (
-                      <span className="status-badge status-frozen">Frozen</span>
-                    ) : (
-                      formatDate(item.expirationDate)
-                    )
-                  }
-                />
-                <Column
-                  header="Status"
-                  body={(item: PantryItem) => (
-                    <span className={`status-badge ${getStatusClass(item.status)}`}>
-                      {getStatusLabel(item.status)}
-                    </span>
-                  )}
-                />
-                <Column
-                  header="Added Date"
-                  body={(item: PantryItem) => formatDate(item.addedDate)}
-                />
-                <Column
-                  header="Actions"
-                  body={(item: PantryItem) => (
-                    <div className="item-actions">
-                      {item.frozenDate ? (
-                        <button
-                          onClick={() => unfreezeItem(item.id)}
-                          className="btn-small btn-info"
-                          title="Unfreeze item"
-                        >
-                          Thaw
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => freezeItem(item.id)}
-                          className="btn-small btn-info"
-                          title="Freeze item"
-                        >
-                          Freeze
-                        </button>
-                      )}
-                      <Link
-                        href={`/pantry/${item.id}/edit`}
-                        className="btn-small btn-secondary"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        className="btn-small btn-danger"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                />
-              </DataTable>
+              <table className="pantry-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <Checkbox
+                        checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                        onChange={handleSelectAll}
+                        aria-label="Select all items"
+                      />
+                    </th>
+                    <th>Food Item</th>
+                    <th>Size (Orig/Curr)</th>
+                    <th>Expiration Date</th>
+                    <th>Status</th>
+                    <th>Added Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAndSortedItems.map((item) => (
+                    <tr key={item.id} className={getStatusClass(item.status)}>
+                      <td>
+                        <Checkbox
+                          checked={selectedItems.has(item.id)}
+                          onChange={() => handleSelectItem(item.id)}
+                          aria-label={`Select ${item.food.name}`}
+                        />
+                      </td>
+                      <td>
+                        <Link href={`/foods/${toSlug(item.food.name)}`}>
+                          {item.food.name}
+                        </Link>
+                      </td>
+                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
+                      <td>
+                        {item.frozenDate ? (
+                          <span className="status-badge status-frozen">Frozen</span>
+                        ) : (
+                          formatDate(item.expirationDate)
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(item.status)}`}>
+                          {getStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td>{formatDate(item.addedDate)}</td>
+                      <td>
+                        <div className="item-actions">
+                          {item.frozenDate ? (
+                            <button onClick={() => handleUnfreeze(item.id)} className="btn-small btn-info" title="Unfreeze item">
+                              Thaw
+                            </button>
+                          ) : (
+                            <button onClick={() => handleFreeze(item.id)} className="btn-small btn-info" title="Freeze item">
+                              Freeze
+                            </button>
+                          )}
+                          <Link href={`/pantry/${item.id}/edit`} className="btn-small btn-secondary">
+                            Edit
+                          </Link>
+                          <button onClick={() => handleDelete(item.id)} className="btn-small btn-danger">
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
               {/* Mobile card view */}
               <div className="select-all-row">
                 <label className="select-all-label">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="select-all-checkbox"
-                    checked={
-                      selectedItems.size === filteredAndSortedItems.length &&
-                      filteredAndSortedItems.length > 0
-                    }
+                    checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
                     onChange={handleSelectAll}
                   />
                   <span className="checkbox-text">Select all</span>
@@ -384,13 +398,12 @@ export default function Pantry() {
               </div>
               <div className="pantry-cards">
                 {filteredAndSortedItems.map((item) => (
-                  <div
+                  <Card
                     key={item.id}
                     className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}
                   >
                     <div className="card-checkbox">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
@@ -411,7 +424,7 @@ export default function Pantry() {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="card-details">
                         <div className="detail-row">
                           <span className="detail-label">Size:</span>
@@ -435,37 +448,23 @@ export default function Pantry() {
 
                       <div className="card-actions">
                         {item.frozenDate ? (
-                          <button
-                            onClick={() => unfreezeItem(item.id)}
-                            className="btn-small btn-info"
-                            title="Unfreeze item"
-                          >
+                          <button onClick={() => handleUnfreeze(item.id)} className="btn-small btn-info" title="Unfreeze item">
                             Thaw
                           </button>
                         ) : (
-                          <button
-                            onClick={() => freezeItem(item.id)}
-                            className="btn-small btn-info"
-                            title="Freeze item"
-                          >
+                          <button onClick={() => handleFreeze(item.id)} className="btn-small btn-info" title="Freeze item">
                             Freeze
                           </button>
                         )}
-                        <Link
-                            href={`/pantry/${item.id}/edit`}
-                          className="btn-small btn-secondary"
-                        >
+                        <Link href={`/pantry/${item.id}/edit`} className="btn-small btn-secondary">
                           Edit
                         </Link>
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="btn-small btn-danger"
-                        >
+                        <button onClick={() => handleDelete(item.id)} className="btn-small btn-danger">
                           Delete
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             </div>

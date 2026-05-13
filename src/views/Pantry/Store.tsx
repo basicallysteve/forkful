@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePantryStore } from '@/stores/pantry'
 import { useFoodStore } from '@/stores/food'
+import { apiFetchFoods } from '@/lib/api/foods'
+import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
+import type { Food } from '@/types/Food'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
+import { InputNumber } from 'primereact/inputnumber'
+import { Dropdown } from 'primereact/dropdown'
 
 interface PantryStoreProps {
   existingItem?: PantryItem
@@ -16,9 +21,9 @@ interface PantryStoreProps {
 export default function PantryStore({ existingItem }: PantryStoreProps) {
   const router = useRouter()
   const foods = useFoodStore((state) => state.foods)
+  const setFoods = useFoodStore((state) => state.setFoods)
   const addItem = usePantryStore((state) => state.addItem)
   const updateItem = usePantryStore((state) => state.updateItem)
-  const items = usePantryStore((state) => state.items)
   const calculateItemStatus = usePantryStore((state) => state.calculateItemStatus)
 
   const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
@@ -27,67 +32,112 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
   const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
   const [expirationDate, setExpirationDate] = useState<string>(
-    existingItem?.expirationDate 
+    existingItem?.expirationDate
       ? formatDateForInput(existingItem.expirationDate)
       : ''
   )
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<Food[]>([])
+
+  useEffect(() => {
+    apiFetchFoods().then(setFoods)
+  }, [setFoods])
+
+  // Server-side search when local results are insufficient
+  useEffect(() => {
+    const query = foodName.trim().toLowerCase()
+    if (!query) {
+      setSearchResults([])
+      return
+    }
+
+    const localMatches = foods.filter(f => f.name.toLowerCase().includes(query))
+    
+    // If we have enough local matches, don't query the server
+    if (localMatches.length >= 3) {
+      setSearchResults([])
+      return
+    }
+
+    // Query server for additional results
+    let cancelled = false
+    const timer = setTimeout(() => {
+      apiFetchFoods({ search: query }).then(serverResults => {
+        if (!cancelled) {
+          // Merge server results with local results, removing duplicates
+          const localIds = new Set(localMatches.map(f => f.id))
+          const additionalResults = serverResults.filter(f => !localIds.has(f.id))
+          setSearchResults(additionalResults)
+        }
+      }).catch(() => {
+        if (!cancelled) {
+          setSearchResults([])
+        }
+      })
+    }, 300) // Debounce
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [foodName, foods])
 
   const isEditing = !!existingItem
 
-  // Derive selected food from foodName
-  const selectedFood = foods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
+  // Combine local foods with server search results
+  const allFoods = useMemo(() => {
+    if (searchResults.length === 0) return foods
+    const foodIds = new Set(foods.map(f => f.id))
+    return [...foods, ...searchResults.filter(f => !foodIds.has(f.id))]
+  }, [foods, searchResults])
 
-  // Handle unit changes to keep units compatible
-  function handleOriginalUnitChange(newUnit: string) {
-    setOriginalUnit(newUnit)
-  }
+  const selectedFood = allFoods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
-  function handleCurrentUnitChange(newUnit: string) {
-    setCurrentUnit(newUnit)
-  }
-
-  // Generate a new ID for pantry items
-  function generateId(): number {
-    if (items.length === 0) return 1
-    return Math.max(...items.map((item) => item.id)) + 1
-  }
-
-  function handleSave() {
+  async function handleSave() {
     if (!selectedFood) return
-
-    const pantryItem: PantryItem = {
-      id: isEditing ? existingItem.id : generateId(),
-      food: selectedFood,
-      originalSize: { size: originalSize, unit: originalUnit },
-      currentSize: { size: currentSize, unit: currentUnit },
-      expirationDate: expirationDate ? new Date(expirationDate) : null,
-      addedDate: isEditing ? existingItem.addedDate : new Date(),
-      status: calculateItemStatus(expirationDate ? new Date(expirationDate) : null),
-      frozenDate: isEditing ? existingItem.frozenDate : null,
+    setSaving(true)
+    setSaveError(null)
+    try {
+      if (isEditing) {
+        const updated = await apiUpdatePantryItem(existingItem.id, {
+          originalSizeAmount: originalSize,
+          originalSizeUnit: originalUnit,
+          currentSizeAmount: currentSize,
+          currentSizeUnit: currentUnit,
+          expirationDate: expirationDate || null,
+        })
+        if (updated) updateItem(updated)
+      } else {
+        const created = await apiCreatePantryItem({
+          foodId: selectedFood.id,
+          originalSizeAmount: originalSize,
+          originalSizeUnit: originalUnit,
+          currentSizeAmount: currentSize,
+          currentSizeUnit: currentUnit,
+          expirationDate: expirationDate || null,
+        })
+        addItem(created)
+      }
+      router.push('/pantry')
+    } catch {
+      setSaveError('Failed to save pantry item. Please try again.')
+    } finally {
+      setSaving(false)
     }
-
-    if (isEditing) {
-      updateItem(pantryItem)
-    } else {
-      addItem(pantryItem)
-    }
-
-    router.push('/pantry')
   }
 
   function handleCancel() {
     router.push('/pantry')
   }
 
-  // Validation logic
   const hasSelectedFood = !!selectedFood
   const hasValidOriginalSize = originalSize > 0
   const hasValidCurrentSize = currentSize >= 0
-  // Validate size based on unit compatibility
   const sizeValid = canConvert(currentUnit, originalUnit)
     ? currentSize <= originalSize
-    : true // If units aren't convertible, skip size validation
-  const isSaveDisabled = !hasSelectedFood || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
+    : true
+  const isSaveDisabled = saving || !hasSelectedFood || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
 
   return (
     <div className="pantry-store-page">
@@ -105,7 +155,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             </label>
             <Autocomplete
               value={foodName}
-              options={foods}
+              options={allFoods}
               getOptionLabel={(food) => food.name}
               renderOptionMeta={(food) => `${food.calories} cal`}
               onChange={setFoodName}
@@ -114,129 +164,96 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             />
           </div>
 
-        <div className="form-section">
-          <label htmlFor="original-size">
-            Original Size <span className="required">*</span>
-          </label>
-          <div className="size-input-group">
-            <input
-              id="original-size"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={originalSize}
-              onChange={(e) => setOriginalSize(Number(e.target.value))}
-              placeholder="Enter size"
-              className="size-number"
-            />
-            <select
-              id="original-unit"
-              value={originalUnit}
-              onChange={(e) => handleOriginalUnitChange(e.target.value)}
-              className="size-unit"
-              aria-label="Original size unit"
-            >
-              <optgroup label="Mass">
-                {MASS_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Volume">
-                {VOLUME_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Custom">
-                {CUSTOM_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-          <small>Original size of each item (e.g., 16 oz box)</small>
-        </div>
-
-        <div className="form-section">
-          <label htmlFor="current-size">
-            Current Size <span className="required">*</span>
-          </label>
-          <div className="size-input-group">
-            <input
-              id="current-size"
-              type="number"
-              min="0"
-              max={canConvert(currentUnit, originalUnit) ? originalSize : undefined}
-              step="0.01"
-              value={currentSize}
-              onChange={(e) => setCurrentSize(Number(e.target.value))}
-              placeholder="Enter size"
-              className="size-number"
-            />
-            <select
-              id="current-unit"
-              value={currentUnit}
-              onChange={(e) => handleCurrentUnitChange(e.target.value)}
-              className="size-unit"
-              aria-label="Current size unit"
-            >
-              <optgroup label="Mass">
-                {MASS_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Volume">
-                {VOLUME_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Custom">
-                {CUSTOM_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-          <small>Remaining size of each item (e.g., 8 oz left)</small>
-        </div>
-
-        <div className="form-section">
-          <label htmlFor="expiration-date">
-            Expiration Date
-          </label>
-          <input
-            id="expiration-date"
-            type="date"
-            value={expirationDate}
-            onChange={(e) => setExpirationDate(e.target.value)}
-            min={getTodayDateString()}
-          />
-          {expirationDate && (
-            <div className="date-preview">
-              Status: <strong>{calculateItemStatus(new Date(expirationDate))}</strong>
+          <div className="form-section">
+            <label htmlFor="original-size">
+              Original Size <span className="required">*</span>
+            </label>
+            <div className="size-input-group">
+              <InputNumber
+                inputId="original-size"
+                min={0.01}
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                value={originalSize}
+                onValueChange={(e) => setOriginalSize(e.value ?? 1)}
+                placeholder="Enter size"
+                className="size-number"
+              />
+              <Dropdown
+                inputId="original-unit"
+                value={originalUnit}
+                onChange={(e) => setOriginalUnit(e.value)}
+                className="size-unit"
+                ariaLabel="Original size unit"
+                options={[
+                  ...MASS_UNITS,
+                  ...VOLUME_UNITS,
+                  ...CUSTOM_UNITS,
+                ].map((unit) => ({ label: unit, value: unit }))}
+              />
             </div>
-          )}
-          <small>Optional - leave blank if no expiration date</small>
-        </div>
+            <small>Original size of each item (e.g., 16 oz box)</small>
+          </div>
 
-        <div className="form-actions">
-          <button
-            onClick={handleSave}
-            disabled={isSaveDisabled}
-            className="btn btn-primary"
-          >
-              {isEditing ? 'Update Item' : 'Add Item'}
+          <div className="form-section">
+            <label htmlFor="current-size">
+              Current Size <span className="required">*</span>
+            </label>
+            <div className="size-input-group">
+              <InputNumber
+                inputId="current-size"
+                min={0}
+                minFractionDigits={0}
+                maxFractionDigits={2}
+                value={currentSize}
+                onValueChange={(e) => setCurrentSize(e.value ?? 0)}
+                placeholder="Enter size"
+                className="size-number"
+              />
+              <Dropdown
+                inputId="current-unit"
+                value={currentUnit}
+                onChange={(e) => setCurrentUnit(e.value)}
+                className="size-unit"
+                ariaLabel="Current size unit"
+                options={[
+                  ...MASS_UNITS,
+                  ...VOLUME_UNITS,
+                  ...CUSTOM_UNITS,
+                ].map((unit) => ({ label: unit, value: unit }))}
+              />
+            </div>
+            <small>Remaining size of each item (e.g., 8 oz left)</small>
+          </div>
+
+          <div className="form-section">
+            <label htmlFor="expiration-date">
+              Expiration Date
+            </label>
+            <input
+              id="expiration-date"
+              type="date"
+              value={expirationDate}
+              onChange={(e) => setExpirationDate(e.target.value)}
+              min={getTodayDateString()}
+            />
+            {expirationDate && (
+              <div className="date-preview">
+                Status: <strong>{calculateItemStatus(new Date(expirationDate))}</strong>
+              </div>
+            )}
+            <small>Optional - leave blank if no expiration date</small>
+          </div>
+
+          {saveError && <p className="form-error">{saveError}</p>}
+
+          <div className="form-actions">
+            <button
+              onClick={handleSave}
+              disabled={isSaveDisabled}
+              className="btn btn-primary"
+            >
+              {saving ? 'Saving...' : isEditing ? 'Update Item' : 'Add Item'}
             </button>
             <button onClick={handleCancel} className="btn btn-secondary">
               Cancel
