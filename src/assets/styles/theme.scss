@@ -1,0 +1,124 @@
+// Single source of truth for the VS Code-inspired design system.
+//
+// Defines our palette at :root so every view, component, and PrimeReact's own
+// CSS can reference the same tokens. The second block overrides lara-dark-blue's
+// CSS variables so PrimeReact components render in our colours without any
+// hand-rolled .p-* overrides.
+
+:root {
+  // ── VS Code design tokens ─────────────────────────────────────────────────
+  --vscode-bg:           #1e1e1e;
+  --vscode-panel:        #252526;
+  --vscode-panel-strong: #2d2d30;
+  --vscode-border:       #3c3c3c;
+  --vscode-accent:       #007acc;
+  --vscode-text:         #d4d4d4;
+  --vscode-muted:        #9da5b4;
+  --vscode-info:         #17a2b8;
+  --vscode-warning:      #f0ad4e;
+  --vscode-danger:       #e81123;
+  --vscode-success:      #22c55e;
+
+  // ── PrimeReact lara-dark-blue overrides ──────────────────────────────────
+  // Map our palette onto the CSS variables that primereact.min.css consumes,
+  // replacing the lara-dark-blue defaults with our VS Code colours.
+  --primary-color:        #007acc;
+  --primary-color-text:   #ffffff;
+
+  --surface-a:       #252526;
+  --surface-b:       #1e1e1e;
+  --surface-c:       rgba(255, 255, 255, 0.03);
+  --surface-d:       #3c3c3c;
+  --surface-e:       #252526;
+  --surface-f:       #2d2d30;
+
+  --surface-0:   #111111;
+  --surface-50:  #1a1a1a;
+  --surface-100: #252526;
+  --surface-200: #2d2d30;
+  --surface-300: #3c3c3c;
+  --surface-400: #505050;
+  --surface-500: #6e6e6e;
+  --surface-600: #9da5b4;
+  --surface-700: #b8c0d0;
+  --surface-800: #d4d4d4;
+  --surface-900: #e8e8e8;
+
+  --surface-ground:   #1e1e1e;
+  --surface-section:  #1e1e1e;
+  --surface-card:     #252526;
+  --surface-overlay:  #252526;
+  --surface-border:   #3c3c3c;
+  --surface-hover:    rgba(0, 122, 204, 0.1);
+
+  --text-color:           #d4d4d4;
+  --text-color-secondary: #9da5b4;
+
+  --focus-ring:           0 0 0 1px rgba(0, 122, 204, 0.35);
+  --highlight-bg:         rgba(0, 122, 204, 0.16);
+  --highlight-text-color: #ffffff;
+
+  --border-radius:    8px;
+  --content-padding:  0.75rem 1rem;
+  --inline-spacing:   0.5rem;
+  --maskbg:           rgba(0, 0, 0, 0.4);
+}
+
+// ── PrimeReact Card ───────────────────────────────────────────────────────────
+// Used in recipe-card, food-card, and pantry-card lists. Keep the body/content
+// wrappers as real layout boxes for accessibility/browser compatibility, while
+// neutralizing their default spacing so each view's own flex layout stays in control.
+
+.p-card {
+  box-shadow: none;
+  color: inherit;
+
+  .p-card-body {
+    padding:    0;
+    background: transparent;
+  }
+
+  .p-card-content {
+    display:        flex;
+    flex-direction: column;
+    padding:        0;
+    background:     transparent;
+  }
+}
+
+// The suggestions panel is portal-rendered so it must be styled globally.
+
+.p-autocomplete-panel {
+  background:    var(--surface-overlay);
+  border:        1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  box-shadow:    0 10px 24px rgba(0, 0, 0, 0.35);
+  z-index:       10;
+
+  .p-autocomplete-items-wrapper {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .p-autocomplete-items {
+    margin:     0;
+    padding:    4px 0;
+    list-style: none;
+  }
+
+  .p-autocomplete-item {
+    padding: 8px 10px;
+    cursor:  pointer;
+    color:   var(--text-color);
+
+    &:hover,
+    &.p-focus {
+      background: var(--surface-hover);
+    }
+
+    &[aria-selected='true'] {
+      background:   var(--highlight-bg);
+      border-left:  2px solid var(--primary-color);
+    }
+  }
+}
