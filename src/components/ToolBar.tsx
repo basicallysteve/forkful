@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import ThemeToggle from './ThemeToggle'
+
 type MenuOption = {
     label: string;
     action?: () => void;

@@ -3,23 +3,6 @@
   width: 100%;
   box-sizing: border-box;
 
-  .account-titlebar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: var(--vscode-titlebar-bg);
-    border-bottom: 1px solid var(--vscode-border);
-    font-size: 12px;
-    letter-spacing: 0.2px;
-
-    .title {
-      color: var(--vscode-muted);
-      text-align: center;
-    }
-  }
-
   .account-content {
     padding: 22px 22px 18px;
     background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));

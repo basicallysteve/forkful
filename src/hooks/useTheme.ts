@@ -8,8 +8,12 @@ const STORAGE_KEY = 'theme'
 const THEME_CHANGE_EVENT = 'themechange'
 
 function getSnapshot(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-  return stored ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
+    return stored ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  } catch {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
 }
 
 function getServerSnapshot(): Theme {
@@ -31,16 +35,18 @@ function subscribe(callback: () => void): () => void {
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
-  // Only set data-theme when the user has stored an explicit preference.
-  // Without it, CSS @media (prefers-color-scheme) handles theming naturally,
-  // and OS preference changes are reflected in real time.
+  // Syncs data-theme after each render. toggleTheme sets it immediately for
+  // instant response, but this effect handles the "clear stored pref" case
+  // (when the user clears localStorage externally) and the initial mount.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      document.documentElement.dataset.theme = stored
-    } else {
-      delete document.documentElement.dataset.theme
-    }
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        document.documentElement.dataset.theme = stored
+      } else {
+        delete document.documentElement.dataset.theme
+      }
+    } catch { /* localStorage unavailable — CSS media query handles theming */ }
   }, [theme])
 
   function toggleTheme() {
