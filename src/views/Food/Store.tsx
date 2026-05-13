@@ -180,10 +180,6 @@ function Store({ existingFood }: FoodStoreProps) {
 
   return (
     <div className="food-store">
-      <div className="store-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {food.name || 'New Food'}</span>
-      </div>
-
       <div className="store-content">
         <header className="store-header">
           <div>

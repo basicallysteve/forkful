@@ -1,73 +1,157 @@
-// Single source of truth for the VS Code-inspired design system.
+// Design system tokens.
 //
-// Defines our palette at :root so every view, component, and PrimeReact's own
-// CSS can reference the same tokens. The second block overrides lara-dark-blue's
-// CSS variables so PrimeReact components render in our colours without any
-// hand-rolled .p-* overrides.
+// Light mode (emerald green accent) is the default. Dark mode activates via:
+//   1. @media (prefers-color-scheme: dark)  — OS preference with no override
+//   2. html[data-theme="dark"]              — explicit user toggle (takes precedence)
+// html[data-theme="light"] locks light even when the OS is set to dark.
 
-:root {
-  // ── VS Code design tokens ─────────────────────────────────────────────────
-  --vscode-bg:           #1e1e1e;
-  --vscode-panel:        #252526;
-  --vscode-panel-strong: #2d2d30;
-  --vscode-border:       #3c3c3c;
-  --vscode-accent:       #007acc;
-  --vscode-text:         #d4d4d4;
-  --vscode-muted:        #9da5b4;
-  --vscode-info:         #17a2b8;
-  --vscode-warning:      #f0ad4e;
-  --vscode-danger:       #e81123;
-  --vscode-success:      #22c55e;
+@mixin light-color-vars {
+  --vscode-bg:           #f8fafc;
+  --vscode-panel:        #ffffff;
+  --vscode-panel-strong: #f1f5f9;
+  --vscode-panel-deep:   #e8edf4;
+  --vscode-titlebar-bg:  #eef8f4;
+  --vscode-border:       #e2e8f0;
+  --vscode-accent:       #10b981;
+  --vscode-accent-deep:  #059669;
+  --vscode-text:         #0f172a;
+  --vscode-muted:        #64748b;
 
-  // ── PrimeReact lara-dark-blue overrides ──────────────────────────────────
-  // Map our palette onto the CSS variables that primereact.min.css consumes,
-  // replacing the lara-dark-blue defaults with our VS Code colours.
-  --primary-color:        #007acc;
-  --primary-color-text:   #ffffff;
+  --accent-hover:        rgba(16, 185, 129, 0.07);
+  --accent-hover-strong: rgba(16, 185, 129, 0.12);
+  --accent-border:       rgba(16, 185, 129, 0.25);
+  --accent-glow:         rgba(16, 185, 129, 0.35);
+  --shadow-container:    rgba(0, 0, 0, 0.06);
 
-  --surface-a:       #252526;
-  --surface-b:       #1e1e1e;
-  --surface-c:       rgba(255, 255, 255, 0.03);
-  --surface-d:       #3c3c3c;
-  --surface-e:       #252526;
-  --surface-f:       #2d2d30;
+  --surface-a:       #ffffff;
+  --surface-b:       #f8fafc;
+  --surface-c:       rgba(0, 0, 0, 0.03);
+  --surface-d:       #e2e8f0;
+  --surface-e:       #ffffff;
+  --surface-f:       #f1f5f9;
 
-  --surface-0:   #111111;
-  --surface-50:  #1a1a1a;
-  --surface-100: #252526;
-  --surface-200: #2d2d30;
-  --surface-300: #3c3c3c;
-  --surface-400: #505050;
-  --surface-500: #6e6e6e;
-  --surface-600: #9da5b4;
-  --surface-700: #b8c0d0;
-  --surface-800: #d4d4d4;
-  --surface-900: #e8e8e8;
+  --surface-0:   #ffffff;
+  --surface-50:  #f8fafc;
+  --surface-100: #f1f5f9;
+  --surface-200: #e2e8f0;
+  --surface-300: #cbd5e1;
+  --surface-400: #94a3b8;
+  --surface-500: #64748b;
+  --surface-600: #475569;
+  --surface-700: #334155;
+  --surface-800: #1e293b;
+  --surface-900: #0f172a;
 
-  --surface-ground:   #1e1e1e;
-  --surface-section:  #1e1e1e;
-  --surface-card:     #252526;
-  --surface-overlay:  #252526;
-  --surface-border:   #3c3c3c;
-  --surface-hover:    rgba(0, 122, 204, 0.1);
+  --surface-ground:   #f8fafc;
+  --surface-section:  #f8fafc;
+  --surface-card:     #ffffff;
+  --surface-overlay:  #ffffff;
+  --surface-border:   #e2e8f0;
+  --surface-hover:    rgba(16, 185, 129, 0.07);
 
-  --text-color:           #d4d4d4;
-  --text-color-secondary: #9da5b4;
+  --text-color:           #0f172a;
+  --text-color-secondary: #64748b;
 
-  --focus-ring:           0 0 0 1px rgba(0, 122, 204, 0.35);
-  --highlight-bg:         rgba(0, 122, 204, 0.16);
+  --focus-ring:           0 0 0 1px rgba(16, 185, 129, 0.4);
+  --highlight-bg:         rgba(16, 185, 129, 0.12);
+  --highlight-text-color: #065f46;
+
+  --maskbg: rgba(0, 0, 0, 0.3);
+}
+
+@mixin dark-color-vars {
+  --vscode-bg:           #061812;
+  --vscode-panel:        #0c2b20;
+  --vscode-panel-strong: #123629;
+  --vscode-panel-deep:   #030e08;
+  --vscode-titlebar-bg:  #092318;
+  --vscode-border:       #1c4d38;
+  --vscode-accent:       #34d399;
+  --vscode-accent-deep:  #10b981;
+  --vscode-text:         #ecfdf5;
+  --vscode-muted:        #5ab88d;
+
+  --accent-hover:        rgba(52, 211, 153, 0.12);
+  --accent-hover-strong: rgba(52, 211, 153, 0.20);
+  --accent-border:       rgba(52, 211, 153, 0.30);
+  --accent-glow:         rgba(52, 211, 153, 0.25);
+  --shadow-container:    rgba(0, 0, 0, 0.45);
+
+  --surface-a:       #0c2b20;
+  --surface-b:       #061812;
+  --surface-c:       rgba(255, 255, 255, 0.04);
+  --surface-d:       #1c4d38;
+  --surface-e:       #0c2b20;
+  --surface-f:       #123629;
+
+  --surface-0:   #020b06;
+  --surface-50:  #030e08;
+  --surface-100: #061812;
+  --surface-200: #0c2b20;
+  --surface-300: #123629;
+  --surface-400: #1c4d38;
+  --surface-500: #286a4e;
+  --surface-600: #3a8c68;
+  --surface-700: #5ab88d;
+  --surface-800: #86d4ae;
+  --surface-900: #b8ecd2;
+
+  --surface-ground:   #061812;
+  --surface-section:  #061812;
+  --surface-card:     #0c2b20;
+  --surface-overlay:  #0c2b20;
+  --surface-border:   #1c4d38;
+  --surface-hover:    rgba(52, 211, 153, 0.12);
+
+  --text-color:           #ecfdf5;
+  --text-color-secondary: #5ab88d;
+
+  --focus-ring:           0 0 0 1px rgba(52, 211, 153, 0.5);
+  --highlight-bg:         rgba(52, 211, 153, 0.18);
   --highlight-text-color: #ffffff;
 
-  --border-radius:    8px;
-  --content-padding:  0.75rem 1rem;
-  --inline-spacing:   0.5rem;
-  --maskbg:           rgba(0, 0, 0, 0.4);
+  --maskbg: rgba(0, 0, 0, 0.6);
+}
+
+// ── Core palette ──────────────────────────────────────────────────────────────
+:root {
+  @include light-color-vars;
+
+  // Shared semantic tokens (same in both modes)
+  --vscode-info:    #06b6d4;
+  --vscode-warning: #f59e0b;
+  --vscode-danger:  #ef4444;
+  --vscode-success: #10b981;
+
+  // ── PrimeReact overrides ─────────────────────────────────────────────────
+  --primary-color:      #10b981;
+  --primary-color-text: #ffffff;
+
+  --border-radius:   8px;
+  --content-padding: 0.75rem 1rem;
+  --inline-spacing:  0.5rem;
+}
+
+// ── Dark mode: OS preference (no manual override) ─────────────────────────────
+@media (prefers-color-scheme: dark) {
+  :root {
+    @include dark-color-vars;
+    --primary-color: #34d399;
+  }
+}
+
+// ── Manual overrides via data-theme attribute (higher specificity than :root) ──
+html[data-theme='dark'] {
+  @include dark-color-vars;
+  --primary-color: #34d399;
+}
+
+html[data-theme='light'] {
+  @include light-color-vars;
+  --primary-color: #10b981;
 }
 
 // ── PrimeReact Card ───────────────────────────────────────────────────────────
-// Used in recipe-card, food-card, and pantry-card lists. Keep the body/content
-// wrappers as real layout boxes for accessibility/browser compatibility, while
-// neutralizing their default spacing so each view's own flex layout stays in control.
 
 .p-card {
   box-shadow: none;
@@ -92,7 +176,7 @@
   background:    var(--surface-overlay);
   border:        1px solid var(--surface-border);
   border-radius: var(--border-radius);
-  box-shadow:    0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow:    0 10px 24px var(--shadow-container);
   z-index:       10;
 
   .p-autocomplete-items-wrapper {

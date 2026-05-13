@@ -1,7 +1,8 @@
-// Quill / Editor dark-theme overrides.
+// Quill / Editor theme overrides.
 //
-// PrimeReact's Editor wraps Quill whose Snow theme hard-codes light colours.
-// These rules restore readability on dark backgrounds.
+// PrimeReact's Editor wraps Quill whose Snow theme has light defaults.
+// In light mode the defaults work fine; in dark mode we override them
+// to restore readability on dark backgrounds.
 
 $border-dark:   var(--surface-border);
 $bg-dark:       var(--surface-a);
@@ -11,86 +12,103 @@ $focus-shadow:  var(--focus-ring);
 $hover-bg:      var(--surface-hover);
 $white:         #ffffff;
 
-// ── Toolbar ───────────────────────────────────────────────────────────────────
+// ── Dark-mode Quill overrides ─────────────────────────────────────────────────
 
-[data-pc-name="editor"] {
-  .ql-toolbar.ql-snow {
-    background: rgba(255, 255, 255, 0.02);
-    border-color: $border-dark;
-    border-radius: 8px 8px 0 0;
+@media (prefers-color-scheme: dark) {
+  [data-pc-name="editor"] {
+    .ql-toolbar.ql-snow {
+      background: rgba(255, 255, 255, 0.02);
+      border-color: $border-dark;
+      border-radius: 8px 8px 0 0;
 
-    button {
-      background: none;
-      border: none;
-      border-radius: 4px;
-      padding: 3px 5px;
-      height: 24px;
-      width: 28px;
+      button {
+        background: none;
+        border: none;
+        border-radius: 4px;
+        padding: 3px 5px;
+        height: 24px;
+        width: 28px;
 
-      &:hover,
-      &.ql-active {
-        background: $hover-bg;
+        &:hover,
+        &.ql-active {
+          background: $hover-bg;
+        }
       }
-    }
 
-    .ql-stroke { stroke: $text-main; }
-    .ql-fill   { fill:   $text-main; }
+      .ql-stroke { stroke: $text-main; }
+      .ql-fill   { fill:   $text-main; }
 
-    button:hover,
-    button.ql-active,
-    .ql-picker-label:hover,
-    .ql-picker-label.ql-active {
-      .ql-stroke { stroke: $white; }
-      .ql-fill   { fill:   $white; }
-    }
+      button:hover,
+      button.ql-active,
+      .ql-picker-label:hover,
+      .ql-picker-label.ql-active {
+        .ql-stroke { stroke: $white; }
+        .ql-fill   { fill:   $white; }
+      }
 
-    .ql-picker {
-      color: $text-main;
-
-      .ql-picker-label {
+      .ql-picker {
         color: $text-main;
-        border-color: $border-dark;
-        &:hover { color: $white; }
-      }
 
-      .ql-picker-options {
-        background: $bg-dark;
-        border-color: $border-dark;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-
-        .ql-picker-item {
+        .ql-picker-label {
           color: $text-main;
+          border-color: $border-dark;
+          &:hover { color: $white; }
+        }
 
-          &:hover,
-          &.ql-selected {
-            color: $white;
-            background: $hover-bg;
-            border-radius: 4px;
+        .ql-picker-options {
+          background: $bg-dark;
+          border-color: $border-dark;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+          .ql-picker-item {
+            color: $text-main;
+
+            &:hover,
+            &.ql-selected {
+              color: $white;
+              background: $hover-bg;
+              border-radius: 4px;
+            }
           }
         }
       }
     }
-  }
 
-  // ── Content area ────────────────────────────────────────────────────────────
+    .ql-container.ql-snow {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: $border-dark;
+      border-radius: 0 0 8px 8px;
+      border-top: none;
 
-  .ql-container.ql-snow {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: $border-dark;
-    border-radius: 0 0 8px 8px;
-    border-top: none;
+      .ql-editor {
+        color: $text-main;
+        line-height: 1.6;
+        font-family: inherit;
+        font-size: 14px;
 
-    .ql-editor {
-      color: $text-main;
-      line-height: 1.6;
-      font-family: inherit;
-      font-size: 14px;
-
-      &.ql-blank::before {
-        color: $text-muted;
-        font-style: normal;
+        &.ql-blank::before {
+          color: $text-muted;
+          font-style: normal;
+        }
       }
+    }
+  }
+}
+
+// ── Light-mode Quill border tidy-up ──────────────────────────────────────────
+// Snow theme borders match our border colour in light mode.
+
+@media (prefers-color-scheme: light) {
+  [data-pc-name="editor"] {
+    .ql-toolbar.ql-snow {
+      border-color: var(--surface-border);
+      border-radius: 8px 8px 0 0;
+    }
+
+    .ql-container.ql-snow {
+      border-color: var(--surface-border);
+      border-radius: 0 0 8px 8px;
     }
   }
 }
@@ -105,24 +123,19 @@ $white:         #ffffff;
   }
 }
 
-
 // ── Input background alignment ────────────────────────────────────────────────
-// lara-dark-blue hardcodes a dark-blue input background (#111827) instead of
-// reading --surface-a. Override every PrimeReact input surface to match the
-// native .text-input class so all fields share the same background colour.
+// Override every PrimeReact input surface so all fields share the same
+// background colour from our CSS variables.
 
 .p-inputtext,
 .p-inputnumber-input,
 .p-dropdown,
 .p-password .p-inputtext {
   background: var(--surface-a);
+  color: var(--text-color);
 }
 
 // ── Compact dropdown (filter controls) ───────────────────────────────────────
-// PrimeReact's theme adds padding to the inner .p-dropdown-label via
-// --content-padding. When .filter-select also sets padding on the wrapper we
-// get double-spacing. Zero out the wrapper and push padding onto the label so
-// filter controls stay the same height as adjacent text inputs.
 
 .filter-select.p-dropdown {
   padding: 0;

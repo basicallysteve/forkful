@@ -1,11 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import ThemeToggle from './ThemeToggle'
 type MenuOption = {
     label: string;
     action?: () => void;
     children?: MenuOption[];
-    to?: string; // Optional for direct links
+    to?: string;
+    align?: 'right';
 }
 
 const logoSrc = "/forkful-logo.svg"
@@ -16,7 +18,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         const hasChildren = !!(option.children && option.children.length > 0)
 
         return (
-            <div className="menu-option" key={option.label}>
+            <div className={`menu-option${option.align === 'right' ? ' menu-option--right' : ''}`} key={option.label}>
                 <Link href={option.to || "#"} className="menu-option__link" onClick={option.action}>
                 <button
                     type="button"
@@ -56,6 +58,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
             </div>
             <div className="menu">
                 {menuOptions && menuOptions.map((option) => renderMenuOption(option))}
+                <ThemeToggle />
             </div>
         </div>
     )

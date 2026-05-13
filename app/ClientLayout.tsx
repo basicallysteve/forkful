@@ -41,14 +41,16 @@ export default function ClientLayout({ children, recipes, isLoggedIn }: ClientLa
         { label: 'Add Pantry Item', to: '/pantry/new' },
       ],
     },
-    ...(isLoggedIn ? [{ label: 'Logout', to: '/logout' }] : [{ label: 'Login', to: '/login' }]),
+    ...(isLoggedIn ? [{ label: 'Logout', to: '/logout', align: 'right' as const }] : [{ label: 'Login', to: '/login', align: 'right' as const }]),
   ]
 
   return (
     <PrimeReactProvider>
       <div className="app-shell">
         <ToolBar menuOptions={menuOptions} />
-        {children}
+        <main className="page-content">
+          {children}
+        </main>
       </div>
     </PrimeReactProvider>
   )

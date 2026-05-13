@@ -174,10 +174,6 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   return (
     <div className="recipe-view">
-      <div className="recipe-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {displayRecipe.name}</span>
-      </div>
-
       <div className="recipe-content">
         <header className="recipe-header">
           <div className="recipe-header-container">
