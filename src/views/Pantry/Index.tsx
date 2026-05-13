@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 import { Card } from 'primereact/card'
 import { usePantryStore } from '@/stores/pantry'
-import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
+import type { PantryItemStatus } from '@/types/PantryItem'
 import { toSlug } from '@/utils/slug'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
