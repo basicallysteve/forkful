@@ -412,9 +412,15 @@
   text-align: center;
 }
 
-.add-ingredient-button {
+.ingredient-actions {
+  display: flex;
+  gap: 8px;
   margin-top: 12px;
-  width: 100%;
+  flex-wrap: wrap;
+}
+
+.add-ingredient-button {
+  flex: 1;
 }
 
 @media (max-width: 775px) {

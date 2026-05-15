@@ -10,6 +10,7 @@ import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiUpdateRecipe } from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
+import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -26,6 +27,8 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
+  const [localFoods, setLocalFoods] = useState<Food[]>(foods)
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -123,8 +126,8 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     }
 
     // Create a placeholder ingredient with the first food
-    if (foods.length > 0) {
-      const defaultFood = foods[0]
+    if (localFoods.length > 0) {
+      const defaultFood = localFoods[0]
       const newIngredient: Ingredient = { 
         food: defaultFood, 
         quantity: 1, 
@@ -284,10 +287,10 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                         <td>
                           <Autocomplete
                             value={ingredient.food.name}
-                            options={foods}
+                            options={localFoods}
                             getOptionLabel={(opt) => opt.name}
                             onChange={(next) => {
-                              const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                              const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
                               if (food) {
                                 handleIngredientFoodChange(index, food)
                               }else if(next === '') {
@@ -370,13 +373,28 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
               </tbody>
             </table>
             {editMode && (
-              <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>
-                + Add Ingredient
-              </button>
+              <div className="ingredient-actions">
+                <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>
+                  + Add Ingredient
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setShowImportDialog(true)}
+                >
+                  Import from OpenFoodFacts
+                </button>
+              </div>
             )}
           </div>
         </section>
       </div>
+
+      <OpenFoodFactsImport
+        visible={showImportDialog}
+        onHide={() => setShowImportDialog(false)}
+        onImport={(food) => setLocalFoods((prev) => [...prev, food])}
+      />
     </div>
   )
 }

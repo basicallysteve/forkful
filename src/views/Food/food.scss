@@ -231,6 +231,20 @@
     border: 1px solid rgba(0, 122, 204, 0.2);
     border-radius: 8px;
     text-align: center;
+
+    &.nutrition-item-sub {
+      background: rgba(255, 255, 255, 0.02);
+      border-color: var(--vscode-border);
+
+      .nutrition-label::before {
+        content: '↳ ';
+        opacity: 0.5;
+      }
+
+      .nutrition-value {
+        font-size: 15px;
+      }
+    }
   }
 
   .nutrition-label {
@@ -292,6 +306,22 @@
     border-radius: 8px;
     color: var(--vscode-muted);
     font-size: 13px;
+  }
+
+  .off-attribution {
+    margin: 0;
+    font-size: 11px;
+    color: var(--vscode-muted);
+    opacity: 0.7;
+
+    a {
+      color: var(--vscode-accent);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   @media (max-width: 720px) {

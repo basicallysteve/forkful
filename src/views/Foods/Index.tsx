@@ -11,6 +11,7 @@ import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
@@ -30,6 +31,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   useEffect(() => {
     if (initialFoods) {
@@ -184,6 +186,13 @@ export default function Foods({ initialFoods }: FoodsProps) {
               </button>
             </div>
             <div className="toolbar-actions">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setShowImportDialog(true)}
+              >
+                Import Food
+              </button>
               <Link href="/foods/new" className="primary-button">
                 + Add Food
               </Link>
@@ -269,6 +278,12 @@ export default function Foods({ initialFoods }: FoodsProps) {
           </div>
         </section>
       </div>
+
+      <OpenFoodFactsImport
+        visible={showImportDialog}
+        onHide={() => setShowImportDialog(false)}
+        onImport={(food) => setFoods([...foods, food])}
+      />
     </div>
   )
 }

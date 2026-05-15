@@ -112,12 +112,28 @@ export default function FoodIndex({ food }: FoodIndexProps) {
                   <span className="nutrition-label">Fat</span>
                   <span className="nutrition-value">{food.fat || 0}g</span>
                 </div>
+                {food.saturatedFat != null && (
+                  <div className="nutrition-item nutrition-item-sub">
+                    <span className="nutrition-label">Saturated Fat</span>
+                    <span className="nutrition-value">{food.saturatedFat}g</span>
+                  </div>
+                )}
                 <div className="nutrition-item">
                   <span className="nutrition-label">Fiber</span>
-                  <span className="nutrition-value">
-                    {food.fiber || 0}g
-                  </span>
+                  <span className="nutrition-value">{food.fiber || 0}g</span>
                 </div>
+                {food.sugar != null && (
+                  <div className="nutrition-item nutrition-item-sub">
+                    <span className="nutrition-label">Sugar</span>
+                    <span className="nutrition-value">{food.sugar}g</span>
+                  </div>
+                )}
+                {food.sodium != null && (
+                  <div className="nutrition-item">
+                    <span className="nutrition-label">Sodium</span>
+                    <span className="nutrition-value">{food.sodium}mg</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -126,6 +142,11 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               <p className="serving-info">
                 <strong>Serving Size:</strong> {food.servingSize} {food.servingUnit}
               </p>
+              {food.barcode && (
+                <p className="serving-info">
+                  <strong>Barcode:</strong> {food.barcode}
+                </p>
+              )}
               {food.measurements && food.measurements.length > 0 && (
                 <div className="measurements-info">
                   <strong>Available Measurements:</strong>
@@ -141,6 +162,28 @@ export default function FoodIndex({ food }: FoodIndexProps) {
             </div>
 
             <p className="macro-summary">{formatMacros()}</p>
+
+            {food.source === 'open_food_facts' && (
+              <p className="off-attribution">
+                Data from{' '}
+                <a
+                  href="https://world.openfoodfacts.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Food Facts
+                </a>
+                , available under the{' '}
+                <a
+                  href="https://opendatacommons.org/licenses/odbl/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open Database License
+                </a>
+                .
+              </p>
+            )}
           </div>
         </section>
       </div>

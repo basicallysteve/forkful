@@ -31,6 +31,9 @@ function Store({ existingFood }: FoodStoreProps) {
     carbs: existingFood?.carbs || 0,
     fat: existingFood?.fat || 0,
     fiber: existingFood?.fiber || 0,
+    saturatedFat: existingFood?.saturatedFat,
+    sugar: existingFood?.sugar,
+    sodium: existingFood?.sodium,
     servingSize: existingFood?.servingSize || 1,
     servingUnit: existingFood?.servingUnit || 'g',
     measurements: existingFood?.measurements || ['g'],
@@ -85,11 +88,12 @@ function Store({ existingFood }: FoodStoreProps) {
     )
   }, [food, isDuplicateName])
 
-  function handleMacroChange(field: 'protein' | 'carbs' | 'fat' | 'fiber', value: number | null) {
-    setFood({
-      ...food,
-      [field]: Math.max(0, value ?? 0),
-    })
+  function handleMacroChange(field: 'protein' | 'carbs' | 'fat' | 'fiber', value: number | null | undefined) {
+    setFood({ ...food, [field]: Math.max(0, value ?? 0) })
+  }
+
+  function handleOptionalMacroChange(field: 'saturatedFat' | 'sugar' | 'sodium', value: number | null | undefined) {
+    setFood({ ...food, [field]: value != null ? Math.max(0, value) : undefined })
   }
 
   function handleAddMeasurement(unitToAdd?: string) {
@@ -154,6 +158,9 @@ function Store({ existingFood }: FoodStoreProps) {
       carbs: food.carbs || 0,
       fat: food.fat || 0,
       fiber: food.fiber || 0,
+      saturatedFat: food.saturatedFat,
+      sugar: food.sugar,
+      sodium: food.sodium,
       servingSize: food.servingSize!,
       servingUnit: food.servingUnit,
       measurements: food.measurements,
@@ -329,6 +336,45 @@ function Store({ existingFood }: FoodStoreProps) {
                         value={food.fiber || 0}
                         onValueChange={(e) => handleMacroChange('fiber', e.value)}
                         aria-label="Fiber"
+                      />
+                    </label>
+                    <label className="macro-field">
+                      <span className="macro-label">Saturated Fat</span>
+                      <InputNumber
+                        className="macro-input"
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
+                        value={food.saturatedFat ?? null}
+                        onValueChange={(e) => handleOptionalMacroChange('saturatedFat', e.value)}
+                        aria-label="Saturated fat"
+                        placeholder="—"
+                      />
+                    </label>
+                    <label className="macro-field">
+                      <span className="macro-label">Sugar</span>
+                      <InputNumber
+                        className="macro-input"
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={1}
+                        value={food.sugar ?? null}
+                        onValueChange={(e) => handleOptionalMacroChange('sugar', e.value)}
+                        aria-label="Sugar"
+                        placeholder="—"
+                      />
+                    </label>
+                    <label className="macro-field">
+                      <span className="macro-label">Sodium (mg)</span>
+                      <InputNumber
+                        className="macro-input"
+                        min={0}
+                        minFractionDigits={0}
+                        maxFractionDigits={0}
+                        value={food.sodium ?? null}
+                        onValueChange={(e) => handleOptionalMacroChange('sodium', e.value)}
+                        aria-label="Sodium in milligrams"
+                        placeholder="—"
                       />
                     </label>
                   </div>
