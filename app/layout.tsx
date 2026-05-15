@@ -35,6 +35,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        {/* Prevents flash of wrong theme by applying stored preference before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />
+      </head>
       <body>
         <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn}>{children}</ClientLayout>
       </body>

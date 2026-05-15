@@ -129,10 +129,6 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
 
   return (
     <div className="recipes-list">
-      <div className="recipes-titlebar" aria-hidden="true">
-        <span className="title">Forkful — All Recipes</span>
-      </div>
-
       <div className="recipes-content">
         <header className="recipes-header">
           <div>

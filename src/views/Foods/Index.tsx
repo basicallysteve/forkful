@@ -128,10 +128,6 @@ export default function Foods({ initialFoods }: FoodsProps) {
 
   return (
     <div className="foods-list">
-      <div className="foods-titlebar" aria-hidden="true">
-        <span className="title">Forkful — All Foods</span>
-      </div>
-
       <div className="foods-content">
         <header className="foods-header">
           <div>

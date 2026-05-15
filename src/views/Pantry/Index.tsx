@@ -179,10 +179,6 @@ export default function Pantry() {
 
   return (
     <div className="pantry-list">
-      <div className="pantry-titlebar">
-        <span className="title">Pantry</span>
-      </div>
-
       <div className="pantry-content">
         <div className="pantry-header">
           <div>

@@ -121,10 +121,6 @@ function CreateAccount() {
 
   return (
     <div className="create-account">
-      <div className="account-titlebar" aria-hidden="true">
-        <span className="title">Forkful — Create Account</span>
-      </div>
-
       <div className="account-content">
         <header className="account-header">
           <div>

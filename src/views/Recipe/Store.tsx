@@ -438,10 +438,6 @@ function Store() {
 
   return (
     <div className="recipe-store">
-      <div className="store-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {recipe.name || "New Recipe"}</span>
-      </div>
-
       <div className="store-content">
         <header className="store-header">
           <div>
