@@ -35,22 +35,27 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
       return
     }
 
+    let cancelled = false
+
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     searchTimerRef.current = setTimeout(async () => {
       setLoading(true)
       setError(null)
       try {
         const products = await apiSearchOpenFoodFacts(query.trim())
-        setResults(products)
-        if (products.length === 0) setError('No results found. Try a different search term.')
+        if (!cancelled) {
+          setResults(products)
+          if (products.length === 0) setError('No results found. Try a different search term.')
+        }
       } catch {
-        setError('Search failed. Please try again.')
+        if (!cancelled) setError('Search failed. Please try again.')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }, 400)
 
     return () => {
+      cancelled = true
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
   }, [query])

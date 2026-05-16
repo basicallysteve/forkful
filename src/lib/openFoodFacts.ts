@@ -2,7 +2,7 @@ import type { OFFProduct } from '@/types/OpenFoodFacts'
 import type { Food } from '@/types/Food'
 
 const OFF_BASE = 'https://world.openfoodfacts.org'
-const USER_AGENT = 'Forkful/1.0 (https://github.com/basicallysteve/cookbook)'
+const USER_AGENT = 'Forkful/1.0 (https://github.com/basicallysteve/forkful)'
 
 interface OFFSearchResponse {
   products: OFFProduct[]
@@ -46,6 +46,19 @@ export async function getOpenFoodFactsProduct(barcode: string): Promise<OFFProdu
   return data.product
 }
 
+/**
+ * Parse a gram value from an OFF serving_size string (e.g. "30g", "1 biscuit (30g)").
+ * Returns 100 when grams cannot be determined (non-gram units like "1 capsule", "250ml").
+ */
+function parseServingGrams(servingSize?: string): number {
+  if (servingSize) {
+    // Match patterns like "30g", "30 g", "30.5g", "1 piece (30g)" — excludes "mg"
+    const match = servingSize.match(/(\d+(?:\.\d+)?)\s*g(?!\w)/)
+    if (match) return parseFloat(match[1])
+  }
+  return 100
+}
+
 export function mapOFFProductToFood(product: OFFProduct): Omit<Food, 'id'> {
   const n = product.nutriments ?? {}
   const kcal100g = n['energy-kcal_100g'] ?? 0
@@ -57,7 +70,9 @@ export function mapOFFProductToFood(product: OFFProduct): Omit<Food, 'id'> {
   const fiber100g = n['fiber_100g'] ?? 0
   const sodium100g = n['sodium_100g']
 
-  const servingGrams = product.serving_quantity ?? 100
+  // Parse grams from the human-readable serving_size string; fall back to 100g
+  // so that nutrition values are always correctly scaled from per-100g data.
+  const servingGrams = parseServingGrams(product.serving_size)
   const scale = servingGrams / 100
 
   return {

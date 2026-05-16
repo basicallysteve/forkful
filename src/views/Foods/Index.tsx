@@ -23,6 +23,7 @@ interface FoodsProps {
 export default function Foods({ initialFoods }: FoodsProps) {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
+  const addFood = useFoodStore((state) => state.addFood)
   const deleteFood = useFoodStore((state) => state.deleteFood)
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
@@ -278,7 +279,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
       <OpenFoodFactsImport
         visible={showImportDialog}
         onHide={() => setShowImportDialog(false)}
-        onImport={(food) => setFoods([...foods, food])}
+        onImport={addFood}
       />
     </div>
   )
