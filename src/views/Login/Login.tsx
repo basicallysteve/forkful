@@ -35,10 +35,6 @@ function Login() {
 
   return (
     <div className="login">
-      <div className="account-titlebar" aria-hidden="true">
-        <span className="title">Forkful — Login</span>
-      </div>
-
       <div className="account-content">
         <header className="account-header">
           <div>

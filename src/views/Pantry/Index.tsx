@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+
 import { Card } from 'primereact/card'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
@@ -178,10 +179,6 @@ export default function Pantry() {
 
   return (
     <div className="pantry-list">
-      <div className="pantry-titlebar">
-        <span className="title">Pantry</span>
-      </div>
-
       <div className="pantry-content">
         <div className="pantry-header">
           <div>

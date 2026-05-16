@@ -42,10 +42,6 @@ export default function FoodIndex({ food }: FoodIndexProps) {
 
   return (
     <div className="food-view">
-      <div className="food-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {food.name}</span>
-      </div>
-
       <div className="food-content">
         <header className="food-header">
           <div className="food-header-container">

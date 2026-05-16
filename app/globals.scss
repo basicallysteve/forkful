@@ -3,7 +3,7 @@
 
 // ── Global element resets ─────────────────────────────────────────────────────
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
@@ -19,16 +19,30 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  display: block;
-  padding: 32px 40px;
+  padding: 0;
   background-color: var(--vscode-bg);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  padding: 32px 40px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--vscode-accent);
   text-decoration: inherit;
-  &:hover { color: #535bf2; }
+  &:hover { color: var(--vscode-accent-deep); }
 }
 
 button {
@@ -38,32 +52,19 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--vscode-panel);
   cursor: pointer;
   transition: border-color 0.25s;
-  &:hover { border-color: #646cff; }
+  &:hover { border-color: var(--vscode-accent); }
   &:focus,
   &:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
 }
 
 @media (max-width: 720px) {
-  body { padding: 18px; }
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  body { background-color: #ffffff; }
-  a:hover { color: #747bff; }
-  button { background-color: #f9f9f9; }
+  .page-content { padding: 16px; }
 }
 
 // ── Native-input utilities ────────────────────────────────────────────────────
-// Used only on native <input>/<textarea> elements (e.g. Autocomplete's inner
-// input). PrimeReact components are styled by the imported theme; these classes
-// ensure hand-rolled inputs match those styles via the same CSS variables.
 
 .text-input,
 .text-area {
@@ -80,7 +81,7 @@ button {
   &:focus {
     outline: none;
     border-color: var(--primary-color);
-    background: rgba(0, 122, 204, 0.06);
+    background: var(--accent-hover);
     box-shadow: var(--focus-ring);
   }
 }
@@ -107,7 +108,7 @@ button {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--surface-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   color: var(--text-color-secondary);
   cursor: pointer;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease,
@@ -115,14 +116,14 @@ button {
 
   &:hover {
     border-color: var(--primary-color);
-    color: #ffffff;
+    color: var(--text-color);
   }
 
   &.is-active {
     border-color: var(--primary-color);
-    color: #ffffff;
-    background: rgba(0, 122, 204, 0.1);
-    box-shadow: 0 6px 18px rgba(0, 122, 204, 0.25);
+    color: var(--text-color);
+    background: var(--accent-hover);
+    box-shadow: 0 6px 18px var(--accent-glow);
 
     .radio-dot {
       border-color: var(--primary-color);

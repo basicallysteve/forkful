@@ -1,25 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Forkful logo with a fork wearing glasses">
   <defs>
-    <linearGradient id="forkful-icon-bg" x1="8" y1="8" x2="72" y2="72" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0d1d2b" />
-      <stop offset="1" stop-color="#18384f" />
+    <linearGradient id="forkful-icon-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#064e3b" />
     </linearGradient>
+    <radialGradient id="forkful-icon-shine" cx="28%" cy="22%" r="58%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
   </defs>
   <g transform="translate(14,12) scale(1.25)">
-    <rect width="64" height="64" rx="14" fill="url(#forkful-icon-bg)" />
-    <g stroke="#f6f0e8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Background -->
+    <rect width="64" height="64" rx="16" fill="url(#forkful-icon-bg)" />
+    <rect width="64" height="64" rx="16" fill="url(#forkful-icon-shine)" />
+    <!-- Fork: 3 tines + crossbar + stem -->
+    <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
       <path d="M24 10v13M32 10v13M40 10v13" />
-      <path d="M24 20h16" />
-      <path d="M32 24v24" />
+      <path d="M24 19h16" />
+      <path d="M32 23v23" />
     </g>
-    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <g stroke="#99e2ff" stroke-width="3">
-        <circle cx="24" cy="34" r="7.5" />
-        <circle cx="40" cy="34" r="7.5" />
-        <path d="M31 34h6" />
-      </g>
-      <path d="M16 34h5M48 34h-5" stroke="#d5f4ff" stroke-width="2.4" />
+    <!-- Glasses circles + bridge -->
+    <g fill="none" stroke="#a7f3d0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="34" r="7" />
+      <circle cx="40" cy="34" r="7" />
+      <path d="M31 34h9" />
     </g>
-    <path d="M32 45c2.4 0 4.3 1.6 4.3 3.5s-1.9 3.5-4.3 3.5-4.3-1.6-4.3-3.5 1.9-3.5 4.3-3.5z" fill="#f2d6a2" opacity=".92" />
+    <!-- Earpieces -->
+    <path d="M17 34h7M47 34h-7" stroke="#6ee7b7" stroke-width="2.2" stroke-linecap="round" />
+    <!-- Nose -->
+    <path d="M32 46c2.3 0 4 1.5 4 3.2s-1.7 3.2-4 3.2-4-1.5-4-3.2 1.7-3.2 4-3.2z" fill="#d1fae5" opacity="0.88" />
   </g>
 </svg>

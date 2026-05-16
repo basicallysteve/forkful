@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { DataTable } from 'primereact/datatable'
+import { Column } from 'primereact/column'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
@@ -177,10 +179,6 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   return (
     <div className="recipe-view">
-      <div className="recipe-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {displayRecipe.name}</span>
-      </div>
-
       <div className="recipe-content">
         <header className="recipe-header">
           <div className="recipe-header-container">
@@ -269,109 +267,118 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
           </div>
 
           <div className="panel-content">
-            <table className="ingredient-table">
-              <thead>
-                <tr>
-                  <th>Ingredient</th>
-                  <th className="quantity-col">Quantity</th>
-                  {editMode && <th className="unit-col">Unit</th>}
-                  {editMode && <th className="calories-col">Calories</th>}
-                  {editMode && <th className="actions-col">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {displayRecipe.ingredients.map((ingredient, index) => (
-                  <tr key={`ingredient-${index}`}>
-                    {editMode ? (
-                      <>
-                        <td>
-                          <Autocomplete
-                            value={ingredient.food.name}
-                            options={localFoods}
-                            getOptionLabel={(opt) => opt.name}
-                            onChange={(next) => {
-                              const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
-                              if (food) {
-                                handleIngredientFoodChange(index, food)
-                              }else if(next === '') {
-                                  handleIngredientFoodChange(index, {
-                                    id: -1, // Temporary ID for non-existing food
-                                    name: "",
-                                    calories: 0,
-                                    protein: 0,
-                                    carbs: 0,
-                                    fat: 0,
-                                    fiber: 0,
-                                    servingSize: 1,
-                                    servingUnit: "g",
-                                    measurements: []
-                                  })
-                              }
-                            }}
-                            onSelect={(opt) => handleIngredientFoodChange(index, opt)}
-                            placeholder="Select food"
-                            inputAriaLabel={`Ingredient ${index + 1} name`}
-                            renderOptionMeta={(opt) =>
-                              opt.calories ? `${opt.calories} cal/serving` : undefined
-                            }
-                          />
-                        </td>
-                        <td className="quantity-col">
-                          <input
-                            type="number"
-                            className="ingredient-quantity-input"
-                            value={ingredient.quantity}
-                            min={0}
-                            onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
-                            aria-label={`Ingredient ${index + 1} quantity`}
-                          />
-                        </td>
-                        <td className="unit-col">
-                          <select
-                            className="ingredient-unit-select"
-                            value={ingredient.servingUnit}
-                            onChange={(e) => handleIngredientChange(index, 'servingUnit', e.target.value)}
-                            aria-label={`Ingredient ${index + 1} unit`}
-                          >
-                            {ingredient.food.measurements?.map((unit) => (
-                              <option key={unit} value={unit}>{unit}</option>
-                            ))}
-                            {!ingredient.food.measurements?.includes(ingredient.servingUnit) && (
-                              <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
-                            )}
-                          </select>
-                        </td>
-                        <td className="calories-col">
-                          <input
-                            type="number"
-                            className="ingredient-calories-input"
-                            value={ingredient.calories ?? ''}
-                            min={0}
-                            onChange={(e) => handleIngredientChange(index, 'calories', e.target.value)}
-                            aria-label={`Ingredient ${index + 1} calories`}
-                          />
-                        </td>
-                        <td className="actions-col">
-                          <button
-                            type="button"
-                            className="danger-button"
-                            onClick={() => handleRemoveIngredient(index)}
-                            aria-label={`Remove ${ingredient.food.name}`}
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td>{ingredient.food.name}</td>
-                        <td className="quantity-col">{ingredient.quantity} {ingredient.servingUnit}</td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable value={displayRecipe.ingredients} className="ingredient-table" key={String(editMode)}>
+              <Column
+                header="Ingredient"
+                body={(ingredient: Ingredient, opts) =>
+                  editMode ? (
+                    <Autocomplete
+                      value={ingredient.food.name}
+                      options={localFoods}
+                      getOptionLabel={(opt) => opt.name}
+                      onChange={(next) => {
+                        const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                        if (food) {
+                          handleIngredientFoodChange(opts.rowIndex, food)
+                        } else if (next === '') {
+                          handleIngredientFoodChange(opts.rowIndex, {
+                            id: -1,
+                            name: "",
+                            calories: 0,
+                            protein: 0,
+                            carbs: 0,
+                            fat: 0,
+                            fiber: 0,
+                            servingSize: 1,
+                            servingUnit: "g",
+                            measurements: []
+                          })
+                        }
+                      }}
+                      onSelect={(opt) => handleIngredientFoodChange(opts.rowIndex, opt)}
+                      placeholder="Select food"
+                      inputAriaLabel={`Ingredient ${opts.rowIndex + 1} name`}
+                      renderOptionMeta={(opt) =>
+                        opt.calories ? `${opt.calories} cal/serving` : undefined
+                      }
+                    />
+                  ) : (
+                    ingredient.food.name
+                  )
+                }
+              />
+              <Column
+                header="Quantity"
+                className="quantity-col"
+                body={(ingredient: Ingredient, opts) =>
+                  editMode ? (
+                    <input
+                      type="number"
+                      className="ingredient-quantity-input"
+                      value={ingredient.quantity}
+                      min={0}
+                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'quantity', e.target.value)}
+                      aria-label={`Ingredient ${opts.rowIndex + 1} quantity`}
+                    />
+                  ) : (
+                    `${ingredient.quantity} ${ingredient.servingUnit}`
+                  )
+                }
+              />
+              {editMode && (
+                <Column
+                  header="Unit"
+                  className="unit-col"
+                  body={(ingredient: Ingredient, opts) => (
+                    <select
+                      className="ingredient-unit-select"
+                      value={ingredient.servingUnit}
+                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.target.value)}
+                      aria-label={`Ingredient ${opts.rowIndex + 1} unit`}
+                    >
+                      {ingredient.food.measurements?.map((unit) => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                      {!ingredient.food.measurements?.includes(ingredient.servingUnit) && (
+                        <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
+                      )}
+                    </select>
+                  )}
+                />
+              )}
+              {editMode && (
+                <Column
+                  header="Calories"
+                  className="calories-col"
+                  body={(ingredient: Ingredient, opts) => (
+                    <input
+                      type="number"
+                      className="ingredient-calories-input"
+                      value={ingredient.calories ?? ''}
+                      min={0}
+                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'calories', e.target.value)}
+                      aria-label={`Ingredient ${opts.rowIndex + 1} calories`}
+                    />
+                  )}
+                />
+              )}
+              {editMode && (
+                <Column
+                  header="Actions"
+                  className="actions-col"
+                  body={(ingredient: Ingredient, opts) => (
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleRemoveIngredient(opts.rowIndex)}
+                      aria-label={`Remove ${ingredient.food.name}`}
+                    >
+                      Remove
+                    </button>
+                  )}
+                />
+              )}
+            </DataTable>
             {editMode && (
               <div className="ingredient-actions">
                 <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>

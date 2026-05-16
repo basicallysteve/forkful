@@ -1,126 +1,126 @@
 .toolbar {
-  --toolbar-bg: #1e1e1e;
-  --toolbar-panel: #252526;
-  --toolbar-border: #3c3c3c;
-  --toolbar-accent: #007acc;
-  --toolbar-text: #d4d4d4;
-  --toolbar-muted: #9da5b4;
-
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 18px;
-  border-radius: 14px;
-  border: 1px solid var(--toolbar-border);
-  background: var(--toolbar-bg);
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 0 40px;
+  height: 60px;
+  background: var(--vscode-panel);
+  border-bottom: 1px solid var(--vscode-border);
+  gap: 0;
 }
 
 .toolbar-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-width: 0;
+  gap: 10px;
+  margin-right: 28px;
+  flex-shrink: 0;
 }
 
 .toolbar-logo {
-  height: 52px;
+  height: 34px;
   width: auto;
   display: block;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
 }
 
 .toolbar-title {
-  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  color: var(--toolbar-text);
-  letter-spacing: 0.3px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  gap: 1px;
+  color: var(--vscode-text);
 }
 
 .toolbar-name {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.2px;
 }
 
 .toolbar-tagline {
-  font-size: 12px;
-  letter-spacing: 0.2px;
-  color: var(--toolbar-muted);
+  font-size: 11px;
+  letter-spacing: 0.1px;
+  color: var(--vscode-muted);
 }
 
 .menu {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: stretch;
+  height: 100%;
+  flex: 1;
+  gap: 0;
 }
 
 .menu-option {
   position: relative;
+  display: flex;
+  align-items: stretch;
 }
 
 .menu-option__trigger {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--toolbar-border);
-  background: var(--toolbar-panel);
-  color: var(--toolbar-text);
+  gap: 5px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-muted);
   cursor: pointer;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    transform 140ms ease,
-    color 140ms ease;
-}
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  position: relative;
+  transition: color 120ms ease, background-color 120ms ease;
 
-.menu-option__trigger:hover,
-.menu-option__trigger:focus-visible {
-  outline: none;
-  color: #ffffff;
-  border-color: rgba(0, 122, 204, 0.85);
-  box-shadow: 0 8px 20px rgba(0, 122, 204, 0.18);
-  transform: translateY(-1px);
-}
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    right: 10px;
+    height: 2px;
+    background: var(--vscode-accent);
+    border-radius: 2px 2px 0 0;
+    transform: scaleX(0);
+    transition: transform 140ms ease;
+  }
 
-.menu-option__trigger:active {
-  transform: translateY(0);
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    color: var(--vscode-text);
+    background: var(--accent-hover);
+
+    &::after {
+      transform: scaleX(1);
+    }
+  }
 }
 
 .menu-option__caret {
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: 10px;
+  opacity: 0.65;
 }
 
 .submenu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: 100%;
   left: 0;
-  min-width: 180px;
-  padding: 8px;
+  min-width: 210px;
+  padding: 6px;
   display: none;
   flex-direction: column;
-  gap: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--toolbar-border);
-  background: #1b1b1f;
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  z-index: 10;
+  gap: 2px;
+  border: 1px solid var(--vscode-border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  background: var(--vscode-panel);
+  box-shadow: 0 12px 28px var(--shadow-container);
+  z-index: 101;
 }
 
 .menu-option:hover .submenu,
@@ -129,40 +129,84 @@
 }
 
 .submenu-option {
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--toolbar-muted);
+  color: var(--vscode-muted);
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    background: var(--accent-hover);
+    border-color: var(--accent-border);
+    color: var(--vscode-text);
+  }
 }
 
-.submenu-option:hover,
-.submenu-option:focus-visible {
-  outline: none;
-  background: rgba(0, 122, 204, 0.12);
-  border-color: rgba(0, 122, 204, 0.25);
-  color: #ffffff;
+.menu-option--right {
+  margin-left: auto;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--vscode-border);
+  background: transparent;
+  color: var(--vscode-muted);
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
+
+  &:hover {
+    border-color: var(--vscode-accent);
+    color: var(--vscode-text);
+    background: var(--accent-hover);
+  }
 }
 
 @media (max-width: 720px) {
   .toolbar {
-    align-items: flex-start;
-    flex-direction: column;
+    padding: 0 16px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0;
   }
 
   .toolbar-brand {
-    width: 100%;
+    margin-right: 0;
+    height: 52px;
+    flex: 1;
   }
 
   .menu {
     width: 100%;
-    justify-content: flex-start;
-    gap: 8px;
+    height: auto;
+    overflow-x: auto;
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  .menu-option__trigger {
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+
+  .theme-toggle {
+    margin-left: 0;
+    height: 52px;
+    width: 44px;
+    border-radius: 0;
+    border: none;
+    border-left: 1px solid var(--vscode-border);
+    flex-shrink: 0;
   }
 }
