@@ -1,7 +1,7 @@
 import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
-import type { Food } from '@/types/Food'
+import type { Food, FoodSource } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 export type FoodQueryOptions = {
@@ -19,9 +19,14 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     carbs: Number(row.carbs ?? 0),
     fat: Number(row.fat ?? 0),
     fiber: Number(row.fiber ?? 0),
+    saturatedFat: row.saturatedFat != null ? Number(row.saturatedFat) : undefined,
+    sugar: row.sugar != null ? Number(row.sugar) : undefined,
+    sodium: row.sodium != null ? Number(row.sodium) : undefined,
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? undefined,
     measurements: (row.measurements as string[] | null) ?? [],
+    barcode: row.barcode ?? undefined,
+    source: (row.source as FoodSource) ?? 'manual',
   }
 }
 
@@ -69,11 +74,20 @@ export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
     servingSize: String(data.servingSize ?? 1),
     servingUnit: data.servingUnit,
     measurements: data.measurements ?? [],
+    saturatedFat: data.saturatedFat != null ? String(data.saturatedFat) : null,
+    sugar: data.sugar != null ? String(data.sugar) : null,
+    sodium: data.sodium != null ? String(data.sodium) : null,
+    barcode: data.barcode ?? null,
+    source: data.source ?? 'manual',
   }).returning()
   return mapFood(row)
 }
 
+const NUTRITIONAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber', 'saturatedFat', 'sugar', 'sodium'] as const
+
 export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): Promise<Food | null> {
+  const [existing] = await db.select().from(foods).where(eq(foods.id, id))
+
   const updates: Partial<typeof foods.$inferInsert> = {}
   if (data.name !== undefined) {
     updates.name = data.name
@@ -87,7 +101,25 @@ export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): P
   if (data.servingSize !== undefined) updates.servingSize = String(data.servingSize)
   if (data.servingUnit !== undefined) updates.servingUnit = data.servingUnit
   if (data.measurements !== undefined) updates.measurements = data.measurements
+  if (data.saturatedFat !== undefined) updates.saturatedFat = data.saturatedFat != null ? String(data.saturatedFat) : null
+  if (data.sugar !== undefined) updates.sugar = data.sugar != null ? String(data.sugar) : null
+  if (data.sodium !== undefined) updates.sodium = data.sodium != null ? String(data.sodium) : null
+  if (data.barcode !== undefined) updates.barcode = data.barcode ?? null
+
+  if (existing?.source === 'open_food_facts') {
+    const current = mapFood(existing)
+    const nutritionChanged = NUTRITIONAL_FIELDS.some(
+      (field) => field in data && data[field] !== current[field]
+    )
+    if (nutritionChanged) updates.source = 'manual'
+  }
+
   const [row] = await db.update(foods).set(updates).where(eq(foods.id, id)).returning()
+  return row ? mapFood(row) : null
+}
+
+export async function getFoodByBarcode(barcode: string): Promise<Food | null> {
+  const [row] = await db.select().from(foods).where(and(eq(foods.barcode, barcode), isNull(foods.dateDeleted)))
   return row ? mapFood(row) : null
 }
 

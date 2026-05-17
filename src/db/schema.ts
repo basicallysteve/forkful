@@ -1,4 +1,6 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+
+export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -12,6 +14,11 @@ export const foods = pgTable('foods', {
   servingSize: numeric('serving_size', { precision: 10, scale: 2 }).notNull().default('1'),
   servingUnit: varchar('serving_unit', { length: 50 }),
   measurements: jsonb('measurements').$type<string[]>().default([]),
+  saturatedFat: numeric('saturated_fat', { precision: 10, scale: 2 }),
+  sugar: numeric('sugar', { precision: 10, scale: 2 }),
+  sodium: numeric('sodium', { precision: 10, scale: 1 }),
+  barcode: varchar('barcode', { length: 50 }),
+  source: foodSourceEnum('source').notNull().default('manual'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateUpdated: timestamp('date_updated'),
   dateDeleted: timestamp('date_deleted'),
