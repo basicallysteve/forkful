@@ -50,6 +50,7 @@ describe('recipes data layer (integration)', () => {
       description: 'A test pasta dish',
       ingredients: [{ food: testFood, quantity: 200, calories: 200, servingUnit: 'g' }],
       date_published: null,
+      isPublic: false,
     })
     expect(created.id).toBeDefined()
     expect(created.name).toBe('Test Pasta')
@@ -62,8 +63,8 @@ describe('recipes data layer (integration)', () => {
   })
 
   it('lists all recipes', async () => {
-    await createRecipe({ name: 'Test Salad', meal: 'Lunch', description: 'A salad', ingredients: [], date_published: null })
-    await createRecipe({ name: 'Test Soup', meal: 'Dinner', description: 'A soup', ingredients: [], date_published: null })
+    await createRecipe({ name: 'Test Salad', meal: 'Lunch', description: 'A salad', ingredients: [], date_published: null, isPublic: false })
+    await createRecipe({ name: 'Test Soup', meal: 'Dinner', description: 'A soup', ingredients: [], date_published: null, isPublic: false })
 
     const recipes = await getRecipes()
     const testRecipes = recipes.filter(r => r.name.startsWith('Test'))
@@ -72,8 +73,8 @@ describe('recipes data layer (integration)', () => {
 
   it('filters recipes by published status', async () => {
     const now = new Date()
-    await createRecipe({ name: 'Test Published', meal: 'Lunch', description: '', ingredients: [], date_published: now })
-    await createRecipe({ name: 'Test Draft', meal: 'Dinner', description: '', ingredients: [], date_published: null })
+    await createRecipe({ name: 'Test Published', meal: 'Lunch', description: '', ingredients: [], date_published: now, isPublic: false })
+    await createRecipe({ name: 'Test Draft', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
 
     const published = await getRecipes({ published: true })
     const testPublished = published.filter(r => r.name.startsWith('Test'))
@@ -91,8 +92,9 @@ describe('recipes data layer (integration)', () => {
       description: '',
       ingredients: [{ food: testFood, quantity: 100, calories: 100, servingUnit: 'g' }],
       date_published: null,
+      isPublic: false,
     })
-    await createRecipe({ name: 'Test Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: null })
+    await createRecipe({ name: 'Test Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false })
 
     const results = await getRecipes({ ingredient: 'test ingredient food' })
     const testResults = results.filter(r => r.name.startsWith('Test'))
@@ -102,14 +104,14 @@ describe('recipes data layer (integration)', () => {
   })
 
   it('updates a recipe', async () => {
-    const created = await createRecipe({ name: 'Test UpdateMe', meal: 'Lunch', description: 'old', ingredients: [], date_published: null })
+    const created = await createRecipe({ name: 'Test UpdateMe', meal: 'Lunch', description: 'old', ingredients: [], date_published: null, isPublic: false })
     const updated = await updateRecipe(created.id, { description: 'new description' })
     expect(updated?.description).toBe('new description')
     expect(updated?.name).toBe('Test UpdateMe')
   })
 
   it('soft-deletes a recipe', async () => {
-    const created = await createRecipe({ name: 'Test DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null })
+    const created = await createRecipe({ name: 'Test DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null, isPublic: false })
     const deleted = await deleteRecipe(created.id)
     expect(deleted).toBe(true)
 

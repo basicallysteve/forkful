@@ -30,7 +30,8 @@ export const recipes = pgTable('recipes', {
   slug: varchar('slug', { length: 255 }).unique(),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
-  isPublic: integer('is_public').notNull().default(0), // 0 = false, 1 = true
+  isPublic: integer('is_public').notNull().default(0),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),
   dateDeleted: timestamp('date_deleted'),
@@ -88,4 +89,16 @@ export const login_attempts = pgTable('login_attempts', {
   ipAddress: varchar('ip_address', { length: 45 }).notNull(),
   successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
   dateAdded: timestamp('date_added').defaultNow().notNull(),
+});
+
+export const savedRecipes = pgTable('saved_recipes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  recipeId: integer('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  dateSaved: timestamp('date_saved').defaultNow().notNull(),
+  dateDeleted: timestamp('date_deleted'),
 });

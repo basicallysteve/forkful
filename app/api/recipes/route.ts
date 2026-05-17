@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getRecipes, createRecipe } from '@/lib/recipes'
 import { taskRunner } from '@/lib/TaskRunner'
+import { getSessionUser } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeQueryOptions } from '@/lib/recipes'
 
@@ -20,7 +21,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const session = await getSessionUser()
   const body: Omit<Recipe, 'id'> = await request.json()
-  const recipe = await taskRunner.run(() => createRecipe(body))
+  const recipeData: Omit<Recipe, 'id'> = {
+    ...body,
+    userId: session ? Number(session.userId) : null,
+    isPublic: body.isPublic ?? false,
+  }
+  const recipe = await taskRunner.run(() => createRecipe(recipeData))
   return NextResponse.json(recipe, { status: 201 })
 }

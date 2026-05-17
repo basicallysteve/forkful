@@ -1,5 +1,6 @@
 import 'server-only'
 import { SignJWT, jwtVerify } from 'jose'
+import { cookies } from 'next/headers'
 
 const secret = process.env.JWT_SECRET
 if (!secret) throw new Error('JWT_SECRET environment variable is not set')
@@ -20,5 +21,18 @@ export async function decrypt(token: string): Promise<object> {
         return payload
     } catch (error: unknown) {
         throw new Error(error instanceof Error ? error.message : 'Invalid token')
+    }
+}
+
+export async function getSessionUser(): Promise<{ userId: string; username: string } | null> {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('session')?.value
+    if (!token) return null
+    try {
+        const payload = await decrypt(token) as { userId?: string; username?: string }
+        if (!payload.userId || !payload.username) return null
+        return { userId: payload.userId, username: payload.username }
+    } catch {
+        return null
     }
 }

@@ -52,3 +52,26 @@ export async function apiDeleteRecipe(slug: string): Promise<void> {
   const res = await fetch(`/api/recipes/${slug}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete recipe')
 }
+
+export async function apiFetchSavedRecipes(): Promise<Recipe[]> {
+  const res = await fetch('/api/recipes/saved')
+  if (!res.ok) throw new Error('Failed to fetch saved recipes')
+  return res.json()
+}
+
+export async function apiSaveRecipe(slug: string): Promise<void> {
+  const res = await fetch(`/api/recipes/${slug}/save`, { method: 'POST' })
+  if (!res.ok && res.status !== 201) throw new Error('Failed to save recipe')
+}
+
+export async function apiUnsaveRecipe(slug: string): Promise<void> {
+  const res = await fetch(`/api/recipes/${slug}/save`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to unsave recipe')
+}
+
+export async function apiIsRecipeSaved(slug: string): Promise<boolean> {
+  const res = await fetch(`/api/recipes/${slug}/save`)
+  if (!res.ok) return false
+  const data = await res.json()
+  return data.saved
+}

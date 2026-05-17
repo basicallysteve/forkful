@@ -9,6 +9,7 @@ const mockRecipe: Recipe = {
   description: 'A pasta dish',
   ingredients: [],
   date_published: null,
+  isPublic: false,
 }
 
 beforeEach(() => {
