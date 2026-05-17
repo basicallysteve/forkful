@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { InputText } from 'primereact/inputtext'
 
 interface BarcodeScannerProps {
   onDetected: (code: string) => void
@@ -114,13 +115,14 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
           {isSupported && !cameraError ? 'Or enter barcode manually:' : 'Enter barcode:'}
         </label>
         <div className="barcode-manual-row">
-          <input
+          <InputText
             id="barcode-manual-input"
-            type="text"
-            className="text-input barcode-manual-input"
+            className="barcode-manual-input"
             value={manualCode}
             onChange={(e) => setManualCode(e.target.value)}
             placeholder="e.g. 7622210100283"
+            keyfilter="int"
+            aria-label="Barcode number"
           />
           <button type="submit" className="primary-button" disabled={!manualCode.trim()}>
             Look up
