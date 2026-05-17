@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getRecipes, createRecipe } from '@/lib/recipes'
 import { taskRunner } from '@/lib/TaskRunner'
-import { getSessionUser } from '@/lib/session'
+import { getSessionUser } from '@/lib/auth'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeQueryOptions } from '@/lib/recipes'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const options: RecipeQueryOptions = {}
+  const session = await getSessionUser()
+  const options: RecipeQueryOptions = {
+    viewerId: session?.userId,
+  }
   const ingredient = searchParams.get('ingredient')
   const published = searchParams.get('published')
   const sortBy = searchParams.get('sortBy') as RecipeQueryOptions['sortBy']
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
   const body: Omit<Recipe, 'id'> = await request.json()
   const recipeData: Omit<Recipe, 'id'> = {
     ...body,
-    userId: session ? Number(session.userId) : null,
+    userId: session ? session.userId : null,
     isPublic: body.isPublic ?? false,
   }
   const recipe = await taskRunner.run(() => createRecipe(recipeData))

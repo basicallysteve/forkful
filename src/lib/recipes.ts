@@ -1,4 +1,4 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, and, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -11,6 +11,7 @@ export type RecipeQueryOptions = {
   published?: boolean
   sortBy?: 'date_published' | 'calories'
   sortDir?: 'asc' | 'desc'
+  viewerId?: number
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -65,7 +66,11 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
-    const rows = await db.select().from(recipes).where(isNull(recipes.dateDeleted))
+    // Visibility: unauthenticated → public only; authenticated → public + own recipes
+    const visibilityFilter = options.viewerId !== undefined
+      ? or(eq(recipes.isPublic, 1), eq(recipes.userId, options.viewerId))
+      : eq(recipes.isPublic, 1)
+    const rows = await db.select().from(recipes).where(and(isNull(recipes.dateDeleted), visibilityFilter))
     const built = await Promise.all(rows.map(buildRecipe))
     let result = built
 
@@ -211,6 +216,7 @@ export async function getSavedRecipes(userId: number): Promise<Recipe[]> {
         eq(savedRecipes.userId, userId),
         isNull(savedRecipes.dateDeleted),
         isNull(recipes.dateDeleted),
+        eq(recipes.isPublic, 1), // defense-in-depth: exclude if recipe was made private without going through updateRecipe
       )
     )
   return Promise.all(rows.map(r => buildRecipe(r.recipe)))

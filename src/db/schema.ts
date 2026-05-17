@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core';
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
 
@@ -101,4 +101,4 @@ export const savedRecipes = pgTable('saved_recipes', {
     .references(() => recipes.id, { onDelete: 'cascade' }),
   dateSaved: timestamp('date_saved').defaultNow().notNull(),
   dateDeleted: timestamp('date_deleted'),
-});
+}, (t) => [unique('saved_recipes_user_recipe_unique').on(t.userId, t.recipeId)]);

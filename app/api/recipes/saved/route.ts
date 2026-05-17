@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSavedRecipes } from '@/lib/recipes'
-import { getSessionUser } from '@/lib/session'
+import { getSessionUser } from '@/lib/auth'
 
 export async function GET() {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const recipes = await getSavedRecipes(Number(session.userId))
+  const recipes = await getSavedRecipes(session.userId)
   return NextResponse.json(recipes)
 }
