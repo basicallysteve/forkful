@@ -188,18 +188,12 @@ export async function deleteRecipe(id: number): Promise<boolean> {
 }
 
 export async function saveRecipe(userId: number, recipeId: number): Promise<void> {
-  const [existing] = await db.select().from(savedRecipes).where(
-    and(eq(savedRecipes.userId, userId), eq(savedRecipes.recipeId, recipeId))
-  )
-  if (existing) {
-    if (existing.dateDeleted !== null) {
-      await db.update(savedRecipes)
-        .set({ dateDeleted: null, dateSaved: new Date() })
-        .where(eq(savedRecipes.id, existing.id))
-    }
-    return
-  }
-  await db.insert(savedRecipes).values({ userId, recipeId })
+  await db.insert(savedRecipes)
+    .values({ userId, recipeId })
+    .onConflictDoUpdate({
+      target: [savedRecipes.userId, savedRecipes.recipeId],
+      set: { dateDeleted: null, dateSaved: new Date() },
+    })
 }
 
 export async function unsaveRecipe(userId: number, recipeId: number): Promise<void> {

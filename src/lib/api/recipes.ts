@@ -61,12 +61,12 @@ export async function apiFetchSavedRecipes(): Promise<Recipe[]> {
 
 export async function apiSaveRecipe(slug: string): Promise<void> {
   const res = await fetch(`/api/recipes/${slug}/save`, { method: 'POST' })
-  if (!res.ok && res.status !== 201) throw new Error('Failed to save recipe')
+  if (!res.ok) throw new Error('Failed to save recipe')
 }
 
 export async function apiUnsaveRecipe(slug: string): Promise<void> {
   const res = await fetch(`/api/recipes/${slug}/save`, { method: 'DELETE' })
-  if (!res.ok && res.status !== 204) throw new Error('Failed to unsave recipe')
+  if (!res.ok) throw new Error('Failed to unsave recipe')
 }
 
 export async function apiIsRecipeSaved(slug: string): Promise<boolean> {

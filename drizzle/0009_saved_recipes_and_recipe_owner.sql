@@ -1,3 +1,6 @@
+-- Backfill: make all existing non-deleted recipes public so they remain visible after the visibility filter is applied
+UPDATE "recipes" SET "is_public" = 1 WHERE "date_deleted" IS NULL;
+--> statement-breakpoint
 -- Track which user owns each recipe
 ALTER TABLE "recipes" ADD COLUMN IF NOT EXISTS "user_id" integer;
 DO $$ BEGIN

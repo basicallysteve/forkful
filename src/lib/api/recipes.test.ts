@@ -122,7 +122,7 @@ describe('apiSaveRecipe', () => {
 
 describe('apiUnsaveRecipe', () => {
   it('sends DELETE to the save endpoint', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 204 } as Response)
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
     await expect(apiUnsaveRecipe('pasta')).resolves.toBeUndefined()
     expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/save', { method: 'DELETE' })
   })
