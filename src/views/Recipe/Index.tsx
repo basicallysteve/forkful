@@ -159,14 +159,14 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   async function publishRecipe() {
     const now = new Date()
-    const updatedRecipe = { ...editedRecipe, date_published: now }
+    const updatedRecipe = { ...editedRecipe, date_published: now, isPublic: true }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
   }
 
   async function unpublishRecipe() {
-    const updatedRecipe = { ...editedRecipe, date_published: null }
+    const updatedRecipe = { ...editedRecipe, date_published: null, isPublic: false }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
