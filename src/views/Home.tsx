@@ -1,24 +1,7 @@
 import Link from 'next/link'
 import { getSessionUser } from '@/lib/auth'
 import { getRecipes, getSavedRecipes } from '@/lib/recipes'
-import { toSlug } from '@/utils/slug'
-import type { Recipe } from '@/types/Recipe'
-
-function RecipeCard({ recipe }: { recipe: Recipe }) {
-  const totalCalories = recipe.ingredients.reduce((sum, ing) => sum + (ing.calories || 0), 0)
-  return (
-    <Link href={`/recipes/${toSlug(recipe.name)}`} className="home-recipe-card">
-      <div className="card-header">
-        <h3 className="card-title">{recipe.name}</h3>
-        {recipe.meal && <span className="pill pill-ghost">{recipe.meal}</span>}
-      </div>
-      <div className="card-footer">
-        <span className="card-meta">{recipe.ingredients.length} ingredients</span>
-        {totalCalories > 0 && <span className="card-meta">{totalCalories} cal</span>}
-      </div>
-    </Link>
-  )
-}
+import RecipeCard from '@/components/RecipeCard/RecipeCard'
 
 export default async function Home() {
   const session = await getSessionUser()
