@@ -8,7 +8,7 @@ export default async function Home() {
 
   const recipes = session
     ? (await getSavedRecipes(session.userId)).slice(0, 3)
-    : (await getRecipes()).slice(0, 3)
+    : (await getRecipes({ published: true })).slice(0, 3)
 
   const heading = session ? `Welcome back, ${session.username}!` : 'Welcome to Forkful'
   const sectionTitle = session ? 'Your saved recipes' : 'Popular recipes'
