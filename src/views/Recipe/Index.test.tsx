@@ -32,6 +32,7 @@ const mockRecipe: RecipeType = {
   ],
   date_added: new Date('2025-11-21'),
   date_published: new Date('2025-11-22'),
+  isPublic: false,
 }
 
 const mockRecipes: RecipeType[] = [
@@ -46,6 +47,7 @@ const mockRecipes: RecipeType[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
 ]
 

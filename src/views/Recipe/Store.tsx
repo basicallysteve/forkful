@@ -314,6 +314,7 @@ function Store() {
       ingredients: recipe.ingredients || [],
       date_added: new Date(),
       date_published: publish ? new Date() : null,
+      isPublic: publish,
     }
   }
 

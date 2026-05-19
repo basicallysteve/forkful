@@ -22,3 +22,4 @@ export async function decrypt(token: string): Promise<object> {
         throw new Error(error instanceof Error ? error.message : 'Invalid token')
     }
 }
+

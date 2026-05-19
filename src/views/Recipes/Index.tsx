@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import Link from 'next/link'
-import { Card } from 'primereact/card'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
@@ -10,7 +8,7 @@ import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
-import DOMPurify from 'dompurify'
+import RecipeCard from '@/components/RecipeCard/RecipeCard'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
@@ -116,15 +114,6 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
       await Promise.all(toUpdate.map(recipe => apiUpdateRecipe(recipe)))
     } catch (err) { console.error('Failed to unpublish recipes on server:', err) }
     setSelectedRecipes(new Set())
-  }
-
-  function getDaysOld(date?: Date|null): string {
-    if (!date) return ''
-    const now = new Date()
-    const dateObj = new Date(date)
-    const diffTime = Math.abs(now.getTime() - dateObj.getTime())
-    const xDaysOld = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return xDaysOld > 1 ? `${xDaysOld} days ago` : 'Today'
   }
 
   return (
@@ -237,34 +226,12 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
                 </div>
                 <div className="recipe-cards">
                   {filteredAndSortedRecipes.map((recipe) => (
-                    <Card key={recipe.id} className={`recipe-card ${selectedRecipes.has(recipe.id) ? 'is-selected' : ''}`}>
-                      <div className="card-checkbox">
-                        <Checkbox
-                          className="recipe-checkbox"
-                          checked={selectedRecipes.has(recipe.id)}
-                          onChange={() => handleSelectRecipe(recipe.id)}
-                          aria-label={`Select ${recipe.name}`}
-                        />
-                      </div>
-                      <Link href={`/recipes/${toSlug(recipe.name)}`} className="card-content">
-                          <div className="card-header">
-                            <h3 className="card-title">{recipe.name}</h3>
-                            <div className="card-badges">
-                              {recipe.meal && (
-                                <span className="pill pill-ghost">{recipe.meal}</span>
-                              )}
-                              {recipe.date_published === null && (
-                                <span className="pill pill-warning">Unpublished</span>
-                              )}
-                            </div>
-                          </div>
-                        <div className="card-description" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description) }}></div>
-                        <div className="card-footer">
-                          <span className="card-meta">{recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}</span>
-                          <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
-                        </div>
-                      </Link>
-                    </Card>
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      selected={selectedRecipes.has(recipe.id)}
+                      onSelect={handleSelectRecipe}
+                    />
                   ))}
                 </div>
               </>

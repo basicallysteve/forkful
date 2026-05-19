@@ -27,6 +27,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
+    isPublic: false,
   },
   {
     id: 2,
@@ -39,6 +40,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
   {
     id: 3,
@@ -50,6 +52,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
 ]
 
@@ -274,6 +277,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -281,6 +285,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -288,9 +293,10 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
-    
+
 
     const categoryTrigger = screen.getByRole('button', { name: /category/i })
     await user.click(categoryTrigger)
@@ -317,6 +323,7 @@ describe('Recipes filters and actions', () => {
           { food: testFoods[0], quantity: 2, calories: 10, servingUnit: 'tsp' },
           { food: testFoods[1], quantity: 1, calories: 5, servingUnit: 'clove' }
         ],
+        isPublic: false,
       },
       {
         id: 2,
@@ -324,6 +331,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -331,6 +339,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
     const searchInput = screen.getByPlaceholderText(/search recipes/i)
@@ -351,6 +360,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -358,6 +368,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -365,6 +376,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
     const sortTrigger = screen.getByRole('button', { name: /sort by/i })
@@ -389,6 +401,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -396,6 +409,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -403,6 +417,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
 
