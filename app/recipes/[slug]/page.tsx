@@ -8,11 +8,8 @@ type Props = { params: Promise<{ slug: string }> }
 
 export default async function RecipePage({ params }: Props) {
   const { slug } = await params
-  const [recipe, foods, session] = await Promise.all([
-    getRecipeBySlug(slug),
-    getFoods(),
-    getSessionUser(),
-  ])
+  const [foods, session] = await Promise.all([getFoods(), getSessionUser()])
+  const recipe = await getRecipeBySlug(slug, session?.userId)
 
   if (!recipe) notFound()
 

@@ -113,8 +113,13 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
   }
 }
 
-export async function getRecipeBySlug(slug: string): Promise<Recipe | null> {
-  const [row] = await db.select().from(recipes).where(and(eq(recipes.slug, slug), isNull(recipes.dateDeleted)))
+export async function getRecipeBySlug(slug: string, viewerId?: number): Promise<Recipe | null> {
+  const visibilityFilter = viewerId !== undefined
+    ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
+    : eq(recipes.isPublic, 1)
+  const [row] = await db.select().from(recipes).where(
+    and(eq(recipes.slug, slug), isNull(recipes.dateDeleted), visibilityFilter)
+  )
   return row ? buildRecipe(row) : null
 }
 
