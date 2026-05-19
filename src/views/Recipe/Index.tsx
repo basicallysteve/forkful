@@ -10,9 +10,10 @@ import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiUpdateRecipe } from '@/lib/api/recipes'
+import { apiUpdateRecipe, apiSaveRecipe, apiUnsaveRecipe } from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
 import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
+import { toSlug } from '@/utils/slug'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -22,12 +23,16 @@ interface RecipeProps {
   foods: Food[]
   isEditing?: boolean
   canEdit?: boolean
+  canSave?: boolean
+  initialSaved?: boolean
 }
 
-export default function Recipe({ recipe, foods, isEditing = false, canEdit = true }: RecipeProps) {
+export default function Recipe({ recipe, foods, isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
+  const [saved, setSaved] = useState(initialSaved)
+  const [savePending, setSavePending] = useState(false)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -167,6 +172,24 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
   }
 
+  async function toggleSaved() {
+    if (savePending) return
+    setSavePending(true)
+    try {
+      if (saved) {
+        await apiUnsaveRecipe(toSlug(recipe.name))
+        setSaved(false)
+      } else {
+        await apiSaveRecipe(toSlug(recipe.name))
+        setSaved(true)
+      }
+    } catch (err) {
+      console.error('Failed to toggle saved state:', err)
+    } finally {
+      setSavePending(false)
+    }
+  }
+
   const publishedButton = !isPublished ? (
     <button onClick={publishRecipe} type="button" className="ghost-button" disabled={displayRecipe.ingredients.length === 0}>
       Publish
@@ -252,6 +275,17 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                 </>
               ) : (
                 <>
+                  {canSave && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={toggleSaved}
+                      disabled={savePending}
+                      aria-label={saved ? 'Remove from saved recipes' : 'Save recipe'}
+                    >
+                      {saved ? '★ Saved' : '☆ Save'}
+                    </button>
+                  )}
                   {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
                     Copy Recipe
