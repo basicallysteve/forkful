@@ -4,22 +4,18 @@ import { taskRunner } from '@/lib/TaskRunner'
 import { getSessionUser } from '@/lib/auth'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeQueryOptions } from '@/lib/recipes'
+import { parseQueryOptions } from '@/utils/queryParams'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const session = await getSessionUser()
-  const options: RecipeQueryOptions = {
-    viewerId: session?.userId,
-  }
-  const ingredient = searchParams.get('ingredient')
-  const published = searchParams.get('published')
-  const sortBy = searchParams.get('sortBy') as RecipeQueryOptions['sortBy']
-  const sortDir = searchParams.get('sortDir') as RecipeQueryOptions['sortDir']
-  if (ingredient) options.ingredient = ingredient
-  if (published !== null) options.published = published === 'true'
-  if (sortBy) options.sortBy = sortBy
-  if (sortDir) options.sortDir = sortDir
-  const recipes = await getRecipes(options)
+  const filters = parseQueryOptions<RecipeQueryOptions>(searchParams, {
+    ingredient: (v) => v ?? undefined,
+    published: (v) => v !== null ? v === 'true' : undefined,
+    sortBy: (v) => (v as RecipeQueryOptions['sortBy']) ?? undefined,
+    sortDir: (v) => (v as RecipeQueryOptions['sortDir']) ?? undefined,
+  })
+  const recipes = await getRecipes({ ...filters, viewerId: session?.userId })
   return NextResponse.json(recipes)
 }
 

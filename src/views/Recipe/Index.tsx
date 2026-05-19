@@ -158,18 +158,24 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   }
 
   async function publishRecipe() {
-    const now = new Date()
-    const updatedRecipe = { ...editedRecipe, date_published: now, isPublic: true }
+    const updatedRecipe = { ...editedRecipe, date_published: new Date() }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
   }
 
   async function unpublishRecipe() {
-    const updatedRecipe = { ...editedRecipe, date_published: null, isPublic: false }
+    const updatedRecipe = { ...editedRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
+  }
+
+  async function togglePublic() {
+    const updatedRecipe = { ...editedRecipe, isPublic: !editedRecipe.isPublic }
+    updateRecipeInStore(updatedRecipe)
+    setEditedRecipe(updatedRecipe)
+    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to toggle recipe visibility:', err) }
   }
 
   async function toggleSaved() {
@@ -197,6 +203,12 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   ) : (
     <button onClick={unpublishRecipe} type="button" className="ghost-button">
       Unpublish
+    </button>
+  )
+
+  const visibilityButton = canEdit && (
+    <button onClick={togglePublic} type="button" className="ghost-button">
+      {displayRecipe.isPublic ? 'Make Private' : 'Make Public'}
     </button>
   )
 
@@ -286,6 +298,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                       {saved ? '★ Saved' : '☆ Save'}
                     </button>
                   )}
+                  {visibilityButton}
                   {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
                     Copy Recipe
