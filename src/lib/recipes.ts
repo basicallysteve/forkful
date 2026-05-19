@@ -1,4 +1,4 @@
-import { eq, isNull, and, or } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -66,44 +66,48 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
-    // Visibility: unauthenticated → public only; authenticated → public + own recipes
     const visibilityFilter = options.viewerId !== undefined
       ? or(eq(recipes.isPublic, 1), eq(recipes.userId, options.viewerId))
       : eq(recipes.isPublic, 1)
-    const rows = await db.select().from(recipes).where(and(isNull(recipes.dateDeleted), visibilityFilter))
+
+    const ingredientFilter = options.ingredient
+      ? exists(
+          db.select({ one: eq(ingredients.recipeId, recipes.id) })
+            .from(ingredients)
+            .innerJoin(foods, eq(ingredients.foodId, foods.id))
+            .where(and(
+              eq(ingredients.recipeId, recipes.id),
+              isNull(ingredients.dateDeleted),
+              isNull(foods.dateDeleted),
+              ilike(foods.name, `%${options.ingredient}%`)
+            ))
+        )
+      : undefined
+
+    const publishedFilter = options.published !== undefined
+      ? (options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished))
+      : undefined
+
+    const baseQuery = db.select().from(recipes).where(
+      and(isNull(recipes.dateDeleted), visibilityFilter, publishedFilter, ingredientFilter)
+    )
+
+    const orderedQuery = options.sortBy === 'date_published'
+      ? baseQuery.orderBy(options.sortDir === 'desc' ? desc(recipes.datePublished) : asc(recipes.datePublished))
+      : baseQuery
+
+    const rows = await orderedQuery
     const built = await Promise.all(rows.map(buildRecipe))
-    let result = built
 
-    if (options.published !== undefined) {
-      result = result.filter(r =>
-        options.published ? r.date_published !== null : r.date_published === null
-      )
-    }
-
-    if (options.ingredient) {
-      const term = options.ingredient.toLowerCase()
-      result = result.filter(r =>
-        r.ingredients.some(ing => ing.food.name.toLowerCase().includes(term))
-      )
-    }
-
-    if (options.sortBy) {
-      result = result.sort((a, b) => {
-        let cmp = 0
-        if (options.sortBy === 'date_published') {
-          const dateA = a.date_published ? new Date(a.date_published).getTime() : 0
-          const dateB = b.date_published ? new Date(b.date_published).getTime() : 0
-          cmp = dateA - dateB
-        } else if (options.sortBy === 'calories') {
-          const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-          const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-          cmp = calsA - calsB
-        }
-        return options.sortDir === 'desc' ? -cmp : cmp
+    if (options.sortBy === 'calories') {
+      built.sort((a, b) => {
+        const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+        const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+        return options.sortDir === 'desc' ? calsB - calsA : calsA - calsB
       })
     }
 
-    return result
+    return built
   } catch {
     return []
   }
