@@ -32,8 +32,15 @@ export async function PUT(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { slug } = await params
-  const existing = await getRecipeBySlug(slug)
+  const session = await getSessionUser()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const existing = await getRecipeBySlug(slug, session.userId)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (existing.userId !== null && existing.userId !== session.userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   await taskRunner.run(() => deleteRecipe(existing.id))
   return new NextResponse(null, { status: 204 })
 }
