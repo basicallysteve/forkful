@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Recipes from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
+
+vi.mock('@/lib/api/recipes', () => ({
+  apiDeleteRecipe: vi.fn(async () => {}),
+  apiUpdateRecipe: vi.fn(async (r: Recipe) => r),
+  apiFetchRecipes: vi.fn(async () => []),
+}))
 
 // Mock foods
 const mockFoods: Food[] = [
@@ -427,5 +434,36 @@ describe('Recipes filters and actions', () => {
     const updated = useRecipeStore.getState().recipes
     expect(updated).toHaveLength(2)
     expect(updated.find((recipe) => recipe.name === 'Garlic Pasta')).toBeUndefined()
+  })
+})
+
+describe('Error handling', () => {
+  it('shows an error toast and refreshes store when delete fails', async () => {
+    vi.mocked(apiDeleteRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+    vi.mocked(apiFetchRecipes).mockResolvedValueOnce(mockRecipes)
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />)
+
+    await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+
+    expect(await screen.findByText('Could not delete recipes')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useRecipeStore.getState().recipes).toHaveLength(mockRecipes.length)
+    })
+  })
+
+  it('shows an error toast and rolls back when unpublish fails', async () => {
+    vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />)
+
+    await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
+    await user.click(screen.getByRole('button', { name: /unpublish/i }))
+
+    expect(await screen.findByText('Could not unpublish recipes')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useRecipeStore.getState().recipes.find(r => r.id === 1)?.date_published).toBeInstanceOf(Date)
+    })
   })
 })

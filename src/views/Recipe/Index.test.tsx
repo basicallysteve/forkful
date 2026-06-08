@@ -7,6 +7,7 @@ import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe as RecipeType } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+import { apiUpdateRecipe } from '@/lib/api/recipes'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiUpdateRecipe: vi.fn(async (r) => r),
@@ -488,6 +489,60 @@ describe('Recipe View Page', () => {
         const updatedRecipes = useRecipeStore.getState().recipes
         const updatedRecipe = updatedRecipes.find(r => r.id === mockRecipe.id)
         expect(updatedRecipe?.date_published).toBeNull()
+      })
+    })
+  })
+
+  describe('Error handling', () => {
+    it('shows an error toast when save fails', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /save/i }))
+
+      expect(await screen.findByText('Could not save changes')).toBeInTheDocument()
+    })
+
+    it('shows an error toast and rolls back when publish fails', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+      const user = userEvent.setup()
+      const unpublishedRecipe = { ...mockRecipe, date_published: null }
+      renderWithStores(<Recipe recipe={unpublishedRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /publish/i }))
+
+      expect(await screen.findByText('Could not publish recipe')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(useRecipeStore.getState().recipes.find(r => r.id === mockRecipe.id)?.date_published).toBeNull()
+      })
+    })
+
+    it('shows an error toast and rolls back when unpublish fails', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /unpublish/i }))
+
+      expect(await screen.findByText('Could not unpublish recipe')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(useRecipeStore.getState().recipes.find(r => r.id === mockRecipe.id)?.date_published).toBeInstanceOf(Date)
+      })
+    })
+
+    it('shows an error toast and rolls back when visibility toggle fails', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+      const user = userEvent.setup()
+      const publicRecipe = { ...mockRecipe, isPublic: true }
+      renderWithStores(<Recipe recipe={publicRecipe} canEdit={true} />)
+
+      await user.click(screen.getByRole('button', { name: /make private/i }))
+
+      expect(await screen.findByText('Could not change visibility')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(useRecipeStore.getState().recipes.find(r => r.id === mockRecipe.id)?.isPublic).toBe(true)
       })
     })
   })
