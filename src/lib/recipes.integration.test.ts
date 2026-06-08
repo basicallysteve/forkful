@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getRecipes, getRecipeBySlug, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved } from './recipes'
+import { getRecipes, getRecipeBySlug, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved, getTopRecipes } from './recipes'
 import { createFood, deleteFood } from './foods'
 import { signUp } from './users'
 import type { Food } from '@/types/Food'
@@ -204,6 +204,77 @@ describe('recipes data layer (integration)', () => {
 
       const saved = await getSavedRecipes(userId)
       expect(saved.some(r => r.id === recipe.id)).toBe(false)
+    })
+  })
+
+  describe('getTopRecipes', () => {
+    it('returns public published recipes ordered by save count descending', async () => {
+      const userId = Number(testUser.id)
+      const published = new Date()
+
+      const [r1, r2, r3] = await Promise.all([
+        createRecipe({ name: 'Test Top One', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test Top Two', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test Top Three', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+      ])
+
+      // r2 saved twice, r1 once, r3 zero times
+      await saveRecipe(userId, r2.id)
+      const userId2 = Number((await signUp({ username: `testuser_top_${Date.now()}`, email: `testuser_top_${Date.now()}@example.com`, password: 'Password1!', cuisinePreferences: [], dietaryRestrictions: [] })).id)
+      await saveRecipe(userId2, r2.id)
+      await saveRecipe(userId, r1.id)
+
+      const top = await getTopRecipes(3)
+      const topIds = top.map(r => r.id)
+      expect(topIds.indexOf(r2.id)).toBeLessThan(topIds.indexOf(r1.id))
+      expect(topIds.indexOf(r1.id)).toBeLessThan(topIds.indexOf(r3.id))
+    })
+
+    it('respects the limit parameter', async () => {
+      const published = new Date()
+      await Promise.all([
+        createRecipe({ name: 'Test Limit A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test Limit B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test Limit C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+      ])
+
+      const top = await getTopRecipes(2)
+      expect(top.length).toBeLessThanOrEqual(2)
+    })
+
+    it('excludes unpublished and private recipes', async () => {
+      await Promise.all([
+        createRecipe({ name: 'Test Unpublished', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true }),
+        createRecipe({ name: 'Test Private', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: false }),
+      ])
+
+      const top = await getTopRecipes(10)
+      expect(top.some(r => r.name === 'Test Unpublished')).toBe(false)
+      expect(top.some(r => r.name === 'Test Private')).toBe(false)
+    })
+  })
+
+  describe('getSavedRecipes with limit', () => {
+    it('returns only the most recently saved recipes up to the limit', async () => {
+      const userId = Number(testUser.id)
+      const published = new Date()
+
+      const [r1, r2, r3] = await Promise.all([
+        createRecipe({ name: 'Test SavedOrder A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test SavedOrder B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'Test SavedOrder C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+      ])
+
+      await saveRecipe(userId, r1.id)
+      await saveRecipe(userId, r2.id)
+      await saveRecipe(userId, r3.id)
+
+      const saved = await getSavedRecipes(userId, 2)
+      expect(saved).toHaveLength(2)
+      // Most recently saved (r3, r2) should appear; r1 should be excluded
+      expect(saved.some(r => r.id === r3.id)).toBe(true)
+      expect(saved.some(r => r.id === r2.id)).toBe(true)
+      expect(saved.some(r => r.id === r1.id)).toBe(false)
     })
   })
 })

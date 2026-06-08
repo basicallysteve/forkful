@@ -8,7 +8,7 @@ export default async function HomePage() {
 
   if (session) {
     const [recipes, expiringItems] = await Promise.all([
-      getSavedRecipes(session.userId).then((r) => r.slice(0, 3)),
+      getSavedRecipes(session.userId, 3),
       getExpiringPantryItems(session.userId),
     ])
     return (

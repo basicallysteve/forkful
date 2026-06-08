@@ -73,7 +73,7 @@ export async function getPantryItems(userId: number): Promise<PantryItem[]> {
 export async function getExpiringPantryItems(userId: number, limit = 5): Promise<PantryItem[]> {
   try {
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() + 7)
+    cutoff.setDate(cutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
     const rows = await db
       .select()
       .from(pantryItems)

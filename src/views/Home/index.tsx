@@ -81,7 +81,7 @@ function PantryWidget({ items }: { items: PantryItem[] }) {
           {items.map((item) => (
             <li key={item.id} className={styles.pantryItem}>
               <span className={styles.pantryName}>{item.food.name}</span>
-              <span className={`${styles.pantryExpiry} ${item.status === 'expired' ? styles.expired : styles.expiringSoon}`}>
+              <span className={`${styles.pantryExpiry} ${item.status === 'expired' ? styles.expired : item.status === 'expiring-soon' ? styles.expiringSoon : ''}`}>
                 {formatExpiry(item.expirationDate)}
               </span>
             </li>
