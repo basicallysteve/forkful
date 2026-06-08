@@ -89,7 +89,8 @@ export default function Autocomplete<T>({
       <AutoComplete
         ref={acRef}
         value={value}
-        suggestions={suggestions}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        suggestions={suggestions as any[]}
         completeMethod={handleComplete}
         onChange={handleChange}
         onSelect={handleSelect}
@@ -100,7 +101,8 @@ export default function Autocomplete<T>({
         readOnly={readOnly}
         delay={0}
         inputClassName={`text-input ingredient-name-input ${inputClassName ?? ''}`.trim()}
-        pt={{ input: { 'aria-label': inputAriaLabel } }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pt={{ input: { 'aria-label': inputAriaLabel } as any }}
       />
       {allowClear && !!value && !readOnly && !disabled && (
         <button
