@@ -142,9 +142,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                         aria-expanded={drawerOpen}
                         onClick={() => setDrawerOpen(true)}
                     >
-                        <span className="hamburger__bar" />
-                        <span className="hamburger__bar" />
-                        <span className="hamburger__bar" />
+                        <i className="pi pi-bars" />
                     </button>
                 </div>
             </div>
