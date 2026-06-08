@@ -239,64 +239,72 @@ export default function Profile({ user }: ProfileProps) {
             </div>
           </div>
           <div className="panel-content">
-            <form className="account-form" onSubmit={saveEmail}>
-              <label className={`form-field ${email.length > 0 && !isValidEmail ? 'has-error' : ''}`}>
-                <span className="field-label">Email Address</span>
-                <InputText
-                  type="email"
-                  value={email}
-                  onChange={e => { setEmail(e.target.value); setEmailSuccess(false) }}
-                  autoComplete="email"
-                />
-                {email.length > 0 && !isValidEmail && (
-                  <span className="field-error" role="alert">Please enter a valid email address.</span>
-                )}
-              </label>
-              <div className="panel-footer">
-                {emailSuccess && <span className="success-text">Email updated!</span>}
-                {emailError && <span className="field-error" role="alert">{emailError}</span>}
-                <button type="submit" className="primary-button" disabled={emailSaving || !isValidEmail}>
-                  {emailSaving ? 'Saving…' : 'Update Email'}
-                </button>
-              </div>
-            </form>
+            {user.hasPassword ? (
+              <>
+                <form className="account-form" onSubmit={saveEmail}>
+                  <label className={`form-field ${email.length > 0 && !isValidEmail ? 'has-error' : ''}`}>
+                    <span className="field-label">Email Address</span>
+                    <InputText
+                      type="email"
+                      value={email}
+                      onChange={e => { setEmail(e.target.value); setEmailSuccess(false) }}
+                      autoComplete="email"
+                    />
+                    {email.length > 0 && !isValidEmail && (
+                      <span className="field-error" role="alert">Please enter a valid email address.</span>
+                    )}
+                  </label>
+                  <div className="panel-footer">
+                    {emailSuccess && <span className="success-text">Email updated!</span>}
+                    {emailError && <span className="field-error" role="alert">{emailError}</span>}
+                    <button type="submit" className="primary-button" disabled={emailSaving || !isValidEmail}>
+                      {emailSaving ? 'Saving…' : 'Update Email'}
+                    </button>
+                  </div>
+                </form>
 
-            <hr className="section-divider" />
+                <hr className="section-divider" />
 
-            <form className="account-form" onSubmit={savePassword}>
-              <label className="form-field">
-                <span className="field-label">Current Password</span>
-                <Password value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} toggleMask feedback={false} autoComplete="current-password" />
-              </label>
-              <label className="form-field">
-                <span className="field-label">New Password</span>
-                <Password value={newPassword} onChange={e => setNewPassword(e.target.value)} toggleMask feedback autoComplete="new-password" />
-                {newPassword.length > 0 && !newPasswordIsValid && (
-                  <ul className="password-requirements" role="alert">
-                    {!newPasswordValidation.hasMinLength && <li>At least 8 characters</li>}
-                    {!newPasswordValidation.hasUppercase && <li>At least one uppercase letter</li>}
-                    {!newPasswordValidation.hasLowercase && <li>At least one lowercase letter</li>}
-                    {!newPasswordValidation.hasNumber && <li>At least one number</li>}
-                    {!newPasswordValidation.hasSpecialChar && <li>At least one special character</li>}
-                    {!newPasswordValidation.isNotCommon && <li>Password is too common</li>}
-                  </ul>
-                )}
-              </label>
-              <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
-                <span className="field-label">Confirm New Password</span>
-                <Password value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} toggleMask feedback={false} autoComplete="new-password" />
-                {confirmPassword.length > 0 && !passwordsMatch && (
-                  <span className="field-error" role="alert">Passwords do not match.</span>
-                )}
-              </label>
-              <div className="panel-footer">
-                {pwSuccess && <span className="success-text">Password updated!</span>}
-                {pwError && <span className="field-error" role="alert">{pwError}</span>}
-                <button type="submit" className="primary-button" disabled={pwSaving || !currentPassword || !newPasswordIsValid || !passwordsMatch}>
-                  {pwSaving ? 'Saving…' : 'Update Password'}
-                </button>
-              </div>
-            </form>
+                <form className="account-form" onSubmit={savePassword}>
+                  <label className="form-field">
+                    <span className="field-label">Current Password</span>
+                    <Password value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} toggleMask feedback={false} autoComplete="current-password" />
+                  </label>
+                  <label className="form-field">
+                    <span className="field-label">New Password</span>
+                    <Password value={newPassword} onChange={e => setNewPassword(e.target.value)} toggleMask feedback autoComplete="new-password" />
+                    {newPassword.length > 0 && !newPasswordIsValid && (
+                      <ul className="password-requirements" role="alert">
+                        {!newPasswordValidation.hasMinLength && <li>At least 8 characters</li>}
+                        {!newPasswordValidation.hasUppercase && <li>At least one uppercase letter</li>}
+                        {!newPasswordValidation.hasLowercase && <li>At least one lowercase letter</li>}
+                        {!newPasswordValidation.hasNumber && <li>At least one number</li>}
+                        {!newPasswordValidation.hasSpecialChar && <li>At least one special character</li>}
+                        {!newPasswordValidation.isNotCommon && <li>Password is too common</li>}
+                      </ul>
+                    )}
+                  </label>
+                  <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
+                    <span className="field-label">Confirm New Password</span>
+                    <Password value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} toggleMask feedback={false} autoComplete="new-password" />
+                    {confirmPassword.length > 0 && !passwordsMatch && (
+                      <span className="field-error" role="alert">Passwords do not match.</span>
+                    )}
+                  </label>
+                  <div className="panel-footer">
+                    {pwSuccess && <span className="success-text">Password updated!</span>}
+                    {pwError && <span className="field-error" role="alert">{pwError}</span>}
+                    <button type="submit" className="primary-button" disabled={pwSaving || !currentPassword || !newPasswordIsValid || !passwordsMatch}>
+                      {pwSaving ? 'Saving…' : 'Update Password'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <p className="oauth-account-note">
+                Your account is managed by {user.email.endsWith('@gmail.com') ? 'Google' : 'Apple'}. Email and password changes are not available.
+              </p>
+            )}
           </div>
         </section>
 

@@ -285,6 +285,14 @@
     margin: 4px 0;
   }
 
+  .oauth-account-note {
+    margin: 0;
+    padding: 16px;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
   .billing-placeholder {
     align-items: center;
     justify-content: center;
