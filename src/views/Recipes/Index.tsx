@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
@@ -8,6 +8,7 @@ import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import { Toast } from 'primereact/toast'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
@@ -22,6 +23,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
+  const toast = useRef<Toast>(null)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
@@ -98,26 +100,34 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
     if (selectedRecipes.size === 0) return
     const toDelete = recipes.filter((recipe) => selectedRecipes.has(recipe.id))
     toDelete.forEach(recipe => deleteRecipe(recipe.id))
+    setSelectedRecipes(new Set())
     try {
       await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
-    } catch (err) { console.error('Failed to delete recipes from server:', err) }
-    setSelectedRecipes(new Set())
+    } catch (err) {
+      console.error('Failed to delete recipes from server:', err)
+      toDelete.forEach(recipe => updateRecipe(recipe))
+      toast.current?.show({ severity: 'error', summary: 'Could not delete recipes', detail: 'You may not have permission to delete one or more of the selected recipes.', life: 4000 })
+    }
   }
 
   async function handleUnpublishSelected() {
     if (selectedRecipes.size === 0) return
-    const toUpdate = recipes
-      .filter((recipe) => selectedRecipes.has(recipe.id))
-      .map(recipe => ({ ...recipe, date_published: null }))
+    const original = recipes.filter((recipe) => selectedRecipes.has(recipe.id))
+    const toUpdate = original.map(recipe => ({ ...recipe, date_published: null }))
     toUpdate.forEach(recipe => updateRecipe(recipe))
+    setSelectedRecipes(new Set())
     try {
       await Promise.all(toUpdate.map(recipe => apiUpdateRecipe(recipe)))
-    } catch (err) { console.error('Failed to unpublish recipes on server:', err) }
-    setSelectedRecipes(new Set())
+    } catch (err) {
+      console.error('Failed to unpublish recipes on server:', err)
+      original.forEach(recipe => updateRecipe(recipe))
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipes', detail: 'You may not have permission to edit one or more of the selected recipes.', life: 4000 })
+    }
   }
 
   return (
     <div className="recipes-list">
+      <Toast ref={toast} position="bottom-right" />
       <div className="recipes-content">
         <header className="recipes-header">
           <div>
