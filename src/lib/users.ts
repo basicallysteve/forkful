@@ -145,6 +145,14 @@ export async function deleteUserAvatar(userId: number, oldAvatarUrl: string | nu
     }
 }
 
+export async function completeOnboarding(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
+    await db.update(users).set({
+        cuisinePreferences: data.cuisinePreferences,
+        dietaryRestrictions: data.dietaryRestrictions,
+        onboardingCompletedAt: new Date(),
+    }).where(eq(users.id, userId))
+}
+
 export async function updateUserPreferences(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
     await db.update(users).set({
         cuisinePreferences: data.cuisinePreferences,

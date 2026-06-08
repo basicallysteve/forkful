@@ -56,7 +56,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             avatarUrl: (profile as { picture?: string }).picture ?? null,
           })
           return true
-        } catch {
+        } catch (err) {
+          console.error('[auth] findOrCreateOAuthUser failed:', err)
           return false
         }
       }
@@ -73,13 +74,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider === 'google' || account?.provider === 'apple') {
         if (profile?.email) {
           const [row] = await db
-            .select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl })
+            .select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl, onboardingCompletedAt: users.onboardingCompletedAt, password: users.password })
             .from(users)
             .where(eq(users.email, profile.email))
           if (row) {
             token.userId = row.id
             token.username = row.username
             token.avatarUrl = row.avatarUrl ?? null
+            token.needsOnboarding = !row.onboardingCompletedAt && !row.password
           }
         }
       }
@@ -103,6 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = String(token.userId)
       session.user.name = token.username as string
       session.user.image = (token.avatarUrl as string | null) ?? session.user.image
+      ;(session.user as { needsOnboarding?: boolean }).needsOnboarding = (token.needsOnboarding as boolean | undefined) ?? false
       return session
     },
   },

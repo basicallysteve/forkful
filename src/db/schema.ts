@@ -61,6 +61,7 @@ export const users = pgTable('users', {
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
   avatarUrl: varchar('avatar_url', { length: 500 }),
+  onboardingCompletedAt: timestamp('onboarding_completed_at'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
 });

@@ -71,6 +71,13 @@
       "when": 1780951314713,
       "tag": "0009_eager_garia",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780955052307,
+      "tag": "0010_pale_marvex",
+      "breakpoints": true
     }
   ]
 }

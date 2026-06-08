@@ -18,5 +18,17 @@ When an OAuth sign-in arrives with an email matching an existing User, the OAuth
 ## Username
 A unique, human-readable handle for a User. Derived automatically from the user's email at account creation (e.g. `jane.doe@gmail.com` → `janedoe`). Users may change it later in their profile. Never null.
 
+## First-Time OAuth User
+An OAuth User whose `onboardingCompletedAt` is null. Shown the Welcome Page once after their first sign-in. After completing or skipping onboarding, `onboardingCompletedAt` is set and the Welcome Page is never shown again.
+
+## Welcome Page
+A one-time setup page shown to First-Time OAuth Users after their first sign-in. Lets the user set Cuisine Preferences and Dietary Restrictions. Can be skipped. Submitting or skipping sets `onboardingCompletedAt`.
+
+## Cuisine Preferences
+A list of cuisine types a User is interested in (e.g. Italian, Mexican). Optional. Set during onboarding or on the profile page.
+
+## Dietary Restrictions
+A list of dietary constraints a User has (e.g. vegan, gluten-free). Optional. Set during onboarding or on the profile page.
+
 ## Session
 An authenticated context identifying the current User. Managed by Auth.js. Replaces the previous hand-rolled JWT cookie system.
