@@ -60,6 +60,14 @@ button {
   &:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
 }
 
+.p-toast-icon-close {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  &:hover { border-color: transparent; }
+}
+
 @media (max-width: 720px) {
   .page-content { padding: 16px; }
 }
