@@ -39,6 +39,9 @@ export async function POST(request: Request) {
   if (typeof body.currentSizeAmount !== 'number' || body.currentSizeAmount < 0) {
     return NextResponse.json({ error: 'currentSizeAmount must be a non-negative number' }, { status: 400 })
   }
+  if (body.expirationDate && isNaN(new Date(body.expirationDate).getTime())) {
+    return NextResponse.json({ error: 'Invalid expirationDate' }, { status: 400 })
+  }
 
   const item = await taskRunner.run(() => createPantryItem({
     ...body,

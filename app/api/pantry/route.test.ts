@@ -115,6 +115,46 @@ describe('POST /api/pantry', () => {
     expect(createPantryItem).toHaveBeenCalledWith(expect.objectContaining({ expirationDate: null }))
   })
 
+  it('returns 400 when foodId is missing or invalid', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await POST(createPostRequest({ foodId: 'bad', originalSizeAmount: 1, currentSizeAmount: 1 }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('foodId')
+    expect(createPantryItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when originalSizeAmount is zero or negative', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await POST(createPostRequest({ foodId: 1, originalSizeAmount: 0, currentSizeAmount: 1 }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('originalSizeAmount')
+    expect(createPantryItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when currentSizeAmount is negative', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await POST(createPostRequest({ foodId: 1, originalSizeAmount: 1, currentSizeAmount: -1 }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('currentSizeAmount')
+    expect(createPantryItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when expirationDate is not a valid date string', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await POST(createPostRequest({ foodId: 1, originalSizeAmount: 1, currentSizeAmount: 1, expirationDate: 'not-a-date' }))
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('expirationDate')
+    expect(createPantryItem).not.toHaveBeenCalled()
+  })
+
   it('ignores any client-supplied userId and uses the session user', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
     (createPantryItem as Mock).mockResolvedValue(mockItem)

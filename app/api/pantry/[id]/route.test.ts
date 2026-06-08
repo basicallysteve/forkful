@@ -50,6 +50,15 @@ describe('GET /api/pantry/[id]', () => {
     expect(getPantryItemById).not.toHaveBeenCalled()
   })
 
+  it('returns 400 for a non-numeric id', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await GET(new Request('http://localhost/api/pantry/foo'), makeParams('foo'))
+
+    expect(res.status).toBe(400)
+    expect(getPantryItemById).not.toHaveBeenCalled()
+  })
+
   it('returns 404 when the item does not belong to the session user', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
     // Data layer enforces ownership and returns null for cross-user reads
@@ -81,6 +90,15 @@ describe('PUT /api/pantry/[id]', () => {
     const res = await PUT(createPutRequest({ currentSizeAmount: 4 }), makeParams('1'))
 
     expect(res.status).toBe(401)
+    expect(updatePantryItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for a non-numeric id', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await PUT(createPutRequest({ currentSizeAmount: 4 }), makeParams('foo'))
+
+    expect(res.status).toBe(400)
     expect(updatePantryItem).not.toHaveBeenCalled()
   })
 
@@ -156,6 +174,15 @@ describe('DELETE /api/pantry/[id]', () => {
     const res = await DELETE(new Request('http://localhost/api/pantry/1'), makeParams('1'))
 
     expect(res.status).toBe(401)
+    expect(deletePantryItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for a non-numeric id', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const res = await DELETE(new Request('http://localhost/api/pantry/foo'), makeParams('foo'))
+
+    expect(res.status).toBe(400)
     expect(deletePantryItem).not.toHaveBeenCalled()
   })
 
