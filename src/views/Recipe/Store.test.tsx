@@ -33,6 +33,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
+    isPublic: false,
   },
   {
     id: 2,
@@ -45,6 +46,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
 ]
 

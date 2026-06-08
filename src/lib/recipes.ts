@@ -1,6 +1,6 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike } from 'drizzle-orm'
 import { db } from '@/db'
-import { recipes, ingredients, foods } from '@/db/schema'
+import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
@@ -11,6 +11,7 @@ export type RecipeQueryOptions = {
   published?: boolean
   sortBy?: 'date_published' | 'calories'
   sortDir?: 'asc' | 'desc'
+  viewerId?: number
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -58,52 +59,80 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
     ingredients: ingredientList,
     date_added: row.dateAdded ?? undefined,
     date_published: row.datePublished ?? null,
+    userId: row.userId ?? null,
+    isPublic: row.isPublic === 1,
   }
 }
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
-    const rows = await db.select().from(recipes).where(isNull(recipes.dateDeleted))
+    // Others' recipes are only visible when public AND published.
+    // Own recipes are always visible regardless of published status.
+    const othersFilter = and(eq(recipes.isPublic, 1), isNotNull(recipes.datePublished))
+    const visibilityFilter = options.viewerId !== undefined
+      ? or(othersFilter, eq(recipes.userId, options.viewerId))
+      : othersFilter
+
+    const ingredientFilter = options.ingredient
+      ? exists(
+          db.select({ one: eq(ingredients.recipeId, recipes.id) })
+            .from(ingredients)
+            .innerJoin(foods, eq(ingredients.foodId, foods.id))
+            .where(and(
+              eq(ingredients.recipeId, recipes.id),
+              isNull(ingredients.dateDeleted),
+              isNull(foods.dateDeleted),
+              ilike(foods.name, `%${options.ingredient}%`)
+            ))
+        )
+      : undefined
+
+    // When published filter is set with a viewerId, scope it to own recipes only —
+    // others' recipes are already constrained to published via othersFilter.
+    const publishedFilter = options.published !== undefined
+      ? (options.viewerId !== undefined
+          ? or(
+              othersFilter,
+              and(
+                eq(recipes.userId, options.viewerId),
+                options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished)
+              )
+            )
+          : (options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished)))
+      : undefined
+
+    const baseQuery = db.select().from(recipes).where(
+      and(isNull(recipes.dateDeleted), publishedFilter ?? visibilityFilter, ingredientFilter)
+    )
+
+    const orderedQuery = options.sortBy === 'date_published'
+      ? baseQuery.orderBy(options.sortDir === 'desc' ? desc(recipes.datePublished) : asc(recipes.datePublished))
+      : baseQuery
+
+    const rows = await orderedQuery
     const built = await Promise.all(rows.map(buildRecipe))
-    let result = built
 
-    if (options.published !== undefined) {
-      result = result.filter(r =>
-        options.published ? r.date_published !== null : r.date_published === null
-      )
-    }
-
-    if (options.ingredient) {
-      const term = options.ingredient.toLowerCase()
-      result = result.filter(r =>
-        r.ingredients.some(ing => ing.food.name.toLowerCase().includes(term))
-      )
-    }
-
-    if (options.sortBy) {
-      result = result.sort((a, b) => {
-        let cmp = 0
-        if (options.sortBy === 'date_published') {
-          const dateA = a.date_published ? new Date(a.date_published).getTime() : 0
-          const dateB = b.date_published ? new Date(b.date_published).getTime() : 0
-          cmp = dateA - dateB
-        } else if (options.sortBy === 'calories') {
-          const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-          const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-          cmp = calsA - calsB
-        }
-        return options.sortDir === 'desc' ? -cmp : cmp
+    if (options.sortBy === 'calories') {
+      built.sort((a, b) => {
+        const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+        const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
+        return options.sortDir === 'desc' ? calsB - calsA : calsA - calsB
       })
     }
 
-    return result
+    return built
   } catch {
     return []
   }
 }
 
-export async function getRecipeBySlug(slug: string): Promise<Recipe | null> {
-  const [row] = await db.select().from(recipes).where(and(eq(recipes.slug, slug), isNull(recipes.dateDeleted)))
+export async function getRecipeBySlug(slug: string, viewerId?: number): Promise<Recipe | null> {
+  const visibilityFilter = viewerId !== undefined
+    ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
+    : eq(recipes.isPublic, 1)
+  const [row] = await db.select().from(recipes).where(
+    and(eq(recipes.slug, slug), isNull(recipes.dateDeleted), visibilityFilter)
+  )
   return row ? buildRecipe(row) : null
 }
 
@@ -118,6 +147,8 @@ export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
     slug: toSlug(data.name),
     meal: data.meal,
     description: data.description,
+    isPublic: data.isPublic ? 1 : 0,
+    userId: data.userId ?? null,
     dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
     datePublished: data.date_published ? new Date(data.date_published) : null,
   }).returning()
@@ -144,8 +175,18 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
   if (data.meal !== undefined) updates.meal = data.meal
   if (data.description !== undefined) updates.description = data.description
   if (data.date_published !== undefined) updates.datePublished = data.date_published ? new Date(data.date_published) : null
+  if (data.isPublic !== undefined) updates.isPublic = data.isPublic ? 1 : 0
+
   const [row] = await db.update(recipes).set(updates).where(eq(recipes.id, id)).returning()
   if (!row) return null
+
+  // Revoke saved bookmarks when recipe is made private
+  if (data.isPublic === false) {
+    await db.update(savedRecipes)
+      .set({ dateDeleted: new Date() })
+      .where(and(eq(savedRecipes.recipeId, id), isNull(savedRecipes.dateDeleted)))
+  }
+
   if (data.ingredients !== undefined) {
     await db.delete(ingredients).where(eq(ingredients.recipeId, id))
     if (data.ingredients.length > 0) {
@@ -166,4 +207,40 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
 export async function deleteRecipe(id: number): Promise<boolean> {
   const updated = await db.update(recipes).set({ dateDeleted: new Date() }).where(eq(recipes.id, id)).returning()
   return updated.length > 0
+}
+
+export async function saveRecipe(userId: number, recipeId: number): Promise<void> {
+  await db.insert(savedRecipes)
+    .values({ userId, recipeId })
+    .onConflictDoUpdate({
+      target: [savedRecipes.userId, savedRecipes.recipeId],
+      set: { dateDeleted: null, dateSaved: new Date() },
+    })
+}
+
+export async function unsaveRecipe(userId: number, recipeId: number): Promise<void> {
+  await db.update(savedRecipes)
+    .set({ dateDeleted: new Date() })
+    .where(and(eq(savedRecipes.userId, userId), eq(savedRecipes.recipeId, recipeId), isNull(savedRecipes.dateDeleted)))
+}
+
+export async function getSavedRecipes(userId: number): Promise<Recipe[]> {
+  const rows = await db.select({ recipe: recipes }).from(savedRecipes)
+    .innerJoin(recipes, eq(savedRecipes.recipeId, recipes.id))
+    .where(
+      and(
+        eq(savedRecipes.userId, userId),
+        isNull(savedRecipes.dateDeleted),
+        isNull(recipes.dateDeleted),
+        eq(recipes.isPublic, 1), // defense-in-depth: exclude if recipe was made private without going through updateRecipe
+      )
+    )
+  return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+}
+
+export async function isSaved(userId: number, recipeId: number): Promise<boolean> {
+  const [row] = await db.select().from(savedRecipes).where(
+    and(eq(savedRecipes.userId, userId), eq(savedRecipes.recipeId, recipeId), isNull(savedRecipes.dateDeleted))
+  )
+  return !!row
 }

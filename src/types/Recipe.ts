@@ -7,4 +7,6 @@ export type Recipe = {
   ingredients: Ingredient[],
   date_added?: Date
   date_published?: Date | null
+  userId?: number | null
+  isPublic: boolean
 }
