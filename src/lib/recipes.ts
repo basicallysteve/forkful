@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, sql, count } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -236,6 +236,22 @@ export async function getSavedRecipes(userId: number): Promise<Recipe[]> {
       )
     )
   return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+}
+
+export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
+  try {
+    const rows = await db
+      .select({ recipe: recipes, saveCount: count(savedRecipes.id) })
+      .from(recipes)
+      .leftJoin(savedRecipes, and(eq(savedRecipes.recipeId, recipes.id), isNull(savedRecipes.dateDeleted)))
+      .where(and(isNull(recipes.dateDeleted), eq(recipes.isPublic, 1), isNotNull(recipes.datePublished)))
+      .groupBy(recipes.id)
+      .orderBy(desc(count(savedRecipes.id)), desc(recipes.datePublished))
+      .limit(limit)
+    return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+  } catch {
+    return []
+  }
 }
 
 export async function isSaved(userId: number, recipeId: number): Promise<boolean> {
