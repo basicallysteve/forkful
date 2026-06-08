@@ -5,6 +5,7 @@ export type User = {
   password?: string
   cuisinePreferences: string[] | null
   dietaryRestrictions: string[] | null
+  avatarUrl?: string | null
   dateAdded: Date
   dateDeleted: Date | null
 }

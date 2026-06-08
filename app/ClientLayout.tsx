@@ -9,9 +9,11 @@ interface ClientLayoutProps {
   children: React.ReactNode
   recipes: Recipe[]
   isLoggedIn: boolean
+  username: string | null
+  avatarUrl?: string | null
 }
 
-export default function ClientLayout({ children, recipes, isLoggedIn }: ClientLayoutProps) {
+export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
   const menuOptions = [
     {
       label: 'Recipes',
@@ -41,7 +43,12 @@ export default function ClientLayout({ children, recipes, isLoggedIn }: ClientLa
         { label: 'Add Pantry Item', to: '/pantry/new' },
       ],
     },
-    ...(isLoggedIn ? [{ label: 'Logout', to: '/logout', align: 'right' as const }] : [{ label: 'Login', to: '/login', align: 'right' as const }]),
+    ...(isLoggedIn
+      ? [
+          { label: username ?? 'Profile', to: '/profile', align: 'right' as const, avatar: { url: avatarUrl ?? null, initial: (username ?? 'P').charAt(0).toUpperCase() } },
+          { label: 'Logout', to: '/logout', align: 'right' as const },
+        ]
+      : [{ label: 'Login', to: '/login', align: 'right' as const }]),
   ]
 
   return (

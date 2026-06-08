@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@vercel/blob": "^2.4.0",
     "@vercel/postgres": "^0.10.0",
     "bcrypt": "^6.0.0",
     "dompurify": "^3.4.1",
@@ -36,6 +37,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.11.10",
     "@types/react": "^19.2.5",
