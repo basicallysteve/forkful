@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiDeleteRecipe, apiUpdateRecipe } from '@/lib/api/recipes'
+import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
@@ -105,7 +105,10 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
       await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
     } catch (err) {
       console.error('Failed to delete recipes from server:', err)
-      toDelete.forEach(recipe => updateRecipe(recipe))
+      try {
+        const fresh = await apiFetchRecipes()
+        setRecipes(fresh)
+      } catch { /* keep optimistic state if refresh also fails */ }
       toast.current?.show({ severity: 'error', summary: 'Could not delete recipes', detail: 'You may not have permission to delete one or more of the selected recipes.', life: 4000 })
     }
   }
