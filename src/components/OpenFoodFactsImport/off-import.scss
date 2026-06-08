@@ -1,0 +1,292 @@
+// ── OpenFoodFacts import dialog ───────────────────────────────────────────────
+
+.off-import-dialog {
+  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+
+  .p-dialog-header {
+    background: var(--vscode-panel);
+    border-bottom: 1px solid var(--vscode-border);
+    color: #f3f3f3;
+    font-size: 15px;
+    padding: 14px 18px;
+  }
+
+  .p-dialog-content {
+    background: var(--vscode-panel-strong);
+    padding: 0;
+  }
+}
+
+.off-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--vscode-border);
+  background: var(--vscode-panel);
+}
+
+.off-tab {
+  padding: 10px 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--vscode-muted);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+  border-radius: 0;
+
+  &:hover {
+    color: var(--vscode-text);
+    border-color: transparent;
+  }
+
+  &.is-active {
+    color: var(--vscode-accent);
+    border-bottom-color: var(--vscode-accent);
+    background: rgba(0, 122, 204, 0.06);
+  }
+}
+
+.off-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 120px;
+}
+
+.off-search-input {
+  width: 100%;
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  background: var(--vscode-panel);
+  color: var(--vscode-text);
+  font-size: 13px;
+  font-family: inherit;
+
+  &:focus {
+    border-color: var(--vscode-accent);
+    box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  }
+}
+
+.off-status {
+  margin: 0;
+  color: var(--vscode-muted);
+  font-size: 13px;
+}
+
+.off-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(232, 17, 35, 0.12);
+  border: 1px solid rgba(232, 17, 35, 0.4);
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
+.off-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.off-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 120ms ease, background-color 120ms ease;
+
+  &:hover {
+    border-color: rgba(0, 122, 204, 0.4);
+    background: rgba(0, 122, 204, 0.04);
+  }
+
+  .primary-button {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    color: #fff;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+
+    &:hover:not(:disabled) {
+      background: #1ea3ff;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.off-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.off-result-name {
+  font-size: 13px;
+  color: #f3f3f3;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.off-result-meta {
+  font-size: 11px;
+  color: var(--vscode-muted);
+}
+
+.off-result-serving {
+  opacity: 0.7;
+}
+
+.off-result-local {
+  border-color: var(--vscode-success);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.off-in-library {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vscode-success);
+  border: 1px solid var(--vscode-success);
+  border-radius: 6px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.off-scan-again {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 6px 10px;
+  font-family: inherit;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--vscode-text);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--vscode-accent);
+    color: #fff;
+  }
+}
+
+// ── BarcodeScanner ────────────────────────────────────────────────────────────
+
+.barcode-scanner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.barcode-camera-view {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--vscode-border);
+  background: #000;
+  aspect-ratio: 4 / 3;
+}
+
+.barcode-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.barcode-scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.barcode-scan-target {
+  width: 60%;
+  height: 30%;
+  border: 2px solid var(--vscode-accent);
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+.barcode-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.barcode-unsupported {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--vscode-border);
+  color: var(--vscode-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.barcode-manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.barcode-manual-label {
+  font-size: 12px;
+  color: var(--vscode-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.barcode-manual-row {
+  display: flex;
+  gap: 8px;
+
+  .primary-button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    color: #fff;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) { background: #1ea3ff; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+
+.barcode-manual-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+}

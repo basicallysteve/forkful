@@ -1,17 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import { Toast } from 'primereact/toast'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiUpdateRecipe } from '@/lib/api/recipes'
+import { apiUpdateRecipe, apiSaveRecipe, apiUnsaveRecipe } from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
+import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
+import { toSlug } from '@/utils/slug'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -21,13 +24,20 @@ interface RecipeProps {
   foods: Food[]
   isEditing?: boolean
   canEdit?: boolean
+  canSave?: boolean
+  initialSaved?: boolean
 }
 
-export default function Recipe({ recipe, foods, isEditing = false, canEdit = true }: RecipeProps) {
+export default function Recipe({ recipe, foods, isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
+  const toast = useRef<Toast>(null)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
+  const [saved, setSaved] = useState(initialSaved)
+  const [savePending, setSavePending] = useState(false)
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
+  const [localFoods, setLocalFoods] = useState<Food[]>(foods)
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -57,6 +67,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
+      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: 'You may not have permission to edit this recipe.', life: 4000 })
     }
   }
 
@@ -125,8 +136,8 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     }
 
     // Create a placeholder ingredient with the first food
-    if (foods.length > 0) {
-      const defaultFood = foods[0]
+    if (localFoods.length > 0) {
+      const defaultFood = localFoods[0]
       const newIngredient: Ingredient = { 
         food: defaultFood, 
         quantity: 1, 
@@ -150,18 +161,63 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   }
 
   async function publishRecipe() {
-    const now = new Date()
-    const updatedRecipe = { ...editedRecipe, date_published: now }
+    const updatedRecipe = { ...editedRecipe, date_published: new Date() }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to persist recipe publish:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
   }
 
   async function unpublishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to persist recipe unpublish:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
+  }
+
+  async function togglePublic() {
+    const updatedRecipe = { ...editedRecipe, isPublic: !editedRecipe.isPublic }
+    updateRecipeInStore(updatedRecipe)
+    setEditedRecipe(updatedRecipe)
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to toggle recipe visibility:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
+  }
+
+  async function toggleSaved() {
+    if (savePending) return
+    setSavePending(true)
+    try {
+      if (saved) {
+        await apiUnsaveRecipe(toSlug(recipe.name))
+        setSaved(false)
+      } else {
+        await apiSaveRecipe(toSlug(recipe.name))
+        setSaved(true)
+      }
+    } catch (err) {
+      console.error('Failed to toggle saved state:', err)
+    } finally {
+      setSavePending(false)
+    }
   }
 
   const publishedButton = !isPublished ? (
@@ -174,12 +230,15 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     </button>
   )
 
+  const visibilityButton = canEdit && (
+    <button onClick={togglePublic} type="button" className="ghost-button">
+      {displayRecipe.isPublic ? 'Make Private' : 'Make Public'}
+    </button>
+  )
+
   return (
     <div className="recipe-view">
-      <div className="recipe-titlebar" aria-hidden="true">
-        <span className="title">Forkful — {displayRecipe.name}</span>
-      </div>
-
+      <Toast ref={toast} position="bottom-right" />
       <div className="recipe-content">
         <header className="recipe-header">
           <div className="recipe-header-container">
@@ -253,6 +312,18 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                 </>
               ) : (
                 <>
+                  {canSave && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={toggleSaved}
+                      disabled={savePending}
+                      aria-label={saved ? 'Remove from saved recipes' : 'Save recipe'}
+                    >
+                      {saved ? '★ Saved' : '☆ Save'}
+                    </button>
+                  )}
+                  {visibilityButton}
                   {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
                     Copy Recipe
@@ -275,10 +346,10 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                   editMode ? (
                     <Autocomplete
                       value={ingredient.food.name}
-                      options={foods}
+                      options={localFoods}
                       getOptionLabel={(opt) => opt.name}
                       onChange={(next) => {
-                        const food = foods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                        const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
                         if (food) {
                           handleIngredientFoodChange(opts.rowIndex, food)
                         } else if (next === '') {
@@ -381,13 +452,28 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
               )}
             </DataTable>
             {editMode && (
-              <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>
-                + Add Ingredient
-              </button>
+              <div className="ingredient-actions">
+                <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>
+                  + Add Ingredient
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setShowImportDialog(true)}
+                >
+                  Import from OpenFoodFacts
+                </button>
+              </div>
             )}
           </div>
         </section>
       </div>
+
+      <OpenFoodFactsImport
+        visible={showImportDialog}
+        onHide={() => setShowImportDialog(false)}
+        onImport={(food) => setLocalFoods((prev) => [...prev, food])}
+      />
     </div>
   )
 }

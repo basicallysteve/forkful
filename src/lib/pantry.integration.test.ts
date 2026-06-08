@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems } from './pantry'
+import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems, getExpiringPantryItems } from './pantry'
 import { createFood } from './foods'
 import { signUp } from './users'
 
@@ -225,5 +225,74 @@ describe('pantry data layer (integration)', () => {
 
     const deletedIds = await deletePantryItems([], user.id)
     expect(deletedIds).toEqual([])
+  })
+
+  describe('getExpiringPantryItems', () => {
+    it('returns items expiring within the next 7 days, sorted soonest first', async () => {
+      const user = await createTestUser(`exp_${Date.now()}`)
+      const food = await createTestFood()
+
+      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1)
+      const in3Days = new Date(); in3Days.setDate(in3Days.getDate() + 3)
+      const in6Days = new Date(); in6Days.setDate(in6Days.getDate() + 6)
+      const in10Days = new Date(); in10Days.setDate(in10Days.getDate() + 10)
+
+      const [expired, soon3, soon6] = await Promise.all([
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: yesterday, originalSizeAmount: 1, currentSizeAmount: 1 }),
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: in3Days, originalSizeAmount: 1, currentSizeAmount: 1 }),
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: in6Days, originalSizeAmount: 1, currentSizeAmount: 1 }),
+      ])
+      // this one should be excluded (> 7 days out)
+      await createPantryItem({ userId: user.id, foodId: food.id, expirationDate: in10Days, originalSizeAmount: 1, currentSizeAmount: 1 })
+
+      const results = await getExpiringPantryItems(user.id)
+      const ids = results.map(r => r.id)
+
+      expect(ids).toContain(expired.id)
+      expect(ids).toContain(soon3.id)
+      expect(ids).toContain(soon6.id)
+      expect(ids).not.toContain(in10Days) // sanity label — the item created with in10Days is excluded
+
+      // sorted soonest first
+      expect(ids.indexOf(expired.id)).toBeLessThan(ids.indexOf(soon3.id))
+      expect(ids.indexOf(soon3.id)).toBeLessThan(ids.indexOf(soon6.id))
+    })
+
+    it('excludes items with no expiration date', async () => {
+      const user = await createTestUser(`noexp_${Date.now()}`)
+      const food = await createTestFood()
+
+      const item = await createPantryItem({ userId: user.id, foodId: food.id, expirationDate: null, originalSizeAmount: 1, currentSizeAmount: 1 })
+
+      const results = await getExpiringPantryItems(user.id)
+      expect(results.some(r => r.id === item.id)).toBe(false)
+    })
+
+    it('respects the limit parameter', async () => {
+      const user = await createTestUser(`lim_${Date.now()}`)
+      const food = await createTestFood()
+
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
+      await Promise.all([
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: tomorrow, originalSizeAmount: 1, currentSizeAmount: 1 }),
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: tomorrow, originalSizeAmount: 1, currentSizeAmount: 1 }),
+        createPantryItem({ userId: user.id, foodId: food.id, expirationDate: tomorrow, originalSizeAmount: 1, currentSizeAmount: 1 }),
+      ])
+
+      const results = await getExpiringPantryItems(user.id, 2)
+      expect(results).toHaveLength(2)
+    })
+
+    it('does not return items belonging to a different user', async () => {
+      const user1 = await createTestUser(`u1_${Date.now()}`)
+      const user2 = await createTestUser(`u2_${Date.now()}`)
+      const food = await createTestFood()
+
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
+      const item = await createPantryItem({ userId: user1.id, foodId: food.id, expirationDate: tomorrow, originalSizeAmount: 1, currentSizeAmount: 1 })
+
+      const results = await getExpiringPantryItems(user2.id)
+      expect(results.some(r => r.id === item.id)).toBe(false)
+    })
   })
 })

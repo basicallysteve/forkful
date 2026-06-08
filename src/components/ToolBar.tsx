@@ -1,11 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import ThemeToggle from './ThemeToggle'
+
 type MenuOption = {
     label: string;
     action?: () => void;
     children?: MenuOption[];
-    to?: string; // Optional for direct links
+    to?: string;
+    align?: 'right';
 }
 
 const logoSrc = "/forkful-logo.svg"
@@ -16,24 +19,32 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         const hasChildren = !!(option.children && option.children.length > 0)
 
         return (
-            <div className="menu-option" key={option.label}>
-                <Link href={option.to || "#"} className="menu-option__link" onClick={option.action}>
-                <button
-                    type="button"
-                    className="menu-option__trigger"
-                    onClick={option.action}
-                >
-                    <span className="menu-option__label">{option.label}</span>
-                    {hasChildren && <span className="menu-option__caret">▾</span>}
-                </button>
-                </Link>
+            <div className={`menu-option${option.align === 'right' ? ' menu-option--right' : ''}`} key={option.label}>
+                {hasChildren ? (
+                    <button
+                        type="button"
+                        className="menu-option__trigger"
+                        onClick={option.action}
+                    >
+                        <span className="menu-option__label">{option.label}</span>
+                        <span className="menu-option__caret">▾</span>
+                    </button>
+                ) : (
+                    <Link
+                        href={option.to || '#'}
+                        className="menu-option__trigger"
+                        onClick={option.action}
+                    >
+                        <span className="menu-option__label">{option.label}</span>
+                    </Link>
+                )}
                 {hasChildren && (
                     <div className="submenu" role="menu">
                         {option.children!.map((childOption) => (
                             <Link
                                 key={childOption.label}
                                 className="submenu-option"
-                                href={childOption.to || "#"}
+                                href={childOption.to || '#'}
                                 onClick={childOption.action}
                             >
                                 {childOption.label}
@@ -47,15 +58,16 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
 
     return (
         <div className="toolbar">
-            <div className="toolbar-brand">
+            <Link href="/" className="toolbar-brand">
                 <img src={logoSrc} alt="Forkful logo" className="toolbar-logo" />
                 <div className="toolbar-title">
                     <span className="toolbar-name">Forkful</span>
                     <span className="toolbar-tagline">Recipes worth repeating</span>
                 </div>
-            </div>
+            </Link>
             <div className="menu">
                 {menuOptions && menuOptions.map((option) => renderMenuOption(option))}
+                <ThemeToggle />
             </div>
         </div>
     )

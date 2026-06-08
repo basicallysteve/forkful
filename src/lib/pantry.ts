@@ -62,6 +62,30 @@ export async function getPantryItems(userId: number): Promise<PantryItem[]> {
   }
 }
 
+export async function getExpiringPantryItems(userId: number, limit = 5): Promise<PantryItem[]> {
+  try {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
+    const rows = await db
+      .select()
+      .from(pantryItems)
+      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+      .where(
+        and(
+          eq(pantryItems.userId, userId),
+          isNull(pantryItems.dateDeleted),
+          isNull(foods.dateDeleted),
+          lte(pantryItems.expirationDate, cutoff)
+        )
+      )
+      .orderBy(asc(pantryItems.expirationDate))
+      .limit(limit)
+    return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
+  } catch {
+    return []
+  }
+}
+
 export async function getPantryItemById(id: number, userId: number): Promise<PantryItem | null> {
   try {
     const [row] = await db
@@ -135,30 +159,6 @@ export async function deletePantryItem(id: number, userId: number): Promise<bool
     .where(and(eq(pantryItems.id, id), eq(pantryItems.userId, userId)))
     .returning()
   return updated.length > 0
-}
-
-export async function getExpiringPantryItems(userId: number, limit = 5): Promise<PantryItem[]> {
-  try {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
-    const rows = await db
-      .select()
-      .from(pantryItems)
-      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
-      .where(
-        and(
-          eq(pantryItems.userId, userId),
-          isNull(pantryItems.dateDeleted),
-          isNull(foods.dateDeleted),
-          lte(pantryItems.expirationDate, cutoff)
-        )
-      )
-      .orderBy(asc(pantryItems.expirationDate))
-      .limit(limit)
-    return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
-  } catch {
-    return []
-  }
 }
 
 export async function deletePantryItems(ids: number[], userId: number): Promise<number[]> {

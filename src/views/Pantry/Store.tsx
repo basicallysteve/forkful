@@ -141,10 +141,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   return (
     <div className="pantry-store-page">
-      <div className="pantry-titlebar">
-        <span className="title">Pantry Item</span>
-      </div>
-
       <div className="pantry-content">
         <h1>{isEditing ? 'Edit Pantry Item' : 'Add Pantry Item'}</h1>
 
