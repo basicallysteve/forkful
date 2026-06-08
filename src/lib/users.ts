@@ -71,7 +71,7 @@ export async function login(username: string, password: string, ipAddress: strin
         }
     }
 
-    if (!user) {
+    if (!user || !user.password) {
         await trackLoginAttempt({ ipAddress, successful: false })
         throw new Error('Invalid username or password')
     }
@@ -171,7 +171,7 @@ export async function updateUserEmail(userId: number, newEmail: string): Promise
 
 export async function updateUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
     const [user] = await db.select().from(users).where(eq(users.id, userId))
-    if (!user) throw new Error('User not found')
+    if (!user || !user.password) throw new Error('User not found')
     const match = await bcrypt.compare(currentPassword, user.password)
     if (!match) throw new Error('Current password is incorrect')
     const hashed = await hashPassword(newPassword)
