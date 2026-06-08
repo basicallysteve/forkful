@@ -3,18 +3,7 @@ import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
-
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
-const EXPIRING_SOON_THRESHOLD_DAYS = 7
-
-function calculateStatus(expirationDate: Date | null): PantryItem['status'] {
-  if (!expirationDate) return 'good'
-  const now = new Date()
-  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
-  if (daysUntilExpiration < 0) return 'expired'
-  if (daysUntilExpiration <= EXPIRING_SOON_THRESHOLD_DAYS) return 'expiring-soon'
-  return 'good'
-}
+import { calculatePantryStatus } from '@/utils/pantryStatus'
 
 function mapFood(row: typeof foods.$inferSelect): Food {
   return {
@@ -46,7 +35,7 @@ function mapPantryItem(row: typeof pantryItems.$inferSelect, food: Food): Pantry
       unit: row.currentSizeUnit ?? undefined,
     },
     addedDate: row.addedDate ? new Date(row.addedDate) : new Date(),
-    status: calculateStatus(expirationDate),
+    status: calculatePantryStatus(expirationDate),
     frozenDate: row.frozenDate ? new Date(row.frozenDate) : null,
   }
 }
@@ -65,7 +54,8 @@ export async function getPantryItems(userId: number): Promise<PantryItem[]> {
         )
       )
     return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
-  } catch {
+  } catch (err) {
+    console.error('getPantryItems failed:', err)
     return []
   }
 }
@@ -86,7 +76,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       )
     if (!row) return null
     return mapPantryItem(row.pantry_items, mapFood(row.foods))
-  } catch {
+  } catch (err) {
+    console.error('getPantryItemById failed:', err)
     return null
   }
 }
@@ -128,6 +119,7 @@ export async function updatePantryItem(id: number, userId: number, data: UpdateP
   if (data.currentSizeAmount !== undefined) updates.currentSizeAmount = String(data.currentSizeAmount)
   if (data.currentSizeUnit !== undefined) updates.currentSizeUnit = data.currentSizeUnit
   if (data.frozenDate !== undefined) updates.frozenDate = data.frozenDate ?? null
+  if (Object.keys(updates).length === 0) return getPantryItemById(id, userId)
   await db.update(pantryItems).set(updates).where(
     and(eq(pantryItems.id, id), eq(pantryItems.userId, userId))
   )

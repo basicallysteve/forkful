@@ -29,6 +29,17 @@ export async function POST(request: Request) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: CreateBody = await request.json()
+
+  if (!Number.isInteger(body.foodId) || body.foodId <= 0) {
+    return NextResponse.json({ error: 'Invalid foodId' }, { status: 400 })
+  }
+  if (typeof body.originalSizeAmount !== 'number' || body.originalSizeAmount <= 0) {
+    return NextResponse.json({ error: 'originalSizeAmount must be a positive number' }, { status: 400 })
+  }
+  if (typeof body.currentSizeAmount !== 'number' || body.currentSizeAmount < 0) {
+    return NextResponse.json({ error: 'currentSizeAmount must be a non-negative number' }, { status: 400 })
+  }
+
   const item = await taskRunner.run(() => createPantryItem({
     ...body,
     userId: user.userId,

@@ -84,14 +84,13 @@ describe('PUT /api/pantry/[id]', () => {
     expect(updatePantryItem).not.toHaveBeenCalled()
   })
 
-  it('returns 404 without calling updatePantryItem when item is not owned by session user', async () => {
+  it('returns 404 when item is not found or not owned by session user', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
-    (getPantryItemById as Mock).mockResolvedValue(null)
+    (updatePantryItem as Mock).mockResolvedValue(null)
 
     const res = await PUT(createPutRequest({ currentSizeAmount: 4 }), makeParams('1'))
 
     expect(res.status).toBe(404)
-    expect(updatePantryItem).not.toHaveBeenCalled()
   })
 
   it('parses date strings into Date objects before calling updatePantryItem', async () => {
@@ -160,14 +159,13 @@ describe('DELETE /api/pantry/[id]', () => {
     expect(deletePantryItem).not.toHaveBeenCalled()
   })
 
-  it('returns 404 without calling deletePantryItem when item is not owned by session user', async () => {
+  it('returns 404 when item is not found or not owned by session user', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
-    (getPantryItemById as Mock).mockResolvedValue(null)
+    (deletePantryItem as Mock).mockResolvedValue(false)
 
     const res = await DELETE(new Request('http://localhost/api/pantry/1'), makeParams('1'))
 
     expect(res.status).toBe(404)
-    expect(deletePantryItem).not.toHaveBeenCalled()
   })
 
   it('returns 204 and scopes the delete to the session user on success', async () => {

@@ -27,7 +27,6 @@ export default function Pantry() {
   const setItems = usePantryStore((state) => state.setItems)
   const deleteItem = usePantryStore((state) => state.deleteItem)
   const updateItem = usePantryStore((state) => state.updateItem)
-  const refreshItemStatuses = usePantryStore((state) => state.refreshItemStatuses)
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('expirationDate')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -43,10 +42,6 @@ export default function Pantry() {
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false))
   }, [setItems])
-
-  useEffect(() => {
-    refreshItemStatuses()
-  }, [refreshItemStatuses])
 
   const filteredAndSortedItems = useMemo(() => {
     let filtered = items
@@ -173,9 +168,9 @@ export default function Pantry() {
     }
   }
 
-  const expiredCount = items.filter((item) => item.status === 'expired').length
-  const expiringSoonCount = items.filter((item) => item.status === 'expiring-soon').length
-  const goodCount = items.filter((item) => item.status === 'good').length
+  const expiredCount = filteredAndSortedItems.filter((item) => item.status === 'expired').length
+  const expiringSoonCount = filteredAndSortedItems.filter((item) => item.status === 'expiring-soon').length
+  const goodCount = filteredAndSortedItems.filter((item) => item.status === 'good').length
 
   return (
     <div className="pantry-list">
@@ -199,7 +194,7 @@ export default function Pantry() {
         <div className="pantry-stats">
           <div className="stat-card">
             <span className="stat-label">Total Items</span>
-            <span className="stat-value">{items.length}</span>
+            <span className="stat-value">{filteredAndSortedItems.length}</span>
           </div>
           <div className="stat-card stat-good">
             <span className="stat-label">Good</span>
