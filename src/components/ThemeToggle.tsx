@@ -14,7 +14,7 @@ export default function ThemeToggle() {
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {isDark ? <SunIcon /> : <MoonIcon />}
+      {isDark ? <i className="pi pi-sun" /> : <i className="pi pi-moon" />}
     </button>
   )
 }

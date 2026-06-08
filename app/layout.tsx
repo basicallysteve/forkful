@@ -8,7 +8,9 @@ import { decrypt } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
+import 'primeicons/primeicons.css';
 import './globals.scss'
+
 
 export const metadata: Metadata = {
   title: 'Forkful',
