@@ -64,7 +64,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return true
     },
 
-    async jwt({ token, account, profile, user }) {
+    async jwt({ token, account, profile, user, trigger, session }) {
+      // When the client calls update({ needsOnboarding: false }), clear the flag
+      if (trigger === 'update' && session?.needsOnboarding === false) {
+        token.needsOnboarding = false
+        return token
+      }
+
       // On credential sign-in, user.id is already set
       if (user?.id) {
         token.userId = Number(user.id)
