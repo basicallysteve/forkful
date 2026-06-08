@@ -102,4 +102,6 @@ export const savedRecipes = pgTable('saved_recipes', {
     .references(() => recipes.id, { onDelete: 'cascade' }),
   dateSaved: timestamp('date_saved').defaultNow().notNull(),
   dateDeleted: timestamp('date_deleted'),
-}, (t) => [unique('saved_recipes_user_recipe_unique').on(t.userId, t.recipeId)]);
+}, (t) => ({
+  userRecipeUnique: unique('saved_recipes_user_recipe_unique').on(t.userId, t.recipeId),
+}));
