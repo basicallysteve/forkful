@@ -66,9 +66,12 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
+    // Others' recipes are only visible when public AND published.
+    // Own recipes are always visible regardless of published status.
+    const othersFilter = and(eq(recipes.isPublic, 1), isNotNull(recipes.datePublished))
     const visibilityFilter = options.viewerId !== undefined
-      ? or(eq(recipes.isPublic, 1), eq(recipes.userId, options.viewerId))
-      : eq(recipes.isPublic, 1)
+      ? or(othersFilter, eq(recipes.userId, options.viewerId))
+      : othersFilter
 
     const ingredientFilter = options.ingredient
       ? exists(
@@ -84,12 +87,22 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
         )
       : undefined
 
+    // When published filter is set with a viewerId, scope it to own recipes only —
+    // others' recipes are already constrained to published via othersFilter.
     const publishedFilter = options.published !== undefined
-      ? (options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished))
+      ? (options.viewerId !== undefined
+          ? or(
+              othersFilter,
+              and(
+                eq(recipes.userId, options.viewerId),
+                options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished)
+              )
+            )
+          : (options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished)))
       : undefined
 
     const baseQuery = db.select().from(recipes).where(
-      and(isNull(recipes.dateDeleted), visibilityFilter, publishedFilter, ingredientFilter)
+      and(isNull(recipes.dateDeleted), publishedFilter ?? visibilityFilter, ingredientFilter)
     )
 
     const orderedQuery = options.sortBy === 'date_published'

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
+import { Toast } from 'primereact/toast'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
@@ -29,6 +30,7 @@ interface RecipeProps {
 
 export default function Recipe({ recipe, foods, isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
+  const toast = useRef<Toast>(null)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [saved, setSaved] = useState(initialSaved)
@@ -65,6 +67,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
+      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: 'You may not have permission to edit this recipe.', life: 4000 })
     }
   }
 
@@ -161,21 +164,42 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     const updatedRecipe = { ...editedRecipe, date_published: new Date() }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe publish:', err) }
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to persist recipe publish:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
   }
 
   async function unpublishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to persist recipe unpublish:', err) }
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to persist recipe unpublish:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
   }
 
   async function togglePublic() {
     const updatedRecipe = { ...editedRecipe, isPublic: !editedRecipe.isPublic }
     updateRecipeInStore(updatedRecipe)
     setEditedRecipe(updatedRecipe)
-    try { await apiUpdateRecipe(updatedRecipe) } catch (err) { console.error('Failed to toggle recipe visibility:', err) }
+    try {
+      await apiUpdateRecipe(updatedRecipe)
+    } catch (err) {
+      console.error('Failed to toggle recipe visibility:', err)
+      updateRecipeInStore(editedRecipe)
+      setEditedRecipe(editedRecipe)
+      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+    }
   }
 
   async function toggleSaved() {
@@ -214,6 +238,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   return (
     <div className="recipe-view">
+      <Toast ref={toast} position="bottom-right" />
       <div className="recipe-content">
         <header className="recipe-header">
           <div className="recipe-header-container">
