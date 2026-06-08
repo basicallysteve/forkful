@@ -12,6 +12,13 @@ vi.mock('@/lib/users', () => ({
 vi.mock('@/lib/TaskRunner', () => ({
   taskRunner: { run: vi.fn((fn: () => unknown) => fn()) },
 }))
+vi.mock('@/lib/session', () => ({
+  encrypt: vi.fn().mockResolvedValue('mock-token'),
+  SESSION_DURATION_MS: 3600000,
+}))
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockResolvedValue({ set: vi.fn() }),
+}))
 vi.mock('@vercel/blob', () => ({
   put: vi.fn().mockResolvedValue({ url: 'https://blob.vercel.app/avatars/1-123.png' }),
 }))
@@ -34,7 +41,10 @@ function makeDeleteRequest(id: string) {
 }
 
 function makePngFile(size = 100) {
-  return new File([new Uint8Array(size)], 'avatar.png', { type: 'image/png' })
+  // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+  const bytes = new Uint8Array(size)
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  return new File([bytes], 'avatar.png', { type: 'image/png' })
 }
 
 beforeEach(() => {

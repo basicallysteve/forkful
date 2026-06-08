@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
         const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
         const cookieStore = await cookies()
-        const sessionData = { userId: user.id, username: user.username }
+        const sessionData = { userId: user.id, username: user.username, avatarUrl: user.avatarUrl ?? null }
         cookieStore.set('session', await encrypt(sessionData), { httpOnly: true, secure, sameSite: 'strict', expires: expiresAt })
 
         return NextResponse.json({ username: user.username, email: user.email })

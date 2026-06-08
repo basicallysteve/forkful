@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Checkbox } from 'primereact/checkbox'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
@@ -9,11 +10,46 @@ import { apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvata
 import type { User } from '@/types/User'
 import './profile.scss'
 
+const commonPasswords = [
+  'password', 'password1', 'password123', '123456', '12345678', '123456789',
+  'qwerty', 'qwerty123', 'abc123', 'letmein', 'welcome', 'admin', 'login',
+  'monkey', 'dragon', 'master', 'football', 'baseball', 'iloveyou', 'trustno1',
+  'sunshine', 'princess', 'starwars', 'superman', 'batman', 'shadow', 'michael',
+  'jennifer', 'jessica', 'ashley', 'amanda', 'andrew', 'joshua', 'matthew',
+  'daniel', 'david', 'james', 'robert', 'john', 'joseph', 'thomas', 'charles',
+]
+
+interface PasswordValidation {
+  hasMinLength: boolean
+  hasUppercase: boolean
+  hasLowercase: boolean
+  hasNumber: boolean
+  hasSpecialChar: boolean
+  isNotCommon: boolean
+}
+
+function validatePassword(password: string): PasswordValidation {
+  const lowerPassword = password.toLowerCase()
+  return {
+    hasMinLength: password.length >= 8,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+    isNotCommon: password.length === 0 || !commonPasswords.includes(lowerPassword),
+  }
+}
+
+function isPasswordValid(v: PasswordValidation): boolean {
+  return v.hasMinLength && v.hasUppercase && v.hasLowercase && v.hasNumber && v.hasSpecialChar && v.isNotCommon
+}
+
 interface ProfileProps {
   user: User
 }
 
 export default function Profile({ user }: ProfileProps) {
+  const router = useRouter()
   // Avatar section
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(user.avatarUrl)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -28,6 +64,7 @@ export default function Profile({ user }: ProfileProps) {
     try {
       const { url } = await apiUploadAvatar(user.id!, file)
       setAvatarUrl(url)
+      router.refresh()
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -57,6 +94,8 @@ export default function Profile({ user }: ProfileProps) {
   const [pwSuccess, setPwSuccess] = useState(false)
 
   const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email])
+  const newPasswordValidation = useMemo(() => validatePassword(newPassword), [newPassword])
+  const newPasswordIsValid = useMemo(() => isPasswordValid(newPasswordValidation), [newPasswordValidation])
   const passwordsMatch = useMemo(() => newPassword === confirmPassword && confirmPassword.length > 0, [newPassword, confirmPassword])
 
   function toggleCuisine(option: string) {
@@ -100,7 +139,7 @@ export default function Profile({ user }: ProfileProps) {
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (!passwordsMatch) return
+    if (!passwordsMatch || !newPasswordIsValid) return
     setPwSaving(true)
     setPwError(null)
     setPwSuccess(false)
@@ -232,6 +271,16 @@ export default function Profile({ user }: ProfileProps) {
               <label className="form-field">
                 <span className="field-label">New Password</span>
                 <Password value={newPassword} onChange={e => setNewPassword(e.target.value)} toggleMask feedback autoComplete="new-password" />
+                {newPassword.length > 0 && !newPasswordIsValid && (
+                  <ul className="password-requirements" role="alert">
+                    {!newPasswordValidation.hasMinLength && <li>At least 8 characters</li>}
+                    {!newPasswordValidation.hasUppercase && <li>At least one uppercase letter</li>}
+                    {!newPasswordValidation.hasLowercase && <li>At least one lowercase letter</li>}
+                    {!newPasswordValidation.hasNumber && <li>At least one number</li>}
+                    {!newPasswordValidation.hasSpecialChar && <li>At least one special character</li>}
+                    {!newPasswordValidation.isNotCommon && <li>Password is too common</li>}
+                  </ul>
+                )}
               </label>
               <label className={`form-field ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                 <span className="field-label">Confirm New Password</span>
@@ -243,7 +292,7 @@ export default function Profile({ user }: ProfileProps) {
               <div className="panel-footer">
                 {pwSuccess && <span className="success-text">Password updated!</span>}
                 {pwError && <span className="field-error" role="alert">{pwError}</span>}
-                <button type="submit" className="primary-button" disabled={pwSaving || !currentPassword || !passwordsMatch}>
+                <button type="submit" className="primary-button" disabled={pwSaving || !currentPassword || !newPasswordIsValid || !passwordsMatch}>
                   {pwSaving ? 'Saving…' : 'Update Password'}
                 </button>
               </div>
@@ -260,7 +309,7 @@ export default function Profile({ user }: ProfileProps) {
             <span className="coming-soon-badge">Coming soon</span>
           </div>
           <div className="panel-content billing-placeholder">
-            <div className="billing-icon">💳</div>
+            <div className="billing-icon"><i className="pi pi-credit-card" /></div>
             <p className="billing-message">Billing and payment options will be available here.</p>
           </div>
         </section>

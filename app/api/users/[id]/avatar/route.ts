@@ -1,10 +1,47 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { getSessionUser } from '@/lib/auth'
 import { getUser, updateUserAvatar, deleteUserAvatar } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
+import { encrypt, SESSION_DURATION_MS } from '@/lib/session'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 const MAX_SIZE = 2 * 1024 * 1024
+
+const EXT_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
+function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as ArrayBuffer)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsArrayBuffer(blob)
+  })
+}
+
+async function validateMagicBytes(file: File): Promise<boolean> {
+  const buf = new Uint8Array(await readBlobAsArrayBuffer(file.slice(0, 12)))
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true
+  // WebP: RIFF????WEBP
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return true
+  return false
+}
+
+async function reissueSession(sessionUser: { userId: number; username: string }, avatarUrl: string | null) {
+  const secure = process.env.NODE_ENV === 'production'
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS)
+  const cookieStore = await cookies()
+  const token = await encrypt({ userId: sessionUser.userId, username: sessionUser.username, avatarUrl })
+  cookieStore.set('session', token, { httpOnly: true, secure, sameSite: 'strict', expires: expiresAt })
+}
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await getSessionUser()
@@ -27,21 +64,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_TYPES.includes(file.type as typeof ALLOWED_TYPES[number])) {
     return NextResponse.json({ error: 'File must be JPEG, PNG, or WebP' }, { status: 400 })
   }
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: 'File must be under 2MB' }, { status: 400 })
+  }
+  if (!(await validateMagicBytes(file))) {
+    return NextResponse.json({ error: 'File must be JPEG, PNG, or WebP' }, { status: 400 })
   }
 
   const user = await getUser(targetId)
   const oldAvatarUrl = user?.avatarUrl ?? null
 
   const { put } = await import('@vercel/blob')
-  const ext = file.type.split('/')[1]
-  const blob = await put(`avatars/${targetId}-${Date.now()}.${ext}`, file, { access: 'public' })
+  const ext = EXT_MAP[file.type]
+  const blob = await put(`avatars/${targetId}-${Date.now()}.${ext}`, file, { access: 'public', contentType: file.type })
 
   await taskRunner.run(() => updateUserAvatar(targetId, blob.url, oldAvatarUrl))
+  await reissueSession(sessionUser, blob.url)
 
   return NextResponse.json({ url: blob.url })
 }
@@ -60,6 +101,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const oldAvatarUrl = user?.avatarUrl ?? null
 
   await taskRunner.run(() => deleteUserAvatar(targetId, oldAvatarUrl))
+  await reissueSession(sessionUser, null)
 
   return NextResponse.json({ ok: true })
 }
