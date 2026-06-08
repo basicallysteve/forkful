@@ -1,4 +1,6 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core';
+
+export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -12,6 +14,11 @@ export const foods = pgTable('foods', {
   servingSize: numeric('serving_size', { precision: 10, scale: 2 }).notNull().default('1'),
   servingUnit: varchar('serving_unit', { length: 50 }),
   measurements: jsonb('measurements').$type<string[]>().default([]),
+  saturatedFat: numeric('saturated_fat', { precision: 10, scale: 2 }),
+  sugar: numeric('sugar', { precision: 10, scale: 2 }),
+  sodium: numeric('sodium', { precision: 10, scale: 1 }),
+  barcode: varchar('barcode', { length: 50 }),
+  source: foodSourceEnum('source').notNull().default('manual'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateUpdated: timestamp('date_updated'),
   dateDeleted: timestamp('date_deleted'),
@@ -23,7 +30,8 @@ export const recipes = pgTable('recipes', {
   slug: varchar('slug', { length: 255 }).unique(),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
-  isPublic: integer('is_public').notNull().default(0), // 0 = false, 1 = true
+  isPublic: integer('is_public').notNull().default(0),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),
   dateDeleted: timestamp('date_deleted'),
@@ -45,8 +53,23 @@ export const ingredients = pgTable('ingredients', {
   dateDeleted: timestamp('date_deleted'),
 });
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: varchar('username', { length: 255 }).notNull(),
+  password: varchar('password', { length: 255, }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
+  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateDeleted: timestamp('date_deleted'),
+});
+
 export const pantryItems = pgTable('pantry_items', {
   id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   foodId: integer('food_id')
     .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
@@ -60,17 +83,6 @@ export const pantryItems = pgTable('pantry_items', {
   dateDeleted: timestamp('date_deleted'),
 });
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull(),
-  password: varchar('password', { length: 255, }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
-  cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
-  dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
-  dateAdded: timestamp('date_added').defaultNow(),
-  dateDeleted: timestamp('date_deleted'),
-});
-
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -79,3 +91,17 @@ export const login_attempts = pgTable('login_attempts', {
   successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 });
+
+export const savedRecipes = pgTable('saved_recipes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  recipeId: integer('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  dateSaved: timestamp('date_saved').defaultNow().notNull(),
+  dateDeleted: timestamp('date_deleted'),
+}, (t) => ({
+  userRecipeUnique: unique('saved_recipes_user_recipe_unique').on(t.userId, t.recipeId),
+}));

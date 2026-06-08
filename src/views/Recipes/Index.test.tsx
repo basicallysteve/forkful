@@ -1,10 +1,17 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Recipes from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
+import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
+
+vi.mock('@/lib/api/recipes', () => ({
+  apiDeleteRecipe: vi.fn(async () => {}),
+  apiUpdateRecipe: vi.fn(async (r: Recipe) => r),
+  apiFetchRecipes: vi.fn(async () => []),
+}))
 
 // Mock foods
 const mockFoods: Food[] = [
@@ -27,6 +34,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
+    isPublic: false,
   },
   {
     id: 2,
@@ -39,6 +47,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
   {
     id: 3,
@@ -50,6 +59,7 @@ const mockRecipes: Recipe[] = [
     ],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
+    isPublic: false,
   },
 ]
 
@@ -274,6 +284,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -281,6 +292,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -288,9 +300,10 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
-    
+
 
     const categoryTrigger = screen.getByRole('button', { name: /category/i })
     await user.click(categoryTrigger)
@@ -317,6 +330,7 @@ describe('Recipes filters and actions', () => {
           { food: testFoods[0], quantity: 2, calories: 10, servingUnit: 'tsp' },
           { food: testFoods[1], quantity: 1, calories: 5, servingUnit: 'clove' }
         ],
+        isPublic: false,
       },
       {
         id: 2,
@@ -324,6 +338,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -331,6 +346,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
     const searchInput = screen.getByPlaceholderText(/search recipes/i)
@@ -351,6 +367,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -358,6 +375,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -365,6 +383,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
     const sortTrigger = screen.getByRole('button', { name: /sort by/i })
@@ -389,6 +408,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 2,
@@ -396,6 +416,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
         ingredients: [],
+        isPublic: false,
       },
       {
         id: 3,
@@ -403,6 +424,7 @@ describe('Recipes filters and actions', () => {
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
+        isPublic: false,
       },
     ]})
 
@@ -412,5 +434,36 @@ describe('Recipes filters and actions', () => {
     const updated = useRecipeStore.getState().recipes
     expect(updated).toHaveLength(2)
     expect(updated.find((recipe) => recipe.name === 'Garlic Pasta')).toBeUndefined()
+  })
+})
+
+describe('Error handling', () => {
+  it('shows an error toast and refreshes store when delete fails', async () => {
+    vi.mocked(apiDeleteRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+    vi.mocked(apiFetchRecipes).mockResolvedValueOnce(mockRecipes)
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />)
+
+    await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
+    await user.click(screen.getByRole('button', { name: /delete/i }))
+
+    expect(await screen.findByText('Could not delete recipes')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useRecipeStore.getState().recipes).toHaveLength(mockRecipes.length)
+    })
+  })
+
+  it('shows an error toast and rolls back when unpublish fails', async () => {
+    vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+    const user = userEvent.setup()
+    renderWithProviders(<Recipes />)
+
+    await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
+    await user.click(screen.getByRole('button', { name: /unpublish/i }))
+
+    expect(await screen.findByText('Could not unpublish recipes')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(useRecipeStore.getState().recipes.find(r => r.id === 1)?.date_published).toBeInstanceOf(Date)
+    })
   })
 })

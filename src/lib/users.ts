@@ -87,6 +87,7 @@ export async function login(username: string, password: string, ipAddress: strin
         email: user.email,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
+        avatarUrl: user.avatarUrl ?? null,
         dateAdded: user.dateAdded!,
         dateDeleted: user.dateDeleted,
     }
@@ -117,11 +118,51 @@ export async function getUser(userId: number): Promise<User | null> {
         return null
     }
     return {
+        id: String(user.id),
         username: user.username,
         email: user.email,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
+        avatarUrl: user.avatarUrl ?? null,
         dateAdded: user.dateAdded!,
         dateDeleted: user.dateDeleted,
     }
+}
+
+export async function updateUserAvatar(userId: number, avatarUrl: string, oldAvatarUrl: string | null): Promise<void> {
+    await db.update(users).set({ avatarUrl }).where(eq(users.id, userId))
+    if (oldAvatarUrl) {
+        const { del } = await import('@vercel/blob')
+        await del(oldAvatarUrl).catch(() => null)
+    }
+}
+
+export async function deleteUserAvatar(userId: number, oldAvatarUrl: string | null): Promise<void> {
+    await db.update(users).set({ avatarUrl: null }).where(eq(users.id, userId))
+    if (oldAvatarUrl) {
+        const { del } = await import('@vercel/blob')
+        await del(oldAvatarUrl).catch(() => null)
+    }
+}
+
+export async function updateUserPreferences(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
+    await db.update(users).set({
+        cuisinePreferences: data.cuisinePreferences,
+        dietaryRestrictions: data.dietaryRestrictions,
+    }).where(eq(users.id, userId))
+}
+
+export async function updateUserEmail(userId: number, newEmail: string): Promise<void> {
+    const [existing] = await db.select().from(users).where(eq(users.email, newEmail))
+    if (existing && existing.id !== userId) throw new Error('Email already in use')
+    await db.update(users).set({ email: newEmail }).where(eq(users.id, userId))
+}
+
+export async function updateUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId))
+    if (!user) throw new Error('User not found')
+    const match = await bcrypt.compare(currentPassword, user.password)
+    if (!match) throw new Error('Current password is incorrect')
+    const hashed = await hashPassword(newPassword)
+    await db.update(users).set({ password: hashed }).where(eq(users.id, userId))
 }

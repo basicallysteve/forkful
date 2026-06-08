@@ -14,7 +14,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    exclude: ['**/*.integration.test.ts', 'node_modules/**', '.next/**'],
+    exclude: ['**/*.integration.test.ts', 'node_modules/**', '.next/**', '.claude/worktrees/**'],
     env: {
       JWT_SECRET: 'test-secret-for-unit-tests',
     },
@@ -22,6 +22,7 @@ export default defineConfig({
       'server-only': path.resolve(__dirname, './src/test/mocks/server-only.ts'),
       'next/link': path.resolve(__dirname, './src/test/mocks/next-link.tsx'),
       'next/navigation': path.resolve(__dirname, './src/test/mocks/next-navigation.ts'),
+      'primereact/autocomplete': path.resolve(__dirname, './src/test/mocks/primereact-autocomplete.tsx'),
       'primereact/editor': path.resolve(__dirname, './src/test/mocks/primereact-editor.tsx'),
     },
   },

@@ -48,6 +48,13 @@ export async function apiUpdateFood(food: Food): Promise<Food> {
   return res.json()
 }
 
+export async function apiFetchFoodByBarcode(barcode: string): Promise<Food | null> {
+  const res = await fetch(`/api/foods/barcode/${encodeURIComponent(barcode)}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error('Barcode lookup failed')
+  return res.json()
+}
+
 export async function apiDeleteFood(slug: string): Promise<void> {
   const res = await fetch(`/api/foods/${slug}`, { method: 'DELETE', credentials: 'same-origin' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete food')

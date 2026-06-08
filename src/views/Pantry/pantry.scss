@@ -1,35 +1,7 @@
 .pantry-list {
   color: var(--vscode-text);
-  background: radial-gradient(circle at 20% 20%, rgba(0, 122, 204, 0.08), transparent 35%),
-    radial-gradient(circle at 80% 0%, rgba(0, 122, 204, 0.12), transparent 30%),
-    var(--vscode-bg);
-  border: 1px solid var(--vscode-border);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
   box-sizing: border-box;
-
-  .pantry-titlebar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    background: linear-gradient(90deg, #2c2c32, #1e1e1e);
-    border-bottom: 1px solid var(--vscode-border);
-    font-size: 12px;
-    letter-spacing: 0.2px;
-
-    .title {
-      color: var(--vscode-muted);
-      flex: 1;
-      text-align: center;
-    }
-  }
 
   .pantry-content {
     padding: 22px 22px 18px;
@@ -56,7 +28,7 @@
   .pantry-name {
     margin: 4px 0 0;
     font-size: 24px;
-    color: #f3f3f3;
+    color: var(--vscode-text);
   }
 
   .pantry-meta {
@@ -80,32 +52,32 @@
     color: #ffffff;
     border-color: var(--vscode-accent);
     background: var(--vscode-accent);
-    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
+    box-shadow: 0 4px 12px var(--accent-glow);
   }
 
   .pill-ghost {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--accent-hover);
   }
 
   .pill-success {
     color: #ffffff;
     border-color: var(--vscode-success);
     background: var(--vscode-success);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+    box-shadow: 0 4px 12px var(--accent-glow);
   }
 
   .pill-warning {
     color: #ffffff;
     border-color: var(--vscode-warning);
     background: var(--vscode-warning);
-    box-shadow: 0 4px 12px rgba(240, 173, 78, 0.35);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
   }
 
   .pill-danger {
     color: #ffffff;
     border-color: var(--vscode-danger);
     background: var(--vscode-danger);
-    box-shadow: 0 4px 12px rgba(232, 17, 35, 0.35);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
   }
 
   .pantry-stats {
@@ -116,11 +88,11 @@
   }
 
   .stat-card {
-    background: #1b1b1f;
+    background: var(--vscode-panel);
     padding: 16px;
     border-radius: 10px;
     border: 1px solid var(--vscode-border);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    box-shadow: 0 2px 8px var(--shadow-container);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -135,7 +107,7 @@
     .stat-value {
       font-size: 28px;
       font-weight: 600;
-      color: #f3f3f3;
+      color: var(--vscode-text);
     }
 
     &.stat-good {
@@ -154,8 +126,7 @@
   .pantry-panel {
     border: 1px solid var(--vscode-border);
     border-radius: 12px;
-    background: #1b1b1f;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    background: var(--vscode-panel-deep);
     margin-top: 18px;
   }
 
@@ -166,7 +137,7 @@
     gap: 12px;
     padding: 10px 12px;
     border-bottom: 1px solid var(--vscode-border);
-    background: #2a2d2e;
+    background: var(--vscode-panel-strong);
     flex-wrap: wrap;
   }
 
@@ -202,7 +173,7 @@
     &:focus {
       outline: none;
       border-color: var(--vscode-accent);
-      box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+      box-shadow: var(--focus-ring);
     }
   }
 
@@ -222,7 +193,7 @@
     &:focus {
       outline: none;
       border-color: var(--vscode-accent);
-      box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+      box-shadow: var(--focus-ring);
     }
   }
 
@@ -238,7 +209,7 @@
 
     &:hover {
       border-color: var(--vscode-accent);
-      background: rgba(0, 122, 204, 0.1);
+      background: var(--accent-hover);
     }
   }
 
@@ -267,36 +238,38 @@
     background: var(--vscode-accent);
     border-color: var(--vscode-accent);
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
+    box-shadow: 0 4px 12px var(--accent-glow);
 
     &:hover {
-      background: #1ea3ff;
+      background: var(--vscode-accent-deep);
+      border-color: var(--vscode-accent-deep);
     }
   }
 
   .ghost-button {
     color: var(--vscode-text);
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
 
     &:hover {
       border-color: var(--vscode-accent);
-      color: #ffffff;
+      background: var(--accent-hover);
     }
   }
 
   .danger-button {
-    background: #e811235f;
-    color: #ffffff;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--vscode-danger);
     border-color: var(--vscode-danger);
 
     &:hover {
       background: var(--vscode-danger);
+      color: #ffffff;
     }
   }
 
   .bulk-actions-bar {
     padding: 12px;
-    background: rgba(0, 122, 204, 0.15);
+    background: var(--accent-hover-strong);
     border-bottom: 1px solid var(--vscode-accent);
     color: var(--vscode-text);
     font-size: 13px;
@@ -319,7 +292,7 @@
     border: 1px dashed var(--vscode-border);
     border-radius: 10px;
     color: var(--vscode-muted);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--accent-hover);
     text-align: center;
 
     p {
@@ -333,7 +306,7 @@
     border-collapse: collapse;
 
     thead {
-      background: #2a2d2e;
+      background: var(--vscode-panel-strong);
       border-bottom: 1px solid var(--vscode-border);
 
       th {
@@ -353,16 +326,16 @@
         transition: background-color 140ms ease;
 
         &:hover {
-          background: rgba(255, 255, 255, 0.02);
+          background: var(--accent-hover);
         }
 
         &.status-expired {
-          background: rgba(232, 17, 35, 0.08);
+          background: rgba(239, 68, 68, 0.05);
           border-left: 3px solid var(--vscode-danger);
         }
 
         &.status-expiring-soon {
-          background: rgba(240, 173, 78, 0.08);
+          background: rgba(245, 158, 11, 0.05);
           border-left: 3px solid var(--vscode-warning);
         }
       }
@@ -403,27 +376,27 @@
     border: 1px solid;
 
     &.status-good {
-      background: rgba(34, 197, 94, 0.15);
-      color: #4ade80;
-      border-color: #22c55e;
+      background: rgba(16, 185, 129, 0.12);
+      color: #059669;
+      border-color: var(--vscode-success);
     }
 
     &.status-expiring-soon {
-      background: rgba(240, 173, 78, 0.15);
-      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.12);
+      color: #d97706;
       border-color: var(--vscode-warning);
     }
 
     &.status-expired {
-      background: rgba(232, 17, 35, 0.15);
-      color: #ff6b6b;
+      background: rgba(239, 68, 68, 0.12);
+      color: #dc2626;
       border-color: var(--vscode-danger);
     }
 
     &.status-frozen {
-      background: rgba(23, 162, 184, 0.15);
-      color: #17a2b8;
-      border-color: #17a2b8;
+      background: rgba(6, 182, 212, 0.12);
+      color: #0891b2;
+      border-color: var(--vscode-info);
     }
   }
 
@@ -447,37 +420,37 @@
 
         &:hover {
           border-color: var(--vscode-accent);
-          background: rgba(0, 122, 204, 0.1);
+          background: var(--accent-hover);
         }
       }
 
       &.btn-danger {
-        background: #e811235f;
-        color: #ffffff;
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--vscode-danger);
         border-color: var(--vscode-danger);
 
         &:hover {
           background: var(--vscode-danger);
+          color: #ffffff;
         }
       }
 
       &.btn-info {
-        background: rgba(23, 162, 184, 0.2);
-        color: #17a2b8;
-        border-color: #17a2b8;
+        background: rgba(6, 182, 212, 0.1);
+        color: var(--vscode-info);
+        border-color: var(--vscode-info);
 
         &:hover {
-          background: rgba(23, 162, 184, 0.4);
+          background: rgba(6, 182, 212, 0.25);
         }
       }
     }
   }
 
-  // Card view for mobile (hidden on desktop)
   .select-all-row {
     display: none;
     padding: 12px;
-    background: #2a2d2e;
+    background: var(--vscode-panel-strong);
     border-bottom: 1px solid var(--vscode-border);
 
     .select-all-label {
@@ -508,7 +481,7 @@
   }
 
   .pantry-card {
-    background: #1b1b1f;
+    background: var(--vscode-panel);
     border: 1px solid var(--vscode-border);
     border-radius: 10px;
     overflow: hidden;
@@ -516,11 +489,11 @@
     display: flex;
     gap: 12px;
     padding: 14px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    box-shadow: 0 2px 8px var(--shadow-container);
 
     &.is-selected {
       border-color: var(--vscode-accent);
-      background: rgba(0, 122, 204, 0.08);
+      background: var(--accent-hover);
     }
 
     &.status-expired {
@@ -644,12 +617,10 @@
       grid-template-columns: 1fr;
     }
 
-    // Hide table on mobile
     .pantry-table {
       display: none;
     }
 
-    // Show card view on mobile
     .select-all-row {
       display: block;
     }
@@ -663,36 +634,8 @@
 // Pantry Store Page
 .pantry-store-page {
   color: var(--vscode-text);
-  background: radial-gradient(circle at 20% 20%, rgba(0, 122, 204, 0.08), transparent 35%),
-    radial-gradient(circle at 80% 0%, rgba(0, 122, 204, 0.12), transparent 30%),
-    var(--vscode-bg);
-  border: 1px solid var(--vscode-border);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
   width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
   box-sizing: border-box;
-
-  .pantry-titlebar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    background: linear-gradient(90deg, #2c2c32, #1e1e1e);
-    border-bottom: 1px solid var(--vscode-border);
-    font-size: 12px;
-    letter-spacing: 0.2px;
-
-    .title {
-      color: var(--vscode-muted);
-      flex: 1;
-      text-align: center;
-    }
-  }
 
   .pantry-content {
     padding: 22px;
@@ -702,15 +645,14 @@
   h1 {
     margin: 0 0 20px;
     font-size: 24px;
-    color: #f3f3f3;
+    color: var(--vscode-text);
   }
 
   .form-container {
-    background: #1b1b1f;
+    background: var(--vscode-panel-deep);
     padding: 20px;
     border-radius: 10px;
     border: 1px solid var(--vscode-border);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   .form-section {
@@ -725,7 +667,7 @@
       letter-spacing: 0.4px;
 
       .required {
-        color: #e81123;
+        color: var(--vscode-danger);
       }
     }
 
@@ -749,11 +691,11 @@
       &:focus {
         outline: none;
         border-color: var(--vscode-accent);
-        box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+        box-shadow: var(--focus-ring);
       }
 
       &:disabled {
-        background: rgba(255, 255, 255, 0.02);
+        background: var(--vscode-panel-strong);
         cursor: not-allowed;
         opacity: 0.5;
       }
@@ -770,19 +712,16 @@
       .size-unit {
         flex: 1;
       }
-      
-      // Style select dropdowns within size-unit (native <select>)
+
       select.size-unit {
         cursor: pointer;
         appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23d4d4d4' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 8px center;
         padding-right: 28px;
       }
 
-      // PrimeReact Dropdown used as size-unit has no inherited border/background,
-      // so apply the same appearance as the native <input> siblings.
       .p-dropdown.size-unit {
         border: 1px solid var(--vscode-border);
         border-radius: 8px;
@@ -806,15 +745,15 @@
   .date-preview {
     margin-top: 10px;
     padding: 10px;
-    background: rgba(0, 122, 204, 0.08);
+    background: var(--accent-hover);
     border-radius: 6px;
     font-size: 12px;
     color: var(--vscode-muted);
-    border: 1px solid rgba(0, 122, 204, 0.2);
+    border: 1px solid var(--accent-border);
 
     strong {
       text-transform: capitalize;
-      color: #f3f3f3;
+      color: var(--vscode-text);
     }
   }
 
@@ -845,10 +784,11 @@
       background: var(--vscode-accent);
       border-color: var(--vscode-accent);
       color: #ffffff;
-      box-shadow: 0 4px 12px rgba(0, 122, 204, 0.35);
+      box-shadow: 0 4px 12px var(--accent-glow);
 
       &:hover:not(:disabled) {
-        background: #1ea3ff;
+        background: var(--vscode-accent-deep);
+        border-color: var(--vscode-accent-deep);
       }
     }
 
@@ -858,7 +798,7 @@
 
       &:hover:not(:disabled) {
         border-color: var(--vscode-accent);
-        background: rgba(0, 122, 204, 0.1);
+        background: var(--accent-hover);
       }
     }
   }

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getFoods, getFoodBySlug, createFood, updateFood, deleteFood } from './foods'
+import { getFoods, getFoodBySlug, getFoodByBarcode, createFood, updateFood, deleteFood } from './foods'
 
 const databaseUrl = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 const pool = new Pool({
@@ -86,5 +86,72 @@ describe('foods data layer (integration)', () => {
 
     const fetched = await getFoodBySlug('test-deleteme')
     expect(fetched).toBeNull()
+  })
+
+  it('looks up a food by barcode', async () => {
+    const barcode = '5000112637922'
+    const created = await createFood({
+      name: 'Test BarcodedFood',
+      calories: 120,
+      protein: 2,
+      carbs: 20,
+      fat: 3,
+      fiber: 1,
+      servingSize: 100,
+      servingUnit: 'g',
+      measurements: ['g'],
+      barcode,
+    })
+
+    const found = await getFoodByBarcode(barcode)
+    expect(found).not.toBeNull()
+    expect(found!.id).toBe(created.id)
+    expect(found!.barcode).toBe(barcode)
+
+    // Non-existent barcode returns null
+    const missing = await getFoodByBarcode('0000000000000')
+    expect(missing).toBeNull()
+  })
+
+  it('resets source to manual when nutritional fields change on an OFF food', async () => {
+    const created = await createFood({
+      name: 'Test OFFFood',
+      calories: 200,
+      protein: 10,
+      carbs: 30,
+      fat: 5,
+      fiber: 2,
+      sugar: 8,
+      sodium: 150,
+      servingSize: 100,
+      servingUnit: 'g',
+      measurements: ['g'],
+      source: 'open_food_facts',
+    })
+    expect(created.source).toBe('open_food_facts')
+
+    // Updating a nutritional field must flip source → manual
+    const updated = await updateFood(created.id, { calories: 180 })
+    expect(updated?.source).toBe('manual')
+  })
+
+  it('does not reset source when only non-nutritional fields change on an OFF food', async () => {
+    const created = await createFood({
+      name: 'Test OFFFood2',
+      calories: 200,
+      protein: 10,
+      carbs: 30,
+      fat: 5,
+      fiber: 2,
+      servingSize: 100,
+      servingUnit: 'g',
+      measurements: ['g'],
+      source: 'open_food_facts',
+    })
+    expect(created.source).toBe('open_food_facts')
+
+    // Updating only the name must not change the source
+    const updated = await updateFood(created.id, { name: 'Test OFFFood2 Renamed' })
+    expect(updated?.source).toBe('open_food_facts')
   })
 })

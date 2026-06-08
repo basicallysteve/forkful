@@ -5,12 +5,9 @@ import Link from "next/link"
 import { apiSignUp } from "@/lib/api/users"
 import { InputText } from 'primereact/inputtext'
 import { Checkbox } from 'primereact/checkbox'
-import { RadioButton } from 'primereact/radiobutton'
 import { Password } from 'primereact/password'
+import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import './createAccount.scss'
-
-const cuisineOptions = ["Caribbean", "Italian", "Mexican", "Asian", "American", "Mediterranean", "Indian", "Other"]
-const dietaryOptions = ["None", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Keto", "Low-Carb"]
 
 // Common passwords that should be rejected
 const commonPasswords = [
@@ -60,7 +57,7 @@ function CreateAccount() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
-  const [dietaryRestrictions, setDietaryRestrictions] = useState<string>("")
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -91,24 +88,24 @@ function CreateAccount() {
     }
   }
 
+  function handleDietaryToggle(option: string) {
+    setDietaryRestrictions(prev =>
+      prev.includes(option) ? prev.filter((d) => d !== option) : [...prev, option]
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
     setSubmitError(null)
     setIsSubmitting(true)
     try {
-      // The database schema expects dietaryRestrictions to be an array of strings
-      const finalDietaryRestrictions =
-        dietaryRestrictions && dietaryRestrictions !== "None"
-          ? [dietaryRestrictions]
-          : []
-
       await apiSignUp({
         username,
         email,
         password,
         cuisinePreferences,
-        dietaryRestrictions: finalDietaryRestrictions,
+        dietaryRestrictions,
       })
     
       window.location.href = '/login'
@@ -121,10 +118,6 @@ function CreateAccount() {
 
   return (
     <div className="create-account">
-      <div className="account-titlebar" aria-hidden="true">
-        <span className="title">Forkful — Create Account</span>
-      </div>
-
       <div className="account-content">
         <header className="account-header">
           <div>
@@ -266,19 +259,18 @@ function CreateAccount() {
 
                 <div className="form-field form-field-full">
                   <span className="field-label">Dietary Restrictions (Optional)</span>
-                  <div className="radio-group">
+                  <div className="checkbox-group">
                     {dietaryOptions.map((option) => (
                       <label
                         key={option}
-                        className={`radio-option ${dietaryRestrictions === option ? "is-active" : ""}`}
+                        className={`checkbox-option ${dietaryRestrictions.includes(option) ? "is-active" : ""}`}
                       >
-                        <RadioButton
-                          name="dietary"
-                          value={option}
-                          checked={dietaryRestrictions === option}
-                          onChange={(e) => setDietaryRestrictions(e.value)}
+                        <Checkbox
+                          className="checkbox-input"
+                          checked={dietaryRestrictions.includes(option)}
+                          onChange={() => handleDietaryToggle(option)}
                         />
-                        <span className="radio-dot" />
+                        <span className="checkbox-indicator" />
                         {option}
                       </label>
                     ))}
