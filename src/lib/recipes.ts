@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -224,8 +224,8 @@ export async function unsaveRecipe(userId: number, recipeId: number): Promise<vo
     .where(and(eq(savedRecipes.userId, userId), eq(savedRecipes.recipeId, recipeId), isNull(savedRecipes.dateDeleted)))
 }
 
-export async function getSavedRecipes(userId: number): Promise<Recipe[]> {
-  const rows = await db.select({ recipe: recipes }).from(savedRecipes)
+export async function getSavedRecipes(userId: number, limit?: number): Promise<Recipe[]> {
+  let query = db.select({ recipe: recipes }).from(savedRecipes)
     .innerJoin(recipes, eq(savedRecipes.recipeId, recipes.id))
     .where(
       and(
@@ -235,7 +235,26 @@ export async function getSavedRecipes(userId: number): Promise<Recipe[]> {
         eq(recipes.isPublic, 1), // defense-in-depth: exclude if recipe was made private without going through updateRecipe
       )
     )
+    .orderBy(desc(savedRecipes.dateSaved))
+  if (limit !== undefined) query = query.limit(limit) as typeof query
+  const rows = await query
   return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+}
+
+export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
+  try {
+    const rows = await db
+      .select({ recipe: recipes, saveCount: count(savedRecipes.id) })
+      .from(recipes)
+      .leftJoin(savedRecipes, and(eq(savedRecipes.recipeId, recipes.id), isNull(savedRecipes.dateDeleted)))
+      .where(and(isNull(recipes.dateDeleted), eq(recipes.isPublic, 1), isNotNull(recipes.datePublished)))
+      .groupBy(recipes.id)
+      .orderBy(desc(count(savedRecipes.id)), desc(recipes.datePublished))
+      .limit(limit)
+    return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+  } catch {
+    return []
+  }
 }
 
 export async function isSaved(userId: number, recipeId: number): Promise<boolean> {

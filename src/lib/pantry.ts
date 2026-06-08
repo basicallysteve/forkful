@@ -1,4 +1,4 @@
-import { eq, isNull, and, inArray } from 'drizzle-orm'
+import { eq, isNull, and, inArray, lte, asc } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem } from '@/types/PantryItem'
@@ -64,6 +64,30 @@ export async function getPantryItems(userId: number): Promise<PantryItem[]> {
           isNull(foods.dateDeleted)
         )
       )
+    return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
+  } catch {
+    return []
+  }
+}
+
+export async function getExpiringPantryItems(userId: number, limit = 5): Promise<PantryItem[]> {
+  try {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
+    const rows = await db
+      .select()
+      .from(pantryItems)
+      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+      .where(
+        and(
+          eq(pantryItems.userId, userId),
+          isNull(pantryItems.dateDeleted),
+          isNull(foods.dateDeleted),
+          lte(pantryItems.expirationDate, cutoff)
+        )
+      )
+      .orderBy(asc(pantryItems.expirationDate))
+      .limit(limit)
     return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
   } catch {
     return []
