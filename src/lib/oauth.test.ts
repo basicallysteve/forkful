@@ -12,11 +12,15 @@ const mockSelect = vi.fn(() => ({ from: mockFrom }))
 const mockReturning = vi.fn()
 const mockInsertValues = vi.fn(() => ({ returning: mockReturning }))
 const mockInsert = vi.fn(() => ({ values: mockInsertValues }))
+const mockUpdateWhere = vi.fn()
+const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }))
+const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }))
 
 vi.mock('@/db', () => ({
   db: {
     get select() { return mockSelect },
     get insert() { return mockInsert },
+    get update() { return mockUpdate },
   },
 }))
 
@@ -90,6 +94,9 @@ describe('findOrCreateOAuthUser', () => {
     mockFrom.mockReturnValue({ where: mockWhere })
     mockInsert.mockReturnValue({ values: mockInsertValues })
     mockInsertValues.mockReturnValue({ returning: mockReturning })
+    mockUpdate.mockReturnValue({ set: mockUpdateSet })
+    mockUpdateSet.mockReturnValue({ where: mockUpdateWhere })
+    mockUpdateWhere.mockResolvedValue(undefined)
   })
 
   it('returns existing userId when oauth link already exists', async () => {
@@ -98,11 +105,21 @@ describe('findOrCreateOAuthUser', () => {
     expect(mockInsert).not.toHaveBeenCalled()
   })
 
-  it('links oauth to existing user when email matches', async () => {
+  it('links oauth to existing user and sets avatar when user has none', async () => {
     mockWhere
-      .mockResolvedValueOnce([])           // no existing oauth link
-      .mockResolvedValueOnce([{ id: 7 }]) // existing user by email
+      .mockResolvedValueOnce([])                              // no existing oauth link
+      .mockResolvedValueOnce([{ id: 7, avatarUrl: null }])   // existing user, no avatar
     expect(await findOrCreateOAuthUser(profile)).toBe(7)
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
+    expect(mockInsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('links oauth to existing user but does not overwrite existing avatar', async () => {
+    mockWhere
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 7, avatarUrl: 'https://existing.com/avatar.jpg' }])
+    expect(await findOrCreateOAuthUser(profile)).toBe(7)
+    expect(mockUpdate).not.toHaveBeenCalled()
     expect(mockInsert).toHaveBeenCalledTimes(1)
   })
 

@@ -60,11 +60,14 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile): Promise<numb
 
   // 2. Email-match → auto-link
   const [existingUser] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, avatarUrl: users.avatarUrl })
     .from(users)
     .where(eq(users.email, profile.email))
 
   if (existingUser) {
+    if (!existingUser.avatarUrl && profile.avatarUrl) {
+      await db.update(users).set({ avatarUrl: profile.avatarUrl }).where(eq(users.id, existingUser.id))
+    }
     await db.insert(oauthAccounts).values({
       userId: existingUser.id,
       provider: profile.provider,
