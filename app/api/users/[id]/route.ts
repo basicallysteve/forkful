@@ -21,7 +21,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json()
 
     if (body.action === 'preferences') {
-      if (!Array.isArray(body.cuisinePreferences) || !Array.isArray(body.dietaryRestrictions)) {
+      if (
+        !Array.isArray(body.cuisinePreferences) || !Array.isArray(body.dietaryRestrictions) ||
+        body.cuisinePreferences.some((v: unknown) => typeof v !== 'string') ||
+        body.dietaryRestrictions.some((v: unknown) => typeof v !== 'string')
+      ) {
         return NextResponse.json({ error: 'Invalid preferences data' }, { status: 400 })
       }
       await taskRunner.run(() => updateUserPreferences(targetId, {
@@ -40,7 +44,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (body.action === 'password') {
-      if (!body.currentPassword || !body.newPassword || body.newPassword.length < 8) {
+      if (!body.currentPassword) {
+        return NextResponse.json({ error: 'Current password is required' }, { status: 400 })
+      }
+      if (!body.newPassword || body.newPassword.length < 8) {
         return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
       }
       await taskRunner.run(() => updateUserPassword(targetId, body.currentPassword, body.newPassword))

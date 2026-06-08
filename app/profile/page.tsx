@@ -11,9 +11,9 @@ export default async function ProfilePage() {
   if (!sessionCookie) redirect('/login')
 
   const session = await decrypt(sessionCookie).catch(() => null)
-  if (!session || typeof (session as { userId?: unknown }).userId !== 'number') redirect('/login')
-
-  const userId = (session as { userId: number }).userId
+  const rawUserId = (session as { userId?: unknown } | null)?.userId
+  const userId = Number(rawUserId)
+  if (!session || !rawUserId || !Number.isInteger(userId) || userId <= 0) redirect('/login')
   const user = await getUser(userId)
   if (!user) redirect('/login')
 

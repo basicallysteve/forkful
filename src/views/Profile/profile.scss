@@ -148,7 +148,9 @@
     transition: border-color 120ms ease, background-color 120ms ease;
 
     .p-checkbox {
-      display: none;
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
     }
 
     &.is-active {
