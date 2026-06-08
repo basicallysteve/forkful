@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
 import { PATCH } from './route'
 import { getSessionUser } from '@/lib/auth'
 import { updateUserPreferences, updateUserEmail, updateUserPassword } from '@/lib/users'
-import { taskRunner } from '@/lib/TaskRunner'
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }))
 vi.mock('@/lib/users', () => ({
