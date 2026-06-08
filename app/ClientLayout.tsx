@@ -10,9 +10,10 @@ interface ClientLayoutProps {
   recipes: Recipe[]
   isLoggedIn: boolean
   username: string | null
+  avatarUrl?: string | null
 }
 
-export default function ClientLayout({ children, recipes, isLoggedIn, username }: ClientLayoutProps) {
+export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
   const menuOptions = [
     {
       label: 'Recipes',
@@ -44,7 +45,7 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username }
     },
     ...(isLoggedIn
       ? [
-          { label: username ?? 'Profile', to: '/profile', align: 'right' as const },
+          { label: username ?? 'Profile', to: '/profile', align: 'right' as const, avatar: { url: avatarUrl ?? null, initial: (username ?? 'P').charAt(0).toUpperCase() } },
           { label: 'Logout', to: '/logout', align: 'right' as const },
         ]
       : [{ label: 'Login', to: '/login', align: 'right' as const }]),

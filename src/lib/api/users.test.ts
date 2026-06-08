@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogin, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword } from './users'
+import { apiSignUp, apiLogin, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar } from './users'
 
 const mockUser = {
   id: '1',
@@ -202,5 +202,58 @@ describe('apiUpdatePassword', () => {
     } as unknown as Response)
 
     await expect(apiUpdatePassword(42, 'OldPass1!', 'NewPass1!')).rejects.toThrow('Update failed')
+  })
+})
+
+describe('apiUploadAvatar', () => {
+  it('posts form data and returns url', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ url: 'https://blob.vercel.app/a.png' }),
+    } as Response)
+
+    const file = new File([new Uint8Array(10)], 'a.png', { type: 'image/png' })
+    const result = await apiUploadAvatar(1, file)
+
+    expect(result.url).toBe('https://blob.vercel.app/a.png')
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/1/avatar',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
+
+  it('throws on error response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'File must be JPEG, PNG, or WebP' }),
+    } as Response)
+
+    const file = new File([new Uint8Array(10)], 'a.gif', { type: 'image/gif' })
+    await expect(apiUploadAvatar(1, file)).rejects.toThrow('File must be JPEG, PNG, or WebP')
+  })
+})
+
+describe('apiDeleteAvatar', () => {
+  it('sends DELETE request', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    } as Response)
+
+    await apiDeleteAvatar(1)
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/1/avatar',
+      expect.objectContaining({ method: 'DELETE' })
+    )
+  })
+
+  it('throws on error response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Unauthorized' }),
+    } as Response)
+
+    await expect(apiDeleteAvatar(1)).rejects.toThrow('Unauthorized')
   })
 })

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Checkbox } from 'primereact/checkbox'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
-import { apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword } from '@/lib/api/users'
+import { apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar } from '@/lib/api/users'
 import type { User } from '@/types/User'
 import './profile.scss'
 
@@ -14,6 +14,28 @@ interface ProfileProps {
 }
 
 export default function Profile({ user }: ProfileProps) {
+  // Avatar section
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(user.avatarUrl)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    setAvatarError(null)
+    try {
+      const { url } = await apiUploadAvatar(user.id!, file)
+      setAvatarUrl(url)
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setAvatarUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   // Preferences section
   const [cuisine, setCuisine] = useState<string[]>(user.cuisinePreferences ?? [])
   const [dietary, setDietary] = useState<string[]>(user.dietaryRestrictions ?? [])
@@ -99,8 +121,29 @@ export default function Profile({ user }: ProfileProps) {
     <div className="profile">
       <div className="profile-content">
         <header className="profile-header">
-          <div className="profile-avatar">{user.username.charAt(0).toUpperCase()}</div>
+          <button
+            type="button"
+            className={`profile-avatar${avatarUploading ? ' profile-avatar--uploading' : ''}`}
+            title="Change avatar"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {avatarUrl
+              ? <img src={avatarUrl} alt={user.username} className="profile-avatar__img" />
+              : <span className="profile-avatar__initial">{user.username.charAt(0).toUpperCase()}</span>
+            }
+            <span className="profile-avatar__overlay" aria-hidden="true">
+              {avatarUploading ? '…' : '📷'}
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="profile-avatar__input"
+            onChange={handleAvatarChange}
+          />
           <div>
+            {avatarError && <span className="field-error" role="alert">{avatarError}</span>}
             <p className="profile-label">Your Profile</p>
             <h2 className="profile-name">{user.username}</h2>
             <p className="profile-email-display">{user.email}</p>

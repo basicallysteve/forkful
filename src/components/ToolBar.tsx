@@ -10,6 +10,7 @@ type MenuOption = {
     children?: MenuOption[];
     to?: string;
     align?: 'right';
+    avatar?: { url: string | null; initial: string };
 }
 
 const logoSrc = "/forkful-logo.svg"
@@ -43,8 +44,18 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                         href={option.to || '#'}
                         className="menu-option__trigger"
                         onClick={option.action}
+                        title={option.avatar ? option.label : undefined}
                     >
-                        <span className="menu-option__label">{option.label}</span>
+                        {option.avatar ? (
+                            <span className="toolbar-avatar" aria-label={option.label}>
+                                {option.avatar.url
+                                    ? <img src={option.avatar.url} alt={option.label} className="toolbar-avatar__img" />
+                                    : <span className="toolbar-avatar__initial">{option.avatar.initial}</span>
+                                }
+                            </span>
+                        ) : (
+                            <span className="menu-option__label">{option.label}</span>
+                        )}
                     </Link>
                 )}
                 {hasChildren && (

@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
+import { getUser } from '@/lib/users'
 import { decrypt } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
@@ -31,11 +32,17 @@ export default async function RootLayout({
   const sessionCookie = cookieStore.get('session')?.value
   let isLoggedIn = false
   let username: string | null = null
+  let avatarUrl: string | null = null
   if (sessionCookie) {
     const session = await decrypt(sessionCookie).catch(() => null)
     if (session) {
       isLoggedIn = true
       username = (session as { username?: string }).username ?? null
+      const userId = Number((session as { userId?: unknown }).userId)
+      if (!isNaN(userId) && userId > 0) {
+        const user = await getUser(userId).catch(() => null)
+        avatarUrl = user?.avatarUrl ?? null
+      }
     }
   }
 
@@ -46,7 +53,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />
       </head>
       <body>
-        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn} username={username}>{children}</ClientLayout>
+        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn} username={username} avatarUrl={avatarUrl}>{children}</ClientLayout>
       </body>
     </html>
   )

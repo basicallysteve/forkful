@@ -122,9 +122,26 @@ export async function getUser(userId: number): Promise<User | null> {
         email: user.email,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
+        avatarUrl: user.avatarUrl ?? null,
         dateAdded: user.dateAdded!,
         dateDeleted: user.dateDeleted,
     }
+}
+
+export async function updateUserAvatar(userId: number, avatarUrl: string, oldAvatarUrl: string | null): Promise<void> {
+    if (oldAvatarUrl) {
+        const { del } = await import('@vercel/blob')
+        await del(oldAvatarUrl).catch(() => null)
+    }
+    await db.update(users).set({ avatarUrl }).where(eq(users.id, userId))
+}
+
+export async function deleteUserAvatar(userId: number, oldAvatarUrl: string | null): Promise<void> {
+    if (oldAvatarUrl) {
+        const { del } = await import('@vercel/blob')
+        await del(oldAvatarUrl).catch(() => null)
+    }
+    await db.update(users).set({ avatarUrl: null }).where(eq(users.id, userId))
 }
 
 export async function updateUserPreferences(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {

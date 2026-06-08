@@ -20,6 +20,7 @@
   }
 
   .profile-avatar {
+    position: relative;
     width: 52px;
     height: 52px;
     border-radius: 50%;
@@ -32,6 +33,48 @@
     font-weight: 600;
     flex-shrink: 0;
     box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    overflow: hidden;
+
+    &__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    &__initial {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    &__overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      opacity: 0;
+      transition: opacity 120ms ease;
+    }
+
+    &__input {
+      display: none;
+    }
+
+    &:hover .profile-avatar__overlay,
+    &:focus-visible .profile-avatar__overlay {
+      opacity: 1;
+    }
+
+    &--uploading .profile-avatar__overlay {
+      opacity: 1;
+    }
   }
 
   .profile-label {

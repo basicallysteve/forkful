@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@vercel/blob": "^2.4.0",
     "@vercel/postgres": "^0.10.0",
     "bcrypt": "^6.0.0",
     "dompurify": "^3.4.1",
