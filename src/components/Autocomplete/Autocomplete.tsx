@@ -81,7 +81,7 @@ export default function Autocomplete<T>({
   }
 
   function focus() {
-    acRef.current?.getInput()?.focus?.()
+    (acRef.current?.getInput() as unknown as HTMLInputElement | null)?.focus?.()
   }
 
   return (
