@@ -23,6 +23,7 @@ export const recipes = pgTable('recipes', {
   slug: varchar('slug', { length: 255 }).unique(),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   isPublic: integer('is_public').notNull().default(0), // 0 = false, 1 = true
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),

@@ -1,4 +1,4 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, and, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -7,6 +7,7 @@ import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 export type RecipeQueryOptions = {
+  user_id?: number
   ingredient?: string
   published?: boolean
   sortBy?: 'date_published' | 'calories'
@@ -63,7 +64,17 @@ async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
   try {
-    const rows = await db.select().from(recipes).where(isNull(recipes.dateDeleted))
+    const rows = await db.select()
+                            .from(recipes)
+                            .where(
+                              and(
+                                isNull(recipes.dateDeleted), 
+                                or(
+                                  eq(recipes.isPublic, 1), 
+                                  eq(recipes.userId, options.user_id)
+                                )
+                              )
+                            );
     const built = await Promise.all(rows.map(buildRecipe))
     let result = built
 
