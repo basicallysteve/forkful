@@ -100,6 +100,24 @@ describe('PATCH /api/users/[id] — preferences', () => {
     expect(updateUserPreferences).not.toHaveBeenCalled()
   })
 
+  it('returns 400 when cuisinePreferences contains non-string values', async () => {
+    const { request, params } = makeRequest('42', { action: 'preferences', cuisinePreferences: ['Italian', 42], dietaryRestrictions: [] })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateUserPreferences).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when dietaryRestrictions contains non-string values', async () => {
+    const { request, params } = makeRequest('42', { action: 'preferences', cuisinePreferences: [], dietaryRestrictions: [{ evil: true }] })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateUserPreferences).not.toHaveBeenCalled()
+  })
+
   it('accepts empty arrays', async () => {
     (updateUserPreferences as Mock).mockResolvedValue(undefined)
     const { request, params } = makeRequest('42', { action: 'preferences', cuisinePreferences: [], dietaryRestrictions: [] })
@@ -189,12 +207,13 @@ describe('PATCH /api/users/[id] — password', () => {
     expect(updateUserPassword).not.toHaveBeenCalled()
   })
 
-  it('returns 400 when currentPassword is missing', async () => {
+  it('returns 400 with specific message when currentPassword is missing', async () => {
     const { request, params } = makeRequest('42', { action: 'password', newPassword: 'NewPass1!' })
 
     const res = await PATCH(request, { params })
 
     expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Current password is required')
     expect(updateUserPassword).not.toHaveBeenCalled()
   })
 

@@ -89,11 +89,9 @@ function CreateAccount() {
   }
 
   function handleDietaryToggle(option: string) {
-    if (dietaryRestrictions.includes(option)) {
-      setDietaryRestrictions(dietaryRestrictions.filter((d) => d !== option))
-    } else {
-      setDietaryRestrictions([...dietaryRestrictions, option])
-    }
+    setDietaryRestrictions(prev =>
+      prev.includes(option) ? prev.filter((d) => d !== option) : [...prev, option]
+    )
   }
 
   async function handleSubmit(e: React.FormEvent) {
