@@ -44,7 +44,19 @@ function makePngFile(size = 100) {
   // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
   const bytes = new Uint8Array(size)
   bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-  return new File([bytes], 'avatar.png', { type: 'image/png' })
+  const file = new File([bytes], 'avatar.png', { type: 'image/png' })
+  // jsdom doesn't implement Blob.arrayBuffer(); patch slice so the magic-byte
+  // check in the route gets the real bytes without relying on that API
+  const originalSlice = file.slice.bind(file)
+  file.slice = (...args: Parameters<typeof file.slice>) => {
+    const blob = originalSlice(...args)
+    const start = (args[0] as number) ?? 0
+    const end = (args[1] as number) ?? bytes.length
+    ;(blob as Blob & { arrayBuffer(): Promise<ArrayBuffer> }).arrayBuffer =
+      () => Promise.resolve(bytes.slice(start, end).buffer)
+    return blob
+  }
+  return file
 }
 
 beforeEach(() => {

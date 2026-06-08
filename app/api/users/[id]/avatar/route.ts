@@ -14,17 +14,8 @@ const EXT_MAP: Record<string, string> = {
   'image/webp': 'webp',
 }
 
-function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as ArrayBuffer)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsArrayBuffer(blob)
-  })
-}
-
 async function validateMagicBytes(file: File): Promise<boolean> {
-  const buf = new Uint8Array(await readBlobAsArrayBuffer(file.slice(0, 12)))
+  const buf = new Uint8Array(await file.slice(0, 12).arrayBuffer())
   // JPEG: FF D8 FF
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true
   // PNG: 89 50 4E 47 0D 0A 1A 0A
