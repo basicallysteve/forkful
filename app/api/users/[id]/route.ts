@@ -56,7 +56,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Update failed'
+    const raw = error instanceof Error ? error.message : ''
+    const SAFE_MESSAGES = new Set(['Email already in use', 'Current password is incorrect', 'User not found'])
+    const message = SAFE_MESSAGES.has(raw) ? raw : 'Update failed'
     return NextResponse.json({ error: message }, { status: 400 })
   }
 }

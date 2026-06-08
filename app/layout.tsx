@@ -4,7 +4,6 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
-import { getUser } from '@/lib/users'
 import { decrypt } from '@/lib/session'
 import type { Recipe } from '@/types/Recipe'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
@@ -37,12 +36,9 @@ export default async function RootLayout({
     const session = await decrypt(sessionCookie).catch(() => null)
     if (session) {
       isLoggedIn = true
-      username = (session as { username?: string }).username ?? null
-      const userId = Number((session as { userId?: unknown }).userId)
-      if (!isNaN(userId) && userId > 0) {
-        const user = await getUser(userId).catch(() => null)
-        avatarUrl = user?.avatarUrl ?? null
-      }
+      const s = session as { username?: string; avatarUrl?: string | null }
+      username = s.username ?? null
+      avatarUrl = s.avatarUrl ?? null
     }
   }
 
