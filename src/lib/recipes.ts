@@ -7,6 +7,7 @@ import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 export type RecipeQueryOptions = {
+  user_id?: number
   ingredient?: string
   published?: boolean
   sortBy?: 'date_published' | 'calories'

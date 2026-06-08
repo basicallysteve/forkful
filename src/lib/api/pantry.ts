@@ -1,4 +1,5 @@
 import type { PantryItem } from '@/types/PantryItem'
+import type { PantryQueryOptions } from '@/lib/pantry'
 
 type RawPantryItem = Omit<PantryItem, 'expirationDate' | 'addedDate' | 'frozenDate'> & {
   expirationDate: string | null
@@ -28,8 +29,14 @@ export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'foodId'>>
   frozenDate?: string | null
 }
 
-export async function apiFetchPantryItems(): Promise<PantryItem[]> {
-  const res = await fetch('/api/pantry')
+export async function apiFetchPantryItems(options: PantryQueryOptions = {}): Promise<PantryItem[]> {
+  const params = new URLSearchParams()
+  if (options.search) params.set('search', options.search)
+  if (options.status && options.status !== 'all') params.set('status', options.status)
+  if (options.sortBy) params.set('sortBy', options.sortBy)
+  if (options.sortDir) params.set('sortDir', options.sortDir)
+  const query = params.toString()
+  const res = await fetch(`/api/pantry${query ? `?${query}` : ''}`)
   if (!res.ok) throw new Error('Failed to fetch pantry items')
   const raw: RawPantryItem[] = await res.json()
   return raw.map(parsePantryItem)

@@ -6,6 +6,11 @@ import type { UpdatePantryItemData } from '@/lib/pantry'
 
 type Params = { params: Promise<{ id: string }> }
 
+function parseId(raw: string): number | null {
+  const n = Number(raw)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+
 type UpdateBody = {
   expirationDate?: string | null
   originalSizeAmount?: number
@@ -29,8 +34,10 @@ function parseUpdateBody(body: UpdateBody): UpdatePantryItemData {
 export async function GET(_request: Request, { params }: Params) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const item = await getPantryItemById(Number(id), user.userId)
+  const { id: rawId } = await params
+  const id = parseId(rawId)
+  if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const item = await getPantryItemById(id, user.userId)
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(item)
 }
@@ -38,20 +45,22 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PUT(request: Request, { params }: Params) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const existing = await getPantryItemById(Number(id), user.userId)
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const { id: rawId } = await params
+  const id = parseId(rawId)
+  if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const body: UpdateBody = await request.json()
-  const updated = await taskRunner.run(() => updatePantryItem(Number(id), user.userId, parseUpdateBody(body)))
+  const updated = await taskRunner.run(() => updatePantryItem(id, user.userId, parseUpdateBody(body)))
+  if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(updated)
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { id } = await params
-  const existing = await getPantryItemById(Number(id), user.userId)
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await taskRunner.run(() => deletePantryItem(Number(id), user.userId))
+  const { id: rawId } = await params
+  const id = parseId(rawId)
+  if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  const deleted = await taskRunner.run(() => deletePantryItem(id, user.userId))
+  if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return new NextResponse(null, { status: 204 })
 }

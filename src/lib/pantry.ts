@@ -1,19 +1,17 @@
-import { eq, isNull, and, inArray, lte, asc } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, ilike, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
-import type { PantryItem } from '@/types/PantryItem'
+import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
+import { calculatePantryStatus } from '@/utils/pantryStatus'
 
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
-function calculateStatus(expirationDate: Date | null): PantryItem['status'] {
-  if (!expirationDate) return 'good'
-  const now = new Date()
-  const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / MILLISECONDS_PER_DAY)
-  if (daysUntilExpiration < 0) return 'expired'
-  if (daysUntilExpiration <= EXPIRING_SOON_THRESHOLD_DAYS) return 'expiring-soon'
-  return 'good'
+export type PantryQueryOptions = {
+  search?: string
+  status?: 'all' | PantryItemStatus
+  sortBy?: 'name' | 'expirationDate' | 'addedDate' | 'status'
+  sortDir?: 'asc' | 'desc'
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -46,13 +44,53 @@ function mapPantryItem(row: typeof pantryItems.$inferSelect, food: Food): Pantry
       unit: row.currentSizeUnit ?? undefined,
     },
     addedDate: row.addedDate ? new Date(row.addedDate) : new Date(),
-    status: calculateStatus(expirationDate),
+    status: calculatePantryStatus(expirationDate),
     frozenDate: row.frozenDate ? new Date(row.frozenDate) : null,
   }
 }
 
-export async function getPantryItems(userId: number): Promise<PantryItem[]> {
+export async function getPantryItems(userId: number, options: PantryQueryOptions = {}): Promise<PantryItem[]> {
   try {
+    const now = new Date()
+    const cutoff = new Date(now)
+    cutoff.setDate(cutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
+
+    const statusFilter = (() => {
+      switch (options.status) {
+        case 'expired':
+          return and(isNotNull(pantryItems.expirationDate), lte(pantryItems.expirationDate, now))
+        case 'expiring-soon':
+          return and(
+            isNotNull(pantryItems.expirationDate),
+            gt(pantryItems.expirationDate, now),
+            lte(pantryItems.expirationDate, cutoff)
+          )
+        case 'good':
+          return or(isNull(pantryItems.expirationDate), gt(pantryItems.expirationDate, cutoff))
+        default:
+          return undefined
+      }
+    })()
+
+    const searchFilter = options.search
+      ? ilike(foods.name, `%${options.search}%`)
+      : undefined
+
+    const dir = options.sortDir === 'desc' ? 'DESC' : 'ASC'
+    const orderBy = (() => {
+      switch (options.sortBy) {
+        case 'name':
+          return options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)
+        case 'addedDate':
+          return options.sortDir === 'desc' ? desc(pantryItems.addedDate) : asc(pantryItems.addedDate)
+        case 'expirationDate':
+        case 'status':
+        default:
+          // nulls last so items with no expiration date (status=good) sort after dated items
+          return sql`${pantryItems.expirationDate} ${sql.raw(dir)} NULLS LAST`
+      }
+    })()
+
     const rows = await db
       .select()
       .from(pantryItems)
@@ -61,11 +99,15 @@ export async function getPantryItems(userId: number): Promise<PantryItem[]> {
         and(
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
-          isNull(foods.dateDeleted)
+          isNull(foods.dateDeleted),
+          statusFilter,
+          searchFilter,
         )
       )
+      .orderBy(orderBy)
     return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
-  } catch {
+  } catch (err) {
+    console.error('getPantryItems failed:', err)
     return []
   }
 }
@@ -110,7 +152,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       )
     if (!row) return null
     return mapPantryItem(row.pantry_items, mapFood(row.foods))
-  } catch {
+  } catch (err) {
+    console.error('getPantryItemById failed:', err)
     return null
   }
 }
@@ -152,6 +195,7 @@ export async function updatePantryItem(id: number, userId: number, data: UpdateP
   if (data.currentSizeAmount !== undefined) updates.currentSizeAmount = String(data.currentSizeAmount)
   if (data.currentSizeUnit !== undefined) updates.currentSizeUnit = data.currentSizeUnit
   if (data.frozenDate !== undefined) updates.frozenDate = data.frozenDate ?? null
+  if (Object.keys(updates).length === 0) return getPantryItemById(id, userId)
   await db.update(pantryItems).set(updates).where(
     and(eq(pantryItems.id, id), eq(pantryItems.userId, userId))
   )

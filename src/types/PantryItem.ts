@@ -5,7 +5,6 @@ export type PantryItemStatus = 'expired' | 'expiring-soon' | 'good'
 type ServingSize = {
   size: number
   unit?: string
-  breaksInto?: ServingSize
 }
 
 

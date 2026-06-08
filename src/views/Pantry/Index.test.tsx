@@ -209,71 +209,91 @@ describe('Pantry List Page', () => {
   })
 
   describe('Search and Filter', () => {
-    it('filters items by search term', async () => {
+    it('re-fetches with search param when user types in search box', async () => {
       const user = userEvent.setup()
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
 
-      renderWithItems([
-        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
-        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
-      ])
+      const chickenOnly = [createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })]
+      vi.mocked(apiFetchPantryItems)
+        .mockResolvedValueOnce([
+          createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
+          createPantryItem({ id: 2, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
+        ])
+        .mockResolvedValueOnce(chickenOnly)
 
+      renderWithItems()
       await screen.findAllByText('Chicken Breast')
 
       await user.type(screen.getByPlaceholderText('Search pantry items...'), 'Chicken')
 
-      expect(screen.getAllByText('Chicken Breast')[0]).toBeInTheDocument()
-      expect(screen.queryByText('Brown Rice')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(apiFetchPantryItems).toHaveBeenCalledWith(expect.objectContaining({ search: 'Chicken' }))
+      )
+      await waitFor(() => expect(screen.queryAllByText('Brown Rice')).toHaveLength(0))
     })
 
-    it('filters items by status', async () => {
+    it('re-fetches with status param when status filter changes', async () => {
       const user = userEvent.setup()
       const expiredDate = new Date()
       expiredDate.setDate(expiredDate.getDate() - 5)
-
       const goodDate = new Date()
       goodDate.setDate(goodDate.getDate() + 30)
 
-      renderWithItems([
-        createPantryItem({ id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired' }),
-        createPantryItem({ id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good' }),
-      ])
+      const goodOnly = [createPantryItem({ id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good' })]
+      vi.mocked(apiFetchPantryItems)
+        .mockResolvedValueOnce([
+          createPantryItem({ id: 1, food: mockFoods[0], expirationDate: expiredDate, status: 'expired' }),
+          createPantryItem({ id: 2, food: mockFoods[1], expirationDate: goodDate, status: 'good' }),
+        ])
+        .mockResolvedValueOnce(goodOnly)
 
+      renderWithItems()
       await screen.findAllByText('Brown Rice')
 
       const statusTrigger = screen.getByRole('button', { name: /filter by status/i })
       await user.click(statusTrigger)
       fireEvent.click(await screen.findByRole('option', { name: 'Good', hidden: true }))
 
-      expect(screen.getAllByText('Brown Rice')[0]).toBeInTheDocument()
-      expect(screen.queryAllByText('Chicken Breast')).toHaveLength(0)
+      await waitFor(() =>
+        expect(apiFetchPantryItems).toHaveBeenCalledWith(expect.objectContaining({ status: 'good' }))
+      )
+      await waitFor(() => expect(screen.queryAllByText('Chicken Breast')).toHaveLength(0))
     })
   })
 
   describe('Sorting', () => {
-    it('can sort by expiration date', async () => {
+    it('re-fetches with sortBy param when sort option changes', async () => {
       const user = userEvent.setup()
-      const date1 = new Date()
-      date1.setDate(date1.getDate() + 10)
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + 30)
 
-      const date2 = new Date()
-      date2.setDate(date2.getDate() + 20)
+      // Second call returns items in alphabetical order (name sort)
+      vi.mocked(apiFetchPantryItems)
+        .mockResolvedValueOnce([
+          createPantryItem({ id: 1, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
+          createPantryItem({ id: 2, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
+        ])
+        .mockResolvedValueOnce([
+          createPantryItem({ id: 2, food: mockFoods[0], expirationDate: futureDate, status: 'good' }),
+          createPantryItem({ id: 1, food: mockFoods[1], expirationDate: futureDate, status: 'good' }),
+        ])
 
-      renderWithItems([
-        createPantryItem({ id: 1, food: mockFoods[1], expirationDate: date2, status: 'good' }),
-        createPantryItem({ id: 2, food: mockFoods[0], expirationDate: date1, status: 'good' }),
-      ])
-
+      renderWithItems()
       await screen.findAllByText('Brown Rice')
 
       const sortTrigger = screen.getByRole('button', { name: /sort by/i })
       await user.click(sortTrigger)
       const panel = await screen.findByRole('listbox', { hidden: true })
-      fireEvent.click(within(panel).getByRole('option', { name: 'Expiration Date', hidden: true }))
+      fireEvent.click(within(panel).getByRole('option', { name: 'Name', hidden: true }))
 
-      const rows = screen.getAllByRole('row')
-      expect(rows[1]).toHaveTextContent('Chicken Breast')
+      await waitFor(() =>
+        expect(apiFetchPantryItems).toHaveBeenCalledWith(expect.objectContaining({ sortBy: 'name' }))
+      )
+      await waitFor(() => {
+        const rows = screen.getAllByRole('row')
+        expect(rows[1]).toHaveTextContent('Chicken Breast')
+      })
     })
   })
 
