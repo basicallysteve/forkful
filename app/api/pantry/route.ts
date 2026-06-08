@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPantryItems, createPantryItem, deletePantryItems } from '@/lib/pantry'
+import type { PantryQueryOptions } from '@/lib/pantry'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
@@ -18,10 +19,30 @@ type DeleteBody = {
 
 const MAX_BULK_DELETE_IDS = 500
 
-export async function GET() {
+const VALID_STATUSES = new Set(['all', 'expired', 'expiring-soon', 'good'])
+const VALID_SORT_BY = new Set(['name', 'expirationDate', 'addedDate', 'status'])
+const VALID_SORT_DIR = new Set(['asc', 'desc'])
+
+export async function GET(request: Request) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const items = await getPantryItems(user.userId)
+
+  const { searchParams } = new URL(request.url)
+  const options: PantryQueryOptions = {}
+
+  const search = searchParams.get('search')
+  if (search) options.search = search
+
+  const status = searchParams.get('status')
+  if (status && VALID_STATUSES.has(status)) options.status = status as PantryQueryOptions['status']
+
+  const sortBy = searchParams.get('sortBy')
+  if (sortBy && VALID_SORT_BY.has(sortBy)) options.sortBy = sortBy as PantryQueryOptions['sortBy']
+
+  const sortDir = searchParams.get('sortDir')
+  if (sortDir && VALID_SORT_DIR.has(sortDir)) options.sortDir = sortDir as PantryQueryOptions['sortDir']
+
+  const items = await getPantryItems(user.userId, options)
   return NextResponse.json(items)
 }
 

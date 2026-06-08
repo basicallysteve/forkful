@@ -1,26 +1,21 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 import { Card } from 'primereact/card'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
+import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 
-type SortOption = 'name' | 'expirationDate' | 'addedDate' | 'status'
-type SortDirection = 'asc' | 'desc'
-type StatusFilter = 'all' | PantryItemStatus
-
-const STATUS_ORDER: Record<PantryItemStatus, number> = {
-  'expired': 0,
-  'expiring-soon': 1,
-  'good': 2,
-}
+type SortOption = NonNullable<PantryQueryOptions['sortBy']>
+type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
+type StatusFilter = NonNullable<PantryQueryOptions['status']>
 
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
@@ -36,52 +31,24 @@ export default function Pantry() {
   const [fetchError, setFetchError] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
-    apiFetchPantryItems()
-      .then(setItems)
-      .catch(() => setFetchError(true))
-      .finally(() => setLoading(false))
-  }, [setItems])
-
-  const filteredAndSortedItems = useMemo(() => {
-    let filtered = items
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (item) => item.food.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    // Debounce search input; all other filter changes apply immediately
+    if (searchDebounce.current) clearTimeout(searchDebounce.current)
+    const delay = searchTerm ? 300 : 0
+    searchDebounce.current = setTimeout(() => {
+      setLoading(true)
+      setFetchError(false)
+      apiFetchPantryItems({ search: searchTerm || undefined, status: statusFilter, sortBy, sortDir: sortDirection })
+        .then(setItems)
+        .catch(() => setFetchError(true))
+        .finally(() => setLoading(false))
+    }, delay)
+    return () => {
+      if (searchDebounce.current) clearTimeout(searchDebounce.current)
     }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((item) => item.status === statusFilter)
-    }
-
-    return [...filtered].sort((a, b) => {
-      let comparison = 0
-      switch (sortBy) {
-        case 'name': {
-          comparison = a.food.name.localeCompare(b.food.name)
-          break
-        }
-        case 'expirationDate': {
-          if (!a.expirationDate && !b.expirationDate) comparison = 0
-          else if (!a.expirationDate) comparison = 1
-          else if (!b.expirationDate) comparison = -1
-          else comparison = new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()
-          break
-        }
-        case 'addedDate': {
-          comparison = new Date(a.addedDate).getTime() - new Date(b.addedDate).getTime()
-          break
-        }
-        case 'status': {
-          comparison = STATUS_ORDER[a.status || 'good'] - STATUS_ORDER[b.status || 'good']
-          break
-        }
-      }
-      return sortDirection === 'asc' ? comparison : -comparison
-    })
-  }, [items, sortBy, sortDirection, searchTerm, statusFilter])
+  }, [searchTerm, statusFilter, sortBy, sortDirection, setItems])
 
   function handleSelectItem(itemId: number) {
     const newSelected = new Set(selectedItems)
@@ -91,8 +58,8 @@ export default function Pantry() {
   }
 
   function handleSelectAll() {
-    if (selectedItems.size === filteredAndSortedItems.length) setSelectedItems(new Set())
-    else setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)))
+    if (selectedItems.size === items.length) setSelectedItems(new Set())
+    else setSelectedItems(new Set(items.map((item) => item.id)))
   }
 
   async function handleDeleteSelected() {
@@ -168,9 +135,9 @@ export default function Pantry() {
     }
   }
 
-  const expiredCount = filteredAndSortedItems.filter((item) => item.status === 'expired').length
-  const expiringSoonCount = filteredAndSortedItems.filter((item) => item.status === 'expiring-soon').length
-  const goodCount = filteredAndSortedItems.filter((item) => item.status === 'good').length
+  const expiredCount = items.filter((item) => item.status === 'expired').length
+  const expiringSoonCount = items.filter((item) => item.status === 'expiring-soon').length
+  const goodCount = items.filter((item) => item.status === 'good').length
 
   return (
     <div className="pantry-list">
@@ -190,7 +157,7 @@ export default function Pantry() {
         <div className="pantry-stats">
           <div className="stat-card">
             <span className="stat-label">Total Items</span>
-            <span className="stat-value">{filteredAndSortedItems.length}</span>
+            <span className="stat-value">{items.length}</span>
           </div>
           <div className="stat-card stat-good">
             <span className="stat-label">Good</span>
@@ -293,7 +260,7 @@ export default function Pantry() {
                 <p>Failed to load pantry items. Please refresh the page.</p>
               </div>
             </div>
-          ) : filteredAndSortedItems.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="panel-content">
               <div className="empty-state">
                 <p>No pantry items found.</p>
@@ -310,7 +277,7 @@ export default function Pantry() {
                   <tr>
                     <th>
                       <Checkbox
-                        checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                        checked={selectedItems.size === items.length && items.length > 0}
                         onChange={handleSelectAll}
                         aria-label="Select all items"
                       />
@@ -324,7 +291,7 @@ export default function Pantry() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSortedItems.map((item) => (
+                  {items.map((item) => (
                     <tr key={item.id} className={getStatusClass(item.status)}>
                       <td>
                         <Checkbox
@@ -381,14 +348,14 @@ export default function Pantry() {
                 <label className="select-all-label">
                   <Checkbox
                     className="select-all-checkbox"
-                    checked={selectedItems.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                    checked={selectedItems.size === items.length && items.length > 0}
                     onChange={handleSelectAll}
                   />
                   <span className="checkbox-text">Select all</span>
                 </label>
               </div>
               <div className="pantry-cards">
-                {filteredAndSortedItems.map((item) => (
+                {items.map((item) => (
                   <Card
                     key={item.id}
                     className={`pantry-card ${selectedItems.has(item.id) ? 'is-selected' : ''} ${getStatusClass(item.status)}`}

@@ -44,11 +44,17 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+function makeGetRequest(params: Record<string, string> = {}) {
+  const url = new URL('http://localhost/api/pantry')
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  return new Request(url)
+}
+
 describe('GET /api/pantry', () => {
   it('returns 401 when there is no session', async () => {
     (getSessionUser as Mock).mockResolvedValue(null)
 
-    const res = await GET()
+    const res = await GET(makeGetRequest())
 
     expect(res.status).toBe(401)
     expect((await res.json()).error).toBe('Unauthorized')
@@ -59,13 +65,36 @@ describe('GET /api/pantry', () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
     (getPantryItems as Mock).mockResolvedValue([mockItem])
 
-    const res = await GET()
+    const res = await GET(makeGetRequest())
 
     expect(res.status).toBe(200)
-    expect(getPantryItems).toHaveBeenCalledWith(42)
+    expect(getPantryItems).toHaveBeenCalledWith(42, {})
     const body = await res.json()
     expect(body).toHaveLength(1)
     expect(body[0].id).toBe(1)
+  })
+
+  it('passes search, status, sortBy, sortDir query params to getPantryItems', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
+    (getPantryItems as Mock).mockResolvedValue([])
+
+    await GET(makeGetRequest({ search: 'chicken', status: 'expired', sortBy: 'name', sortDir: 'desc' }))
+
+    expect(getPantryItems).toHaveBeenCalledWith(42, {
+      search: 'chicken',
+      status: 'expired',
+      sortBy: 'name',
+      sortDir: 'desc',
+    })
+  })
+
+  it('ignores unknown query param values', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
+    (getPantryItems as Mock).mockResolvedValue([])
+
+    await GET(makeGetRequest({ status: 'invalid', sortBy: 'bad', sortDir: 'sideways' }))
+
+    expect(getPantryItems).toHaveBeenCalledWith(42, {})
   })
 })
 
