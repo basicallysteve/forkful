@@ -44,12 +44,12 @@ describe('CreateAccount Page', () => {
       expect(screen.getByRole('checkbox', { name: /asian/i })).toBeInTheDocument()
     })
 
-    it('renders dietary options as radio buttons', () => {
+    it('renders dietary options as checkboxes', () => {
       renderWithProviders(<CreateAccount />)
 
-      expect(screen.getByRole('radio', { name: /vegetarian/i })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: /vegan/i })).toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: /gluten-free/i })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /vegetarian/i })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /vegan/i })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /gluten-free/i })).toBeInTheDocument()
     })
   })
 
@@ -357,29 +357,28 @@ describe('CreateAccount Page', () => {
       expect(italianCheckbox).not.toBeChecked()
     })
 
-    it('allows selecting one dietary restriction', async () => {
+    it('allows selecting a dietary restriction', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
 
-      const vegetarianRadio = screen.getByRole('radio', { name: /vegetarian/i })
-      await user.click(vegetarianRadio)
+      const vegetarianCheckbox = screen.getByRole('checkbox', { name: /vegetarian/i })
+      await user.click(vegetarianCheckbox)
 
-      expect(vegetarianRadio).toBeChecked()
+      expect(vegetarianCheckbox).toBeChecked()
     })
 
-    it('only allows one dietary restriction at a time', async () => {
+    it('allows selecting multiple dietary restrictions', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
 
-      const vegetarianRadio = screen.getByRole('radio', { name: /vegetarian/i })
-      const veganRadio = screen.getByRole('radio', { name: /vegan/i })
+      const vegetarianCheckbox = screen.getByRole('checkbox', { name: /vegetarian/i })
+      const veganCheckbox = screen.getByRole('checkbox', { name: /vegan/i })
 
-      await user.click(vegetarianRadio)
-      expect(vegetarianRadio).toBeChecked()
+      await user.click(vegetarianCheckbox)
+      await user.click(veganCheckbox)
 
-      await user.click(veganRadio)
-      expect(veganRadio).toBeChecked()
-      expect(vegetarianRadio).not.toBeChecked()
+      expect(vegetarianCheckbox).toBeChecked()
+      expect(veganCheckbox).toBeChecked()
     })
   })
 
@@ -452,7 +451,7 @@ describe('CreateAccount Page', () => {
       await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
 
       await user.click(screen.getByRole('checkbox', { name: /italian/i }))
-      await user.click(screen.getByRole('radio', { name: /vegan/i }))
+      await user.click(screen.getByRole('checkbox', { name: /vegan/i }))
 
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
