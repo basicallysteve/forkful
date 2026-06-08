@@ -54,3 +54,28 @@ export async function apiLogout(): Promise<void> {
     credentials: 'same-origin',
   })
 }
+
+async function patchUser(userId: string | number, body: object): Promise<void> {
+  const res = await fetch(`/api/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error ?? 'Update failed')
+  }
+}
+
+export async function apiUpdatePreferences(userId: string | number, cuisinePreferences: string[], dietaryRestrictions: string[]): Promise<void> {
+  return patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
+}
+
+export async function apiUpdateEmail(userId: string | number, email: string): Promise<void> {
+  return patchUser(userId, { action: 'email', email })
+}
+
+export async function apiUpdatePassword(userId: string | number, currentPassword: string, newPassword: string): Promise<void> {
+  return patchUser(userId, { action: 'password', currentPassword, newPassword })
+}

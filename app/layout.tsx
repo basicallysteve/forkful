@@ -30,9 +30,13 @@ export default async function RootLayout({
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get('session')?.value
   let isLoggedIn = false
+  let username: string | null = null
   if (sessionCookie) {
     const session = await decrypt(sessionCookie).catch(() => null)
-    isLoggedIn = !!session
+    if (session) {
+      isLoggedIn = true
+      username = (session as { username?: string }).username ?? null
+    }
   }
 
   return (
@@ -42,7 +46,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />
       </head>
       <body>
-        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn}>{children}</ClientLayout>
+        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn} username={username}>{children}</ClientLayout>
       </body>
     </html>
   )
