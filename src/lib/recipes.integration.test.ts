@@ -75,7 +75,7 @@ describe('recipes data layer (integration)', () => {
   })
 
   it('lists public recipes without a viewer', async () => {
-    await createRecipe({ name: 'Test Public Salad', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+    await createRecipe({ name: 'Test Public Salad', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
     await createRecipe({ name: 'Test Private Soup', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
 
     const all = await getRecipes()
@@ -115,10 +115,10 @@ describe('recipes data layer (integration)', () => {
       meal: 'Dinner',
       description: '',
       ingredients: [{ food: testFood, quantity: 100, calories: 100, servingUnit: 'g' }],
-      date_published: null,
+      date_published: new Date(),
       isPublic: true,
     })
-    await createRecipe({ name: 'Test Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+    await createRecipe({ name: 'Test Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
 
     const results = await getRecipes({ ingredient: 'test ingredient food' })
     const testResults = results.filter(r => r.name.startsWith('Test'))
