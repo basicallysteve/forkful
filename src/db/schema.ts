@@ -55,7 +55,7 @@ export const ingredients = pgTable('ingredients', {
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull(),
+  username: varchar('username', { length: 255 }).notNull().unique(),
   password: varchar('password', { length: 255 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),

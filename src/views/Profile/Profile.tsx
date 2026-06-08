@@ -302,7 +302,7 @@ export default function Profile({ user }: ProfileProps) {
               </>
             ) : (
               <p className="oauth-account-note">
-                Your account is managed by {user.email.endsWith('@gmail.com') ? 'Google' : 'Apple'}. Email and password changes are not available.
+                Your account is managed by an identity provider. Email and password changes are not available.
               </p>
             )}
           </div>

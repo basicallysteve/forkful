@@ -14,9 +14,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const body = await request.json().catch(() => ({}))
+    const isStringArray = (v: unknown): v is string[] =>
+      Array.isArray(v) && v.every(x => typeof x === 'string')
+
     await taskRunner.run(() => completeOnboarding(Number(id), {
-      cuisinePreferences: Array.isArray(body.cuisinePreferences) ? body.cuisinePreferences : [],
-      dietaryRestrictions: Array.isArray(body.dietaryRestrictions) ? body.dietaryRestrictions : [],
+      cuisinePreferences: isStringArray(body.cuisinePreferences) ? body.cuisinePreferences : [],
+      dietaryRestrictions: isStringArray(body.dietaryRestrictions) ? body.dietaryRestrictions : [],
     }))
     return NextResponse.json({ ok: true })
   } catch {

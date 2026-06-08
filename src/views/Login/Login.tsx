@@ -24,7 +24,7 @@ function Login() {
     setLoading(true)
     try {
       const result = await signIn('credentials', {
-        username,
+        username: username.trim(),
         password,
         redirect: false,
       })

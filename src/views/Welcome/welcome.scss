@@ -102,6 +102,12 @@
     padding: 16px 20px;
   }
 
+  .welcome-error {
+    margin: 0;
+    color: var(--p-red-400, #f87171);
+    font-size: 13px;
+  }
+
   .skip-button {
     background: transparent;
     border: 1px solid var(--vscode-border);

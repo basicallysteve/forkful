@@ -13,6 +13,7 @@ export default function Welcome() {
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function toggleCuisine(value: string) {
     setCuisinePreferences(prev =>
@@ -29,15 +30,23 @@ export default function Welcome() {
   async function submit(preferences: { cuisinePreferences: string[]; dietaryRestrictions: string[] }) {
     if (!session?.user?.id) return
     setLoading(true)
+    setError(null)
     try {
-      await fetch(`/api/users/${session.user.id}/onboarding`, {
+      const res = await fetch(`/api/users/${session.user.id}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(preferences),
         credentials: 'same-origin',
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error ?? 'Something went wrong. Please try again.')
+        return
+      }
       await update({ needsOnboarding: false })
       router.push('/')
+    } catch {
+      setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -96,6 +105,7 @@ export default function Welcome() {
           </div>
 
           <div className="welcome-footer">
+            {error && <p className="welcome-error" role="alert">{error}</p>}
             <button
               type="button"
               className="skip-button"
