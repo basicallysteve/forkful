@@ -370,3 +370,29 @@
     margin-left: 0;
   }
 }
+
+.toolbar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--vscode-accent);
+  color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  &__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  &__initial {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+  }
+}
