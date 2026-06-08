@@ -2,13 +2,13 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { apiLogout } from '@/lib/api/users'
+import { signOut } from 'next-auth/react'
 
 export default function LogoutPage() {
   const router = useRouter()
 
   useEffect(() => {
-    apiLogout().then(() => {
+    signOut({ redirect: false }).then(() => {
       router.push('/')
       router.refresh()
     })

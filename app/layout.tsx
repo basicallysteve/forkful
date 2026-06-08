@@ -1,10 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import ClientLayout from './ClientLayout'
 import { getRecipes } from '@/lib/recipes'
-import { decrypt } from '@/lib/session'
+import { auth } from '@/auth'
 import type { Recipe } from '@/types/Recipe'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
@@ -27,20 +26,10 @@ export default async function RootLayout({
 }) {
   const recipes: Recipe[] = await getRecipes()
 
-  const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get('session')?.value
-  let isLoggedIn = false
-  let username: string | null = null
-  let avatarUrl: string | null = null
-  if (sessionCookie) {
-    const session = await decrypt(sessionCookie).catch(() => null)
-    if (session) {
-      isLoggedIn = true
-      const s = session as { username?: string; avatarUrl?: string | null }
-      username = s.username ?? null
-      avatarUrl = s.avatarUrl ?? null
-    }
-  }
+  const session = await auth()
+  const isLoggedIn = !!session?.user
+  const username = session?.user?.name ?? null
+  const avatarUrl = session?.user?.image ?? null
 
   return (
     <html lang="en">

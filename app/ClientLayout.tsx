@@ -4,6 +4,7 @@ import ToolBar from '@/components/ToolBar'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
+import { SessionProvider } from 'next-auth/react'
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -52,13 +53,15 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
   ]
 
   return (
-    <PrimeReactProvider>
-      <div className="app-shell">
-        <ToolBar menuOptions={menuOptions} />
-        <main className="page-content">
-          {children}
-        </main>
-      </div>
-    </PrimeReactProvider>
+    <SessionProvider>
+      <PrimeReactProvider>
+        <div className="app-shell">
+          <ToolBar menuOptions={menuOptions} />
+          <main className="page-content">
+            {children}
+          </main>
+        </div>
+      </PrimeReactProvider>
+    </SessionProvider>
   )
 }

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { apiLogin } from "@/lib/api/users"
+import { signIn } from "next-auth/react"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 
@@ -12,6 +12,7 @@ function Login() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const canSubmit = useMemo(() => {
     return username.trim().length > 0 && password.length > 0
   }, [username, password])
@@ -20,17 +21,29 @@ function Login() {
     e.preventDefault()
     setError(null)
     if (!canSubmit) return
+    setLoading(true)
     try {
-      await apiLogin({ username, password })
-      router.push("/")
-      router.refresh()
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message)
+      const result = await signIn('credentials', {
+        username,
+        password,
+        redirect: false,
+      })
+      if (result?.error) {
+        setError('Invalid username or password')
       } else {
-        setError("An unknown error occurred")
+        router.push("/")
+        router.refresh()
       }
+    } catch {
+      setError("An unknown error occurred")
+    } finally {
+      setLoading(false)
     }
+  }
+
+  async function handleOAuth(provider: 'google' | 'apple') {
+    setError(null)
+    await signIn(provider, { callbackUrl: '/' })
   }
 
   return (
@@ -54,6 +67,27 @@ function Login() {
           </div>
 
           <div className="panel-content">
+            <div className="oauth-buttons">
+              <button
+                type="button"
+                className="oauth-button oauth-button--google"
+                onClick={() => handleOAuth('google')}
+              >
+                Continue with Google
+              </button>
+              <button
+                type="button"
+                className="oauth-button oauth-button--apple"
+                onClick={() => handleOAuth('apple')}
+              >
+                Continue with Apple
+              </button>
+            </div>
+
+            <div className="oauth-divider">
+              <span>or</span>
+            </div>
+
             <form className="account-form" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <label className="form-field form-field-full">
@@ -91,8 +125,8 @@ function Login() {
               <div className="form-footer">
                 <div className="footer-actions">
                   <Link href="/" className="ghost-button">Cancel</Link>
-                  <button type="submit" className="primary-button" disabled={!canSubmit}>
-                    Login
+                  <button type="submit" className="primary-button" disabled={!canSubmit || loading}>
+                    {loading ? 'Logging in…' : 'Login'}
                   </button>
                 </div>
               </div>
