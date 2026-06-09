@@ -41,7 +41,7 @@ function Login() {
     }
   }
 
-  async function handleOAuth(provider: 'google' | 'apple') {
+  async function handleOAuth(provider: 'google') {
     setError(null)
     await signIn(provider, { callbackUrl: '/' })
   }
@@ -77,16 +77,6 @@ function Login() {
                   <path fill="#fff" d="M44.5 20H24v8.5h11.8C34.3 33.6 29.7 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 6 1.1 8.1 3l6.4-6.4C34.6 4.1 29.6 2 24 2 11.9 2 2 11.9 2 24s9.9 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
                 </svg>
                 Continue with Google
-              </button>
-              <button
-                type="button"
-                className="oauth-button oauth-button--apple"
-                onClick={() => handleOAuth('apple')}
-              >
-                <svg width="18" height="22" viewBox="0 0 814 1000" aria-hidden="true">
-                  <path fill="#fff" d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-42.3-150.3-109.7C77 411.7 76.9 258 128.9 195.4c34-41.2 90.5-68.4 152.1-68.4 57.1 0 103.3 38.9 137.9 38.9 33.2 0 85.1-41.3 150.3-41.3 27.9 0 113.8 2.6 168.4 99.3zm-234-181.5c28.1-36.2 49.2-86.7 49.2-137.1 0-7.1-.6-14.3-1.9-20.1-46.5 1.7-101.5 31.4-134.8 71.9-26.4 30.8-51 81.2-51 132.3 0 7.8 1.3 15.5 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 41.5 0 93.9-28.1 123-66.4z"/>
-                </svg>
-                Continue with Apple
               </button>
             </div>
 
