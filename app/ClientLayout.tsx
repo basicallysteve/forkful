@@ -4,7 +4,7 @@ import ToolBar from '@/components/ToolBar'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
-
+import { Analytics } from "@vercel/analytics/next"
 interface ClientLayoutProps {
   children: React.ReactNode
   recipes: Recipe[]
@@ -58,6 +58,7 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
         <main className="page-content">
           {children}
         </main>
+        <Analytics />b
       </div>
     </PrimeReactProvider>
   )

@@ -27,3 +27,4 @@ backend/.env
 .bak
 .env
 .env.local
+.env.production
