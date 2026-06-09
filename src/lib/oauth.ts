@@ -59,6 +59,8 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile): Promise<numb
   if (existingLink) return existingLink.userId
 
   // 2. Email-match → auto-link
+  // onConflictDoNothing handles the rare case where two concurrent sign-ins with the same
+  // email both pass the existingLink check and race to insert the oauth_account row.
   const [existingUser] = await db
     .select({ id: users.id, avatarUrl: users.avatarUrl })
     .from(users)
@@ -72,30 +74,34 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile): Promise<numb
       userId: existingUser.id,
       provider: profile.provider,
       providerAccountId: profile.providerAccountId,
-    })
+    }).onConflictDoNothing()
     return existingUser.id
   }
 
-  // 3. New user
-  const base = deriveUsername(profile.email)
-  const username = await uniqueUsername(base)
+  // 3. New user — wrap in a transaction so user + oauth_account are always created together.
+  // If two concurrent sign-ins race here, the users.email unique constraint on the second
+  // insert will throw; the signIn callback catches and logs it.
+  return await db.transaction(async (tx) => {
+    const base = deriveUsername(profile.email)
+    const username = await uniqueUsername(base)
 
-  const [newUser] = await db.insert(users).values({
-    username,
-    email: profile.email,
-    password: null,
-    avatarUrl: profile.avatarUrl,
-    cuisinePreferences: [],
-    dietaryRestrictions: [],
-    dateAdded: new Date(),
-    dateDeleted: null,
-  }).returning({ id: users.id })
+    const [newUser] = await tx.insert(users).values({
+      username,
+      email: profile.email,
+      password: null,
+      avatarUrl: profile.avatarUrl,
+      cuisinePreferences: [],
+      dietaryRestrictions: [],
+      dateAdded: new Date(),
+      dateDeleted: null,
+    }).returning({ id: users.id })
 
-  await db.insert(oauthAccounts).values({
-    userId: newUser.id,
-    provider: profile.provider,
-    providerAccountId: profile.providerAccountId,
+    await tx.insert(oauthAccounts).values({
+      userId: newUser.id,
+      provider: profile.provider,
+      providerAccountId: profile.providerAccountId,
+    })
+
+    return newUser.id
   })
-
-  return newUser.id
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogin, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar } from './users'
+import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar } from './users'
 
 const mockUser = {
   id: '1',
@@ -75,35 +75,6 @@ describe('apiSignUp', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     )
-  })
-})
-
-describe('apiLogin', () => {
-  it('posts login data and returns user on success', async () => {
-    const mockLoginResult = { username: 'testuser', email: 'test@example.com' }
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockLoginResult,
-    } as Response)
-
-    const result = await apiLogin({ username: 'testuser', password: 'StrongPass1!' })
-
-    expect(result).toEqual(mockLoginResult)
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/login',
-      expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'testuser', password: 'StrongPass1!' }) })
-    )
-  })
-
-  it('throws error on invalid credentials', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'Invalid credentials' }),
-    } as Response)
-
-    await expect(
-      apiLogin({ username: 'testuser', password: 'wrongpassword' })
-    ).rejects.toThrow('Invalid credentials')
   })
 })
 

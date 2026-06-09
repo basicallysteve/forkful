@@ -10,17 +10,23 @@ const mockWhere = vi.fn()
 const mockFrom = vi.fn(() => ({ where: mockWhere }))
 const mockSelect = vi.fn(() => ({ from: mockFrom }))
 const mockReturning = vi.fn()
-const mockInsertValues = vi.fn(() => ({ returning: mockReturning }))
+const mockOnConflictDoNothing = vi.fn().mockResolvedValue(undefined)
+const mockInsertValues = vi.fn(() => ({ returning: mockReturning, onConflictDoNothing: mockOnConflictDoNothing }))
 const mockInsert = vi.fn(() => ({ values: mockInsertValues }))
 const mockUpdateWhere = vi.fn()
 const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }))
 const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }))
+const mockTransaction = vi.fn((fn: (tx: unknown) => unknown) => fn({
+  insert: mockInsert,
+  select: mockSelect,
+}))
 
 vi.mock('@/db', () => ({
   db: {
     get select() { return mockSelect },
     get insert() { return mockInsert },
     get update() { return mockUpdate },
+    get transaction() { return mockTransaction },
   },
 }))
 
@@ -93,7 +99,7 @@ describe('findOrCreateOAuthUser', () => {
     mockSelect.mockReturnValue({ from: mockFrom })
     mockFrom.mockReturnValue({ where: mockWhere })
     mockInsert.mockReturnValue({ values: mockInsertValues })
-    mockInsertValues.mockReturnValue({ returning: mockReturning })
+    mockInsertValues.mockReturnValue({ returning: mockReturning, onConflictDoNothing: mockOnConflictDoNothing })
     mockUpdate.mockReturnValue({ set: mockUpdateSet })
     mockUpdateSet.mockReturnValue({ where: mockUpdateWhere })
     mockUpdateWhere.mockResolvedValue(undefined)

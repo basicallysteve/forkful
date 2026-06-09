@@ -49,6 +49,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Apple only sends email on the very first authorization — returning users omit it.
         // If we already have an oauth_account for this providerAccountId, allow the sign-in.
         if (!profile?.email) {
+          // Apple omits email on all sign-ins after the first. Allow the sign-in if we already
+          // have an oauth_account row for this providerAccountId. The jwt callback handles
+          // the user lookup for these returning-Apple-user sessions via the same providerAccountId
+          // fallback, so the token will be fully populated even without an email.
           const [existing] = await db
             .select({ userId: oauthAccounts.userId })
             .from(oauthAccounts)
@@ -113,7 +117,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.userId = row.id
           token.username = row.username
           token.avatarUrl = row.avatarUrl ?? null
-          token.needsOnboarding = !row.onboardingCompletedAt && !row.password
+          // Only show onboarding for OAuth-only accounts (no password) that haven't completed it.
+          // Credential users who link OAuth have a password and skip onboarding.
+          const isOAuthOnlyAccount = !row.password
+          token.needsOnboarding = isOAuthOnlyAccount && !row.onboardingCompletedAt
         }
       }
 
