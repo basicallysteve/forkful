@@ -57,7 +57,7 @@ Thin `fetch` wrappers that call the Next.js API routes (`/api/…`). Used by cli
 All write operations in API routes must go through the `taskRunner` singleton (`src/lib/TaskRunner.ts`) via `taskRunner.run(() => ...)`. This centralises the point where retry logic or audit hooks can be added.
 
 ### Database connection — `src/db/index.ts`
-In production (`NODE_ENV === 'production'`), uses `@vercel/postgres`. Otherwise, builds a `pg.Pool` from env vars. `drizzle.config.ts` reads `.env.local` by default; set `DRIZZLE_ENV=production` to target `.env.production`.
+Uses `postgres` (postgres.js) with `{ prepare: false }` via a Supabase Transaction Pooler connection string. Single `DATABASE_URL` env var used for all environments (local and production). `drizzle.config.ts` reads `.env.local` by default; set `DRIZZLE_ENV=production` to target `.env.production`.
 
 ### Soft-delete pattern
 Most entities (recipes, pantry items, users) are never hard-deleted. Set `dateDeleted = new Date()` and filter with `isNull(table.dateDeleted)` in queries. `deleteFood` is currently a hard delete (exception).
@@ -76,7 +76,7 @@ URLs use slugs derived from names (`toSlug()` in `src/utils/slug.ts`). Slugs are
 - Next.js modules (`next/link`, `next/navigation`) are mocked via `src/test/mocks/`.
 
 **Integration tests** (`vitest.integration.config.ts`, node environment):
-- Require a real Postgres connection. Copy `.env.example` to `.env.local` and fill in DB credentials before running.
+- Require a real Postgres connection. Copy `.env.example` to `.env.local` and set `DATABASE_URL` to your Supabase Transaction Pooler URL before running.
 - Run serially (`fileParallelism: false`), 30-second timeout.
 - Tests clean up after themselves by deleting rows matching `name LIKE 'Test%'`.
 - In CI, the schema is pushed with `db:push` before tests run; `DATABASE_URL` env var is used (not the individual `DATABASE_*` vars).
