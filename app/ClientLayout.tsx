@@ -58,7 +58,7 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
         <main className="page-content">
           {children}
         </main>
-        <Analytics />b
+        <Analytics />
       </div>
     </PrimeReactProvider>
   )
