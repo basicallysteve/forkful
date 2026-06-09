@@ -6,8 +6,8 @@ import * as schema from './schema';
 let clientOrPool: VercelPgClient | Pool = sql as VercelPgClient;
 
 if (process.env.NODE_ENV !== 'production') {
-  const connectionString = process.env.DATABASE_URL ||
-    `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`;
+  const connectionString = process.env.POSTGRES_URL ||
+    `postgresql://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_NAME}`;
   clientOrPool = new Pool({ connectionString });
 }
 
