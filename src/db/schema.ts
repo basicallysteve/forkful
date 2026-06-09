@@ -55,12 +55,13 @@ export const ingredients = pgTable('ingredients', {
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull(),
-  password: varchar('password', { length: 255, }).notNull(),
+  username: varchar('username', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
   avatarUrl: varchar('avatar_url', { length: 500 }),
+  onboardingCompletedAt: timestamp('onboarding_completed_at'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
 });
@@ -82,6 +83,18 @@ export const pantryItems = pgTable('pantry_items', {
   frozenDate: timestamp('frozen_date'),
   dateDeleted: timestamp('date_deleted'),
 });
+
+export const oauthAccounts = pgTable('oauth_accounts', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  provider: varchar('provider', { length: 50 }).notNull(),
+  providerAccountId: varchar('provider_account_id', { length: 255 }).notNull(),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  providerAccountUnique: unique('oauth_accounts_provider_account_unique').on(t.provider, t.providerAccountId),
+}));
 
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),

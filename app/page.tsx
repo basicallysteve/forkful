@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/auth'
 import { getTopRecipes, getSavedRecipes } from '@/lib/recipes'
 import { getExpiringPantryItems } from '@/lib/pantry'
@@ -5,6 +6,8 @@ import Home from '@/views/Home'
 
 export default async function HomePage() {
   const session = await getSessionUser()
+
+  if (session?.needsOnboarding) redirect('/welcome')
 
   if (session) {
     const [recipes, expiringItems] = await Promise.all([

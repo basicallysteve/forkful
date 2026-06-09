@@ -1,36 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from './route'
+import { describe, it, expect, vi } from 'vitest'
 
-const mockCookieSet = vi.fn()
-vi.mock('next/headers', () => ({
-  cookies: vi.fn().mockImplementation(async () => ({
-    set: mockCookieSet,
-  })),
+const mockSignOut = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('@/auth', () => ({
+  get signOut() { return mockSignOut },
 }))
 
-describe('POST /api/logout', () => {
-  beforeEach(() => {
-    mockCookieSet.mockClear()
-  })
+import { POST } from './route'
 
-  it('returns 200 with success message', async () => {
+describe('POST /api/logout', () => {
+  it('calls signOut and returns 200 with success message', async () => {
     const res = await POST()
+    expect(mockSignOut).toHaveBeenCalledWith({ redirect: false })
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.message).toBe('Logged out successfully')
-  })
-
-  it('clears the session cookie', async () => {
-    await POST()
-    expect(mockCookieSet).toHaveBeenCalledWith(
-      'session',
-      '',
-      expect.objectContaining({
-        httpOnly: true,
-        secure: false,
-        sameSite: 'strict',
-        expires: new Date(0),
-      })
-    )
   })
 })
