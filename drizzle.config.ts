@@ -8,11 +8,7 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    host: process.env.POSTGRES_HOST!,
-    port: !process.env.POSTGRES_PORT ? Number(process.env.POSTGRES_PORT) : undefined,
-    user: process.env.POSTGRES_USER!,
-    password: process.env.POSTGRES_PASSWORD!,
-    database: process.env.POSTGRES_NAME!,
+    url: process.env.POSTGRES_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`,
     ssl: { rejectUnauthorized: false },
   },
 });
