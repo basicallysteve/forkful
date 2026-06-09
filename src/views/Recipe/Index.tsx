@@ -8,13 +8,19 @@ import { Toast } from 'primereact/toast'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { type Recipe } from '@/types/Recipe'
+import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiUpdateRecipe, apiSaveRecipe, apiUnsaveRecipe } from '@/lib/api/recipes'
+import {
+  apiUpdateRecipe, apiSaveRecipe, apiUnsaveRecipe,
+  apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep,
+  apiReorderRecipeSteps, apiUploadImage,
+} from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
 import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 import { toSlug } from '@/utils/slug'
+import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -38,6 +44,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
+  const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -160,6 +167,64 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
   }
 
+  const recipeSlug = toSlug(recipe.name)
+
+  async function handleAddStep() {
+    try {
+      const step = await apiCreateRecipeStep(recipeSlug, { content: '' })
+      setSteps((prev) => [...prev, step])
+    } catch (err) {
+      console.error('Failed to add step:', err)
+      toast.current?.show({ severity: 'error', summary: 'Could not add step', life: 3000 })
+    }
+  }
+
+  async function handleStepChange(stepId: number, field: 'title' | 'content', value: string) {
+    setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, [field]: value } : s))
+    try {
+      await apiUpdateRecipeStep(recipeSlug, stepId, { [field]: value })
+    } catch (err) {
+      console.error('Failed to update step:', err)
+    }
+  }
+
+  async function handleDeleteStep(stepId: number) {
+    setSteps((prev) => prev.filter((s) => s.id !== stepId))
+    try {
+      await apiDeleteRecipeStep(recipeSlug, stepId)
+    } catch (err) {
+      console.error('Failed to delete step:', err)
+    }
+  }
+
+  async function handleMoveStep(stepId: number, direction: 'up' | 'down') {
+    const idx = steps.findIndex((s) => s.id === stepId)
+    if (direction === 'up' && idx === 0) return
+    if (direction === 'down' && idx === steps.length - 1) return
+    const next = [...steps]
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
+    setSteps(next)
+    try {
+      await apiReorderRecipeSteps(recipeSlug, next.map((s) => s.id))
+    } catch (err) {
+      console.error('Failed to reorder steps:', err)
+    }
+  }
+
+  async function handleStepImageUpload(stepId: number, file: File) {
+    try {
+      const url = await apiUploadImage(file)
+      const step = steps.find((s) => s.id === stepId)
+      if (!step) return
+      const newContent = step.content + `<img src="${url}" alt="Step image" />`
+      await handleStepChange(stepId, 'content', newContent)
+    } catch (err) {
+      console.error('Failed to upload step image:', err)
+      toast.current?.show({ severity: 'error', summary: 'Could not upload image', life: 3000 })
+    }
+  }
+
   async function publishRecipe() {
     const updatedRecipe = { ...editedRecipe, date_published: new Date() }
     updateRecipeInStore(updatedRecipe)
@@ -279,6 +344,164 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
           />
         )}
+
+        {editMode && (
+          <section className="recipe-meta-fields">
+            <div className="meta-row">
+              <label className="meta-field">
+                <span className="meta-label">Prep time (min)</span>
+                <input
+                  type="number"
+                  className="meta-input"
+                  min={0}
+                  value={editedRecipe.prepTime ?? ''}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, prepTime: e.target.value ? Number(e.target.value) : null })}
+                  aria-label="Prep time in minutes"
+                />
+              </label>
+              <label className="meta-field">
+                <span className="meta-label">Cook time (min)</span>
+                <input
+                  type="number"
+                  className="meta-input"
+                  min={0}
+                  value={editedRecipe.cookTime ?? ''}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, cookTime: e.target.value ? Number(e.target.value) : null })}
+                  aria-label="Cook time in minutes"
+                />
+              </label>
+              <label className="meta-field">
+                <span className="meta-label">Total time (min)</span>
+                <input
+                  type="number"
+                  className="meta-input"
+                  min={0}
+                  value={editedRecipe.totalTime ?? ''}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, totalTime: e.target.value ? Number(e.target.value) : null })}
+                  aria-label="Total time in minutes"
+                />
+              </label>
+            </div>
+            <div className="meta-row">
+              <label className="meta-field">
+                <span className="meta-label">Cuisine</span>
+                <select
+                  className="meta-select"
+                  value={editedRecipe.cuisineType ?? ''}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, cuisineType: e.target.value || null })}
+                  aria-label="Cuisine type"
+                >
+                  <option value="">No cuisine</option>
+                  {cuisineOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <fieldset className="meta-field meta-checkboxes">
+                <legend className="meta-label">Dietary tags</legend>
+                <div className="dietary-options">
+                  {dietaryOptions.map((tag) => (
+                    <label key={tag} className="dietary-option">
+                      <input
+                        type="checkbox"
+                        checked={(editedRecipe.dietaryTags ?? []).includes(tag)}
+                        onChange={(e) => {
+                          const current = editedRecipe.dietaryTags ?? []
+                          const next = e.target.checked
+                            ? [...current, tag]
+                            : current.filter((t) => t !== tag)
+                          setEditedRecipe({ ...editedRecipe, dietaryTags: next })
+                        }}
+                        aria-label={tag}
+                      />
+                      {tag}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          </section>
+        )}
+
+        {!editMode && (displayRecipe.prepTime || displayRecipe.cookTime || displayRecipe.totalTime || displayRecipe.cuisineType || (displayRecipe.dietaryTags ?? []).length > 0) && (
+          <section className="recipe-meta-display">
+            <div className="meta-pills">
+              {displayRecipe.cuisineType && <span className="pill pill-ghost">{displayRecipe.cuisineType}</span>}
+              {displayRecipe.prepTime && <span className="pill pill-ghost">Prep: {displayRecipe.prepTime}m</span>}
+              {displayRecipe.cookTime && <span className="pill pill-ghost">Cook: {displayRecipe.cookTime}m</span>}
+              {displayRecipe.totalTime && <span className="pill pill-ghost">Total: {displayRecipe.totalTime}m</span>}
+              {(displayRecipe.dietaryTags ?? []).map((tag) => (
+                <span key={tag} className="pill pill-primary">{tag}</span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="recipe-steps">
+          <h3 className="steps-heading">Steps</h3>
+          {steps.length === 0 && !editMode && (
+            <p className="steps-empty">No steps added yet.</p>
+          )}
+          {steps.map((step, idx) => (
+            <div key={step.id} className="step-block">
+              <div className="step-header">
+                <span className="step-number">{idx + 1}</span>
+                {editMode ? (
+                  <input
+                    type="text"
+                    className="step-title-input"
+                    placeholder="Step title (optional)"
+                    value={step.title ?? ''}
+                    onChange={(e) => handleStepChange(step.id, 'title', e.target.value)}
+                    aria-label={`Step ${idx + 1} title`}
+                  />
+                ) : (
+                  step.title && <h4 className="step-title">{step.title}</h4>
+                )}
+                {editMode && (
+                  <div className="step-controls">
+                    <button type="button" className="ghost-button step-btn" onClick={() => handleMoveStep(step.id, 'up')} disabled={idx === 0} aria-label="Move step up">↑</button>
+                    <button type="button" className="ghost-button step-btn" onClick={() => handleMoveStep(step.id, 'down')} disabled={idx === steps.length - 1} aria-label="Move step down">↓</button>
+                    <button type="button" className="danger-button step-btn" onClick={() => handleDeleteStep(step.id)} aria-label={`Delete step ${idx + 1}`}>Remove</button>
+                  </div>
+                )}
+              </div>
+              {editMode ? (
+                <div className="step-editor-wrap">
+                  <Editor
+                    value={step.content}
+                    onTextChange={(e) => handleStepChange(step.id, 'content', e.htmlValue ?? '')}
+                    style={{ height: '120px' }}
+                    aria-label={`Step ${idx + 1} content`}
+                  />
+                  <label className="step-image-upload">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleStepImageUpload(step.id, file)
+                      }}
+                      aria-label={`Upload image for step ${idx + 1}`}
+                    />
+                    <span className="ghost-button">+ Image</span>
+                  </label>
+                </div>
+              ) : (
+                <div
+                  className="step-content"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(step.content) }}
+                />
+              )}
+            </div>
+          ))}
+          {editMode && (
+            <button type="button" className="ghost-button add-step-button" onClick={handleAddStep}>
+              + Add Step
+            </button>
+          )}
+        </section>
 
         <section className="recipe-panel">
           <div className="panel-toolbar">

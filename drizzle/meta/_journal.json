@@ -85,6 +85,13 @@
       "when": 1780957363901,
       "tag": "0011_curvy_micromacro",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781033566578,
+      "tag": "0012_organic_black_bolt",
+      "breakpoints": true
     }
   ]
 }

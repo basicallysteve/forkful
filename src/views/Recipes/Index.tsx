@@ -16,9 +16,11 @@ type SortDirection = 'asc' | 'desc'
 
 interface RecipesProps {
   initialRecipes?: Recipe[]
+  forYouRecipes?: Recipe[]
+  dietaryRestrictions?: string[]
 }
 
-export default function Recipes({ initialRecipes }: RecipesProps) {
+export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [] }: RecipesProps) {
   const recipes = useRecipeStore((state) => state.recipes)
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
@@ -29,6 +31,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const [applyDietaryFilter, setApplyDietaryFilter] = useState(true)
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   useEffect(() => {
@@ -47,6 +50,13 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
         recipe.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         recipe.ingredients.some(ingredient => ingredient.food.name.toLowerCase().includes(searchTerm.toLowerCase()))
       )
+    }
+    if (applyDietaryFilter && dietaryRestrictions.length > 0) {
+      filtered = filtered.filter(recipe => {
+        const tags = recipe.dietaryTags ?? []
+        if (tags.length === 0) return true
+        return dietaryRestrictions.every(r => tags.includes(r))
+      })
     }
 
 
@@ -76,7 +86,7 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
       
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [recipes, filterMeal, sortBy, sortDirection, searchTerm])
+  }, [recipes, filterMeal, sortBy, sortDirection, searchTerm, applyDietaryFilter, dietaryRestrictions])
 
   function handleSelectRecipe(recipeId: number) {
     const newSelected = new Set(selectedRecipes)
@@ -145,6 +155,22 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
           </div>
         </header>
 
+        {forYouRecipes.length > 0 && (
+          <section className="for-you-section">
+            <h3 className="for-you-heading">For You</h3>
+            <div className="recipe-cards">
+              {forYouRecipes.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  selected={false}
+                  onSelect={() => {}}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="recipes-panel">
           <div className="panel-toolbar">
             <div className="toolbar-filters">
@@ -198,6 +224,18 @@ export default function Recipes({ initialRecipes }: RecipesProps) {
               >
                 {sortDirection === 'asc' ? '↑' : '↓'}
               </button>
+
+              {dietaryRestrictions.length > 0 && (
+                <label className="filter-group dietary-toggle">
+                  <Checkbox
+                    className="recipe-checkbox"
+                    checked={applyDietaryFilter}
+                    onChange={(e) => setApplyDietaryFilter(e.checked ?? true)}
+                    inputId="dietary-filter-toggle"
+                  />
+                  <span className="filter-label">Apply dietary filters</span>
+                </label>
+              )}
             </div>
             <div className="toolbar-actions">
               {selectedRecipes.size > 0 && (

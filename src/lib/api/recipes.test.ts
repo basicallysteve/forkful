@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiFetchRecipes, apiFetchRecipe, apiCreateRecipe, apiUpdateRecipe, apiDeleteRecipe, apiFetchSavedRecipes, apiSaveRecipe, apiUnsaveRecipe, apiIsRecipeSaved } from './recipes'
+import { apiFetchRecipes, apiFetchRecipe, apiCreateRecipe, apiUpdateRecipe, apiDeleteRecipe, apiFetchSavedRecipes, apiSaveRecipe, apiUnsaveRecipe, apiIsRecipeSaved, apiFetchRecipeSteps, apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep, apiReorderRecipeSteps, apiUploadImage } from './recipes'
 import type { Recipe } from '@/types/Recipe'
+import type { RecipeStep } from '@/types/RecipeStep'
 
 const mockRecipe: Recipe = {
   id: 1,
@@ -8,6 +9,7 @@ const mockRecipe: Recipe = {
   meal: 'Dinner',
   description: 'A pasta dish',
   ingredients: [],
+  steps: [],
   date_published: null,
   isPublic: false,
 }
@@ -151,5 +153,87 @@ describe('apiIsRecipeSaved', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response)
     const result = await apiIsRecipeSaved('pasta')
     expect(result).toBe(false)
+  })
+})
+
+const mockStep: RecipeStep = { id: 1, recipeId: 1, position: 0, title: 'Boil water', content: '<p>Boil it</p>' }
+
+describe('apiFetchRecipeSteps', () => {
+  it('fetches steps for a recipe', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [mockStep] } as Response)
+    const result = await apiFetchRecipeSteps('pasta')
+    expect(result).toEqual([mockStep])
+    expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/steps')
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
+    await expect(apiFetchRecipeSteps('pasta')).rejects.toThrow('Failed to fetch steps')
+  })
+})
+
+describe('apiCreateRecipeStep', () => {
+  it('posts step data and returns created step', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockStep } as Response)
+    const result = await apiCreateRecipeStep('pasta', { title: 'Boil water', content: '<p>Boil it</p>' })
+    expect(result).toEqual(mockStep)
+    expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/steps', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response)
+    await expect(apiCreateRecipeStep('pasta', { content: '' })).rejects.toThrow('Failed to create step')
+  })
+})
+
+describe('apiUpdateRecipeStep', () => {
+  it('puts step data and returns updated step', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockStep } as Response)
+    const result = await apiUpdateRecipeStep('pasta', 1, { content: '<p>Updated</p>' })
+    expect(result).toEqual(mockStep)
+    expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/steps/1', expect.objectContaining({ method: 'PUT' }))
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
+    await expect(apiUpdateRecipeStep('pasta', 1, {})).rejects.toThrow('Failed to update step')
+  })
+})
+
+describe('apiDeleteRecipeStep', () => {
+  it('sends DELETE to step endpoint', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
+    await expect(apiDeleteRecipeStep('pasta', 1)).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/steps/1', { method: 'DELETE' })
+  })
+})
+
+describe('apiReorderRecipeSteps', () => {
+  it('sends PATCH with orderedIds', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
+    await expect(apiReorderRecipeSteps('pasta', [3, 1, 2])).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/recipes/pasta/steps/0',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ orderedIds: [3, 1, 2] }),
+      })
+    )
+  })
+})
+
+describe('apiUploadImage', () => {
+  it('posts form data and returns url', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ url: 'https://blob.example.com/image.jpg' }) } as Response)
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
+    const result = await apiUploadImage(file)
+    expect(result).toBe('https://blob.example.com/image.jpg')
+    expect(fetch).toHaveBeenCalledWith('/api/upload', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
+    await expect(apiUploadImage(file)).rejects.toThrow('Failed to upload image')
   })
 })
