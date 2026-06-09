@@ -1,10 +1,9 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-
-const secure = process.env.NODE_ENV === 'production'
+import { signOut } from '@/auth'
 
 export async function POST() {
-  const cookieStore = await cookies()
-  cookieStore.set('session', '', { httpOnly: true, secure, sameSite: 'strict', expires: new Date(0) })
-  return NextResponse.json({ message: 'Logged out successfully' }, { status: 200 })
+  await signOut({ redirect: false })
+  return new Response(JSON.stringify({ message: 'Logged out successfully' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }

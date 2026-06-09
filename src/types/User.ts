@@ -3,6 +3,7 @@ export type User = {
   username: string
   email: string
   password?: string
+  hasPassword: boolean
   cuisinePreferences: string[] | null
   dietaryRestrictions: string[] | null
   avatarUrl?: string | null

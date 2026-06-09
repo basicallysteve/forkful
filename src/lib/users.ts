@@ -31,6 +31,7 @@ export async function signUp(user: { username: string; email: string; password: 
         id: String(data.id),
         username: data.username,
         email: data.email,
+        hasPassword: true,
         cuisinePreferences: data.cuisinePreferences,
         dietaryRestrictions: data.dietaryRestrictions,
         password: hashedPassword,
@@ -70,7 +71,7 @@ export async function login(username: string, password: string, ipAddress: strin
         }
     }
 
-    if (!user) {
+    if (!user || !user.password) {
         await trackLoginAttempt({ ipAddress, successful: false })
         throw new Error('Invalid username or password')
     }
@@ -85,6 +86,7 @@ export async function login(username: string, password: string, ipAddress: strin
         id: String(user.id),
         username: user.username,
         email: user.email,
+        hasPassword: !!user.password,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
         avatarUrl: user.avatarUrl ?? null,
@@ -121,6 +123,7 @@ export async function getUser(userId: number): Promise<User | null> {
         id: String(user.id),
         username: user.username,
         email: user.email,
+        hasPassword: !!user.password,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
         avatarUrl: user.avatarUrl ?? null,
@@ -145,6 +148,14 @@ export async function deleteUserAvatar(userId: number, oldAvatarUrl: string | nu
     }
 }
 
+export async function completeOnboarding(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
+    await db.update(users).set({
+        cuisinePreferences: data.cuisinePreferences,
+        dietaryRestrictions: data.dietaryRestrictions,
+        onboardingCompletedAt: new Date(),
+    }).where(eq(users.id, userId))
+}
+
 export async function updateUserPreferences(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
     await db.update(users).set({
         cuisinePreferences: data.cuisinePreferences,
@@ -160,7 +171,7 @@ export async function updateUserEmail(userId: number, newEmail: string): Promise
 
 export async function updateUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
     const [user] = await db.select().from(users).where(eq(users.id, userId))
-    if (!user) throw new Error('User not found')
+    if (!user || !user.password) throw new Error('User not found')
     const match = await bcrypt.compare(currentPassword, user.password)
     if (!match) throw new Error('Current password is incorrect')
     const hashed = await hashPassword(newPassword)

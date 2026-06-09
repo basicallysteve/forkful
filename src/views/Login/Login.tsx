@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { apiLogin } from "@/lib/api/users"
+import { signIn } from "next-auth/react"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 
@@ -12,6 +12,7 @@ function Login() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const canSubmit = useMemo(() => {
     return username.trim().length > 0 && password.length > 0
   }, [username, password])
@@ -20,17 +21,29 @@ function Login() {
     e.preventDefault()
     setError(null)
     if (!canSubmit) return
+    setLoading(true)
     try {
-      await apiLogin({ username, password })
-      router.push("/")
-      router.refresh()
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message)
+      const result = await signIn('credentials', {
+        username: username.trim(),
+        password,
+        redirect: false,
+      })
+      if (result?.error) {
+        setError('Invalid username or password')
       } else {
-        setError("An unknown error occurred")
+        router.push("/")
+        router.refresh()
       }
+    } catch {
+      setError("An unknown error occurred")
+    } finally {
+      setLoading(false)
     }
+  }
+
+  async function handleOAuth(provider: 'google') {
+    setError(null)
+    await signIn(provider, { callbackUrl: '/' })
   }
 
   return (
@@ -54,6 +67,23 @@ function Login() {
           </div>
 
           <div className="panel-content">
+            <div className="oauth-buttons">
+              <button
+                type="button"
+                className="oauth-button oauth-button--google"
+                onClick={() => handleOAuth('google')}
+              >
+                <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                  <path fill="#fff" d="M44.5 20H24v8.5h11.8C34.3 33.6 29.7 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 6 1.1 8.1 3l6.4-6.4C34.6 4.1 29.6 2 24 2 11.9 2 2 11.9 2 24s9.9 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+                </svg>
+                Continue with Google
+              </button>
+            </div>
+
+            <div className="oauth-divider">
+              <span>or</span>
+            </div>
+
             <form className="account-form" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <label className="form-field form-field-full">
@@ -91,8 +121,8 @@ function Login() {
               <div className="form-footer">
                 <div className="footer-actions">
                   <Link href="/" className="ghost-button">Cancel</Link>
-                  <button type="submit" className="primary-button" disabled={!canSubmit}>
-                    Login
+                  <button type="submit" className="primary-button" disabled={!canSubmit || loading}>
+                    {loading ? 'Logging in…' : 'Login'}
                   </button>
                 </div>
               </div>
