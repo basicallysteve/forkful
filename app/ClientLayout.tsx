@@ -5,7 +5,8 @@ import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
-
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 interface ClientLayoutProps {
   children: React.ReactNode
   recipes: Recipe[]
@@ -53,15 +54,17 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
   ]
 
   return (
-    <SessionProvider>
+     <SessionProvider>
       <PrimeReactProvider>
         <div className="app-shell">
           <ToolBar menuOptions={menuOptions} />
           <main className="page-content">
             {children}
           </main>
+          <Analytics />
+          <SpeedInsights />
         </div>
       </PrimeReactProvider>
-    </SessionProvider>
+     </SessionProvider>
   )
 }
