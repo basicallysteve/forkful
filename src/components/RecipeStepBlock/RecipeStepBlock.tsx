@@ -2,6 +2,7 @@
 
 import DOMPurify from 'dompurify'
 import { Editor } from 'primereact/editor'
+import { FileUpload, type FileUploadHandlerEvent } from 'primereact/fileupload'
 import type { RecipeStep } from '@/types/RecipeStep'
 
 interface RecipeStepBlockProps {
@@ -57,19 +58,23 @@ export default function RecipeStepBlock({
             style={{ height: '120px' }}
             aria-label={`Step ${index + 1} content`}
           />
-          <label className="step-image-upload">
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) onImageUpload(step.id, file)
-              }}
-              aria-label={`Upload image for step ${index + 1}`}
-            />
-            <span className="ghost-button">+ Image</span>
-          </label>
+          <FileUpload
+            className="step-image-upload"
+            mode="basic"
+            accept="image/*"
+            maxFileSize={10 * 1024 * 1024}
+            auto
+            customUpload
+            chooseLabel="+ Image"
+            uploadHandler={(e: FileUploadHandlerEvent) => {
+              const file = e.files[0]
+              if (file) {
+                onImageUpload(step.id, file)
+                e.options.clear()
+              }
+            }}
+            aria-label={`Upload image for step ${index + 1}`}
+          />
         </div>
       ) : (
         <div

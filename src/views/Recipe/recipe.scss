@@ -463,10 +463,33 @@
 }
 
 .step-image-upload {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+  align-self: flex-start;
+
+  // Override PrimeReact FileUpload basic styles to match ghost-button
+  .p-fileupload-choose {
+    background: transparent;
+    color: var(--vscode-text);
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    box-shadow: none;
+    transition: border-color 120ms ease, background-color 120ms ease;
+
+    &:hover {
+      background: var(--accent-hover);
+      border-color: var(--vscode-accent);
+    }
+
+    .p-button-label {
+      font-weight: 400;
+    }
+
+    .p-button-icon {
+      display: none;
+    }
+  }
 }
 
 .step-content {
@@ -712,5 +735,51 @@
 
   .add-ingredient-button {
     padding: 10px;
+  }
+
+  // ── Steps (mobile) ────────────────────────────────────────────────────────
+
+  .step-block {
+    padding: 10px;
+  }
+
+  .step-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .step-title-input {
+    order: 2;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .step-number {
+    order: 1;
+  }
+
+  .step-controls {
+    order: 3;
+    flex: 0 0 100%; // forces its own row in the wrapping flex container
+    justify-content: space-around;
+  }
+
+  .step-btn {
+    flex: 1;
+    text-align: center;
+    max-width: 72px;
+  }
+
+  // Quill toolbar wraps on mobile
+  .p-editor-container {
+    .ql-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+
+    .ql-formats {
+      margin-right: 4px;
+    }
   }
 }
