@@ -153,6 +153,29 @@ html[data-theme='light'] {
   --primary-color: #10b981;
 }
 
+// ── PrimeReact Dialog ─────────────────────────────────────────────────────────
+
+.p-dialog {
+  .p-dialog-header {
+    background: var(--vscode-titlebar-bg);
+    color:       var(--text-color);
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .p-dialog-content {
+    background: var(--surface-overlay);
+    color:       var(--text-color);
+  }
+
+  .p-dialog-header-icon {
+    color: var(--text-color-secondary);
+
+    &:hover {
+      color: var(--text-color);
+    }
+  }
+}
+
 // ── PrimeReact Card ───────────────────────────────────────────────────────────
 
 .p-card {

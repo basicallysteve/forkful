@@ -4,9 +4,9 @@
   font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
 
   .p-dialog-header {
-    background: var(--vscode-panel);
+    background: var(--vscode-titlebar-bg);
     border-bottom: 1px solid var(--vscode-border);
-    color: #f3f3f3;
+    color: var(--vscode-text);
     font-size: 15px;
     padding: 14px 18px;
   }
