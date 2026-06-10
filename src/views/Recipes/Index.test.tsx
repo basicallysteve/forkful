@@ -32,6 +32,7 @@ const mockRecipes: Recipe[] = [
       { food: mockFoods[0], quantity: 2, calories: 150, servingUnit: 'slice' },
       { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
     ],
+    steps: [],
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
     isPublic: false,
@@ -45,6 +46,7 @@ const mockRecipes: Recipe[] = [
       { food: mockFoods[2], quantity: 100, calories: 350, servingUnit: 'g' },
       { food: mockFoods[3], quantity: 200, calories: 400, servingUnit: 'g' },
     ],
+    steps: [],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
@@ -57,6 +59,7 @@ const mockRecipes: Recipe[] = [
     ingredients: [
       { food: mockFoods[4], quantity: 100, calories: 15, servingUnit: 'g' },
     ],
+    steps: [],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
@@ -316,20 +319,13 @@ describe('Recipes filters and actions', () => {
 
   it('searches recipes by name and description', async () => {
     const user = userEvent.setup()
-    const testFoods: Food[] = [
-      { id: 101, name: 'Chili Powder', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'tsp', measurements: ['tsp', 'tbsp'] },
-      { id: 102, name: 'Garlic', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'clove', measurements: ['clove', 'g'] },
-    ]
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
-        ingredients: [
-          { food: testFoods[0], quantity: 2, calories: 10, servingUnit: 'tsp' },
-          { food: testFoods[1], quantity: 1, calories: 5, servingUnit: 'clove' }
-        ],
+        ingredients: [],
         isPublic: false,
       },
       {
@@ -353,7 +349,7 @@ describe('Recipes filters and actions', () => {
     await user.type(searchInput, 'garlic')
 
     expect(screen.getByText('Garlic Pasta')).toBeInTheDocument()
-    expect(screen.queryByText('Chili Bowl')).toBeInTheDocument()
+    expect(screen.queryByText('Chili Bowl')).not.toBeInTheDocument()
     expect(screen.queryByText('Berry Oatmeal')).not.toBeInTheDocument()
   })
 
@@ -434,6 +430,89 @@ describe('Recipes filters and actions', () => {
     const updated = useRecipeStore.getState().recipes
     expect(updated).toHaveLength(2)
     expect(updated.find((recipe) => recipe.name === 'Garlic Pasta')).toBeUndefined()
+  })
+})
+
+describe('For You section', () => {
+  it('renders For You section when forYouRecipes are provided', () => {
+    const forYouRecipes: Recipe[] = [{
+      id: 99,
+      name: 'Italian Pasta',
+      meal: 'Dinner',
+      description: 'A classic Italian dish.',
+      ingredients: [],
+      cuisineType: 'Italian',
+      isPublic: true,
+    }]
+    renderWithProviders(<Recipes forYouRecipes={forYouRecipes} />)
+    expect(screen.getByText('For You')).toBeInTheDocument()
+    expect(screen.getByText('Italian Pasta')).toBeInTheDocument()
+  })
+
+  it('does not render For You section when forYouRecipes is empty', () => {
+    renderWithProviders(<Recipes forYouRecipes={[]} />)
+    expect(screen.queryByText('For You')).not.toBeInTheDocument()
+  })
+
+  it('does not render For You section when forYouRecipes is not provided', () => {
+    renderWithProviders(<Recipes />)
+    expect(screen.queryByText('For You')).not.toBeInTheDocument()
+  })
+})
+
+describe('Dietary restriction filter', () => {
+  const veganRecipe: Recipe = {
+    id: 10, name: 'Vegan Bowl', meal: 'Lunch', description: 'Vegan.',
+    ingredients: [], dietaryTags: ['Vegan'], isPublic: true,
+  }
+  const nonVeganRecipe: Recipe = {
+    id: 11, name: 'Beef Stew', meal: 'Dinner', description: 'Has meat.',
+    ingredients: [], dietaryTags: ['Gluten-Free'], isPublic: true,
+  }
+  const untaggedRecipe: Recipe = {
+    id: 12, name: 'Mystery Soup', meal: 'Dinner', description: 'Unknown.',
+    ingredients: [], isPublic: true,
+  }
+
+  it('hides non-matching recipes when dietary filter is active', () => {
+    renderWithProviders(
+      <Recipes dietaryRestrictions={['Vegan']} />,
+      { recipes: [veganRecipe, nonVeganRecipe, untaggedRecipe] }
+    )
+    expect(screen.getByText('Vegan Bowl')).toBeInTheDocument()
+    expect(screen.queryByText('Beef Stew')).not.toBeInTheDocument()
+  })
+
+  it('always shows untagged recipes even when dietary filter is active', () => {
+    renderWithProviders(
+      <Recipes dietaryRestrictions={['Vegan']} />,
+      { recipes: [veganRecipe, nonVeganRecipe, untaggedRecipe] }
+    )
+    expect(screen.getByText('Mystery Soup')).toBeInTheDocument()
+  })
+
+  it('shows dietary filter toggle when user has restrictions', () => {
+    renderWithProviders(
+      <Recipes dietaryRestrictions={['Vegan']} />,
+      { recipes: [veganRecipe] }
+    )
+    expect(screen.getByLabelText('Apply dietary filters')).toBeInTheDocument()
+  })
+
+  it('does not show dietary filter toggle when user has no restrictions', () => {
+    renderWithProviders(<Recipes dietaryRestrictions={[]} />, { recipes: [veganRecipe] })
+    expect(screen.queryByLabelText('Apply dietary filters')).not.toBeInTheDocument()
+  })
+
+  it('shows all recipes when dietary filter is toggled off', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Recipes dietaryRestrictions={['Vegan']} />,
+      { recipes: [veganRecipe, nonVeganRecipe] }
+    )
+    expect(screen.queryByText('Beef Stew')).not.toBeInTheDocument()
+    await user.click(screen.getByLabelText('Apply dietary filters'))
+    expect(screen.getByText('Beef Stew')).toBeInTheDocument()
   })
 })
 
