@@ -139,6 +139,11 @@ html[data-theme='light'] { @include quill-light; }
 // Override every PrimeReact input surface so all fields share the same
 // background colour from our CSS variables.
 
+.ingredient-unit-select.p-dropdown .p-dropdown-label{
+  background: inherit;
+}
+
+
 .p-inputtext,
 .p-inputnumber-input,
 .p-dropdown,
