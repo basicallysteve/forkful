@@ -30,7 +30,7 @@ const mockFoods: Food[] = [
     fiber: 0,
     servingSize: 100,
     servingUnit: 'g',
-    measurements: [{ unit: 'g' }, { unit: 'oz' }],
+    measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'slice' }],
   },
   {
     id: 2,
