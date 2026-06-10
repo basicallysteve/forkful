@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Toast } from 'primereact/toast'
+import { Dropdown } from 'primereact/dropdown'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
@@ -589,19 +590,18 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                   header="Unit"
                   className="unit-col"
                   body={(ingredient: Ingredient, opts) => (
-                    <select
-                      className="ingredient-unit-select"
+                    <Dropdown
                       value={ingredient.servingUnit}
-                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.target.value)}
-                      aria-label={`Ingredient ${opts.rowIndex + 1} unit`}
-                    >
-                      {ingredient.food.measurements?.map((m) => (
-                        <option key={m.unit} value={m.unit}>{m.unit}</option>
-                      ))}
-                      {!ingredient.food.measurements?.some((m) => m.unit === ingredient.servingUnit) && (
-                        <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
-                      )}
-                    </select>
+                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.value)}
+                      options={(() => {
+                        const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
+                        const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
+                          ? [ingredient.servingUnit]
+                          : []
+                        return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+                      })()}
+                      ariaLabel={`Ingredient ${opts.rowIndex + 1} unit`}
+                    />
                   )}
                 />
               )}
