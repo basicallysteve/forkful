@@ -144,6 +144,7 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
       modal
       className="off-import-dialog"
       style={{ width: '560px', maxWidth: '95vw' }}
+      dismissableMask
     >
       <div className="off-tabs">
         <button
