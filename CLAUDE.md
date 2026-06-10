@@ -8,9 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 bun dev              # Start Next.js dev server
 bun build            # Production build
 bun lint             # ESLint
-bun test             # Run unit tests (vitest, jsdom)
-bun test:watch       # Unit tests in watch mode
-bun test:integration # Integration tests against a real Postgres DB (requires .env.local)
+bun run test         # Run unit tests (vitest, jsdom) — use "bun run test", NOT "bun test" (the latter invokes Bun's own runner and bypasses Vitest/jsdom)
+bun run test:watch   # Unit tests in watch mode
+bun run test:integration # Integration tests against a real Postgres DB (requires .env.local)
 
 # Run a single test file
 bunx vitest run src/stores/pantry.test.ts
