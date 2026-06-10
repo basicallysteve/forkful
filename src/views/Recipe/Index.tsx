@@ -96,37 +96,33 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   }
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
-    const updatedIngredients = [...editedRecipe.ingredients]
-    if (field === 'quantity') {
-      const numValue = Number(value)
-      const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
-      
-      // Recalculate calories based on new quantity and food's per-unit calories
-      const food = updatedIngredients[index].food
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        quantity: newQuantity,
-        calories: getPerUnitCalories(food) * newQuantity
+    setEditedRecipe(prev => {
+      const updatedIngredients = [...prev.ingredients]
+      if (field === 'quantity') {
+        const numValue = Number(value)
+        const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
+        const food = updatedIngredients[index].food
+        updatedIngredients[index] = {
+          ...updatedIngredients[index],
+          quantity: newQuantity,
+          calories: getPerUnitCalories(food) * newQuantity,
+        }
+      } else if (field === 'calories') {
+        const numValue = Number(value)
+        const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
+        updatedIngredients[index] = { ...updatedIngredients[index], calories: nextCalories }
+      } else if (field === 'servingUnit') {
+        updatedIngredients[index] = { ...updatedIngredients[index], servingUnit: value as string }
       }
-    } else if (field === 'calories') {
-      const numValue = Number(value)
-      const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        calories: nextCalories
-      }
-    } else if (field === 'servingUnit') {
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        servingUnit: value as string
-      }
-    }
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+      return { ...prev, ingredients: updatedIngredients }
+    })
   }
 
   function handleRemoveIngredient(index: number) {
-    const updatedIngredients = editedRecipe.ingredients.filter((_, i) => i !== index)
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+    setEditedRecipe(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.filter((_, i) => i !== index),
+    }))
   }
 
   function handleAddIngredient() {
@@ -153,20 +149,22 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         calories: defaultFood.calories,
         servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
       }
-      setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
+      setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
     }
   }
 
   function handleIngredientFoodChange(index: number, food: Food) {
-    const updatedIngredients = [...editedRecipe.ingredients]
-    updatedIngredients[index] = {
-      ...updatedIngredients[index],
-      food: food,
-      quantity: food.servingSize || 1,
-      calories: getPerUnitCalories(food) * (food.servingSize || 1),
-      servingUnit: food.servingUnit || updatedIngredients[index].servingUnit
-    }
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+    setEditedRecipe(prev => {
+      const updatedIngredients = [...prev.ingredients]
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        food,
+        quantity: food.servingSize || 1,
+        calories: getPerUnitCalories(food) * (food.servingSize || 1),
+        servingUnit: food.servingUnit || updatedIngredients[index].servingUnit,
+      }
+      return { ...prev, ingredients: updatedIngredients }
+    })
   }
 
   const recipeSlug = toSlug(recipe.name)
