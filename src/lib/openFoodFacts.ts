@@ -47,10 +47,15 @@ export async function getOpenFoodFactsProduct(barcode: string): Promise<OFFProdu
 }
 
 /**
- * Parse a gram value from an OFF serving_size string (e.g. "30g", "1 biscuit (30g)").
+ * Parse a gram value from an OFF product's serving fields.
+ * Prefers the numeric serving_quantity (already in grams) over parsing the string.
  * Returns 100 when grams cannot be determined (non-gram units like "1 capsule", "250ml").
  */
-function parseServingGrams(servingSize?: string): number {
+function parseServingGrams(servingSize?: string, servingQuantity?: number): number {
+  // serving_quantity is in the product's main unit — grams for solid, ml for liquid.
+  // Only trust it when the serving is not volume-based.
+  const isVolumeServing = servingSize ? /\d\s*(?:ml|fl[\s-]?oz|cl|dl|l\b)/i.test(servingSize) : false
+  if (!isVolumeServing && servingQuantity && servingQuantity > 0) return servingQuantity
   if (servingSize) {
     // Match patterns like "30g", "30 g", "30.5g", "1 piece (30g)" — excludes "mg"
     const match = servingSize.match(/(\d+(?:\.\d+)?)\s*g(?!\w)/)
@@ -70,9 +75,9 @@ export function mapOFFProductToFood(product: OFFProduct): Omit<Food, 'id'> {
   const fiber100g = n['fiber_100g'] ?? 0
   const sodium100g = n['sodium_100g']
 
-  // Parse grams from the human-readable serving_size string; fall back to 100g
-  // so that nutrition values are always correctly scaled from per-100g data.
-  const servingGrams = parseServingGrams(product.serving_size)
+  // Prefer the numeric serving_quantity from OFF (already in grams); fall back to
+  // parsing the human-readable serving_size string; default to 100g.
+  const servingGrams = parseServingGrams(product.serving_size, product.serving_quantity)
   const scale = servingGrams / 100
 
   return {

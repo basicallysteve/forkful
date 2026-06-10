@@ -2,8 +2,6 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { DataTable } from 'primereact/datatable'
-import { Column } from 'primereact/column'
 import { Toast } from 'primereact/toast'
 import { Dropdown } from 'primereact/dropdown'
 import DOMPurify from 'dompurify'
@@ -44,6 +42,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [saved, setSaved] = useState(initialSaved)
   const [savePending, setSavePending] = useState(false)
+  const [currentRecipe, setCurrentRecipe] = useState<Recipe>({ ...recipe })
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -53,15 +52,15 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
   let publishedText = "Unpublished"
   let isPublished = false
-  if (recipe.date_published) {
+  if (currentRecipe.date_published && currentRecipe.date_published instanceof Date) {
     isPublished = true
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - recipe.date_published.getTime())
+    const diffTime = currentRecipe.date_published?  Math.abs(now.getTime() - currentRecipe.date_published.getTime()) : 0
     const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     publishedText = daysSincePublished > 1 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
 
-  const displayRecipe = editMode ? editedRecipe : recipe
+  const displayRecipe = editMode ? editedRecipe : currentRecipe
 
   const totalCalories = Math.round(displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
@@ -96,6 +95,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     try {
       const result = await apiUpdateRecipe(updatedRecipe)
       updateRecipeInStore(result)
+      setCurrentRecipe({
+        ...result,
+        date_published: result.date_published ? new Date(result.date_published) : null,
+      })
+      setEditedRecipe({
+        ...result,
+        date_published: result.date_published ? new Date(result.date_published) : null,
+      })
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
@@ -104,7 +111,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   }
 
   function handleCancel() {
-    setEditedRecipe({ ...recipe })
+    setEditedRecipe({ ...currentRecipe })
     setEditMode(false)
   }
 
@@ -180,11 +187,11 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     // Create a placeholder ingredient with the first food
     if (localFoods.length > 0) {
       const defaultFood = localFoods[0]
-      const newIngredient: Ingredient = { 
-        food: defaultFood, 
-        quantity: 1, 
-        calories: defaultFood.calories,
-        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
+      const newIngredient: Ingredient = {
+        food: defaultFood,
+        quantity: defaultFood.servingSize || 1,
+        calories: defaultFood.calories || 0,
+        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
       }
       setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
     }
@@ -270,43 +277,49 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   }
 
   async function publishRecipe() {
-    const updatedRecipe = { ...editedRecipe, date_published: new Date() }
+    const updatedRecipe = { ...currentRecipe, date_published: new Date() }
     updateRecipeInStore(updatedRecipe)
+    setCurrentRecipe(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try {
       await apiUpdateRecipe(updatedRecipe)
     } catch (err) {
       console.error('Failed to persist recipe publish:', err)
-      updateRecipeInStore(editedRecipe)
-      setEditedRecipe(editedRecipe)
+      updateRecipeInStore(currentRecipe)
+      setCurrentRecipe(currentRecipe)
+      setEditedRecipe(currentRecipe)
       toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
     }
   }
 
   async function unpublishRecipe() {
-    const updatedRecipe = { ...editedRecipe, date_published: null }
+    const updatedRecipe = { ...currentRecipe, date_published: null }
     updateRecipeInStore(updatedRecipe)
+    setCurrentRecipe(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try {
       await apiUpdateRecipe(updatedRecipe)
     } catch (err) {
       console.error('Failed to persist recipe unpublish:', err)
-      updateRecipeInStore(editedRecipe)
-      setEditedRecipe(editedRecipe)
+      updateRecipeInStore(currentRecipe)
+      setCurrentRecipe(currentRecipe)
+      setEditedRecipe(currentRecipe)
       toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
     }
   }
 
   async function togglePublic() {
-    const updatedRecipe = { ...editedRecipe, isPublic: !editedRecipe.isPublic }
+    const updatedRecipe = { ...currentRecipe, isPublic: !currentRecipe.isPublic }
     updateRecipeInStore(updatedRecipe)
+    setCurrentRecipe(updatedRecipe)
     setEditedRecipe(updatedRecipe)
     try {
       await apiUpdateRecipe(updatedRecipe)
     } catch (err) {
       console.error('Failed to toggle recipe visibility:', err)
-      updateRecipeInStore(editedRecipe)
-      setEditedRecipe(editedRecipe)
+      updateRecipeInStore(currentRecipe)
+      setCurrentRecipe(currentRecipe)
+      setEditedRecipe(currentRecipe)
       toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: 'You may not have permission to edit this recipe.', life: 4000 })
     }
   }
@@ -510,17 +523,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           <div className="panel-toolbar">
             <div className="toolbar-tabs">
               {editMode ? (
-                <select
-                  className="meal-select"
-                  value={editedRecipe.meal || ''}
-                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e.target.value as Recipe["meal"] })}
-                  aria-label="Meal type"
-                >
-                  <option value="">Select meal</option>
-                  {mealOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
+                <Autocomplete
+                  value={editedRecipe.meal ?? ''}
+                  options={mealOptions}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e as Recipe['meal'] })}
+                  getOptionLabel={(opt) => opt ?? ''}
+                  placeholder="Select meal type"
+                  inputAriaLabel="Meal type"
+                />
               ) : (
                 <span className="tab is-active">{displayRecipe.meal}</span>
               )}
@@ -565,117 +575,90 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           </div>
 
           <div className="panel-content">
-            <DataTable value={displayRecipe.ingredients} className="ingredient-table" key={String(editMode)}>
-              <Column
-                header="Ingredient"
-                body={(ingredient: Ingredient, opts) =>
-                  editMode ? (
-                    <Autocomplete
-                      value={ingredient.food.name}
-                      options={localFoods}
-                      getOptionLabel={(opt) => opt.name}
-                      onChange={(next) => {
-                        const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
-                        if (food) {
-                          handleIngredientFoodChange(opts.rowIndex, food)
-                        } else if (next === '') {
-                          handleIngredientFoodChange(opts.rowIndex, {
-                            id: -1,
-                            name: "",
-                            calories: 0,
-                            protein: 0,
-                            carbs: 0,
-                            fat: 0,
-                            fiber: 0,
-                            servingSize: 1,
-                            servingUnit: "g",
-                            measurements: []
-                          })
-                        }
-                      }}
-                      onSelect={(opt) => handleIngredientFoodChange(opts.rowIndex, opt)}
-                      placeholder="Select food"
-                      inputAriaLabel={`Ingredient ${opts.rowIndex + 1} name`}
-                      renderOptionMeta={(opt) =>
-                        opt.calories ? `${opt.calories} cal/serving` : undefined
-                      }
-                    />
-                  ) : (
-                    ingredient.food.name
-                  )
-                }
-              />
-              <Column
-                header="Quantity"
-                className="quantity-col"
-                body={(ingredient: Ingredient, opts) =>
-                  editMode ? (
-                    <input
-                      type="number"
-                      className="ingredient-quantity-input"
-                      value={ingredient.quantity}
-                      min={0}
-                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'quantity', e.target.value)}
-                      aria-label={`Ingredient ${opts.rowIndex + 1} quantity`}
-                    />
-                  ) : (
-                    `${ingredient.quantity} ${ingredient.servingUnit}`
-                  )
-                }
-              />
-              {editMode && (
-                <Column
-                  header="Unit"
-                  className="unit-col"
-                  body={(ingredient: Ingredient, opts) => (
-                    <Dropdown
-                      value={ingredient.servingUnit}
-                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.value)}
-                      options={(() => {
-                        const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
-                        const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
-                          ? [ingredient.servingUnit]
-                          : []
-                        return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
-                      })()}
-                      ariaLabel={`Ingredient ${opts.rowIndex + 1} unit`}
-                    />
-                  )}
-                />
+            <div className="ingredient-list" role="list">
+              {displayRecipe.ingredients.length === 0 && (
+                <p className="ingredient-empty">No ingredients added yet.</p>
               )}
-              {editMode && (
-                <Column
-                  header="Calories"
-                  className="calories-col"
-                  body={(ingredient: Ingredient, opts) => (
-                    <input
-                      type="number"
-                      className="ingredient-calories-input"
-                      value={ingredient.calories != null ? Math.round(ingredient.calories) : ''}
-                      min={0}
-                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'calories', e.target.value)}
-                      aria-label={`Ingredient ${opts.rowIndex + 1} calories`}
-                    />
-                  )}
-                />
-              )}
-              {editMode && (
-                <Column
-                  header="Actions"
-                  className="actions-col"
-                  body={(ingredient: Ingredient, opts) => (
+              {displayRecipe.ingredients.map((ingredient: Ingredient, i: number) =>
+                editMode ? (
+                  <div key={i} className="ingredient-card">
+                    <div className="ingredient-card-fields">
+                      <label className="ingredient-field ingredient-field-name">
+                        <span className="ingredient-field-label">Ingredient</span>
+                        <Autocomplete
+                          value={ingredient.food.name}
+                          options={localFoods}
+                          getOptionLabel={(opt) => opt.name}
+                          onChange={(next) => {
+                            const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
+                            if (food) {
+                              handleIngredientFoodChange(i, food)
+                            } else if (next === '') {
+                              handleIngredientFoodChange(i, {
+                                id: -1, name: '', calories: 0, protein: 0, carbs: 0,
+                                fat: 0, fiber: 0, servingSize: 1, servingUnit: 'g', measurements: []
+                              })
+                            }
+                          }}
+                          onSelect={(opt) => handleIngredientFoodChange(i, opt)}
+                          placeholder="Select food"
+                          inputAriaLabel={`Ingredient ${i + 1} name`}
+                          renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
+                        />
+                      </label>
+                      <label className="ingredient-field ingredient-field-qty">
+                        <span className="ingredient-field-label">Qty</span>
+                        <input
+                          type="number"
+                          className="ingredient-qty-input"
+                          value={ingredient.quantity}
+                          min={0}
+                          onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
+                          aria-label={`Ingredient ${i + 1} quantity`}
+                        />
+                      </label>
+                      <label className="ingredient-field ingredient-field-unit">
+                        <span className="ingredient-field-label">Unit</span>
+                        <Dropdown
+                          className="ingredient-unit-select"
+                          value={ingredient.servingUnit}
+                          onChange={(e) => handleIngredientChange(i, 'servingUnit', e.value)}
+                          options={(() => {
+                            const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
+                            const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
+                              ? [ingredient.servingUnit]
+                              : []
+                            return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+                          })()}
+                          ariaLabel={`Ingredient ${i + 1} unit`}
+                        />
+                      </label>
+                      <div className="ingredient-field ingredient-field-cal">
+                        <span className="ingredient-field-label">Calories</span>
+                        <span className="ingredient-cal-value">{Math.round(ingredient.calories ?? 0)}</span>
+                      </div>
+                    </div>
                     <button
                       type="button"
-                      className="danger-button"
-                      onClick={() => handleRemoveIngredient(opts.rowIndex)}
+                      className="danger-button ingredient-remove-btn"
+                      onClick={() => handleRemoveIngredient(i)}
                       aria-label={`Remove ${ingredient.food.name}`}
                     >
                       Remove
                     </button>
-                  )}
-                />
+                  </div>
+                ) : (
+                  <div key={i} className="ingredient-row" role="listitem">
+                    <span className="ingredient-row-name">{ingredient.food.name}</span>
+                    <span className="ingredient-row-meta">
+                      <span className="ingredient-row-qty">{ingredient.quantity} {ingredient.servingUnit}</span>
+                      <span className="ingredient-row-sep">·</span>
+                      <span className="ingredient-row-cal">{Math.round(ingredient.calories ?? 0)} cal</span>
+                    </span>
+                  </div>
+                )
               )}
-            </DataTable>
+            </div>
             {editMode && (
               <div className="ingredient-actions">
                 <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>

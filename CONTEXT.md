@@ -62,3 +62,36 @@ A section at the top of the recipes list page, visible only to logged-in Users w
 
 ## Dietary Restriction Filter
 A default hard filter applied to the recipes list for logged-in Users with Dietary Restrictions set. Hides recipes whose Dietary Tags do not cover all of the user's restrictions (recipes with no Dietary Tags are always shown). The user can toggle this filter off for the current browsing session; the toggle does not persist.
+
+## Food
+A nutritional item in the library. Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from Open Food Facts. Shared across recipes, ingredients, and pantry items.
+
+## Serving Unit
+The unit in which a Food's nutrition data is anchored. Required in practice — the application always provides a value, though the column is not DB-constrained non-null. Defines what the Serving Size number means (e.g. `servingSize: 100, servingUnit: 'g'` means all nutrition values are per 100g). Belongs to exactly one unit category: mass, volume, or custom. Changing the Serving Unit within the same category automatically recalculates Serving Size to preserve calorie density. Cross-category changes are blocked.
+
+## Serving Size
+The quantity of a Food (in its Serving Unit) that the nutrition values correspond to. Required. Always a positive number.
+
+## Measurement
+A unit in which a Food can be expressed when added to a Recipe ingredient or tracked in the Pantry. Each Food has an explicit, author-curated list of Measurements. A Measurement is either a Standard Unit or a Calibrated Custom Unit. The Serving Unit is always included in a Food's Measurements.
+
+## Standard Unit
+A mass unit (g, kg, oz, lb, mg) or volume unit (ml, l, cup, Tbs, tsp, fl-oz). Standard Units within the same category are mutually convertible using fixed conversion factors. A Food may only have Standard Units in the same category as its Serving Unit.
+
+## Custom Unit
+A Measurement that is not a Standard Unit (e.g. slice, piece, loaf, can). Custom Units are food-specific and not mutually convertible. A Custom Unit becomes a Calibrated Custom Unit when a gram-weight per unit is defined for that Food. Custom Units with calibration are only available on Foods whose Serving Unit is a mass unit.
+
+## Calibrated Custom Unit
+A Custom Unit on a Food that has a defined gram-weight (e.g. "1 slice = 30g"). Enables automatic calorie calculation when that unit is used in a Recipe ingredient or Pantry entry. Only valid on Foods with a mass Serving Unit.
+
+## Uncalibrated Custom Unit
+A Custom Unit on a Food that has no gram-weight defined. Calorie calculation returns zero when this unit is used in an ingredient. Flagged with a warning in the Food editor.
+
+## Ingredient
+A Food used in a Recipe, expressed as a quantity in a chosen Measurement. Calories are computed at load time from the Food's current nutrition data and the ingredient's quantity and unit. The `ingredients` table currently retains a `calories` column; that column will be removed once the `feat/serving-unit-refinement` migration lands, at which point calories will be fully derived and not stored. If the chosen unit is an Uncalibrated Custom Unit, the computed calories are zero.
+
+## Nutrition Complete
+A Recipe in which every Ingredient's calories can be fully calculated — i.e. no ingredient uses an Uncalibrated Custom Unit. Stored as a boolean on the Recipe and recomputed whenever the Recipe's ingredients are saved. Nutrition Complete status is used as a binary ranking signal: in public recipe discovery, Nutrition Complete recipes always rank above incomplete ones, regardless of the active sort order.
+
+## Pantry Item
+A Food tracked as physical stock. Has an original size and a current size, each expressed as a quantity in a chosen Measurement from the Food's Measurements list. Units are constrained to the Food's Measurements — the same vocabulary used by Recipe ingredients.
