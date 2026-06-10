@@ -22,6 +22,7 @@ import {
 import { Editor } from 'primereact/editor'
 import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 import { toSlug } from '@/utils/slug'
+import { calculateCalories } from '@/utils/unitConversion'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -91,29 +92,43 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     console.log('Copy recipe clicked:', recipe.name)
   }
 
-  // Helper function to get per-unit calories for a food
-  function getPerUnitCalories(food: Food): number {
-    return food.calories || 0
+  // Helper: calories for a given quantity + unit, falling back to 0 if unconvertible
+  function computeIngredientCalories(food: Food, quantity: number, servingUnit: string): number {
+    const measurement = food.measurements?.find((m) => m.unit === servingUnit)
+    const raw = calculateCalories({
+      baseCalories: food.calories || 0,
+      baseServingSize: food.servingSize || 1,
+      baseServingUnit: food.servingUnit || DEFAULT_SERVING_UNIT,
+      targetAmount: quantity,
+      targetUnit: servingUnit,
+      gramsPerUnit: measurement?.gramsPerUnit,
+    }) ?? 0
+    return Math.round(raw)
   }
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
     setEditedRecipe(prev => {
       const updatedIngredients = [...prev.ingredients]
+      const ing = updatedIngredients[index]
       if (field === 'quantity') {
         const numValue = Number(value)
         const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
-        const food = updatedIngredients[index].food
         updatedIngredients[index] = {
-          ...updatedIngredients[index],
+          ...ing,
           quantity: newQuantity,
-          calories: getPerUnitCalories(food) * newQuantity,
+          calories: computeIngredientCalories(ing.food, newQuantity, ing.servingUnit),
         }
       } else if (field === 'calories') {
         const numValue = Number(value)
         const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
-        updatedIngredients[index] = { ...updatedIngredients[index], calories: nextCalories }
+        updatedIngredients[index] = { ...ing, calories: nextCalories }
       } else if (field === 'servingUnit') {
-        updatedIngredients[index] = { ...updatedIngredients[index], servingUnit: value as string }
+        const newUnit = value as string
+        updatedIngredients[index] = {
+          ...ing,
+          servingUnit: newUnit,
+          calories: computeIngredientCalories(ing.food, ing.quantity, newUnit),
+        }
       }
       return { ...prev, ingredients: updatedIngredients }
     })
@@ -157,12 +172,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   function handleIngredientFoodChange(index: number, food: Food) {
     setEditedRecipe(prev => {
       const updatedIngredients = [...prev.ingredients]
+      const quantity = food.servingSize || 1
+      const servingUnit = food.servingUnit || updatedIngredients[index].servingUnit
       updatedIngredients[index] = {
         ...updatedIngredients[index],
         food,
-        quantity: food.servingSize || 1,
-        calories: getPerUnitCalories(food) * (food.servingSize || 1),
-        servingUnit: food.servingUnit || updatedIngredients[index].servingUnit,
+        quantity,
+        servingUnit,
+        calories: computeIngredientCalories(food, quantity, servingUnit),
       }
       return { ...prev, ingredients: updatedIngredients }
     })
