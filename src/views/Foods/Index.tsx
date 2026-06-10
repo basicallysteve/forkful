@@ -261,7 +261,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
                           </span>
                           {food.measurements && food.measurements.length > 0 && (
                             <span className="card-meta">
-                              {food.measurements.slice(0, 3).join(', ')}
+                              {food.measurements.slice(0, 3).map((m) => m.unit).join(', ')}
                               {food.measurements.length > 3 && '...'}
                             </span>
                           )}
