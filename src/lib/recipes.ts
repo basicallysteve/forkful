@@ -109,6 +109,7 @@ function mapRecipeRow(
     date_added: row.dateAdded ?? undefined,
     date_published: row.datePublished ?? null,
     userId: row.userId ?? null,
+    serves: row.serves ?? null,
     isPublic: row.isPublic === 1,
     nutritionComplete: row.nutritionComplete ?? true,
   }
@@ -225,6 +226,7 @@ export async function createRecipe(data: Omit<Recipe, 'id' | 'nutritionComplete'
     totalTime: data.totalTime ?? null,
     cuisineType: data.cuisineType ?? null,
     dietaryTags: data.dietaryTags ?? [],
+    serves: data.serves ?? null,
     isPublic: data.isPublic ? 1 : 0,
     nutritionComplete,
     userId: data.userId ?? null,
@@ -258,6 +260,7 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
   if (data.cuisineType !== undefined) updates.cuisineType = data.cuisineType
   if (data.dietaryTags !== undefined) updates.dietaryTags = data.dietaryTags
   if (data.date_published !== undefined) updates.datePublished = data.date_published ? new Date(data.date_published) : null
+  if (data.serves !== undefined) updates.serves = data.serves ?? null
   if (data.isPublic !== undefined) updates.isPublic = data.isPublic ? 1 : 0
 
   const [row] = await db.update(recipes).set(updates).where(eq(recipes.id, id)).returning()

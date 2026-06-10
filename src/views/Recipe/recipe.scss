@@ -366,6 +366,119 @@
   flex-wrap: wrap;
 }
 
+// ── Nutrition Panel ───────────────────────────────────────────────────────────
+
+.nutrition-panel {
+  margin-top: 20px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.nutrition-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--accent-hover);
+  border-bottom: 1px solid var(--vscode-border);
+}
+
+.nutrition-serves {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--vscode-text);
+}
+
+.nutrition-serves-label {
+  font-weight: 600;
+  color: var(--vscode-muted);
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.nutrition-serves-input {
+  width: 64px;
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 4px;
+  background: var(--vscode-input-bg, var(--vscode-bg));
+  color: var(--vscode-text);
+  font-size: 14px;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+}
+
+.nutrition-serves-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nutrition-toggle {
+  display: flex;
+  border: 1px solid var(--vscode-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.nutrition-toggle-btn {
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--vscode-muted);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover:not(.is-active) {
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+  }
+
+  &.is-active {
+    background: var(--accent);
+    color: #fff;
+  }
+}
+
+.nutrition-list {
+  margin: 0;
+  padding: 8px 0;
+}
+
+.nutrition-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vscode-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.nutrition-label {
+  font-size: 14px;
+  color: var(--vscode-text);
+  font-weight: 500;
+}
+
+.nutrition-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-text);
+}
+
 // ── Steps ────────────────────────────────────────────────────────────────────
 
 .recipe-steps {

@@ -48,6 +48,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
+  const [perServing, setPerServing] = useState(true)
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   let publishedText = "Unpublished"
@@ -65,6 +66,26 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const totalCalories = Math.round(displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
   }, 0))
+
+  const nutritionTotals = {
+    calories: totalCalories,
+    protein: displayRecipe.ingredients.reduce((t, i) => t + (i.food.protein || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    carbs: displayRecipe.ingredients.reduce((t, i) => t + (i.food.carbs || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    fat: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fat || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    fiber: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fiber || 0) * i.quantity / (i.food.servingSize || 1), 0),
+  }
+
+  const serves = displayRecipe.serves ?? null
+  const showPerServing = perServing && serves != null && serves > 0
+  const divisor = showPerServing ? serves : 1
+
+  const displayNutrition = {
+    calories: Math.round(nutritionTotals.calories / divisor),
+    protein: Math.round(nutritionTotals.protein / divisor),
+    carbs: Math.round(nutritionTotals.carbs / divisor),
+    fat: Math.round(nutritionTotals.fat / divisor),
+    fiber: Math.round(nutritionTotals.fiber / divisor),
+  }
 
   async function handleSave() {
     const sanitizedIngredients = editedRecipe.ingredients.filter(
@@ -630,7 +651,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                     <input
                       type="number"
                       className="ingredient-calories-input"
-                      value={ingredient.calories ?? ''}
+                      value={ingredient.calories != null ? Math.round(ingredient.calories) : ''}
                       min={0}
                       onChange={(e) => handleIngredientChange(opts.rowIndex, 'calories', e.target.value)}
                       aria-label={`Ingredient ${opts.rowIndex + 1} calories`}
@@ -669,6 +690,55 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                 </button>
               </div>
             )}
+
+            <div className="nutrition-panel">
+              <div className="nutrition-panel-header">
+                <div className="nutrition-serves">
+                  <span className="nutrition-serves-label">Serves</span>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      className="nutrition-serves-input"
+                      min={1}
+                      value={editedRecipe.serves ?? ''}
+                      placeholder="—"
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10))
+                        setEditedRecipe({ ...editedRecipe, serves: isNaN(val as number) ? null : val })
+                      }}
+                      aria-label="Serves"
+                    />
+                  ) : (
+                    <span className="nutrition-serves-value">{serves ?? '—'}</span>
+                  )}
+                </div>
+                {serves != null && serves > 0 && (
+                  <div className="nutrition-toggle">
+                    <button
+                      type="button"
+                      className={`nutrition-toggle-btn ${!showPerServing ? 'is-active' : ''}`}
+                      onClick={() => setPerServing(false)}
+                    >
+                      Total
+                    </button>
+                    <button
+                      type="button"
+                      className={`nutrition-toggle-btn ${showPerServing ? 'is-active' : ''}`}
+                      onClick={() => setPerServing(true)}
+                    >
+                      Per serving
+                    </button>
+                  </div>
+                )}
+              </div>
+              <dl className="nutrition-list">
+                <div className="nutrition-row"><dt className="nutrition-label">Calories</dt><dd className="nutrition-value">{displayNutrition.calories}</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Protein</dt><dd className="nutrition-value">{displayNutrition.protein}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Carbs</dt><dd className="nutrition-value">{displayNutrition.carbs}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Fat</dt><dd className="nutrition-value">{displayNutrition.fat}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Fiber</dt><dd className="nutrition-value">{displayNutrition.fiber}g</dd></div>
+              </dl>
+            </div>
           </div>
         </section>
       </div>

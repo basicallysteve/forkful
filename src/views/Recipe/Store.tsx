@@ -313,6 +313,7 @@ function Store() {
       meal: recipe.meal,
       description: recipe.description!,
       ingredients: recipe.ingredients || [],
+      serves: recipe.serves ?? null,
       date_added: new Date(),
       date_published: publish ? new Date() : null,
       isPublic: publish,
@@ -400,6 +401,19 @@ function Store() {
                   />
                   <span className="field-hint">Keep it short—add detailed steps later.</span>
                 </div>
+
+                <label className="form-field">
+                  <span className="field-label">Serves</span>
+                  <InputNumber
+                    className="serves-input"
+                    min={1}
+                    value={recipe.serves ?? null}
+                    onValueChange={(e) => setRecipe({ ...recipe, serves: e.value ?? null })}
+                    placeholder="e.g. 4"
+                    aria-label="Serves"
+                  />
+                  <span className="field-hint">How many portions does this recipe make?</span>
+                </label>
               </div>
 
               <div className="form-footer">
