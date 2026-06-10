@@ -2,7 +2,7 @@ import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, ilike, sql
 import { db } from '@/db'
 import { pantryItems, foods } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
-import type { Food } from '@/types/Food'
+import type { Food, Measurement } from '@/types/Food'
 import { calculatePantryStatus } from '@/utils/pantryStatus'
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
@@ -12,6 +12,11 @@ export type PantryQueryOptions = {
   status?: 'all' | PantryItemStatus
   sortBy?: 'name' | 'expirationDate' | 'addedDate' | 'status'
   sortDir?: 'asc' | 'desc'
+}
+
+function parseMeasurements(raw: unknown): Measurement[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -24,8 +29,8 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     fat: Number(row.fat ?? 0),
     fiber: Number(row.fiber ?? 0),
     servingSize: Number(row.servingSize ?? 1),
-    servingUnit: row.servingUnit ?? undefined,
-    measurements: (row.measurements as string[] | null) ?? [],
+    servingUnit: row.servingUnit ?? 'g',
+    measurements: parseMeasurements(row.measurements),
   }
 }
 

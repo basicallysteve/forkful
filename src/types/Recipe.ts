@@ -18,4 +18,5 @@ export type Recipe = {
   date_published?: Date | null
   userId?: number | null
   isPublic: boolean
+  nutritionComplete: boolean
 }

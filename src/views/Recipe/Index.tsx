@@ -28,14 +28,14 @@ const DEFAULT_SERVING_UNIT = 'g'
 
 interface RecipeProps {
   recipe: Recipe
-  foods: Food[]
+  foods?: Food[]
   isEditing?: boolean
   canEdit?: boolean
   canSave?: boolean
   initialSaved?: boolean
 }
 
-export default function Recipe({ recipe, foods, isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
@@ -597,10 +597,10 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                       onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.target.value)}
                       aria-label={`Ingredient ${opts.rowIndex + 1} unit`}
                     >
-                      {ingredient.food.measurements?.map((unit) => (
-                        <option key={unit} value={unit}>{unit}</option>
+                      {ingredient.food.measurements?.map((m) => (
+                        <option key={m.unit} value={m.unit}>{m.unit}</option>
                       ))}
-                      {!ingredient.food.measurements?.includes(ingredient.servingUnit) && (
+                      {!ingredient.food.measurements?.some((m) => m.unit === ingredient.servingUnit) && (
                         <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
                       )}
                     </select>

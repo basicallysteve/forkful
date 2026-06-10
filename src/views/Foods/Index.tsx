@@ -46,7 +46,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
       filtered = filtered.filter(
         (food) =>
           food.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          food.measurements?.some((m) => m.toLowerCase().includes(searchTerm.toLowerCase()))
+          food.measurements?.some((m) => m.unit.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 

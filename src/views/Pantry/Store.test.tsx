@@ -30,7 +30,7 @@ const mockFoods: Food[] = [
     fiber: 0,
     servingSize: 100,
     servingUnit: 'g',
-    measurements: ['g', 'oz'],
+    measurements: [{ unit: 'g' }, { unit: 'oz' }],
   },
   {
     id: 2,
@@ -42,7 +42,7 @@ const mockFoods: Food[] = [
     fiber: 3.5,
     servingSize: 1,
     servingUnit: 'cup',
-    measurements: ['cup', 'g'],
+    measurements: [{ unit: 'cup' }, { unit: 'g' }],
   },
 ]
 
@@ -303,7 +303,7 @@ describe('Pantry Store Page', () => {
           fiber: 0,
           servingSize: 100,
           servingUnit: 'g',
-          measurements: ['g', 'oz'],
+          measurements: [{ unit: 'g' }, { unit: 'oz' }],
         },
       ]
       
@@ -333,7 +333,7 @@ describe('Pantry Store Page', () => {
           fiber: 0,
           servingSize: 100,
           servingUnit: 'g',
-          measurements: ['g', 'oz'],
+          measurements: [{ unit: 'g' }, { unit: 'oz' }],
         },
       ]
       const serverFoods: Food[] = [
@@ -348,7 +348,7 @@ describe('Pantry Store Page', () => {
           fiber: 0,
           servingSize: 100,
           servingUnit: 'g',
-          measurements: ['g', 'oz'],
+          measurements: [{ unit: 'g' }, { unit: 'oz' }],
         },
       ]
 
@@ -390,7 +390,7 @@ describe('Pantry Store Page', () => {
           fiber: 4.4,
           servingSize: 1,
           servingUnit: 'medium',
-          measurements: ['medium', 'g'],
+          measurements: [{ unit: 'medium' }, { unit: 'g' }],
         },
       ]
 
@@ -405,7 +405,7 @@ describe('Pantry Store Page', () => {
           fiber: 3.1,
           servingSize: 1,
           servingUnit: 'medium',
-          measurements: ['medium', 'g'],
+          measurements: [{ unit: 'medium' }, { unit: 'g' }],
         },
       ]
 

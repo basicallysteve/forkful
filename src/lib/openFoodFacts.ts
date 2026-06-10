@@ -87,7 +87,7 @@ export function mapOFFProductToFood(product: OFFProduct): Omit<Food, 'id'> {
     sodium: sodium100g != null ? Math.round(sodium100g * scale * 1000) : undefined, // g→mg
     servingSize: servingGrams,
     servingUnit: 'g',
-    measurements: ['g'],
+    measurements: [{ unit: 'g' }],
     barcode: product.code || undefined,
     source: 'open_food_facts' as const,
   }

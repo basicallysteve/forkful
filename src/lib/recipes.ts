@@ -4,9 +4,10 @@ import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/sch
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
-import type { Food } from '@/types/Food'
+import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { sanitizeRichText } from '@/lib/sanitize'
+import { calculateCalories } from '@/utils/unitConversion'
 
 export type RecipeQueryOptions = {
   user_id?: number
@@ -15,6 +16,11 @@ export type RecipeQueryOptions = {
   sortBy?: 'date_published'
   sortDir?: 'asc' | 'desc'
   viewerId?: number
+}
+
+function parseMeasurements(raw: unknown): Measurement[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -27,8 +33,8 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     fat: Number(row.fat ?? 0),
     fiber: Number(row.fiber ?? 0),
     servingSize: Number(row.servingSize ?? 1),
-    servingUnit: row.servingUnit ?? undefined,
-    measurements: (row.measurements as string[] | null) ?? [],
+    servingUnit: row.servingUnit ?? 'g',
+    measurements: parseMeasurements(row.measurements),
   }
 }
 
@@ -44,12 +50,21 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
         isNull(foods.dateDeleted)
       )
     )
-  return rows.map((row) => ({
-    food: mapFood(row.foods),
-    quantity: Number(row.ingredients.quantity),
-    calories: row.ingredients.calories,
-    servingUnit: row.ingredients.servingUnit ?? row.foods.servingUnit ?? 'g',
-  }))
+  return rows.map((row) => {
+    const food = mapFood(row.foods)
+    const servingUnit = row.ingredients.servingUnit ?? food.servingUnit
+    const quantity = Number(row.ingredients.quantity)
+    const measurement = food.measurements.find((m) => m.unit === servingUnit)
+    const calories = calculateCalories({
+      baseCalories: food.calories,
+      baseServingSize: food.servingSize,
+      baseServingUnit: food.servingUnit,
+      targetAmount: quantity,
+      targetUnit: servingUnit,
+      gramsPerUnit: measurement?.gramsPerUnit,
+    }) ?? 0
+    return { food, quantity, calories, servingUnit }
+  })
 }
 
 function mapStep(row: typeof recipeSteps.$inferSelect): RecipeStep {
@@ -95,6 +110,7 @@ function mapRecipeRow(
     date_published: row.datePublished ?? null,
     userId: row.userId ?? null,
     isPublic: row.isPublic === 1,
+    nutritionComplete: row.nutritionComplete ?? true,
   }
 }
 
@@ -193,7 +209,12 @@ export async function getRecipeById(id: number): Promise<Recipe | null> {
   return row ? buildRecipe(row) : null
 }
 
+function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
+  return ingredientList.every((ing) => ing.calories > 0 || ing.quantity === 0)
+}
+
 export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
+  const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   const [row] = await db.insert(recipes).values({
     name: data.name,
     slug: toSlug(data.name),
@@ -205,6 +226,7 @@ export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
     cuisineType: data.cuisineType ?? null,
     dietaryTags: data.dietaryTags ?? [],
     isPublic: data.isPublic ? 1 : 0,
+    nutritionComplete,
     userId: data.userId ?? null,
     dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
     datePublished: data.date_published ? new Date(data.date_published) : null,
@@ -215,7 +237,6 @@ export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
         recipeId: row.id,
         foodId: ing.food.id,
         quantity: String(ing.quantity),
-        calories: ing.calories,
         servingUnit: ing.servingUnit,
       }))
     )
@@ -250,6 +271,8 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
   }
 
   if (data.ingredients !== undefined) {
+    const nutritionComplete = computeNutritionComplete(data.ingredients)
+    await db.update(recipes).set({ nutritionComplete }).where(eq(recipes.id, id))
     await db.delete(ingredients).where(eq(ingredients.recipeId, id))
     if (data.ingredients.length > 0) {
       await db.insert(ingredients).values(
@@ -257,7 +280,6 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
           recipeId: id,
           foodId: ing.food.id,
           quantity: String(ing.quantity),
-          calories: ing.calories,
           servingUnit: ing.servingUnit,
         }))
       )

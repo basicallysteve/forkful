@@ -12,6 +12,7 @@ const mockRecipe: Recipe = {
   steps: [],
   date_published: null,
   isPublic: false,
+  nutritionComplete: true,
 }
 
 beforeEach(() => {

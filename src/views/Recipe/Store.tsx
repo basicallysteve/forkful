@@ -179,12 +179,13 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
           value={ingredient.servingUnit}
           onChange={(e) => handleUnitChange(e.value)}
           disabled={readOnly}
-          options={[
-            ...(ingredient.food?.measurements || []),
-            ...(ingredient.servingUnit && !ingredient.food?.measurements?.includes(ingredient.servingUnit)
+          options={(() => {
+            const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
+            const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
               ? [ingredient.servingUnit]
-              : []),
-          ].map((unit) => ({ label: unit, value: unit }))}
+              : []
+            return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+          })()}
           ariaLabel="Serving unit"
         />
       </label>
