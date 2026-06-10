@@ -26,7 +26,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       fiber: 0,
       servingSize: 1,
       servingUnit: 'slice',
-      measurements: ['slice', 'oz', 'g'],
+      measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }],
     },
     {
       id: 2,
@@ -38,7 +38,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       fiber: 0,
       servingSize: 1,
       servingUnit: 'slice',
-      measurements: ['slice', 'oz', 'g'],
+      measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }],
     },
     {
       id: 3,
@@ -50,7 +50,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       fiber: 2,
       servingSize: 1,
       servingUnit: 'slice',
-      measurements: ['slice', 'loaf'],
+      measurements: [{ unit: 'slice' }, { unit: 'loaf' }],
     },
     {
       id: 4,
@@ -62,7 +62,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       fiber: 3,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g', 'oz', 'cup'],
+      measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'cup' }],
     },
     {
       id: 5,
@@ -74,7 +74,7 @@ export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
       fiber: 0,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g', 'oz', 'lb'],
+      measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'lb' }],
     },
   ])
 

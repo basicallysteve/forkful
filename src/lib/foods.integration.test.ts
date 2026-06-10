@@ -31,7 +31,7 @@ describe('foods data layer (integration)', () => {
       fiber: 4,
       servingSize: 1,
       servingUnit: 'medium',
-      measurements: ['medium', 'g'],
+      measurements: [{ unit: 'medium' }, { unit: 'g' }],
     })
     expect(created.id).toBeDefined()
     expect(created.name).toBe('Test Apple')
@@ -44,7 +44,7 @@ describe('foods data layer (integration)', () => {
 
   it('lists all foods', async () => {
     await createFood({ name: 'Test Banana', calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3, servingSize: 1, servingUnit: 'medium', measurements: [] })
-    await createFood({ name: 'Test Cherry', calories: 50, protein: 1, carbs: 12, fat: 0.3, fiber: 1.6, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz'] })
+    await createFood({ name: 'Test Cherry', calories: 50, protein: 1, carbs: 12, fat: 0.3, fiber: 1.6, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }] })
 
     const foods = await getFoods()
     const testFoods = foods.filter(f => f.name.startsWith('Test'))
@@ -99,7 +99,7 @@ describe('foods data layer (integration)', () => {
       fiber: 1,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g'],
+      measurements: [{ unit: 'g' }],
       barcode,
     })
 
@@ -125,7 +125,7 @@ describe('foods data layer (integration)', () => {
       sodium: 150,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g'],
+      measurements: [{ unit: 'g' }],
       source: 'open_food_facts',
     })
     expect(created.source).toBe('open_food_facts')
@@ -145,7 +145,7 @@ describe('foods data layer (integration)', () => {
       fiber: 2,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g'],
+      measurements: [{ unit: 'g' }],
       source: 'open_food_facts',
     })
     expect(created.source).toBe('open_food_facts')

@@ -8,7 +8,7 @@ import {
 } from './pantry'
 import type { PantryItem } from '@/types/PantryItem'
 
-const mockFood = { id: 1, name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz'] }
+const mockFood = { id: 1, name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }] }
 
 // Raw shape returned by the API (dates as ISO strings, as JSON serialization produces)
 const mockRawItem = {
@@ -18,7 +18,7 @@ const mockRawItem = {
   currentSize: { size: 8, unit: 'oz' },
   expirationDate: '2026-12-31T00:00:00.000Z',
   addedDate: '2026-01-01T00:00:00.000Z',
-  status: 'good',
+  status: 'good' as const,
   frozenDate: null,
 }
 

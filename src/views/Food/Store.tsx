@@ -4,9 +4,9 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
-import type { Food } from '@/types/Food'
+import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
-import { getUnitCategory, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
+import { getUnitCategory, convertUnit, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
@@ -36,7 +36,7 @@ function Store({ existingFood }: FoodStoreProps) {
     sodium: existingFood?.sodium,
     servingSize: existingFood?.servingSize || 1,
     servingUnit: existingFood?.servingUnit || 'g',
-    measurements: existingFood?.measurements || ['g'],
+    measurements: existingFood?.measurements || [{ unit: 'g' }],
   })
 
   const [newMeasurement, setNewMeasurement] = useState('')
@@ -59,21 +59,17 @@ function Store({ existingFood }: FoodStoreProps) {
 
   // Get available measurement options based on serving unit category
   const availableMeasurementOptions = useMemo((): string[] => {
-    const alreadyAdded = food.measurements || []
+    const alreadyAdded = (food.measurements || []).map((m) => m.unit)
     let availableUnits: string[] = []
-    
+
     if (servingUnitCategory === 'mass') {
-      // Mass serving unit: show mass units + custom units
       availableUnits = [...MASS_UNITS, ...CUSTOM_UNITS]
     } else if (servingUnitCategory === 'volume') {
-      // Volume serving unit: show volume units + custom units
       availableUnits = [...VOLUME_UNITS, ...CUSTOM_UNITS]
     } else {
-      // Custom serving unit: show all units
       availableUnits = [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS]
     }
-    
-    // Filter out units that are already added
+
     return availableUnits.filter(unit => !alreadyAdded.includes(unit))
   }, [servingUnitCategory, food.measurements])
 
@@ -99,51 +95,65 @@ function Store({ existingFood }: FoodStoreProps) {
   function handleAddMeasurement(unitToAdd?: string) {
     const trimmed = (unitToAdd || newMeasurement).trim().toLowerCase()
     if (!trimmed) return
-    if (food.measurements?.includes(trimmed)) return
-    
-    // Check if the new measurement is compatible with the serving unit category
+    if (food.measurements?.some((m) => m.unit === trimmed)) return
+
     const newUnitCategory = getUnitCategory(trimmed)
     if (servingUnitCategory !== 'custom' && newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory) {
-      // Don't allow mixing mass and volume units
       return
     }
 
     setFood({
       ...food,
-      measurements: [...(food.measurements || []), trimmed],
+      measurements: [...(food.measurements || []), { unit: trimmed }],
     })
     setNewMeasurement('')
   }
 
-  function handleRemoveMeasurement(measurement: string) {
+  function handleRemoveMeasurement(unit: string) {
     setFood({
       ...food,
-      measurements: food.measurements?.filter(m => m !== measurement) || [],
+      measurements: (food.measurements || []).filter((m) => m.unit !== unit),
+    })
+  }
+
+  function handleSetGramsPerUnit(unit: string, grams: number | undefined) {
+    setFood({
+      ...food,
+      measurements: (food.measurements || []).map((m) =>
+        m.unit === unit ? { ...m, gramsPerUnit: grams } : m
+      ),
     })
   }
 
   function handleServingUnitChange(newUnit: string) {
     const newCategory = getUnitCategory(newUnit)
     const oldCategory = getUnitCategory(food.servingUnit || 'g')
-    
-    // If category changed, filter out incompatible measurements
-    let updatedMeasurements = food.measurements || []
+
+    let updatedMeasurements: Measurement[] = food.measurements || []
+
+    // Recalculate servingSize when switching within the same standard category
+    let newServingSize = food.servingSize
+    if (newCategory === oldCategory && newCategory !== 'custom') {
+      const converted = convertUnit(food.servingSize || 1, food.servingUnit || 'g', newUnit)
+      if (converted !== null) newServingSize = Math.round(converted * 100) / 100
+    }
+
+    // Cross-category change: drop incompatible standard-unit measurements
     if (newCategory !== oldCategory && newCategory !== 'custom' && oldCategory !== 'custom') {
-      // Filter to only keep compatible measurements
-      updatedMeasurements = updatedMeasurements.filter(m => {
-        const mCategory = getUnitCategory(m)
-        return mCategory === newCategory || mCategory === 'custom'
+      updatedMeasurements = updatedMeasurements.filter((m) => {
+        const cat = getUnitCategory(m.unit)
+        return cat === newCategory || cat === 'custom'
       })
     }
-    
-    // Make sure the new unit is in measurements
-    if (!updatedMeasurements.includes(newUnit)) {
-      updatedMeasurements = [newUnit, ...updatedMeasurements]
+
+    if (!updatedMeasurements.some((m) => m.unit === newUnit)) {
+      updatedMeasurements = [{ unit: newUnit }, ...updatedMeasurements]
     }
-    
+
     setFood({
       ...food,
       servingUnit: newUnit,
+      servingSize: newServingSize,
       measurements: updatedMeasurements,
     })
   }
@@ -162,8 +172,8 @@ function Store({ existingFood }: FoodStoreProps) {
       sugar: food.sugar,
       sodium: food.sodium,
       servingSize: food.servingSize!,
-      servingUnit: food.servingUnit,
-      measurements: food.measurements,
+      servingUnit: food.servingUnit ?? 'g',
+      measurements: food.measurements ?? [],
     }
 
     if (isEditing && existingFood) {
@@ -274,9 +284,10 @@ function Store({ existingFood }: FoodStoreProps) {
                       ...MASS_UNITS,
                       ...VOLUME_UNITS,
                       ...CUSTOM_UNITS,
-                      ...(food.measurements?.filter(
-                        (m) => !([...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS] as string[]).includes(m)
-                      ) ?? []),
+                      ...(food.measurements
+                        ?.map((m) => m.unit)
+                        .filter((u) => !([...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS] as string[]).includes(u))
+                        ?? []),
                     ].map((unit) => ({ label: unit, value: unit }))}
                     ariaLabel="Serving unit"
                   />
@@ -379,19 +390,40 @@ function Store({ existingFood }: FoodStoreProps) {
                 <div className="form-field form-field-full">
                   <span className="field-label">Available Measurements</span>
                   <div className="measurements-list">
-                    {food.measurements?.map((measurement) => (
-                      <span key={measurement} className="measurement-tag">
-                        {measurement}
-                        <button
-                          type="button"
-                          className="measurement-remove"
-                          onClick={() => handleRemoveMeasurement(measurement)}
-                          aria-label={`Remove ${measurement}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                    {food.measurements?.map((m) => {
+                      const isCustom = getUnitCategory(m.unit) === 'custom'
+                      const canCalibrate = isCustom && servingUnitCategory === 'mass'
+                      const isUncalibrated = isCustom && !m.gramsPerUnit
+                      return (
+                        <div key={m.unit} className={`measurement-tag ${isUncalibrated && canCalibrate ? 'measurement-tag-warn' : ''}`}>
+                          <span className="measurement-tag-label">
+                            {isUncalibrated && canCalibrate && <span className="measurement-warn-icon" title="No gram weight set — calories cannot be calculated for this unit">⚠</span>}
+                            {m.unit}
+                          </span>
+                          {canCalibrate && (
+                            <input
+                              type="number"
+                              className="measurement-grams-input"
+                              min={0}
+                              step={0.1}
+                              value={m.gramsPerUnit ?? ''}
+                              placeholder="g/unit"
+                              onChange={(e) => handleSetGramsPerUnit(m.unit, e.target.value ? Number(e.target.value) : undefined)}
+                              aria-label={`Grams per ${m.unit}`}
+                            />
+                          )}
+                          {m.gramsPerUnit && <span className="measurement-grams-label">{m.gramsPerUnit}g</span>}
+                          <button
+                            type="button"
+                            className="measurement-remove"
+                            onClick={() => handleRemoveMeasurement(m.unit)}
+                            aria-label={`Remove ${m.unit}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                   <div className="add-measurement">
                     <Autocomplete

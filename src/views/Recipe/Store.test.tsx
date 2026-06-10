@@ -13,11 +13,11 @@ vi.mock('@/lib/api/recipes', () => ({
 
 // Mock foods
 const mockFoods: Food[] = [
-  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'loaf'] },
-  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
-  { id: 5, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'lb'] },
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'loaf' }] },
+  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'cup' }] },
+  { id: 5, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'lb' }] },
 ]
 
 const mockRecipes: Recipe[] = [
@@ -35,6 +35,7 @@ const mockRecipes: Recipe[] = [
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
     isPublic: false,
+    nutritionComplete: true,
   },
   {
     id: 2,
@@ -49,6 +50,7 @@ const mockRecipes: Recipe[] = [
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
+    nutritionComplete: true,
   },
 ]
 
@@ -200,7 +202,7 @@ describe('Store Page - Recipe Creation', () => {
 
     it('does not show suggestion when no ingredients are similar', async () => {
       const user = userEvent.setup()
-      const uniqueFood: Food = { id: 999, name: 'Unique Ingredient', calories: 50, protein: 1, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
+      const uniqueFood: Food = { id: 999, name: 'Unique Ingredient', calories: 50, protein: 1, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'g' }] }
       // Only provide unique food, not the mockFoods that are used in existing recipes
       renderWithProviders(<Store />, { 
         foods: [uniqueFood],
@@ -344,7 +346,7 @@ describe('Store Page - Recipe Creation', () => {
 
     it('saves a published recipe when Publish is clicked', async () => {
       const user = userEvent.setup()
-      const testFood: Food = { id: 200, name: 'Test Ingredient', calories: 50, protein: 2, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] }
+      const testFood: Food = { id: 200, name: 'Test Ingredient', calories: 50, protein: 2, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'g' }] }
       const allFoods = [...mockFoods, testFood]
       renderWithProviders(<Store />, { 
         foods: allFoods

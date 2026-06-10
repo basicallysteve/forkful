@@ -15,11 +15,11 @@ vi.mock('@/lib/api/recipes', () => ({
 
 // Mock foods
 const mockFoods: Food[] = [
-  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'loaf'] },
-  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
-  { id: 5, name: 'Tomato', calories: 20, protein: 1, carbs: 4, fat: 0, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: ['piece', 'g'] },
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 3, name: 'Bread', calories: 100, protein: 3, carbs: 20, fat: 1, fiber: 2, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'loaf' }] },
+  { id: 4, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'cup' }] },
+  { id: 5, name: 'Tomato', calories: 20, protein: 1, carbs: 4, fat: 0, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'g' }] },
 ]
 
 const mockRecipe: RecipeType = {
@@ -35,6 +35,7 @@ const mockRecipe: RecipeType = {
   date_added: new Date('2025-11-21'),
   date_published: new Date('2025-11-22'),
   isPublic: false,
+  nutritionComplete: true,
 }
 
 const mockRecipes: RecipeType[] = [
@@ -51,6 +52,7 @@ const mockRecipes: RecipeType[] = [
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
+    nutritionComplete: true,
   },
 ]
 
@@ -535,7 +537,7 @@ describe('Recipe View Page', () => {
     it('shows an error toast and rolls back when visibility toggle fails', async () => {
       vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
       const user = userEvent.setup()
-      const publicRecipe = { ...mockRecipe, isPublic: true }
+      const publicRecipe = { ...mockRecipe, isPublic: true, nutritionComplete: true }
       renderWithStores(<Recipe recipe={publicRecipe} canEdit={true} />)
 
       await user.click(screen.getByRole('button', { name: /make private/i }))

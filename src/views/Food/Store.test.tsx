@@ -21,7 +21,7 @@ const mockFoods: Food[] = [
     fiber: 0,
     servingSize: 100,
     servingUnit: 'g',
-    measurements: ['g', 'oz'],
+    measurements: [{ unit: 'g' }, { unit: 'oz' }],
   },
   {
     id: 2,
@@ -33,7 +33,7 @@ const mockFoods: Food[] = [
     fiber: 3.5,
     servingSize: 1,
     servingUnit: 'cup',
-    measurements: ['cup', 'g'],
+    measurements: [{ unit: 'cup' }, { unit: 'g' }],
   },
 ]
 
@@ -196,7 +196,7 @@ describe('Food Store Page - Add Food', () => {
       renderWithProviders(<Store existingFood={mockFoods[0]} />)
 
       const measurementTags = document.querySelectorAll('.measurement-tag')
-      const tagTexts = Array.from(measurementTags).map(tag => tag.textContent?.replace('×', '').trim())
+      const tagTexts = Array.from(measurementTags).map(tag => tag.textContent?.replace('×', '').replace('⚠', '').trim())
       expect(tagTexts).toContain('g')
       expect(tagTexts).toContain('oz')
     })
@@ -212,7 +212,9 @@ describe('Food Store Page - Add Food', () => {
       await user.click(addButton)
 
       const measurementTags = document.querySelectorAll('.measurement-tag')
-      const tagTexts = Array.from(measurementTags).map(tag => tag.textContent?.replace('×', '').trim())
+      const tagTexts = Array.from(measurementTags).map(tag =>
+        tag.textContent?.replace('×', '').replace('⚠', '').trim()
+      )
       expect(tagTexts).toContain('custom')
     })
 
@@ -225,7 +227,7 @@ describe('Food Store Page - Add Food', () => {
 
       // Check measurement tags specifically, not the select dropdown
       const measurementTags = document.querySelectorAll('.measurement-tag')
-      const tagTexts = Array.from(measurementTags).map(tag => tag.textContent?.replace('×', '').trim())
+      const tagTexts = Array.from(measurementTags).map(tag => tag.textContent?.replace('×', '').replace('⚠', '').trim())
       expect(tagTexts).not.toContain('g')
       expect(tagTexts).toContain('oz') // oz should still be there
     })
