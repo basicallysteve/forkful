@@ -7,6 +7,7 @@ import { Column } from 'primereact/column'
 import { Toast } from 'primereact/toast'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
 import { type Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
@@ -449,58 +450,17 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
             <p className="steps-empty">No steps added yet.</p>
           )}
           {steps.map((step, idx) => (
-            <div key={step.id} className="step-block">
-              <div className="step-header">
-                <span className="step-number">{idx + 1}</span>
-                {editMode ? (
-                  <input
-                    type="text"
-                    className="step-title-input"
-                    placeholder="Step title (optional)"
-                    value={step.title ?? ''}
-                    onChange={(e) => handleStepChange(step.id, 'title', e.target.value)}
-                    aria-label={`Step ${idx + 1} title`}
-                  />
-                ) : (
-                  step.title && <h4 className="step-title">{step.title}</h4>
-                )}
-                {editMode && (
-                  <div className="step-controls">
-                    <button type="button" className="ghost-button step-btn" onClick={() => handleMoveStep(step.id, 'up')} disabled={idx === 0} aria-label="Move step up">↑</button>
-                    <button type="button" className="ghost-button step-btn" onClick={() => handleMoveStep(step.id, 'down')} disabled={idx === steps.length - 1} aria-label="Move step down">↓</button>
-                    <button type="button" className="danger-button step-btn" onClick={() => handleDeleteStep(step.id)} aria-label={`Delete step ${idx + 1}`}>Remove</button>
-                  </div>
-                )}
-              </div>
-              {editMode ? (
-                <div className="step-editor-wrap">
-                  <Editor
-                    value={step.content}
-                    onTextChange={(e) => handleStepChange(step.id, 'content', e.htmlValue ?? '')}
-                    style={{ height: '120px' }}
-                    aria-label={`Step ${idx + 1} content`}
-                  />
-                  <label className="step-image-upload">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleStepImageUpload(step.id, file)
-                      }}
-                      aria-label={`Upload image for step ${idx + 1}`}
-                    />
-                    <span className="ghost-button">+ Image</span>
-                  </label>
-                </div>
-              ) : (
-                <div
-                  className="step-content"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(step.content) }}
-                />
-              )}
-            </div>
+            <RecipeStepBlock
+              key={step.id}
+              step={step}
+              index={idx}
+              totalSteps={steps.length}
+              editMode={editMode}
+              onChange={handleStepChange}
+              onMove={handleMoveStep}
+              onDelete={handleDeleteStep}
+              onImageUpload={handleStepImageUpload}
+            />
           ))}
           {editMode && (
             <button type="button" className="ghost-button add-step-button" onClick={handleAddStep}>
