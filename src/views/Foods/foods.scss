@@ -280,6 +280,9 @@
   }
 
   .food-card {
+    &.p-card .p-card-body {
+      width:100%;
+    }
     display: flex;
     gap: 12px;
     padding: clamp(0.8rem, 1.5vw, 1rem);
@@ -338,7 +341,7 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    text-wrap: auto;
   }
 
   .card-badges {

@@ -1,5 +1,18 @@
-// ── Design tokens + PrimeReact variable overrides ────────────────────────────
-@import '../src/assets/styles/theme.scss';
+// ── All @use rules must appear before any CSS ─────────────────────────────────
+@use '../src/assets/styles/theme';
+@use '../src/assets/styles/primereact-dark';
+@use '../src/components/toolbar';
+@use '../src/components/Autocomplete/autocomplete';
+@use '../src/views/Login/login';
+@use '../src/views/CreateAccount/createAccount';
+@use '../src/views/Recipes/recipes';
+@use '../src/views/Recipe/recipe';
+@use '../src/views/Recipe/store';
+@use '../src/views/Foods/foods';
+@use '../src/views/Food/food';
+@use '../src/views/Food/store' as food-store;
+@use '../src/views/Pantry/pantry';
+@use '../src/components/OpenFoodFactsImport/off-import';
 
 // ── Global element resets ─────────────────────────────────────────────────────
 :root {
@@ -153,18 +166,3 @@ button {
   border: 2px solid var(--text-color-secondary);
   transition: border-color 120ms ease, background-color 120ms ease;
 }
-
-// ── View / component styles ───────────────────────────────────────────────────
-@import '../src/assets/styles/primereact-dark.scss';
-@import '../src/components/toolbar.scss';
-@import '../src/components/Autocomplete/autocomplete.scss';
-@import '../src/views/Login/login.scss';
-@import '../src/views/CreateAccount/createAccount.scss';
-@import '../src/views/Recipes/recipes.scss';
-@import '../src/views/Recipe/recipe.scss';
-@import '../src/views/Recipe/store.scss';
-@import '../src/views/Foods/foods.scss';
-@import '../src/views/Food/food.scss';
-@import '../src/views/Food/store.scss';
-@import '../src/views/Pantry/pantry.scss';
-@import '../src/components/OpenFoodFactsImport/off-import.scss';

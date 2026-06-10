@@ -16,6 +16,23 @@ vi.mock('@/lib/api/foods', () => ({
   apiFetchFoods: vi.fn(),
 }))
 
+vi.mock('@/components/OpenFoodFactsImport/OpenFoodFactsImport', () => ({
+  default: ({ visible, onHide, onImport }: { visible: boolean; onHide: () => void; onImport: (food: Food) => void }) =>
+    visible ? (
+      <div data-testid="off-import-dialog">
+        <button type="button" onClick={onHide}>Close Import</button>
+        <button
+          type="button"
+          onClick={() =>
+            onImport({ id: 99, name: 'Imported Food', calories: 100, protein: 5, carbs: 10, fat: 2, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [] })
+          }
+        >
+          Trigger Import
+        </button>
+      </div>
+    ) : null,
+}))
+
 import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { apiFetchFoods } from '@/lib/api/foods'
 
@@ -444,6 +461,40 @@ describe('Pantry Store Page', () => {
       // The stale result should not overwrite the newer one
       // We verify this by checking that the component doesn't crash or show wrong data
       expect(input).toBeInTheDocument()
+    })
+  })
+
+  describe('OpenFoodFacts Import', () => {
+    it('renders the "Import from OpenFoodFacts" button', () => {
+      renderWithProviders(<PantryStore />)
+      expect(screen.getByRole('button', { name: /import from openfoodfacts/i })).toBeInTheDocument()
+    })
+
+    it('opens the import dialog when the button is clicked', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      expect(screen.queryByTestId('off-import-dialog')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /import from openfoodfacts/i }))
+      expect(screen.getByTestId('off-import-dialog')).toBeInTheDocument()
+    })
+
+    it('closes the import dialog when onHide is called', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      await user.click(screen.getByRole('button', { name: /import from openfoodfacts/i }))
+      await user.click(screen.getByRole('button', { name: /close import/i }))
+      expect(screen.queryByTestId('off-import-dialog')).not.toBeInTheDocument()
+    })
+
+    it('adds the imported food to the available foods list', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      await user.click(screen.getByRole('button', { name: /import from openfoodfacts/i }))
+      await user.click(screen.getByRole('button', { name: /trigger import/i }))
+
+      // The imported food should now appear in the food autocomplete
+      await user.type(screen.getByPlaceholderText('Select a food item'), 'Imported')
+      await waitFor(() => expect(screen.getByRole('option', { name: /imported food/i })).toBeInTheDocument())
     })
   })
 })

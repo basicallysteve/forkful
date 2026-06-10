@@ -13,6 +13,7 @@ import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
+import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 
 interface PantryStoreProps {
   existingItem?: PantryItem
@@ -39,6 +40,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<Food[]>([])
+
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   useEffect(() => {
     apiFetchFoods().then(setFoods)
@@ -251,12 +254,26 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             >
               {saving ? 'Saving...' : isEditing ? 'Update Item' : 'Add Item'}
             </button>
+             <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setShowImportDialog(true)}
+              >
+                Import from OpenFoodFacts
+              </button>
             <button onClick={handleCancel} className="btn btn-secondary">
               Cancel
             </button>
           </div>
         </div>
       </div>
+        <OpenFoodFactsImport
+            visible={showImportDialog}
+            onHide={() => setShowImportDialog(false)}
+            onImport={(food: Food) => useFoodStore.setState(state => ({
+              foods: state.foods.some(f => f.id === food.id) ? state.foods : [...state.foods, food],
+            }))}
+          />
     </div>
   )
 }
