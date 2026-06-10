@@ -213,7 +213,7 @@ describe('apiReorderRecipeSteps', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
     await expect(apiReorderRecipeSteps('pasta', [3, 1, 2])).resolves.toBeUndefined()
     expect(fetch).toHaveBeenCalledWith(
-      '/api/recipes/pasta/steps/0',
+      '/api/recipes/pasta/steps',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ orderedIds: [3, 1, 2] }),

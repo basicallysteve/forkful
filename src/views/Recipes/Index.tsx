@@ -163,8 +163,6 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
                 <RecipeCard
                   key={recipe.id}
                   recipe={recipe}
-                  selected={false}
-                  onSelect={() => {}}
                 />
               ))}
             </div>

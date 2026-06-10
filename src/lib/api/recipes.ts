@@ -109,7 +109,7 @@ export async function apiDeleteRecipeStep(slug: string, stepId: number): Promise
 }
 
 export async function apiReorderRecipeSteps(slug: string, orderedIds: number[]): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}/steps/0`, {
+  const res = await fetch(`/api/recipes/${slug}/steps`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderedIds }),

@@ -45,6 +45,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
+  const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -179,13 +180,18 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     }
   }
 
-  async function handleStepChange(stepId: number, field: 'title' | 'content', value: string) {
+  function handleStepChange(stepId: number, field: 'title' | 'content', value: string) {
     setSteps((prev) => prev.map((s) => s.id === stepId ? { ...s, [field]: value } : s))
-    try {
-      await apiUpdateRecipeStep(recipeSlug, stepId, { [field]: value })
-    } catch (err) {
-      console.error('Failed to update step:', err)
-    }
+    const key = `${stepId}:${field}`
+    const existing = stepDebounceTimers.current.get(key)
+    if (existing) clearTimeout(existing)
+    stepDebounceTimers.current.set(key, setTimeout(async () => {
+      try {
+        await apiUpdateRecipeStep(recipeSlug, stepId, { [field]: value })
+      } catch (err) {
+        console.error('Failed to update step:', err)
+      }
+    }, 500))
   }
 
   async function handleDeleteStep(stepId: number) {
@@ -423,13 +429,13 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
           </section>
         )}
 
-        {!editMode && (displayRecipe.prepTime || displayRecipe.cookTime || displayRecipe.totalTime || displayRecipe.cuisineType || (displayRecipe.dietaryTags ?? []).length > 0) && (
+        {!editMode && (displayRecipe.prepTime != null || displayRecipe.cookTime != null || displayRecipe.totalTime != null || displayRecipe.cuisineType || (displayRecipe.dietaryTags ?? []).length > 0) && (
           <section className="recipe-meta-display">
             <div className="meta-pills">
               {displayRecipe.cuisineType && <span className="pill pill-ghost">{displayRecipe.cuisineType}</span>}
-              {displayRecipe.prepTime && <span className="pill pill-ghost">Prep: {displayRecipe.prepTime}m</span>}
-              {displayRecipe.cookTime && <span className="pill pill-ghost">Cook: {displayRecipe.cookTime}m</span>}
-              {displayRecipe.totalTime && <span className="pill pill-ghost">Total: {displayRecipe.totalTime}m</span>}
+              {displayRecipe.prepTime != null && <span className="pill pill-ghost">Prep: {displayRecipe.prepTime}m</span>}
+              {displayRecipe.cookTime != null && <span className="pill pill-ghost">Cook: {displayRecipe.cookTime}m</span>}
+              {displayRecipe.totalTime != null && <span className="pill pill-ghost">Total: {displayRecipe.totalTime}m</span>}
               {(displayRecipe.dietaryTags ?? []).map((tag) => (
                 <span key={tag} className="pill pill-primary">{tag}</span>
               ))}

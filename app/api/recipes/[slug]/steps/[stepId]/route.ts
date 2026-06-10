@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getRecipeBySlug, updateRecipeStep, deleteRecipeStep, reorderRecipeSteps } from '@/lib/recipes'
+import { getRecipeBySlug, updateRecipeStep, deleteRecipeStep } from '@/lib/recipes'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
@@ -31,15 +31,3 @@ export async function DELETE(_request: Request, { params }: Params) {
   return new NextResponse(null, { status: 204 })
 }
 
-export async function PATCH(request: Request, { params }: Params) {
-  const { slug } = await params
-  const session = await getSessionUser()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const recipe = await getRecipeBySlug(slug, session.userId)
-  if (!recipe) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (recipe.userId !== session.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  const body: { orderedIds: number[] } = await request.json()
-  await taskRunner.run(() => reorderRecipeSteps(recipe.id, body.orderedIds))
-  return new NextResponse(null, { status: 204 })
-}

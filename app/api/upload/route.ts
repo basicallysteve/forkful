@@ -19,7 +19,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
   }
 
-  const blob = await put(`recipe-steps/${Date.now()}-${file.name}`, file, {
+  const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 413 })
+  }
+
+  const ext = file.type === 'image/jpeg' ? 'jpg' : file.type.split('/')[1]
+  const filename = `recipe-steps/${crypto.randomUUID()}.${ext}`
+  const blob = await put(filename, file, {
     access: 'public',
   })
 
