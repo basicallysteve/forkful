@@ -617,6 +617,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                       <label className="ingredient-field ingredient-field-unit">
                         <span className="ingredient-field-label">Unit</span>
                         <Dropdown
+                          className="ingredient-unit-select"
                           value={ingredient.servingUnit}
                           onChange={(e) => handleIngredientChange(i, 'servingUnit', e.value)}
                           options={(() => {

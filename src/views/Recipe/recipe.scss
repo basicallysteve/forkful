@@ -286,6 +286,24 @@
     border-color: var(--vscode-accent);
     box-shadow: var(--focus-ring);
   }
+
+  // PrimeReact Dropdown reset — make it fill the field and match native input appearance
+  &.p-dropdown {
+    display: flex;
+    align-items: center;
+    padding: 0;
+
+    .p-dropdown-label {
+      padding: 7px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--vscode-text);
+    }
+
+    .p-dropdown-trigger {
+      padding-right: 8px;
+    }
+  }
 }
 
 .ingredient-cal-value {
