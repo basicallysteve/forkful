@@ -92,6 +92,13 @@
       "when": 1781033566578,
       "tag": "0012_organic_black_bolt",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781052986552,
+      "tag": "0013_wakeful_harpoon",
+      "breakpoints": true
     }
   ]
 }

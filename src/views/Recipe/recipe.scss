@@ -366,6 +366,201 @@
   flex-wrap: wrap;
 }
 
+// ── Steps ────────────────────────────────────────────────────────────────────
+
+.recipe-steps {
+  margin: 20px 0 18px;
+}
+
+.steps-heading {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-text);
+  letter-spacing: 0.2px;
+}
+
+.steps-empty {
+  color: var(--vscode-muted);
+  font-size: 14px;
+}
+
+.step-block {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 10px;
+  background: var(--vscode-panel-deep);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vscode-accent);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.step-title-input {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: var(--vscode-panel);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  font-family: inherit;
+
+  &::placeholder {
+    color: var(--vscode-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.step-title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-text);
+}
+
+.step-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.step-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.step-editor-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step-image-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.step-content {
+  font-size: 14px;
+  color: var(--vscode-text);
+  line-height: 1.65;
+
+  p { margin: 0 0 8px; }
+  ul, ol { padding-left: 20px; margin: 0 0 8px; }
+  img { max-width: 100%; border-radius: 6px; margin-top: 8px; }
+}
+
+.add-step-button {
+  margin-top: 4px;
+}
+
+// ── Recipe meta fields (times, cuisine, dietary tags) ─────────────────────────
+
+.recipe-meta-fields {
+  margin: 14px 0 18px;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: var(--vscode-muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.meta-input,
+.meta-select {
+  padding: 7px 10px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: var(--vscode-panel);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.meta-checkboxes {
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 2;
+}
+
+.dietary-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.dietary-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--vscode-text);
+  cursor: pointer;
+}
+
+.recipe-meta-display {
+  margin: 10px 0 16px;
+}
+
+.meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .add-ingredient-button {
   flex: 1;
 }
