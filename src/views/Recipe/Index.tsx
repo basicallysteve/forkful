@@ -55,7 +55,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   if (currentRecipe.date_published) {
     isPublished = true
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - currentRecipe.date_published.getTime())
+    const diffTime = currentRecipe.date_published?  Math.abs(now.getTime() - currentRecipe.date_published.getTime()) : 0
     const daysSincePublished = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     publishedText = daysSincePublished > 1 ? `Published ${daysSincePublished} days ago` : "Published today"
   }
