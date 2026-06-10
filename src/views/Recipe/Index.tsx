@@ -52,7 +52,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
   let publishedText = "Unpublished"
   let isPublished = false
-  if (currentRecipe.date_published) {
+  if (currentRecipe.date_published && currentRecipe.date_published instanceof Date) {
     isPublished = true
     const now = new Date()
     const diffTime = currentRecipe.date_published?  Math.abs(now.getTime() - currentRecipe.date_published.getTime()) : 0
@@ -95,8 +95,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     try {
       const result = await apiUpdateRecipe(updatedRecipe)
       updateRecipeInStore(result)
-      setCurrentRecipe(result)
-      setEditedRecipe(result)
+      setCurrentRecipe({
+        ...result,
+        date_published: result.date_published ? new Date(result.date_published) : null,
+      })
+      setEditedRecipe({
+        ...result,
+        date_published: result.date_published ? new Date(result.date_published) : null,
+      })
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
@@ -517,17 +523,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           <div className="panel-toolbar">
             <div className="toolbar-tabs">
               {editMode ? (
-                <select
-                  className="meal-select"
-                  value={editedRecipe.meal || ''}
-                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e.target.value as Recipe["meal"] })}
-                  aria-label="Meal type"
-                >
-                  <option value="">Select meal</option>
-                  {mealOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
+                <Autocomplete
+                  value={editedRecipe.meal ?? ''}
+                  options={mealOptions}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e })}
+                  getOptionLabel={(opt) => opt}
+                  placeholder="Select meal type"
+                  inputAriaLabel="Meal type"
+                />
               ) : (
                 <span className="tab is-active">{displayRecipe.meal}</span>
               )}
