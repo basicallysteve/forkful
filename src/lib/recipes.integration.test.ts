@@ -34,7 +34,7 @@ describe('recipes data layer (integration)', () => {
       fiber: 1,
       servingSize: 100,
       servingUnit: 'g',
-      measurements: ['g'],
+      measurements: [{ unit: 'g' }],
     })
     testUser = await signUp({
       username: `testuser_${Date.now()}`,

@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum, unique, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index } from 'drizzle-orm/pg-core';
+import type { Measurement } from '@/types/Food'
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
 
@@ -13,7 +14,7 @@ export const foods = pgTable('foods', {
   fiber: numeric('fiber', { precision: 10, scale: 2 }).notNull().default('0'),
   servingSize: numeric('serving_size', { precision: 10, scale: 2 }).notNull().default('1'),
   servingUnit: varchar('serving_unit', { length: 50 }),
-  measurements: jsonb('measurements').$type<string[]>().default([]),
+  measurements: jsonb('measurements').$type<Measurement[]>().default([]),
   saturatedFat: numeric('saturated_fat', { precision: 10, scale: 2 }),
   sugar: numeric('sugar', { precision: 10, scale: 2 }),
   sodium: numeric('sodium', { precision: 10, scale: 1 }),
@@ -36,6 +37,8 @@ export const recipes = pgTable('recipes', {
   cuisineType: varchar('cuisine_type', { length: 100 }),
   dietaryTags: jsonb('dietary_tags').$type<string[]>().default([]),
   isPublic: integer('is_public').notNull().default(0),
+  serves: integer('serves'),
+  nutritionComplete: boolean('nutrition_complete').notNull().default(true),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),
@@ -51,7 +54,6 @@ export const ingredients = pgTable('ingredients', {
     .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
   quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
-  calories: integer('calories').notNull(),
   servingUnit: varchar('serving_unit', { length: 50 }),
   dateAdded: timestamp('date_added').defaultNow(),
   dateUpdated: timestamp('date_updated'),

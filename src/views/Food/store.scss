@@ -234,6 +234,41 @@
     border-radius: 6px;
     font-size: 12px;
     color: var(--vscode-text);
+
+    &.measurement-tag-warn {
+      border-color: var(--vscode-warning, #d4a017);
+      background: color-mix(in srgb, var(--vscode-warning, #d4a017) 10%, transparent);
+    }
+  }
+
+  .measurement-tag-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .measurement-warn-icon {
+    font-size: 11px;
+    cursor: help;
+  }
+
+  .measurement-grams-input {
+    width: 64px;
+    padding: 2px 4px;
+    font-size: 11px;
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+
+    &::placeholder {
+      color: var(--vscode-muted);
+    }
+  }
+
+  .measurement-grams-label {
+    font-size: 11px;
+    color: var(--vscode-muted);
   }
 
   .measurement-remove {

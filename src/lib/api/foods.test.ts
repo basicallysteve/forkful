@@ -12,7 +12,7 @@ const mockFood: Food = {
   fiber: 0,
   servingSize: 1,
   servingUnit: 'slice',
-  measurements: ['slice', 'oz', 'g'],
+  measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }],
 }
 
 beforeEach(() => {

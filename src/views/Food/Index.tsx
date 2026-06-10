@@ -148,8 +148,8 @@ export default function FoodIndex({ food }: FoodIndexProps) {
                   <strong>Available Measurements:</strong>
                   <div className="measurement-tags">
                     {food.measurements.map((m) => (
-                      <span key={m} className="measurement-tag">
-                        {m}
+                      <span key={m.unit} className="measurement-tag">
+                        {m.unit}{m.gramsPerUnit ? ` (${m.gramsPerUnit}g)` : ''}
                       </span>
                     ))}
                   </div>

@@ -15,11 +15,11 @@ vi.mock('@/lib/api/recipes', () => ({
 
 // Mock foods
 const mockFoods: Food[] = [
-  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: ['slice', 'oz', 'g'] },
-  { id: 3, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'cup'] },
-  { id: 4, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: ['g', 'oz', 'lb'] },
-  { id: 5, name: 'Romaine Lettuce', calories: 15, protein: 1, carbs: 3, fat: 0, fiber: 2, servingSize: 100, servingUnit: 'g', measurements: ['g', 'cup'] },
+  { id: 1, name: 'Ham', calories: 75, protein: 5, carbs: 1, fat: 6, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 2, name: 'Cheese', calories: 100, protein: 7, carbs: 0, fat: 8, fiber: 0, servingSize: 1, servingUnit: 'slice', measurements: [{ unit: 'slice' }, { unit: 'oz' }, { unit: 'g' }] },
+  { id: 3, name: 'Spaghetti', calories: 350, protein: 13, carbs: 71, fat: 2, fiber: 3, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'cup' }] },
+  { id: 4, name: 'Ground Beef', calories: 200, protein: 26, carbs: 0, fat: 10, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'oz' }, { unit: 'lb' }] },
+  { id: 5, name: 'Romaine Lettuce', calories: 15, protein: 1, carbs: 3, fat: 0, fiber: 2, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'cup' }] },
 ]
 
 const mockRecipes: Recipe[] = [
@@ -36,6 +36,7 @@ const mockRecipes: Recipe[] = [
     date_added: new Date('2025-11-21'),
     date_published: new Date('2025-11-22'),
     isPublic: false,
+    nutritionComplete: true,
   },
   {
     id: 2,
@@ -50,6 +51,7 @@ const mockRecipes: Recipe[] = [
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
+    nutritionComplete: true,
   },
   {
     id: 3,
@@ -63,6 +65,7 @@ const mockRecipes: Recipe[] = [
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,
+    nutritionComplete: true,
   },
 ]
 
@@ -288,6 +291,7 @@ describe('Recipes filters and actions', () => {
         description: 'A spicy bowl of chili.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 2,
@@ -296,6 +300,7 @@ describe('Recipes filters and actions', () => {
         description: 'Pasta with garlic sauce.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 3,
@@ -304,6 +309,7 @@ describe('Recipes filters and actions', () => {
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
     ]})
 
@@ -327,6 +333,7 @@ describe('Recipes filters and actions', () => {
         description: 'A spicy bowl of chili.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 2,
@@ -335,6 +342,7 @@ describe('Recipes filters and actions', () => {
         description: 'Pasta with garlic sauce.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 3,
@@ -343,6 +351,7 @@ describe('Recipes filters and actions', () => {
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
     ]})
     const searchInput = screen.getByPlaceholderText(/search recipes/i)
@@ -364,6 +373,7 @@ describe('Recipes filters and actions', () => {
         description: 'A spicy bowl of chili.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 2,
@@ -372,6 +382,7 @@ describe('Recipes filters and actions', () => {
         description: 'Pasta with garlic sauce.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 3,
@@ -380,6 +391,7 @@ describe('Recipes filters and actions', () => {
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
     ]})
     const sortTrigger = screen.getByRole('button', { name: /sort by/i })
@@ -405,6 +417,7 @@ describe('Recipes filters and actions', () => {
         description: 'A spicy bowl of chili.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 2,
@@ -413,6 +426,7 @@ describe('Recipes filters and actions', () => {
         description: 'Pasta with garlic sauce.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
       {
         id: 3,
@@ -421,6 +435,7 @@ describe('Recipes filters and actions', () => {
         description: 'Oatmeal topped with fresh berries.',
         ingredients: [],
         isPublic: false,
+        nutritionComplete: true,
       },
     ]})
 
@@ -443,6 +458,7 @@ describe('For You section', () => {
       ingredients: [],
       cuisineType: 'Italian',
       isPublic: true,
+      nutritionComplete: true,
     }]
     renderWithProviders(<Recipes forYouRecipes={forYouRecipes} />)
     expect(screen.getByText('For You')).toBeInTheDocument()
@@ -464,14 +480,17 @@ describe('Dietary restriction filter', () => {
   const veganRecipe: Recipe = {
     id: 10, name: 'Vegan Bowl', meal: 'Lunch', description: 'Vegan.',
     ingredients: [], dietaryTags: ['Vegan'], isPublic: true,
+    nutritionComplete: true,
   }
   const nonVeganRecipe: Recipe = {
     id: 11, name: 'Beef Stew', meal: 'Dinner', description: 'Has meat.',
     ingredients: [], dietaryTags: ['Gluten-Free'], isPublic: true,
+    nutritionComplete: true,
   }
   const untaggedRecipe: Recipe = {
     id: 12, name: 'Mystery Soup', meal: 'Dinner', description: 'Unknown.',
     ingredients: [], isPublic: true,
+    nutritionComplete: true,
   }
 
   it('hides non-matching recipes when dietary filter is active', () => {

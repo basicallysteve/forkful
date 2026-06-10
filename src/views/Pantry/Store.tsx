@@ -94,6 +94,14 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   const selectedFood = allFoods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
+  // Unit options constrained to the selected food's measurements, falling back to all units
+  const unitOptions = useMemo(() => {
+    if (selectedFood && selectedFood.measurements.length > 0) {
+      return selectedFood.measurements.map((m) => ({ label: m.unit, value: m.unit }))
+    }
+    return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
+  }, [selectedFood])
+
   async function handleSave() {
     if (!selectedFood) return
     setSaving(true)
@@ -181,11 +189,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
                 onChange={(e) => setOriginalUnit(e.value)}
                 className="size-unit"
                 ariaLabel="Original size unit"
-                options={[
-                  ...MASS_UNITS,
-                  ...VOLUME_UNITS,
-                  ...CUSTOM_UNITS,
-                ].map((unit) => ({ label: unit, value: unit }))}
+                options={unitOptions}
               />
             </div>
             <small>Original size of each item (e.g., 16 oz box)</small>
@@ -212,11 +216,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
                 onChange={(e) => setCurrentUnit(e.value)}
                 className="size-unit"
                 ariaLabel="Current size unit"
-                options={[
-                  ...MASS_UNITS,
-                  ...VOLUME_UNITS,
-                  ...CUSTOM_UNITS,
-                ].map((unit) => ({ label: unit, value: unit }))}
+                options={unitOptions}
               />
             </div>
             <small>Remaining size of each item (e.g., 8 oz left)</small>
