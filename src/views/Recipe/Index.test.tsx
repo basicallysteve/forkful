@@ -229,7 +229,8 @@ describe('Recipe View Page', () => {
       await user.click(screen.getByRole('button', { name: /edit/i }))
 
       const mealSelect = screen.getByRole('combobox', { name: /meal type/i })
-      await user.selectOptions(mealSelect, 'Dinner')
+      await user.clear(mealSelect)
+      await user.type(mealSelect, 'Dinner')
 
       expect(mealSelect).toHaveValue('Dinner')
     })

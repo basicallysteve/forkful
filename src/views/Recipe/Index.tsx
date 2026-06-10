@@ -526,8 +526,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                 <Autocomplete
                   value={editedRecipe.meal ?? ''}
                   options={mealOptions}
-                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e })}
-                  getOptionLabel={(opt) => opt}
+                  onChange={(e) => setEditedRecipe({ ...editedRecipe, meal: e as Recipe['meal'] })}
+                  getOptionLabel={(opt) => opt ?? ''}
                   placeholder="Select meal type"
                   inputAriaLabel="Meal type"
                 />
