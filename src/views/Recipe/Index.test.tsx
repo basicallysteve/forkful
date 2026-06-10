@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { cloneElement } from 'react'
 import Recipe from './Index'
@@ -113,10 +113,8 @@ describe('Recipe View Page', () => {
 
     it('displays ingredient quantities', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
-      const table = screen.getByRole('table')
-      // Quantities now include the serving unit
-      expect(within(table).getByText('2 slice')).toBeInTheDocument()
-      expect(within(table).getByText('1 slice')).toBeInTheDocument()
+      expect(screen.getByText('2 slice')).toBeInTheDocument()
+      expect(screen.getByText('1 slice')).toBeInTheDocument()
     })
 
     it('displays total calories', () => {

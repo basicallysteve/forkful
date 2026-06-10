@@ -215,7 +215,7 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
               </button>
             </>
           ) : (
-            !loading && <BarcodeScanner onDetected={handleBarcodeDetected} />
+            !loading && !localFoodResult && <BarcodeScanner onDetected={handleBarcodeDetected} />
           )}
         </div>
       )}

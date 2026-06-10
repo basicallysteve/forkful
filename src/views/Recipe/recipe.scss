@@ -164,33 +164,146 @@
   overflow: visible;
 }
 
-.ingredient-table {
-  width: 100%;
-  border-collapse: collapse;
+// ── Ingredient list (read mode) ───────────────────────────────────────────────
+
+.ingredient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ingredient-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--vscode-border);
+  border-radius: 10px;
+  color: var(--vscode-muted);
+  background: var(--accent-hover);
+  font-size: 14px;
+}
+
+.ingredient-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--vscode-border);
+  transition: background-color 120ms ease;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.ingredient-row-name {
   font-size: 14px;
   color: var(--vscode-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ingredient-table th,
-.ingredient-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--vscode-border);
+.ingredient-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.ingredient-table th {
-  text-align: left;
+.ingredient-row-qty {
+  font-size: 13px;
   color: var(--vscode-muted);
+}
+
+.ingredient-row-sep {
+  font-size: 13px;
+  color: var(--vscode-border);
+}
+
+.ingredient-row-cal {
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-.ingredient-table tbody tr:hover {
+  color: var(--vscode-accent);
   background: var(--accent-hover);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
-.quantity-col {
-  width: 140px;
-  text-align: right;
+// ── Ingredient card (edit mode) ───────────────────────────────────────────────
+
+.ingredient-card {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 10px;
+  background: var(--vscode-panel);
+  margin-bottom: 8px;
+}
+
+.ingredient-card-fields {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.5fr 100px 100px 80px;
+  gap: 10px;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.ingredient-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ingredient-field-label {
+  font-size: 11px;
+  color: var(--vscode-muted);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.ingredient-qty-input,
+.ingredient-unit-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: var(--vscode-panel-strong);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.ingredient-cal-value {
+  display: block;
+  padding: 7px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-accent);
+  background: var(--accent-hover);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.ingredient-remove-btn {
+  flex-shrink: 0;
+  align-self: flex-end;
 }
 
 .recipe-statusbar {
@@ -317,47 +430,6 @@
   }
 }
 
-.ingredient-name-input,
-.ingredient-quantity-input,
-.ingredient-calories-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--vscode-text);
-  background: var(--vscode-panel);
-  border: 1px solid var(--vscode-border);
-  border-radius: 8px;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: var(--vscode-accent);
-    box-shadow: var(--focus-ring);
-  }
-
-  &:disabled {
-    background: var(--vscode-panel-strong);
-    color: var(--vscode-muted);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-}
-
-.ingredient-quantity-input,
-.ingredient-calories-input {
-  text-align: right;
-}
-
-.calories-col {
-  width: 100px;
-  text-align: right;
-}
-
-.actions-col {
-  width: 100px;
-  text-align: center;
-}
 
 .ingredient-actions {
   display: flex;
@@ -657,74 +729,28 @@
     overflow: visible;
   }
 
-  .ingredient-table {
-    font-size: 13px;
+  .ingredient-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ingredient-card-fields {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: auto;
+  }
+
+  .ingredient-field-name {
+    grid-column: 1 / -1;
+  }
+
+  .ingredient-remove-btn {
     width: 100%;
-    table-layout: fixed;
-  }
-
-  .ingredient-table th,
-  .ingredient-table td {
-    padding: 8px 4px;
-    vertical-align: top;
-  }
-
-  .ingredient-table td {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 4px 0;
-    border-bottom: none;
-  }
-
-  .ingredient-table thead {
-    display: none;
-  }
-
-  .ingredient-table tbody tr {
-    display: block;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--vscode-border);
-  }
-
-  .quantity-col {
-    width: 100%;
-    text-align: left;
-  }
-
-  .calories-col {
-    width: 100%;
-    text-align: left;
-    margin-top: 8px;
-  }
-
-  .actions-col {
-    width: 100%;
-    text-align: left;
-    padding-top: 8px;
-  }
-
-  .ingredient-name-input {
-    width: 100%;
-    min-width: auto;
-    margin-bottom: 8px;
-  }
-
-  .ingredient-quantity-input,
-  .ingredient-calories-input {
-    width: 100%;
-    max-width: none;
-    text-align: left;
-  }
-
-  .ingredient-calories-input {
-    margin-top: 4px;
   }
 
   .danger-button {
     padding: 6px 8px;
     font-size: 12px;
-    width: 100%;
   }
 
   .ghost-button,
