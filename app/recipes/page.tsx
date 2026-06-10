@@ -1,9 +1,24 @@
-import { getRecipes } from '@/lib/recipes'
+import { getRecipes, getForYouRecipes } from '@/lib/recipes'
 import { getSessionUser } from '@/lib/auth'
+import { getUser } from '@/lib/users'
 import RecipesList from '@/views/Recipes/Index'
 
 export default async function RecipesPage() {
   const session = await getSessionUser()
-  const recipes = await getRecipes({ viewerId: session?.userId })
-  return <RecipesList initialRecipes={recipes} />
+  const user = session ? await getUser(session.userId) : null
+  const cuisinePreferences = user?.cuisinePreferences ?? []
+  const dietaryRestrictions = user?.dietaryRestrictions ?? []
+
+  const [recipes, forYouRecipes] = await Promise.all([
+    getRecipes({ viewerId: session?.userId }),
+    getForYouRecipes(cuisinePreferences),
+  ])
+
+  return (
+    <RecipesList
+      initialRecipes={recipes}
+      forYouRecipes={forYouRecipes}
+      dietaryRestrictions={dietaryRestrictions}
+    />
+  )
 }

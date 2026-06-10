@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum, unique } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, pgEnum, unique, index } from 'drizzle-orm/pg-core';
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
 
@@ -30,6 +30,11 @@ export const recipes = pgTable('recipes', {
   slug: varchar('slug', { length: 255 }).unique(),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
+  prepTime: integer('prep_time'),
+  cookTime: integer('cook_time'),
+  totalTime: integer('total_time'),
+  cuisineType: varchar('cuisine_type', { length: 100 }),
+  dietaryTags: jsonb('dietary_tags').$type<string[]>().default([]),
   isPublic: integer('is_public').notNull().default(0),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
@@ -104,6 +109,20 @@ export const login_attempts = pgTable('login_attempts', {
   successful: integer('successful').notNull().default(0), // 0 = false, 1 = true
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 });
+
+export const recipeSteps = pgTable('recipe_steps', {
+  id: serial('id').primaryKey(),
+  recipeId: integer('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  title: varchar('title', { length: 255 }),
+  content: text('content').notNull().default(''),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateDeleted: timestamp('date_deleted'),
+}, (t) => ({
+  recipeStepsLookupIdx: index('recipe_steps_recipe_id_deleted_position_idx').on(t.recipeId, t.dateDeleted, t.position),
+}));
 
 export const savedRecipes = pgTable('saved_recipes', {
   id: serial('id').primaryKey(),

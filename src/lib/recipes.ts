@@ -1,16 +1,18 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray } from 'drizzle-orm'
 import { db } from '@/db'
-import { recipes, ingredients, foods, savedRecipes } from '@/db/schema'
+import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
+import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
+import { sanitizeRichText } from '@/lib/sanitize'
 
 export type RecipeQueryOptions = {
   user_id?: number
   ingredient?: string
   published?: boolean
-  sortBy?: 'date_published' | 'calories'
+  sortBy?: 'date_published'
   sortDir?: 'asc' | 'desc'
   viewerId?: number
 }
@@ -50,19 +52,78 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
   }))
 }
 
-async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
-  const ingredientList = await buildIngredients(row.id)
+function mapStep(row: typeof recipeSteps.$inferSelect): RecipeStep {
+  return {
+    id: row.id,
+    recipeId: row.recipeId,
+    position: row.position,
+    title: row.title ?? null,
+    content: row.content,
+    dateAdded: row.dateAdded ?? undefined,
+  }
+}
+
+async function buildSteps(recipeId: number): Promise<RecipeStep[]> {
+  const rows = await db
+    .select()
+    .from(recipeSteps)
+    .where(and(eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    .orderBy(asc(recipeSteps.position))
+  return rows.map(mapStep)
+}
+
+function mapRecipeRow(
+  row: typeof recipes.$inferSelect,
+  ingredientList: Ingredient[],
+  stepList: RecipeStep[],
+  ingredientCount?: number,
+): Recipe {
   return {
     id: row.id,
     name: row.name,
     meal: row.meal as Recipe['meal'] | undefined,
     description: row.description ?? '',
     ingredients: ingredientList,
+    ingredientCount: ingredientCount ?? ingredientList.length,
+    steps: stepList,
+    prepTime: row.prepTime ?? null,
+    cookTime: row.cookTime ?? null,
+    totalTime: row.totalTime ?? null,
+    cuisineType: row.cuisineType ?? null,
+    dietaryTags: (row.dietaryTags as string[] | null) ?? [],
     date_added: row.dateAdded ?? undefined,
     date_published: row.datePublished ?? null,
     userId: row.userId ?? null,
     isPublic: row.isPublic === 1,
   }
+}
+
+async function buildRecipe(row: typeof recipes.$inferSelect): Promise<Recipe> {
+  const [ingredientList, stepList] = await Promise.all([
+    buildIngredients(row.id),
+    buildSteps(row.id),
+  ])
+  return mapRecipeRow(row, ingredientList, stepList)
+}
+
+// Fetch ingredient counts for multiple recipes in 1 query instead of N.
+// Steps and full ingredient objects are only needed on the detail page (buildRecipe).
+async function buildRecipesBatch(rows: (typeof recipes.$inferSelect)[]): Promise<Recipe[]> {
+  if (rows.length === 0) return []
+  const ids = rows.map((r) => r.id)
+
+  const countRows = await db
+    .select({ recipeId: ingredients.recipeId, total: count() })
+    .from(ingredients)
+    .where(and(inArray(ingredients.recipeId, ids), isNull(ingredients.dateDeleted)))
+    .groupBy(ingredients.recipeId)
+
+  const countByRecipe = new Map<number, number>(ids.map((id) => [id, 0]))
+  for (const row of countRows) {
+    countByRecipe.set(row.recipeId, Number(row.total))
+  }
+
+  return rows.map((row) => mapRecipeRow(row, [], [], countByRecipe.get(row.id) ?? 0))
 }
 
 export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Recipe[]> {
@@ -111,17 +172,7 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
       : baseQuery
 
     const rows = await orderedQuery
-    const built = await Promise.all(rows.map(buildRecipe))
-
-    if (options.sortBy === 'calories') {
-      built.sort((a, b) => {
-        const calsA = a.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-        const calsB = b.ingredients.reduce((s, i) => s + (i.calories || 0), 0)
-        return options.sortDir === 'desc' ? calsB - calsA : calsA - calsB
-      })
-    }
-
-    return built
+    return buildRecipesBatch(rows)
   } catch {
     return []
   }
@@ -148,6 +199,11 @@ export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
     slug: toSlug(data.name),
     meal: data.meal,
     description: data.description,
+    prepTime: data.prepTime ?? null,
+    cookTime: data.cookTime ?? null,
+    totalTime: data.totalTime ?? null,
+    cuisineType: data.cuisineType ?? null,
+    dietaryTags: data.dietaryTags ?? [],
     isPublic: data.isPublic ? 1 : 0,
     userId: data.userId ?? null,
     dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
@@ -175,6 +231,11 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
   }
   if (data.meal !== undefined) updates.meal = data.meal
   if (data.description !== undefined) updates.description = data.description
+  if (data.prepTime !== undefined) updates.prepTime = data.prepTime
+  if (data.cookTime !== undefined) updates.cookTime = data.cookTime
+  if (data.totalTime !== undefined) updates.totalTime = data.totalTime
+  if (data.cuisineType !== undefined) updates.cuisineType = data.cuisineType
+  if (data.dietaryTags !== undefined) updates.dietaryTags = data.dietaryTags
   if (data.date_published !== undefined) updates.datePublished = data.date_published ? new Date(data.date_published) : null
   if (data.isPublic !== undefined) updates.isPublic = data.isPublic ? 1 : 0
 
@@ -239,7 +300,7 @@ export async function getSavedRecipes(userId: number, limit?: number): Promise<R
     .orderBy(desc(savedRecipes.dateSaved))
   if (limit !== undefined) query = query.limit(limit) as typeof query
   const rows = await query
-  return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+  return buildRecipesBatch(rows.map((r) => r.recipe))
 }
 
 export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
@@ -252,7 +313,7 @@ export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
       .groupBy(recipes.id)
       .orderBy(desc(count(savedRecipes.id)), desc(recipes.datePublished))
       .limit(limit)
-    return Promise.all(rows.map(r => buildRecipe(r.recipe)))
+    return buildRecipesBatch(rows.map((r) => r.recipe))
   } catch {
     return []
   }
@@ -263,4 +324,85 @@ export async function isSaved(userId: number, recipeId: number): Promise<boolean
     and(eq(savedRecipes.userId, userId), eq(savedRecipes.recipeId, recipeId), isNull(savedRecipes.dateDeleted))
   )
   return !!row
+}
+
+export async function getRecipeSteps(recipeId: number): Promise<RecipeStep[]> {
+  const rows = await db
+    .select()
+    .from(recipeSteps)
+    .where(and(eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    .orderBy(asc(recipeSteps.position))
+  return rows.map(mapStep)
+}
+
+export async function createRecipeStep(recipeId: number, data: { title?: string; content: string }): Promise<RecipeStep> {
+  const [maxRow] = await db
+    .select({ maxPos: recipeSteps.position })
+    .from(recipeSteps)
+    .where(and(eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    .orderBy(desc(recipeSteps.position))
+    .limit(1)
+  const nextPosition = maxRow ? maxRow.maxPos + 1 : 0
+  const [row] = await db.insert(recipeSteps).values({
+    recipeId,
+    position: nextPosition,
+    title: data.title ?? null,
+    content: sanitizeRichText(data.content),
+  }).returning()
+  return mapStep(row)
+}
+
+export async function updateRecipeStep(stepId: number, recipeId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep | null> {
+  const updates: Partial<typeof recipeSteps.$inferInsert> = {}
+  if (data.title !== undefined) updates.title = data.title
+  if (data.content !== undefined) updates.content = sanitizeRichText(data.content)
+  const [row] = await db
+    .update(recipeSteps)
+    .set(updates)
+    .where(and(eq(recipeSteps.id, stepId), eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    .returning()
+  return row ? mapStep(row) : null
+}
+
+export async function deleteRecipeStep(stepId: number, recipeId: number): Promise<boolean> {
+  const updated = await db
+    .update(recipeSteps)
+    .set({ dateDeleted: new Date() })
+    .where(and(eq(recipeSteps.id, stepId), eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    .returning()
+  return updated.length > 0
+}
+
+export async function reorderRecipeSteps(recipeId: number, orderedIds: number[]): Promise<void> {
+  if (orderedIds.length === 0) return
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(recipeSteps)
+        .set({ position: i })
+        .where(and(eq(recipeSteps.id, orderedIds[i]), eq(recipeSteps.recipeId, recipeId), isNull(recipeSteps.dateDeleted)))
+    }
+  })
+}
+
+export async function getForYouRecipes(cuisinePreferences: string[], limit = 5): Promise<Recipe[]> {
+  if (cuisinePreferences.length === 0) return []
+  try {
+    const rows = await db
+      .select()
+      .from(recipes)
+      .where(
+        and(
+          isNull(recipes.dateDeleted),
+          eq(recipes.isPublic, 1),
+          isNotNull(recipes.datePublished),
+          inArray(recipes.cuisineType, cuisinePreferences)
+        )
+      )
+      .orderBy(desc(recipes.datePublished))
+      .limit(limit)
+    return buildRecipesBatch(rows)
+  } catch {
+    return []
+  }
 }

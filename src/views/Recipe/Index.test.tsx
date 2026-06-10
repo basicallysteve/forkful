@@ -31,6 +31,7 @@ const mockRecipe: RecipeType = {
     { food: mockFoods[0], quantity: 2, calories: 150, servingUnit: 'slice' },
     { food: mockFoods[1], quantity: 1, calories: 100, servingUnit: 'slice' },
   ],
+  steps: [],
   date_added: new Date('2025-11-21'),
   date_published: new Date('2025-11-22'),
   isPublic: false,
@@ -46,6 +47,7 @@ const mockRecipes: RecipeType[] = [
     ingredients: [
       { food: mockFoods[3], quantity: 100, calories: 350, servingUnit: 'g' },
     ],
+    steps: [],
     date_added: new Date('2025-12-01'),
     date_published: new Date('2025-12-02'),
     isPublic: false,

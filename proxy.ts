@@ -1,42 +1,27 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { decrypt } from '@/lib/session'
 
-type SessionPayload = { userId: string | number; username: string }
-
-const protectedRoutes = ['/recipes/new', '/foods/new', '/pantry', '/foods']
-const secure = process.env.NODE_ENV === 'production'
+// Routes that require a logged-in session.
+// Public browsing (/recipes, /foods, /foods/[slug]) stays accessible to all.
+const PROTECTED_ROUTES = ['/pantry', '/profile', '/recipes/new', '/foods/new', '/foods/[slug]/edit']
 
 export async function proxy(request: NextRequest) {
-  const session = await getSession(request)
+  const isProtected = PROTECTED_ROUTES.some((route) => request.nextUrl.pathname.startsWith(route))
 
-  const redirect = redirectIfProtected(request, session)
-  if (redirect) return redirect
+  if (isProtected) {
+    // next-auth v5 JWT session cookies (dev uses plain name; prod uses __Secure- prefix)
+    const hasSession =
+      request.cookies.has('authjs.session-token') ||
+      request.cookies.has('__Secure-authjs.session-token')
 
-  const response = NextResponse.next()
-  if (session) {
-    response.cookies.set('user', JSON.stringify({ username: session.username }), { httpOnly: false, secure, sameSite: 'strict' })
-  } else {
-    response.cookies.delete('user')
+    if (!hasSession) {
+      return NextResponse.redirect(new URL('/login', request.nextUrl))
+    }
   }
-  return response
-}
 
-async function getSession(request: NextRequest): Promise<SessionPayload | null> {
-  const sessionCookie = request.cookies.get('session')?.value
-  if (!sessionCookie) return null
-  return await decrypt(sessionCookie).catch(() => null) as SessionPayload | null
-}
-
-function redirectIfProtected(request: NextRequest, session: SessionPayload | null): NextResponse | null {
-  const path = request.nextUrl.pathname
-  const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route))
-  if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/login', request.nextUrl))
-  }
-  return null
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.(?:png|svg|jpg|ico|webp)$).*)'],
 }

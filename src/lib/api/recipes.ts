@@ -1,4 +1,5 @@
 import type { Recipe } from '@/types/Recipe'
+import type { RecipeStep } from '@/types/RecipeStep'
 import { toSlug } from '@/utils/slug'
 
 export type RecipeQueryOptions = {
@@ -74,4 +75,53 @@ export async function apiIsRecipeSaved(slug: string): Promise<boolean> {
   if (!res.ok) return false
   const data = await res.json()
   return data.saved
+}
+
+export async function apiFetchRecipeSteps(slug: string): Promise<RecipeStep[]> {
+  const res = await fetch(`/api/recipes/${slug}/steps`)
+  if (!res.ok) throw new Error('Failed to fetch steps')
+  return res.json()
+}
+
+export async function apiCreateRecipeStep(slug: string, data: { title?: string; content: string }): Promise<RecipeStep> {
+  const res = await fetch(`/api/recipes/${slug}/steps`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to create step')
+  return res.json()
+}
+
+export async function apiUpdateRecipeStep(slug: string, stepId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep> {
+  const res = await fetch(`/api/recipes/${slug}/steps/${stepId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update step')
+  return res.json()
+}
+
+export async function apiDeleteRecipeStep(slug: string, stepId: number): Promise<void> {
+  const res = await fetch(`/api/recipes/${slug}/steps/${stepId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete step')
+}
+
+export async function apiReorderRecipeSteps(slug: string, orderedIds: number[]): Promise<void> {
+  const res = await fetch(`/api/recipes/${slug}/steps`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderedIds }),
+  })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to reorder steps')
+}
+
+export async function apiUploadImage(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/upload', { method: 'POST', body: formData })
+  if (!res.ok) throw new Error('Failed to upload image')
+  const data = await res.json()
+  return data.url
 }
