@@ -213,7 +213,7 @@ function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
   return ingredientList.every((ing) => ing.calories > 0 || ing.quantity === 0)
 }
 
-export async function createRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
+export async function createRecipe(data: Omit<Recipe, 'id' | 'nutritionComplete'>): Promise<Recipe> {
   const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   const [row] = await db.insert(recipes).values({
     name: data.name,

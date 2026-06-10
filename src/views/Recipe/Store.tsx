@@ -316,6 +316,7 @@ function Store() {
       date_added: new Date(),
       date_published: publish ? new Date() : null,
       isPublic: publish,
+      nutritionComplete: true,
     }
   }
 
