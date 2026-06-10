@@ -9,7 +9,15 @@ const QUILL_ALLOWED_TAGS = [
 ]
 
 // Only images hosted on Vercel Blob are allowed — external image URLs are stripped.
-const BLOB_IMG_SRC = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//
+// Hostname is parsed via URL so subdomain-confusion attacks (e.g. vercel-storage.com.evil.com) can't match.
+function isBlobUrl(src: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(src)
+    return protocol === 'https:' && hostname.endsWith('.public.blob.vercel-storage.com')
+  } catch {
+    return false
+  }
+}
 
 export function sanitizeRichText(html: string): string {
   return sanitizeHtml(html, {
@@ -23,7 +31,7 @@ export function sanitizeRichText(html: string): string {
     },
     exclusiveFilter: (frame) => {
       if (frame.tag === 'img') {
-        return !BLOB_IMG_SRC.test(frame.attribs.src ?? '')
+        return !isBlobUrl(frame.attribs.src ?? '')
       }
       return false
     },
