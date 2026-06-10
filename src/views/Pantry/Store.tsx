@@ -270,7 +270,9 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
         <OpenFoodFactsImport
             visible={showImportDialog}
             onHide={() => setShowImportDialog(false)}
-            onImport={(food: Food) => setFoods([...foods, food])}
+            onImport={(food: Food) => useFoodStore.setState(state => ({
+              foods: state.foods.some(f => f.id === food.id) ? state.foods : [...state.foods, food],
+            }))}
           />
     </div>
   )
