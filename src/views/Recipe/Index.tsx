@@ -186,7 +186,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         quantity: defaultFood.servingSize || 1,
         calories: defaultFood.calories || 0,
         servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
-        _key: crypto.randomUUID()
       }
       setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
     }
@@ -579,7 +578,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
               )}
               {displayRecipe.ingredients.map((ingredient: Ingredient, i: number) =>
                 editMode ? (
-                  <div key={ingredient._key ?? i} className="ingredient-card">
+                  <div key={i} className="ingredient-card">
                     <div className="ingredient-card-fields">
                       <label className="ingredient-field ingredient-field-name">
                         <span className="ingredient-field-label">Ingredient</span>
@@ -645,7 +644,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                     </button>
                   </div>
                 ) : (
-                  <div key={ingredient._key ?? i} className="ingredient-row" role="listitem">
+                  <div key={i} className="ingredient-row" role="listitem">
                     <span className="ingredient-row-name">{ingredient.food.name}</span>
                     <span className="ingredient-row-meta">
                       <span className="ingredient-row-qty">{ingredient.quantity} {ingredient.servingUnit}</span>
