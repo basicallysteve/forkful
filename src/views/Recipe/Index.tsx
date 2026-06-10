@@ -62,9 +62,9 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
   const displayRecipe = editMode ? editedRecipe : recipe
 
-  const totalCalories = displayRecipe.ingredients.reduce((total, ingredient) => {
+  const totalCalories = Math.round(displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
-  }, 0)
+  }, 0))
 
   async function handleSave() {
     const sanitizedIngredients = editedRecipe.ingredients.filter(
