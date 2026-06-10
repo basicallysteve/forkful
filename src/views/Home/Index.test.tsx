@@ -15,7 +15,7 @@ const mockFood: Food = {
   fiber: 0,
   servingSize: 240,
   servingUnit: 'ml',
-  measurements: ['ml', 'cup'],
+  measurements: [{ unit: 'ml' }, { unit: 'cup' }],
 }
 
 const mockRecipes: Recipe[] = [
@@ -27,6 +27,7 @@ const mockRecipes: Recipe[] = [
     ingredients: [],
     date_published: new Date('2025-01-01'),
     isPublic: true,
+    nutritionComplete: true,
   },
   {
     id: 2,
@@ -36,6 +37,7 @@ const mockRecipes: Recipe[] = [
     ingredients: [],
     date_published: new Date('2025-01-02'),
     isPublic: true,
+    nutritionComplete: true,
   },
 ]
 

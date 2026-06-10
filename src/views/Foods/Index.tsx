@@ -46,7 +46,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
       filtered = filtered.filter(
         (food) =>
           food.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          food.measurements?.some((m) => m.toLowerCase().includes(searchTerm.toLowerCase()))
+          food.measurements?.some((m) => m.unit.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }
 
@@ -261,7 +261,7 @@ export default function Foods({ initialFoods }: FoodsProps) {
                           </span>
                           {food.measurements && food.measurements.length > 0 && (
                             <span className="card-meta">
-                              {food.measurements.slice(0, 3).join(', ')}
+                              {food.measurements.slice(0, 3).map((m) => m.unit).join(', ')}
                               {food.measurements.length > 3 && '...'}
                             </span>
                           )}

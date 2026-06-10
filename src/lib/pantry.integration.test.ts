@@ -34,7 +34,7 @@ async function createTestFood() {
     fiber: 0,
     servingSize: 100,
     servingUnit: 'g',
-    measurements: ['g', 'oz'],
+    measurements: [{ unit: 'g' }, { unit: 'oz' }],
   })
 }
 

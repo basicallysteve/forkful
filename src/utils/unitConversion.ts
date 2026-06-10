@@ -109,11 +109,14 @@ export interface CalculateCaloriesParams {
   targetAmount: number
   /** The unit of the target amount */
   targetUnit: string
+  /** Grams per one targetUnit (for calibrated custom units only) */
+  gramsPerUnit?: number
 }
 
 /**
- * Calculates calories for a given amount and unit based on food's per-serving calories
- * @returns Calculated calories or null if conversion not possible
+ * Calculates calories for a given amount and unit based on food's per-serving calories.
+ * For calibrated custom units, uses gramsPerUnit to convert via mass.
+ * Returns null if the conversion is not possible (uncalibrated custom unit, or cross-category).
  */
 export function calculateCalories({
   baseCalories,
@@ -121,18 +124,25 @@ export function calculateCalories({
   baseServingUnit,
   targetAmount,
   targetUnit,
+  gramsPerUnit,
 }: CalculateCaloriesParams): number | null {
-  // Same unit - simple ratio calculation
+  // Same unit — simple ratio
   if (baseServingUnit === targetUnit) {
     return (baseCalories / baseServingSize) * targetAmount
   }
-  
-  // Try to convert target to base unit
-  const convertedAmount = convertUnit(targetAmount, targetUnit, baseServingUnit)
-  if (convertedAmount === null) {
-    return null
+
+  // Custom target unit with calibration: convert via grams → base unit
+  if (getUnitCategory(targetUnit) === 'custom') {
+    if (!gramsPerUnit || gramsPerUnit <= 0) return null
+    if (getUnitCategory(baseServingUnit) !== 'mass') return null
+    const targetInBaseUnit = convertUnit(targetAmount * gramsPerUnit, 'g', baseServingUnit)
+    if (targetInBaseUnit === null) return null
+    return (baseCalories / baseServingSize) * targetInBaseUnit
   }
-  
+
+  // Standard unit: try direct category conversion
+  const convertedAmount = convertUnit(targetAmount, targetUnit, baseServingUnit)
+  if (convertedAmount === null) return null
   return (baseCalories / baseServingSize) * convertedAmount
 }
 

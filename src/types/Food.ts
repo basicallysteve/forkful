@@ -1,5 +1,10 @@
 export type FoodSource = 'manual' | 'open_food_facts'
 
+export type Measurement = {
+  unit: string
+  gramsPerUnit?: number
+}
+
 export type Food = {
   id: number
   name: string
@@ -12,8 +17,8 @@ export type Food = {
   sugar?: number
   sodium?: number   // mg per serving
   servingSize: number
-  servingUnit?: string
-  measurements?: string[]
+  servingUnit: string
+  measurements: Measurement[]
   barcode?: string
   source?: FoodSource
 }

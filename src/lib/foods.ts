@@ -1,13 +1,18 @@
 import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
-import type { Food, FoodSource } from '@/types/Food'
+import type { Food, FoodSource, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
 export type FoodQueryOptions = {
   search?: string
   sortBy?: 'name' | 'calories' | 'protein'
   sortDir?: 'asc' | 'desc'
+}
+
+function parseMeasurements(raw: unknown): Measurement[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
 function mapFood(row: typeof foods.$inferSelect): Food {
@@ -23,8 +28,8 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     sugar: row.sugar != null ? Number(row.sugar) : undefined,
     sodium: row.sodium != null ? Number(row.sodium) : undefined,
     servingSize: Number(row.servingSize ?? 1),
-    servingUnit: row.servingUnit ?? undefined,
-    measurements: (row.measurements as string[] | null) ?? [],
+    servingUnit: row.servingUnit ?? 'g',
+    measurements: parseMeasurements(row.measurements),
     barcode: row.barcode ?? undefined,
     source: (row.source as FoodSource) ?? 'manual',
   }

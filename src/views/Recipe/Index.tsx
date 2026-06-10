@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { DataTable } from 'primereact/datatable'
 import { Column } from 'primereact/column'
 import { Toast } from 'primereact/toast'
+import { Dropdown } from 'primereact/dropdown'
 import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
@@ -21,6 +22,7 @@ import {
 import { Editor } from 'primereact/editor'
 import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
 import { toSlug } from '@/utils/slug'
+import { calculateCalories } from '@/utils/unitConversion'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -28,14 +30,14 @@ const DEFAULT_SERVING_UNIT = 'g'
 
 interface RecipeProps {
   recipe: Recipe
-  foods: Food[]
+  foods?: Food[]
   isEditing?: boolean
   canEdit?: boolean
   canSave?: boolean
   initialSaved?: boolean
 }
 
-export default function Recipe({ recipe, foods, isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
@@ -46,6 +48,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
+  const [perServing, setPerServing] = useState(true)
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   let publishedText = "Unpublished"
@@ -60,9 +63,29 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
 
   const displayRecipe = editMode ? editedRecipe : recipe
 
-  const totalCalories = displayRecipe.ingredients.reduce((total, ingredient) => {
+  const totalCalories = Math.round(displayRecipe.ingredients.reduce((total, ingredient) => {
     return total + (ingredient.calories || 0)
-  }, 0)
+  }, 0))
+
+  const nutritionTotals = {
+    calories: totalCalories,
+    protein: displayRecipe.ingredients.reduce((t, i) => t + (i.food.protein || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    carbs: displayRecipe.ingredients.reduce((t, i) => t + (i.food.carbs || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    fat: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fat || 0) * i.quantity / (i.food.servingSize || 1), 0),
+    fiber: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fiber || 0) * i.quantity / (i.food.servingSize || 1), 0),
+  }
+
+  const serves = displayRecipe.serves ?? null
+  const showPerServing = perServing && serves != null && serves > 0
+  const divisor = showPerServing ? serves : 1
+
+  const displayNutrition = {
+    calories: Math.round(nutritionTotals.calories / divisor),
+    protein: Math.round(nutritionTotals.protein / divisor),
+    carbs: Math.round(nutritionTotals.carbs / divisor),
+    fat: Math.round(nutritionTotals.fat / divisor),
+    fiber: Math.round(nutritionTotals.fiber / divisor),
+  }
 
   async function handleSave() {
     const sanitizedIngredients = editedRecipe.ingredients.filter(
@@ -90,43 +113,53 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
     console.log('Copy recipe clicked:', recipe.name)
   }
 
-  // Helper function to get per-unit calories for a food
-  function getPerUnitCalories(food: Food): number {
-    return food.calories || 0
+  // Helper: calories for a given quantity + unit, falling back to 0 if unconvertible
+  function computeIngredientCalories(food: Food, quantity: number, servingUnit: string): number {
+    const measurement = food.measurements?.find((m) => m.unit === servingUnit)
+    const raw = calculateCalories({
+      baseCalories: food.calories || 0,
+      baseServingSize: food.servingSize || 1,
+      baseServingUnit: food.servingUnit || DEFAULT_SERVING_UNIT,
+      targetAmount: quantity,
+      targetUnit: servingUnit,
+      gramsPerUnit: measurement?.gramsPerUnit,
+    }) ?? 0
+    return Math.round(raw)
   }
 
   function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
-    const updatedIngredients = [...editedRecipe.ingredients]
-    if (field === 'quantity') {
-      const numValue = Number(value)
-      const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
-      
-      // Recalculate calories based on new quantity and food's per-unit calories
-      const food = updatedIngredients[index].food
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        quantity: newQuantity,
-        calories: getPerUnitCalories(food) * newQuantity
+    setEditedRecipe(prev => {
+      const updatedIngredients = [...prev.ingredients]
+      const ing = updatedIngredients[index]
+      if (field === 'quantity') {
+        const numValue = Number(value)
+        const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
+        updatedIngredients[index] = {
+          ...ing,
+          quantity: newQuantity,
+          calories: computeIngredientCalories(ing.food, newQuantity, ing.servingUnit),
+        }
+      } else if (field === 'calories') {
+        const numValue = Number(value)
+        const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
+        updatedIngredients[index] = { ...ing, calories: nextCalories }
+      } else if (field === 'servingUnit') {
+        const newUnit = value as string
+        updatedIngredients[index] = {
+          ...ing,
+          servingUnit: newUnit,
+          calories: computeIngredientCalories(ing.food, ing.quantity, newUnit),
+        }
       }
-    } else if (field === 'calories') {
-      const numValue = Number(value)
-      const nextCalories = value === '' || isNaN(numValue) ? 0 : Math.max(0, numValue)
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        calories: nextCalories
-      }
-    } else if (field === 'servingUnit') {
-      updatedIngredients[index] = {
-        ...updatedIngredients[index],
-        servingUnit: value as string
-      }
-    }
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+      return { ...prev, ingredients: updatedIngredients }
+    })
   }
 
   function handleRemoveIngredient(index: number) {
-    const updatedIngredients = editedRecipe.ingredients.filter((_, i) => i !== index)
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+    setEditedRecipe(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.filter((_, i) => i !== index),
+    }))
   }
 
   function handleAddIngredient() {
@@ -153,20 +186,24 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
         calories: defaultFood.calories,
         servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
       }
-      setEditedRecipe({ ...editedRecipe, ingredients: [...editedRecipe.ingredients, newIngredient] })
+      setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
     }
   }
 
   function handleIngredientFoodChange(index: number, food: Food) {
-    const updatedIngredients = [...editedRecipe.ingredients]
-    updatedIngredients[index] = {
-      ...updatedIngredients[index],
-      food: food,
-      quantity: food.servingSize || 1,
-      calories: getPerUnitCalories(food) * (food.servingSize || 1),
-      servingUnit: food.servingUnit || updatedIngredients[index].servingUnit
-    }
-    setEditedRecipe({ ...editedRecipe, ingredients: updatedIngredients })
+    setEditedRecipe(prev => {
+      const updatedIngredients = [...prev.ingredients]
+      const quantity = food.servingSize || 1
+      const servingUnit = food.servingUnit || updatedIngredients[index].servingUnit
+      updatedIngredients[index] = {
+        ...updatedIngredients[index],
+        food,
+        quantity,
+        servingUnit,
+        calories: computeIngredientCalories(food, quantity, servingUnit),
+      }
+      return { ...prev, ingredients: updatedIngredients }
+    })
   }
 
   const recipeSlug = toSlug(recipe.name)
@@ -591,19 +628,18 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                   header="Unit"
                   className="unit-col"
                   body={(ingredient: Ingredient, opts) => (
-                    <select
-                      className="ingredient-unit-select"
+                    <Dropdown
                       value={ingredient.servingUnit}
-                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.target.value)}
-                      aria-label={`Ingredient ${opts.rowIndex + 1} unit`}
-                    >
-                      {ingredient.food.measurements?.map((unit) => (
-                        <option key={unit} value={unit}>{unit}</option>
-                      ))}
-                      {!ingredient.food.measurements?.includes(ingredient.servingUnit) && (
-                        <option value={ingredient.servingUnit}>{ingredient.servingUnit}</option>
-                      )}
-                    </select>
+                      onChange={(e) => handleIngredientChange(opts.rowIndex, 'servingUnit', e.value)}
+                      options={(() => {
+                        const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
+                        const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
+                          ? [ingredient.servingUnit]
+                          : []
+                        return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+                      })()}
+                      ariaLabel={`Ingredient ${opts.rowIndex + 1} unit`}
+                    />
                   )}
                 />
               )}
@@ -615,7 +651,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                     <input
                       type="number"
                       className="ingredient-calories-input"
-                      value={ingredient.calories ?? ''}
+                      value={ingredient.calories != null ? Math.round(ingredient.calories) : ''}
                       min={0}
                       onChange={(e) => handleIngredientChange(opts.rowIndex, 'calories', e.target.value)}
                       aria-label={`Ingredient ${opts.rowIndex + 1} calories`}
@@ -654,6 +690,55 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                 </button>
               </div>
             )}
+
+            <div className="nutrition-panel">
+              <div className="nutrition-panel-header">
+                <div className="nutrition-serves">
+                  <span className="nutrition-serves-label">Serves</span>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      className="nutrition-serves-input"
+                      min={1}
+                      value={editedRecipe.serves ?? ''}
+                      placeholder="—"
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : Math.max(1, parseInt(e.target.value, 10))
+                        setEditedRecipe({ ...editedRecipe, serves: isNaN(val as number) ? null : val })
+                      }}
+                      aria-label="Serves"
+                    />
+                  ) : (
+                    <span className="nutrition-serves-value">{serves ?? '—'}</span>
+                  )}
+                </div>
+                {serves != null && serves > 0 && (
+                  <div className="nutrition-toggle">
+                    <button
+                      type="button"
+                      className={`nutrition-toggle-btn ${!showPerServing ? 'is-active' : ''}`}
+                      onClick={() => setPerServing(false)}
+                    >
+                      Total
+                    </button>
+                    <button
+                      type="button"
+                      className={`nutrition-toggle-btn ${showPerServing ? 'is-active' : ''}`}
+                      onClick={() => setPerServing(true)}
+                    >
+                      Per serving
+                    </button>
+                  </div>
+                )}
+              </div>
+              <dl className="nutrition-list">
+                <div className="nutrition-row"><dt className="nutrition-label">Calories</dt><dd className="nutrition-value">{displayNutrition.calories}</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Protein</dt><dd className="nutrition-value">{displayNutrition.protein}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Carbs</dt><dd className="nutrition-value">{displayNutrition.carbs}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Fat</dt><dd className="nutrition-value">{displayNutrition.fat}g</dd></div>
+                <div className="nutrition-row"><dt className="nutrition-label">Fiber</dt><dd className="nutrition-value">{displayNutrition.fiber}g</dd></div>
+              </dl>
+            </div>
           </div>
         </section>
       </div>

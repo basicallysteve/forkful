@@ -34,7 +34,16 @@ A list of dietary constraints a User has (e.g. vegan, gluten-free). Optional. Se
 An authenticated context identifying the current User. Managed by Auth.js. Replaces the previous hand-rolled JWT cookie system.
 
 ## Recipe
-A user-created cooking instruction set. Has a name, a Description, a Meal type, an optional Cuisine Type, optional Dietary Tags, optional prep/cook/total times, an ordered list of Recipe Steps, and an Ingredient list. Can be private (draft) or public+published (visible to all).
+A user-created cooking instruction set. Has a name, a Description, a Meal type, an optional Cuisine Type, optional Dietary Tags, optional prep/cook/total times, an optional Serves count, an ordered list of Recipe Steps, and an Ingredient list. Can be private (draft) or public+published (visible to all).
+
+## Serves
+The number of portions a Recipe yields. Optional and nullable. When set, enables Per-Serving Nutrition display. Minimum value of 1.
+
+## Recipe Nutrition Panel
+A panel shown at the bottom of the Ingredients tab summarising the five core macros (calories, protein, carbs, fat, fiber) summed across all ingredients. When Serves is set, defaults to showing Per-Serving Nutrition with a toggle to switch to total. When Serves is not set, shows totals only.
+
+## Per-Serving Nutrition
+The total macro values for a Recipe divided by Serves. Shown by default in the Recipe Nutrition Panel when Serves is set. The user may toggle to view totals instead; this preference is not persisted.
 
 ## Description
 A short summary field on a Recipe. Used for preview cards and SEO. Distinct from Recipe Steps — it is not procedural instruction.
