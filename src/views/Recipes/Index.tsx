@@ -47,8 +47,7 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
     if(searchTerm) {
       filtered = filtered.filter(recipe =>
         recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        recipe.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        recipe.ingredients.some(ingredient => ingredient.food.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        recipe.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
     if (applyDietaryFilter && dietaryRestrictions.length > 0) {

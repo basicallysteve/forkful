@@ -7,6 +7,7 @@ export type Recipe = {
   meal?: "Lunch" | "Dinner" | "Breakfast" | "Snack" | "Dessert"
   description: string
   ingredients: Ingredient[]
+  ingredientCount?: number
   steps?: RecipeStep[]
   prepTime?: number | null
   cookTime?: number | null

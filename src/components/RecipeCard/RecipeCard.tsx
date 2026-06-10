@@ -50,7 +50,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
         />
         <div className="card-footer">
           <span className="card-meta">
-            {recipe.ingredients.length} {recipe.ingredients.length === 1 ? 'ingredient' : 'ingredients'}
+            {recipe.ingredientCount ?? recipe.ingredients.length} {(recipe.ingredientCount ?? recipe.ingredients.length) === 1 ? 'ingredient' : 'ingredients'}
           </span>
           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
         </div>

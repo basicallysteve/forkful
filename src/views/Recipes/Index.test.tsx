@@ -319,20 +319,13 @@ describe('Recipes filters and actions', () => {
 
   it('searches recipes by name and description', async () => {
     const user = userEvent.setup()
-    const testFoods: Food[] = [
-      { id: 101, name: 'Chili Powder', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'tsp', measurements: ['tsp', 'tbsp'] },
-      { id: 102, name: 'Garlic', calories: 5, protein: 0, carbs: 1, fat: 0, fiber: 0, servingSize: 1, servingUnit: 'clove', measurements: ['clove', 'g'] },
-    ]
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
-        ingredients: [
-          { food: testFoods[0], quantity: 2, calories: 10, servingUnit: 'tsp' },
-          { food: testFoods[1], quantity: 1, calories: 5, servingUnit: 'clove' }
-        ],
+        ingredients: [],
         isPublic: false,
       },
       {
@@ -356,7 +349,7 @@ describe('Recipes filters and actions', () => {
     await user.type(searchInput, 'garlic')
 
     expect(screen.getByText('Garlic Pasta')).toBeInTheDocument()
-    expect(screen.queryByText('Chili Bowl')).toBeInTheDocument()
+    expect(screen.queryByText('Chili Bowl')).not.toBeInTheDocument()
     expect(screen.queryByText('Berry Oatmeal')).not.toBeInTheDocument()
   })
 
