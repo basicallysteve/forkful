@@ -74,6 +74,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
       const result = await apiUpdateRecipe(updatedRecipe)
       updateRecipeInStore(result)
       setCurrentRecipe(result)
+      setEditedRecipe(result)
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
@@ -548,7 +549,7 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
           </div>
 
           <div className="panel-content">
-            <div className="ingredient-list">
+            <div className="ingredient-list" role="list">
               {displayRecipe.ingredients.length === 0 && (
                 <p className="ingredient-empty">No ingredients added yet.</p>
               )}
@@ -621,12 +622,12 @@ export default function Recipe({ recipe, foods, isEditing = false, canEdit = tru
                     </button>
                   </div>
                 ) : (
-                  <div key={i} className="ingredient-row">
+                  <div key={i} className="ingredient-row" role="listitem">
                     <span className="ingredient-row-name">{ingredient.food.name}</span>
                     <span className="ingredient-row-meta">
                       <span className="ingredient-row-qty">{ingredient.quantity} {ingredient.servingUnit}</span>
                       <span className="ingredient-row-sep">·</span>
-                      <span className="ingredient-row-cal">{ingredient.calories} cal</span>
+                      <span className="ingredient-row-cal">{Math.round(ingredient.calories ?? 0)} cal</span>
                     </span>
                   </div>
                 )

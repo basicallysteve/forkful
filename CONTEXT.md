@@ -58,7 +58,7 @@ A default hard filter applied to the recipes list for logged-in Users with Dieta
 A nutritional item in the library. Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from Open Food Facts. Shared across recipes, ingredients, and pantry items.
 
 ## Serving Unit
-The unit in which a Food's nutrition data is anchored. Required — never null. Defines what the Serving Size number means (e.g. `servingSize: 100, servingUnit: 'g'` means all nutrition values are per 100g). Belongs to exactly one unit category: mass, volume, or custom. Changing the Serving Unit within the same category automatically recalculates Serving Size to preserve calorie density. Cross-category changes are blocked.
+The unit in which a Food's nutrition data is anchored. Required in practice — the application always provides a value, though the column is not DB-constrained non-null. Defines what the Serving Size number means (e.g. `servingSize: 100, servingUnit: 'g'` means all nutrition values are per 100g). Belongs to exactly one unit category: mass, volume, or custom. Changing the Serving Unit within the same category automatically recalculates Serving Size to preserve calorie density. Cross-category changes are blocked.
 
 ## Serving Size
 The quantity of a Food (in its Serving Unit) that the nutrition values correspond to. Required. Always a positive number.
@@ -79,7 +79,7 @@ A Custom Unit on a Food that has a defined gram-weight (e.g. "1 slice = 30g"). E
 A Custom Unit on a Food that has no gram-weight defined. Calorie calculation returns zero when this unit is used in an ingredient. Flagged with a warning in the Food editor.
 
 ## Ingredient
-A Food used in a Recipe, expressed as a quantity in a chosen Measurement. Calories are computed at load time from the Food's current nutrition data and the ingredient's quantity and unit — they are not stored. If the chosen unit is an Uncalibrated Custom Unit, the computed calories are zero.
+A Food used in a Recipe, expressed as a quantity in a chosen Measurement. Calories are computed at load time from the Food's current nutrition data and the ingredient's quantity and unit. The `ingredients` table currently retains a `calories` column; that column will be removed once the `feat/serving-unit-refinement` migration lands, at which point calories will be fully derived and not stored. If the chosen unit is an Uncalibrated Custom Unit, the computed calories are zero.
 
 ## Nutrition Complete
 A Recipe in which every Ingredient's calories can be fully calculated — i.e. no ingredient uses an Uncalibrated Custom Unit. Stored as a boolean on the Recipe and recomputed whenever the Recipe's ingredients are saved. Nutrition Complete status is used as a binary ranking signal: in public recipe discovery, Nutrition Complete recipes always rank above incomplete ones, regardless of the active sort order.

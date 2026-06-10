@@ -52,7 +52,10 @@ export async function getOpenFoodFactsProduct(barcode: string): Promise<OFFProdu
  * Returns 100 when grams cannot be determined (non-gram units like "1 capsule", "250ml").
  */
 function parseServingGrams(servingSize?: string, servingQuantity?: number): number {
-  if (servingQuantity && servingQuantity > 0) return servingQuantity
+  // serving_quantity is in the product's main unit — grams for solid, ml for liquid.
+  // Only trust it when the serving is not volume-based.
+  const isVolumeServing = servingSize ? /\d\s*(?:ml|fl[\s-]?oz|cl|dl|l\b)/i.test(servingSize) : false
+  if (!isVolumeServing && servingQuantity && servingQuantity > 0) return servingQuantity
   if (servingSize) {
     // Match patterns like "30g", "30 g", "30.5g", "1 piece (30g)" — excludes "mg"
     const match = servingSize.match(/(\d+(?:\.\d+)?)\s*g(?!\w)/)
