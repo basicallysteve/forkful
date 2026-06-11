@@ -12,12 +12,30 @@ const RESET_EXEMPT_PREFIXES = ['/reset-password', '/forgot-password', '/login', 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Redirect sessions with expired passwords — runs before the protected-route check
-  // so that even public pages force the reset if the user is logged in.
-  const isResetExempt = RESET_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
   const hasSessionCookie =
     request.cookies.has('authjs.session-token') ||
     request.cookies.has('__Secure-authjs.session-token')
+
+  // Gate /reset-password: allow only if a valid ?token= is present (email flow)
+  // or the session carries needsPasswordReset: true (90-day forced flow).
+  // Without one of these, the page makes no sense and we send them to /login.
+  if (pathname.startsWith('/reset-password')) {
+    if (!request.nextUrl.searchParams.has('token')) {
+      if (!hasSessionCookie) {
+        return NextResponse.redirect(new URL('/login', request.nextUrl))
+      }
+      const jwtToken = await getToken({ req: request, secret: process.env.AUTH_SECRET })
+      if (!jwtToken?.needsPasswordReset) {
+        return NextResponse.redirect(new URL('/login', request.nextUrl))
+      }
+    }
+    // Valid token param or forced-reset session — allow through.
+    return NextResponse.next()
+  }
+
+  // Redirect sessions with expired passwords — runs before the protected-route check
+  // so that even public pages force the reset if the user is logged in.
+  const isResetExempt = RESET_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
   if (!isResetExempt && hasSessionCookie) {
     const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
     if (token?.needsPasswordReset) {
@@ -27,15 +45,8 @@ export async function proxy(request: NextRequest) {
 
   // Protected routes: require an active session cookie.
   const isProtected = PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
-  if (isProtected) {
-    // next-auth v5 JWT session cookies (dev uses plain name; prod uses __Secure- prefix)
-    const hasSession =
-      request.cookies.has('authjs.session-token') ||
-      request.cookies.has('__Secure-authjs.session-token')
-
-    if (!hasSession) {
-      return NextResponse.redirect(new URL('/login', request.nextUrl))
-    }
+  if (isProtected && !hasSessionCookie) {
+    return NextResponse.redirect(new URL('/login', request.nextUrl))
   }
 
   return NextResponse.next()
