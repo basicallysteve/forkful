@@ -188,7 +188,7 @@ describe('Recipes Page', () => {
   describe('Selection', () => {
     it('selects individual recipe when checkbox is clicked', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       const checkbox = screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i })
       await user.click(checkbox)
@@ -199,7 +199,7 @@ describe('Recipes Page', () => {
 
     it('selects all recipes when "Select all" is clicked', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       const selectAllCheckbox = screen.getByRole('checkbox', { name: /select all/i })
       await user.click(selectAllCheckbox)
@@ -210,7 +210,7 @@ describe('Recipes Page', () => {
 
     it('deselects all recipes when "Select all" is clicked again', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       const selectAllCheckbox = screen.getByRole('checkbox', { name: /select all/i })
       await user.click(selectAllCheckbox)
@@ -222,7 +222,7 @@ describe('Recipes Page', () => {
 
     it('shows action buttons when recipes are selected', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /unpublish/i })).not.toBeInTheDocument()
@@ -233,12 +233,21 @@ describe('Recipes Page', () => {
       expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /unpublish/i })).toBeInTheDocument()
     })
+
+    it('hides checkboxes and action buttons for unauthenticated users', () => {
+      renderWithProviders(<Recipes />)
+
+      expect(screen.queryByRole('checkbox', { name: /select all/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: /select ham and cheese sandwich/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /unpublish/i })).not.toBeInTheDocument()
+    })
   })
 
   describe('Delete functionality', () => {
     it('deletes selected recipes', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       const checkbox = screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i })
       await user.click(checkbox)
@@ -255,7 +264,7 @@ describe('Recipes Page', () => {
   describe('Unpublish functionality', () => {
     it('unpublishes selected recipes', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<Recipes />)
+      renderWithProviders(<Recipes isAuthenticated />)
 
       const checkbox = screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i })
       await user.click(checkbox)
@@ -409,7 +418,7 @@ describe('Recipes filters and actions', () => {
 
   it('deletes selected recipes', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Recipes />, { recipes: [
+    renderWithProviders(<Recipes isAuthenticated />, { recipes: [
       {
         id: 1,
         name: 'Chili Bowl',
@@ -540,7 +549,7 @@ describe('Error handling', () => {
     vi.mocked(apiDeleteRecipe).mockRejectedValueOnce(new Error('Forbidden'))
     vi.mocked(apiFetchRecipes).mockResolvedValueOnce(mockRecipes)
     const user = userEvent.setup()
-    renderWithProviders(<Recipes />)
+    renderWithProviders(<Recipes isAuthenticated />)
 
     await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
     await user.click(screen.getByRole('button', { name: /delete/i }))
@@ -554,7 +563,7 @@ describe('Error handling', () => {
   it('shows an error toast and rolls back when unpublish fails', async () => {
     vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
     const user = userEvent.setup()
-    renderWithProviders(<Recipes />)
+    renderWithProviders(<Recipes isAuthenticated />)
 
     await user.click(screen.getByRole('checkbox', { name: /select ham and cheese sandwich/i }))
     await user.click(screen.getByRole('button', { name: /unpublish/i }))
