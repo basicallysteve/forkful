@@ -9,7 +9,7 @@ export default function MarketingNav() {
         <Image src="/forkful-logo.svg" alt="Forkful" width={36} height={36} priority />
         <span>Forkful</span>
       </Link>
-      <nav className={styles.links}>
+      <nav className={styles.links} aria-label="Marketing navigation">
         <Link href="/about" className={styles.link}>About</Link>
         <Link href="/blog" className={styles.link}>Blog</Link>
         <Link href="/login" className={styles.linkSecondary}>Log in</Link>

@@ -27,9 +27,11 @@ export default function BlogIndexPage() {
             <li key={post.slug} className={styles.item}>
               <Link href={`/blog/${post.slug}`} className={styles.postLink}>
                 <span className={styles.postTitle}>{post.title}</span>
-                <time className={styles.postDate} dateTime={post.date}>
-                  {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </time>
+                {post.date && (
+                  <time className={styles.postDate} dateTime={post.date}>
+                    {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </time>
+                )}
                 {post.description && (
                   <span className={styles.postDescription}>{post.description}</span>
                 )}

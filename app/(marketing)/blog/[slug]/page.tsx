@@ -42,9 +42,11 @@ export default async function BlogPostPage({ params }: Props) {
     <article className={styles.article}>
       <header className={styles.header}>
         <h1 className={styles.title}>{post.title}</h1>
-        <time className={styles.date} dateTime={post.date}>
-          {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </time>
+        {post.date && (
+          <time className={styles.date} dateTime={post.date}>
+            {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </time>
+        )}
       </header>
       <div className={styles.body}>
         <MDXRemote source={post.content} />

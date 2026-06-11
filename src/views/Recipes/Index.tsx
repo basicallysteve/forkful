@@ -18,9 +18,10 @@ interface RecipesProps {
   initialRecipes?: Recipe[]
   forYouRecipes?: Recipe[]
   dietaryRestrictions?: string[]
+  isAuthenticated?: boolean
 }
 
-export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [] }: RecipesProps) {
+export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [], isAuthenticated = false }: RecipesProps) {
   const recipes = useRecipeStore((state) => state.recipes)
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
@@ -235,7 +236,7 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
               )}
             </div>
             <div className="toolbar-actions">
-              {selectedRecipes.size > 0 && (
+              {isAuthenticated && selectedRecipes.size > 0 && (
                 <>
                   <button
                     type="button"
@@ -261,24 +262,26 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
               <p className="no-recipes-text">No recipes found. Start by adding a new recipe!</p>
             ) : (
               <>
-                <div className="select-all-row">
-                  <label className="checkbox-label">
-                    <Checkbox
-                      className="recipe-checkbox"
-                      checked={selectedRecipes.size === filteredAndSortedRecipes.length && filteredAndSortedRecipes.length > 0}
-                      onChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                    <span className="checkbox-text">Select all</span>
-                  </label>
-                </div>
+                {isAuthenticated && (
+                  <div className="select-all-row">
+                    <label className="checkbox-label">
+                      <Checkbox
+                        className="recipe-checkbox"
+                        checked={selectedRecipes.size === filteredAndSortedRecipes.length && filteredAndSortedRecipes.length > 0}
+                        onChange={handleSelectAll}
+                        aria-label="Select all"
+                      />
+                      <span className="checkbox-text">Select all</span>
+                    </label>
+                  </div>
+                )}
                 <div className="recipe-cards">
                   {filteredAndSortedRecipes.map((recipe) => (
                     <RecipeCard
                       key={recipe.id}
                       recipe={recipe}
-                      selected={selectedRecipes.has(recipe.id)}
-                      onSelect={handleSelectRecipe}
+                      selected={isAuthenticated ? selectedRecipes.has(recipe.id) : undefined}
+                      onSelect={isAuthenticated ? handleSelectRecipe : undefined}
                     />
                   ))}
                 </div>

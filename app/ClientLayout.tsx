@@ -60,7 +60,7 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
 
   if (isMarketingShell) {
     return (
-      <SessionProvider>
+      <SessionProvider session={null}>
         <div className="marketing-shell">
           <MarketingNav />
           <main>{children}</main>
