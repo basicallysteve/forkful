@@ -131,7 +131,7 @@ function ResetPassword() {
             {state.phase !== 'success' && (
               <form className="account-form" onSubmit={handleSubmit}>
                 <div className="form-grid">
-                  <label className={`form-field form-field-full ${newPassword.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
+                  <div className={`form-field form-field-full ${newPassword.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                     <span className="field-label">New Password</span>
                     <Password
                       className={`password-input ${newPassword.length > 0 && !passwordIsValid ? 'input-error' : ''}`}
@@ -139,22 +139,22 @@ function ResetPassword() {
                       placeholder="Create a strong password"
                       onChange={(e) => setNewPassword(e.target.value)}
                       toggleMask
-                      feedback
+                      feedback={false}
                       aria-describedby="password-requirements"
                       autoComplete="new-password"
                       autoFocus
                     />
                     <div id="password-requirements" className="password-requirements">
-                      <span className={`requirement ${validation.hasMinLength ? 'valid' : ''}`}>✓ At least 8 characters</span>
-                      <span className={`requirement ${validation.hasUppercase ? 'valid' : ''}`}>✓ One uppercase letter</span>
-                      <span className={`requirement ${validation.hasLowercase ? 'valid' : ''}`}>✓ One lowercase letter</span>
-                      <span className={`requirement ${validation.hasNumber ? 'valid' : ''}`}>✓ One number</span>
-                      <span className={`requirement ${validation.hasSpecialChar ? 'valid' : ''}`}>✓ One special character</span>
-                      <span className={`requirement ${validation.isNotCommon ? 'valid' : ''}`}>✓ Not a common password</span>
+                      <span className={`requirement ${validation.hasMinLength ? 'valid' : ''}`}>{validation.hasMinLength ? '✓' : '○'} At least 8 characters</span>
+                      <span className={`requirement ${validation.hasUppercase ? 'valid' : ''}`}>{validation.hasUppercase ? '✓' : '○'} One uppercase letter</span>
+                      <span className={`requirement ${validation.hasLowercase ? 'valid' : ''}`}>{validation.hasLowercase ? '✓' : '○'} One lowercase letter</span>
+                      <span className={`requirement ${validation.hasNumber ? 'valid' : ''}`}>{validation.hasNumber ? '✓' : '○'} One number</span>
+                      <span className={`requirement ${validation.hasSpecialChar ? 'valid' : ''}`}>{validation.hasSpecialChar ? '✓' : '○'} One special character</span>
+                      <span className={`requirement ${validation.isNotCommon ? 'valid' : ''}`}>{validation.isNotCommon ? '✓' : '○'} Not a common password</span>
                     </div>
-                  </label>
+                  </div>
 
-                  <label className={`form-field form-field-full ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
+                  <div className={`form-field form-field-full ${confirmPassword.length > 0 && !passwordsMatch ? 'has-error' : ''}`}>
                     <span className="field-label">Confirm Password</span>
                     <Password
                       className={`password-input ${confirmPassword.length > 0 && !passwordsMatch ? 'input-error' : ''}`}
@@ -171,7 +171,7 @@ function ResetPassword() {
                     ) : (
                       <span id="confirm-hint" className="field-hint">Re-enter your new password.</span>
                     )}
-                  </label>
+                  </div>
                 </div>
 
                 {state.phase === 'error' && (
