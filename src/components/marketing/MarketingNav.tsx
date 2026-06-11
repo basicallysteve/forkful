@@ -1,12 +1,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import styles from './MarketingNav.module.scss'
-
+import ThemedLogo from '../ThemedLogo'
 export default function MarketingNav() {
   return (
     <header className={styles.nav}>
       <Link href="/" className={styles.logo}>
-        <Image src="/forkful-logo.svg" alt="Forkful" width={36} height={36} priority />
+        <ThemedLogo size={36} />
         <span>Forkful</span>
       </Link>
       <nav className={styles.links} aria-label="Marketing navigation">
