@@ -4,7 +4,7 @@ import { getToken } from 'next-auth/jwt'
 
 // Routes that require a logged-in session.
 // Public browsing (/recipes, /foods, /foods/[slug]) stays accessible to all.
-const PROTECTED_ROUTES = ['/pantry', '/profile', '/recipes/new', '/foods/new', '/foods/[slug]/edit']
+const PROTECTED_ROUTES = ['/pantry', '/profile', '/recipes/new', '/foods', '/foods/[slug]', '/foods/new', '/foods/[slug]/edit']
 
 // Routes exempt from the 90-day password reset redirect.
 const RESET_EXEMPT_PREFIXES = ['/reset-password', '/forgot-password', '/login', '/api/auth', '/logout']
