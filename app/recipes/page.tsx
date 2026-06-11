@@ -19,6 +19,7 @@ export default async function RecipesPage() {
       initialRecipes={recipes}
       forYouRecipes={forYouRecipes}
       dietaryRestrictions={dietaryRestrictions}
+      isAuthenticated={session !== null}
     />
   )
 }

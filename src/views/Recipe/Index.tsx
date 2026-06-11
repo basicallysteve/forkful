@@ -342,7 +342,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     }
   }
 
-  const publishedButton = !isPublished ? (
+  const publishedButton = canEdit && (!isPublished ? (
     <button onClick={publishRecipe} type="button" className="ghost-button" disabled={displayRecipe.ingredients.length === 0}>
       Publish
     </button>
@@ -350,7 +350,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     <button onClick={unpublishRecipe} type="button" className="ghost-button">
       Unpublish
     </button>
-  )
+  ))
 
   const visibilityButton = canEdit && (
     <button onClick={togglePublic} type="button" className="ghost-button">

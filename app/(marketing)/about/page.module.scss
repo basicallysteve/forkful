@@ -1,0 +1,39 @@
+.article {
+  h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin: 0 0 1.25rem;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2rem 0 0.75rem;
+  }
+
+  p,
+  li {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-color-secondary);
+  }
+
+  strong {
+    color: var(--text-color);
+  }
+
+  ul {
+    padding-left: 1.25rem;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+}
+
+.lead {
+  font-size: 1.2rem !important;
+  color: var(--text-color) !important;
+  margin-bottom: 1.5rem;
+}

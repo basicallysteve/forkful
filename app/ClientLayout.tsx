@@ -1,12 +1,15 @@
 'use client'
 
 import ToolBar from '@/components/ToolBar'
+import MarketingNav from '@/components/marketing/MarketingNav'
+import MarketingFooter from '@/components/marketing/MarketingFooter'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+
 interface ClientLayoutProps {
   children: React.ReactNode
   recipes: Recipe[]
@@ -16,6 +19,8 @@ interface ClientLayoutProps {
 }
 
 export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
+  const isMarketingShell = !isLoggedIn
+
   const menuOptions = [
     {
       label: 'Recipes',
@@ -52,6 +57,20 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
         ]
       : [{ label: 'Login', to: '/login', align: 'right' as const }]),
   ]
+
+  if (isMarketingShell) {
+    return (
+      <SessionProvider session={null}>
+        <div className="marketing-shell">
+          <MarketingNav />
+          <main>{children}</main>
+          <MarketingFooter />
+          <Analytics />
+          <SpeedInsights />
+        </div>
+      </SessionProvider>
+    )
+  }
 
   return (
      <SessionProvider>
