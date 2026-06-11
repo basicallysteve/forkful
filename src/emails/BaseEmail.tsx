@@ -117,7 +117,6 @@ export function BaseEmail({ subject, previewText, variant, trackingPixelUrl, chi
                     {trackingPixelUrl && (
                       <tr>
                         <td style={{ lineHeight: 0 }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={trackingPixelUrl}
                             width={1}
