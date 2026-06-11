@@ -3,17 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BarcodeScanner from './BarcodeScanner'
 
-// barcode-detector installs BarcodeDetector on globalThis when the module loads.
-// Tests that need to simulate camera failure still have it in window; we only
-// delete it for specific isolation tests (see below).
-
 const mockTrackStop = vi.fn()
 const mockStream = { getTracks: () => [{ stop: mockTrackStop }] }
-const mockGetUserMedia = vi.fn().mockResolvedValue(mockStream)
+const mockGetUserMedia = vi.fn()
 
 beforeEach(() => {
-  mockTrackStop.mockClear()
-  mockGetUserMedia.mockClear()
+  mockTrackStop.mockReset()
+  // Reset implementation each time so rejection from "camera denied" tests doesn't leak
+  mockGetUserMedia.mockReset()
+  mockGetUserMedia.mockResolvedValue(mockStream)
   Object.defineProperty(navigator, 'mediaDevices', {
     value: { getUserMedia: mockGetUserMedia },
     writable: true,
@@ -63,11 +61,9 @@ describe('BarcodeScanner', () => {
     })
   })
 
-  // The iOS code path (lazy polyfill import) cannot be isolated in jsdom because
-  // barcode-detector installs itself on globalThis as a side effect when the module
-  // first loads, so 'BarcodeDetector' in window is always true in the test environment.
-  // The lazy-import branch is exercised in production Safari where the native API is absent.
-  describe('when BarcodeDetector is not in window (simulated)', () => {
+  // Verifies the isSupported change: the camera UI renders even when BarcodeDetector
+  // is absent from window (as on iOS Safari), so the lazy polyfill import can run.
+  describe('when BarcodeDetector is not in window', () => {
     beforeEach(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).BarcodeDetector
