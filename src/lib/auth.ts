@@ -1,7 +1,13 @@
 import 'server-only'
 import { auth } from '@/auth'
 
-export type SessionUser = { userId: number; username: string; avatarUrl: string | null; needsOnboarding: boolean }
+export type SessionUser = {
+  userId: number
+  username: string
+  avatarUrl: string | null
+  needsOnboarding: boolean
+  needsPasswordReset: boolean
+}
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth()
@@ -11,5 +17,6 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     username: session.user.name ?? '',
     avatarUrl: session.user.image ?? null,
     needsOnboarding: (session.user as { needsOnboarding?: boolean }).needsOnboarding ?? false,
+    needsPasswordReset: (session.user as { needsPasswordReset?: boolean }).needsPasswordReset ?? false,
   }
 }

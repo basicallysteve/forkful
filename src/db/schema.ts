@@ -69,6 +69,7 @@ export const users = pgTable('users', {
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
+  passwordChangedAt: timestamp('password_changed_at'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
 });
@@ -102,6 +103,17 @@ export const oauthAccounts = pgTable('oauth_accounts', {
 }, (t) => ({
   providerAccountUnique: unique('oauth_accounts_provider_account_unique').on(t.provider, t.providerAccountId),
 }));
+
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+});
 
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
