@@ -1,4 +1,4 @@
-import { eq, and, gte, isNull } from 'drizzle-orm'
+import { eq, and, gte, isNull, isNotNull, lt, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts, passwordResetTokens, oauthAccounts } from '@/db/schema'
 import type { User } from '@/types/User'
@@ -135,9 +135,18 @@ export async function createPasswordResetToken(email: string): Promise<{ token: 
 
     if (!user || !user.password) return null
 
+    const now = new Date()
+
+    // Delete previous tokens for this user — expired, used, or superseded by this request
+    await db.delete(passwordResetTokens)
+        .where(and(
+            eq(passwordResetTokens.userId, user.id),
+            or(isNotNull(passwordResetTokens.usedAt), lt(passwordResetTokens.expiresAt, now)),
+        ))
+
     const rawToken = crypto.randomBytes(32).toString('hex')
     const tokenHash = hashToken(rawToken)
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
     await db.insert(passwordResetTokens).values({
         userId: user.id,

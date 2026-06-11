@@ -24,6 +24,7 @@ function makeRequest(body: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  process.env.AUTH_URL = 'https://example.com'
   ;(checkPasswordResetRateLimit as Mock).mockResolvedValue(undefined)
   ;(trackLoginAttempt as Mock).mockResolvedValue(undefined)
 })

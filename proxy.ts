@@ -15,7 +15,10 @@ export async function proxy(request: NextRequest) {
   // Redirect sessions with expired passwords — runs before the protected-route check
   // so that even public pages force the reset if the user is logged in.
   const isResetExempt = RESET_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
-  if (!isResetExempt) {
+  const hasSessionCookie =
+    request.cookies.has('authjs.session-token') ||
+    request.cookies.has('__Secure-authjs.session-token')
+  if (!isResetExempt && hasSessionCookie) {
     const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
     if (token?.needsPasswordReset) {
       return NextResponse.redirect(new URL('/reset-password', request.nextUrl))

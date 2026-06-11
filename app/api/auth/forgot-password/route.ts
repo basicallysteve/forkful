@@ -14,9 +14,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 429 })
   }
 
-  await trackLoginAttempt({ ipAddress, successful: true })
-
   try {
+    await trackLoginAttempt({ ipAddress, successful: true })
+
     const body: { email?: string } = await request.json()
 
     if (!body.email || typeof body.email !== 'string' || body.email.length > 254 || !body.email.includes('@')) {
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     const tokenResult = await taskRunner.run(() => createPasswordResetToken(email))
 
     if (tokenResult) {
-      const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+      const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
+      if (!baseUrl) throw new Error('AUTH_URL or NEXTAUTH_URL env var must be set')
       const resetUrl = `${baseUrl}/reset-password?token=${tokenResult.token}`
       await sendPasswordResetEmail(email, resetUrl)
       return NextResponse.json({ type: 'success' })
