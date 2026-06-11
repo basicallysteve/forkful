@@ -33,22 +33,6 @@ A list of dietary constraints a User has (e.g. vegan, gluten-free). Optional. Se
 ## Session
 An authenticated context identifying the current User. Managed by Auth.js. Replaces the previous hand-rolled JWT cookie system.
 
-## Password Reset Token
-A cryptographically random, single-use token issued to a Credential User who has forgotten their password. Stored as a hash in the DB (never the raw value), valid for 1 hour, and marked used on redemption rather than deleted. Sent to the user's email as a link to the Reset Password Page.
-_Avoid_: reset link, reset code
-
-## Password Age
-The elapsed time since a Credential User last set or changed their password, tracked via `passwordChangedAt` on the `users` table. Set at account creation and updated on every successful password change.
-_Avoid_: password expiry, password timestamp
-
-## Forced Password Reset
-A session state (`needsPasswordReset: true`) applied to a Credential User whose Password Age exceeds 90 days. Detected in the Auth.js JWT callback and enforced by middleware, which redirects all routes to the Reset Password Page until the user completes a reset.
-_Avoid_: password expiry, password timeout, mandatory reset
-
-## Reset Password Page
-A single page (`/reset-password`) that handles two modes: (1) token mode — an unauthenticated user arriving via a Password Reset Token link; (2) forced mode — an authenticated user in a Forced Password Reset state. The form is identical in both modes; the backend call differs.
-_Avoid_: forgot password page, change password page
-
 ## Recipe
 A user-created cooking instruction set. Has a name, a Description, a Meal type, an optional Cuisine Type, optional Dietary Tags, optional prep/cook/total times, an optional Serves count, an ordered list of Recipe Steps, and an Ingredient list. Can be private (draft) or public+published (visible to all).
 

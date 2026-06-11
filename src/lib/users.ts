@@ -1,9 +1,8 @@
-import { eq, and, gte, isNull } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { db } from '@/db'
-import { users, login_attempts, passwordResetTokens, oauthAccounts } from '@/db/schema'
+import { users, login_attempts } from '@/db/schema'
 import type { User } from '@/types/User'
 import bcrypt from 'bcrypt'
-import crypto from 'crypto'
 
 export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
@@ -18,15 +17,13 @@ export async function signUp(user: { username: string; email: string; password: 
     if (existingByEmail) throw new Error('Email already in use')
 
     const hashedPassword = await hashPassword(user.password)
-    const now = new Date()
     const [data] = await db.insert(users).values({
         username: user.username,
         email: user.email,
         password: hashedPassword,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
-        passwordChangedAt: now,
-        dateAdded: now,
+        dateAdded: new Date(),
         dateDeleted: null,
     }).returning();
 
@@ -107,65 +104,14 @@ export async function trackLoginAttempt({ userId, successful, ipAddress }: { use
     })
 }
 
-function hashToken(rawToken: string): string {
-    return crypto.createHash('sha256').update(rawToken).digest('hex')
-}
-
-export async function createPasswordResetToken(email: string): Promise<{ token: string; userId: number } | null> {
-    const [user] = await db.select({ id: users.id, password: users.password })
-        .from(users)
-        .where(and(eq(users.email, email), isNull(users.dateDeleted)))
-
-    if (!user || !user.password) return null
-
-    const rawToken = crypto.randomBytes(32).toString('hex')
-    const tokenHash = hashToken(rawToken)
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
-
-    await db.insert(passwordResetTokens).values({
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-    })
-
-    return { token: rawToken, userId: user.id }
-}
-
-export async function redeemPasswordResetToken(rawToken: string, newPassword: string): Promise<void> {
-    const tokenHash = hashToken(rawToken)
-    const now = new Date()
-
-    const [row] = await db.select()
-        .from(passwordResetTokens)
-        .where(eq(passwordResetTokens.tokenHash, tokenHash))
-
-    if (!row) throw new Error('Invalid or expired reset link')
-    if (row.usedAt) throw new Error('This reset link has already been used')
-    if (row.expiresAt < now) throw new Error('This reset link has expired')
+export async function resetPassword(email: string, newPassword: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.email, email))
+    if (!user) {
+        throw new Error('User not found')
+    }
 
     const hashedPassword = await hashPassword(newPassword)
-
-    await db.update(passwordResetTokens)
-        .set({ usedAt: now })
-        .where(eq(passwordResetTokens.id, row.id))
-
-    await db.update(users)
-        .set({ password: hashedPassword, passwordChangedAt: now })
-        .where(eq(users.id, row.userId))
-}
-
-export async function getOAuthProvidersForEmail(email: string): Promise<string[]> {
-    const [user] = await db.select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.email, email), isNull(users.dateDeleted)))
-
-    if (!user) return []
-
-    const accounts = await db.select({ provider: oauthAccounts.provider })
-        .from(oauthAccounts)
-        .where(eq(oauthAccounts.userId, user.id))
-
-    return accounts.map(a => a.provider)
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id))
 }
 
 export async function getUser(userId: number): Promise<User | null> {
@@ -229,12 +175,5 @@ export async function updateUserPassword(userId: number, currentPassword: string
     const match = await bcrypt.compare(currentPassword, user.password)
     if (!match) throw new Error('Current password is incorrect')
     const hashed = await hashPassword(newPassword)
-    await db.update(users).set({ password: hashed, passwordChangedAt: new Date() }).where(eq(users.id, userId))
-}
-
-export async function forceResetPassword(userId: number, newPassword: string): Promise<void> {
-    const hashed = await hashPassword(newPassword)
-    await db.update(users)
-        .set({ password: hashed, passwordChangedAt: new Date() })
-        .where(eq(users.id, userId))
+    await db.update(users).set({ password: hashed }).where(eq(users.id, userId))
 }

@@ -99,13 +99,6 @@
       "when": 1781052986552,
       "tag": "0013_wakeful_harpoon",
       "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1781194632712,
-      "tag": "0014_tricky_garia",
-      "breakpoints": true
     }
   ]
 }

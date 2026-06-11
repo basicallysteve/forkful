@@ -8,13 +8,6 @@ import { users, oauthAccounts } from '@/db/schema'
 import { login, trackLoginAttempt } from '@/lib/users'
 import { findOrCreateOAuthUser } from '@/lib/oauth'
 
-const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
-
-function isPasswordExpired(passwordChangedAt: Date | null | undefined): boolean {
-  if (!passwordChangedAt) return false
-  return passwordChangedAt.getTime() < Date.now() - NINETY_DAYS_MS
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Google({
@@ -90,13 +83,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token
       }
 
-      // After a password reset, refresh passwordChangedAt and clear the forced-reset flag
-      if (trigger === 'update' && session?.passwordChangedAt) {
-        token.passwordChangedAt = session.passwordChangedAt
-        token.needsPasswordReset = false
-        return token
-      }
-
       // On credential sign-in, user.id is already set
       if (user?.id) {
         token.userId = Number(user.id)
@@ -138,17 +124,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
 
-      // On credential sign-in, populate username/avatar/passwordChangedAt from DB
+      // On credential sign-in, populate username/avatar from DB
       if (account?.provider === 'credentials' && token.userId && !token.username) {
         const [row] = await db
-          .select({ username: users.username, avatarUrl: users.avatarUrl, passwordChangedAt: users.passwordChangedAt })
+          .select({ username: users.username, avatarUrl: users.avatarUrl })
           .from(users)
           .where(eq(users.id, token.userId as number))
         if (row) {
           token.username = row.username
           token.avatarUrl = row.avatarUrl ?? null
-          token.passwordChangedAt = row.passwordChangedAt?.toISOString() ?? null
-          token.needsPasswordReset = isPasswordExpired(row.passwordChangedAt)
         }
       }
 
@@ -160,7 +144,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.name = token.username as string
       session.user.image = (token.avatarUrl as string | null) ?? session.user.image
       ;(session.user as { needsOnboarding?: boolean }).needsOnboarding = (token.needsOnboarding as boolean | undefined) ?? false
-      ;(session.user as { needsPasswordReset?: boolean }).needsPasswordReset = (token.needsPasswordReset as boolean | undefined) ?? false
       return session
     },
   },
