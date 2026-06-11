@@ -18,8 +18,7 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastDetectedRef = useRef<string | null>(null)
-  // Lazy initializer avoids calling setState synchronously inside an effect
-  const [isSupported] = useState<boolean>(() => typeof window !== 'undefined' && 'BarcodeDetector' in window)
+  const [isSupported] = useState<boolean>(() => typeof window !== 'undefined')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [manualCode, setManualCode] = useState('')
 
@@ -30,6 +29,11 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
 
     async function startCamera() {
       try {
+        // Use native BarcodeDetector or lazily load the polyfill on browsers that lack it (e.g. iOS Safari)
+        const DetectorClass: typeof BarcodeDetector = 'BarcodeDetector' in window
+          ? BarcodeDetector
+          : (await import('barcode-detector/ponyfill')).BarcodeDetectorPolyfill as unknown as typeof BarcodeDetector
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         })
@@ -43,7 +47,7 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
           await videoRef.current.play()
         }
 
-        const detector = new BarcodeDetector({
+        const detector = new DetectorClass({
           formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code'],
         })
 
