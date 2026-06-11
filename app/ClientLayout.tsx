@@ -2,13 +2,13 @@
 
 import ToolBar from '@/components/ToolBar'
 import MarketingNav from '@/components/marketing/MarketingNav'
+import MarketingFooter from '@/components/marketing/MarketingFooter'
 import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { usePathname } from 'next/navigation'
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -18,14 +18,8 @@ interface ClientLayoutProps {
   avatarUrl?: string | null
 }
 
-const MARKETING_PATHS = ['/about', '/blog', '/login', '/create-account']
-
 export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
-  const pathname = usePathname()
-  const isMarketingShell = !isLoggedIn && (
-    pathname === '/' ||
-    MARKETING_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
-  )
+  const isMarketingShell = !isLoggedIn
 
   const menuOptions = [
     {
@@ -70,6 +64,7 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
         <div className="marketing-shell">
           <MarketingNav />
           <main>{children}</main>
+          <MarketingFooter />
           <Analytics />
           <SpeedInsights />
         </div>

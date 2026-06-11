@@ -11,10 +11,18 @@
 }
 
 .logo {
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--vscode-accent);
+  color: var(--text-color);
   text-decoration: none;
+
+  img {
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
 
   &:hover {
     opacity: 0.85;
