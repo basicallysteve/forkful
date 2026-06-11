@@ -134,24 +134,25 @@ export async function createPasswordResetToken(email: string): Promise<{ token: 
 export async function redeemPasswordResetToken(rawToken: string, newPassword: string): Promise<void> {
     const tokenHash = hashToken(rawToken)
     const now = new Date()
-
-    const [row] = await db.select()
-        .from(passwordResetTokens)
-        .where(eq(passwordResetTokens.tokenHash, tokenHash))
-
-    if (!row) throw new Error('Invalid or expired reset link')
-    if (row.usedAt) throw new Error('This reset link has already been used')
-    if (row.expiresAt < now) throw new Error('This reset link has expired')
-
     const hashedPassword = await hashPassword(newPassword)
 
-    await db.update(passwordResetTokens)
-        .set({ usedAt: now })
-        .where(eq(passwordResetTokens.id, row.id))
+    await db.transaction(async (tx) => {
+        // Atomically claim the token — only one concurrent request can win this update
+        const [claimed] = await tx.update(passwordResetTokens)
+            .set({ usedAt: now })
+            .where(and(
+                eq(passwordResetTokens.tokenHash, tokenHash),
+                isNull(passwordResetTokens.usedAt),
+                gte(passwordResetTokens.expiresAt, now),
+            ))
+            .returning({ userId: passwordResetTokens.userId })
 
-    await db.update(users)
-        .set({ password: hashedPassword, passwordChangedAt: now })
-        .where(eq(users.id, row.userId))
+        if (!claimed) throw new Error('Invalid or expired reset link')
+
+        await tx.update(users)
+            .set({ password: hashedPassword, passwordChangedAt: now })
+            .where(eq(users.id, claimed.userId))
+    })
 }
 
 export async function getOAuthProvidersForEmail(email: string): Promise<string[]> {

@@ -24,15 +24,18 @@ export async function POST(request: Request) {
       )
     }
 
-    if (body.token) {
+    if (body.token !== undefined) {
       // Token mode: unauthenticated user arriving via email link
+      if (typeof body.token !== 'string') {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+      }
       await taskRunner.run(() => redeemPasswordResetToken(body.token!, body.newPassword!))
       return NextResponse.json({ type: 'success' })
     }
 
     // Forced mode: authenticated user whose password is 90 days old
     const session = await getSessionUser()
-    if (!session) {
+    if (!session || !session.needsPasswordReset) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

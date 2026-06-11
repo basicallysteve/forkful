@@ -56,6 +56,12 @@ describe('POST /api/auth/reset-password', () => {
   })
 
   describe('token mode', () => {
+    it('returns 400 when token is a non-string type', async () => {
+      const res = await POST(makeRequest({ token: 12345, newPassword: STRONG_PASSWORD }))
+      expect(res.status).toBe(400)
+      expect(redeemPasswordResetToken).not.toHaveBeenCalled()
+    })
+
     it('redeems the token and returns success', async () => {
       (redeemPasswordResetToken as Mock).mockResolvedValue(undefined)
 
@@ -104,8 +110,17 @@ describe('POST /api/auth/reset-password', () => {
       expect(forceResetPassword).not.toHaveBeenCalled()
     })
 
+    it('returns 401 when session does not have needsPasswordReset', async () => {
+      (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice', needsPasswordReset: false })
+
+      const res = await POST(makeRequest({ newPassword: STRONG_PASSWORD }))
+
+      expect(res.status).toBe(401)
+      expect(forceResetPassword).not.toHaveBeenCalled()
+    })
+
     it('resets the password for the session user and returns passwordChangedAt', async () => {
-      (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' });
+      (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice', needsPasswordReset: true });
       (forceResetPassword as Mock).mockResolvedValue(undefined)
 
       const res = await POST(makeRequest({ newPassword: STRONG_PASSWORD }))
@@ -119,7 +134,7 @@ describe('POST /api/auth/reset-password', () => {
     })
 
     it('returns a valid ISO timestamp for passwordChangedAt', async () => {
-      (getSessionUser as Mock).mockResolvedValue({ userId: 1, username: 'bob' });
+      (getSessionUser as Mock).mockResolvedValue({ userId: 1, username: 'bob', needsPasswordReset: true });
       (forceResetPassword as Mock).mockResolvedValue(undefined)
 
       const res = await POST(makeRequest({ newPassword: STRONG_PASSWORD }))

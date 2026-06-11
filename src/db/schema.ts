@@ -113,7 +113,9 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
   dateAdded: timestamp('date_added').defaultNow().notNull(),
-});
+}, (t) => ({
+  tokenHashUnique: unique('password_reset_tokens_token_hash_unique').on(t.tokenHash),
+}));
 
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
