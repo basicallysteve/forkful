@@ -3,13 +3,11 @@ import { createPasswordResetToken, getOAuthProvidersForEmail } from '@/lib/users
 import { sendPasswordResetEmail } from '@/lib/email'
 import { taskRunner } from '@/lib/TaskRunner'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
 export async function POST(request: Request) {
   try {
     const body: { email?: string } = await request.json()
 
-    if (!body.email || typeof body.email !== 'string' || !EMAIL_REGEX.test(body.email)) {
+    if (!body.email || typeof body.email !== 'string' || body.email.length > 254 || !body.email.includes('@')) {
       return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 })
     }
 
