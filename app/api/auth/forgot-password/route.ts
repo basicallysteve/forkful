@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server'
-import { createPasswordResetToken, getOAuthProvidersForEmail } from '@/lib/users'
+import { createPasswordResetToken, getOAuthProvidersForEmail, checkPasswordResetRateLimit, trackLoginAttempt } from '@/lib/users'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { taskRunner } from '@/lib/TaskRunner'
+import { getClientIp } from '@/lib/ip'
 
 export async function POST(request: Request) {
+  const ipAddress = getClientIp(request.headers)
+
+  try {
+    await checkPasswordResetRateLimit(ipAddress)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Too many requests'
+    return NextResponse.json({ error: message }, { status: 429 })
+  }
+
+  await trackLoginAttempt({ ipAddress, successful: true })
+
   try {
     const body: { email?: string } = await request.json()
 

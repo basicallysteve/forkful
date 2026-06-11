@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
 import { POST } from './route'
-import { createPasswordResetToken, getOAuthProvidersForEmail } from '@/lib/users'
+import { createPasswordResetToken, getOAuthProvidersForEmail, checkPasswordResetRateLimit, trackLoginAttempt } from '@/lib/users'
 import { sendPasswordResetEmail } from '@/lib/email'
 
 vi.mock('@/lib/users', () => ({
   createPasswordResetToken: vi.fn(),
   getOAuthProvidersForEmail: vi.fn(),
+  checkPasswordResetRateLimit: vi.fn(),
+  trackLoginAttempt: vi.fn(),
 }))
 
 vi.mock('@/lib/email', () => ({
@@ -22,9 +24,36 @@ function makeRequest(body: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  ;(checkPasswordResetRateLimit as Mock).mockResolvedValue(undefined)
+  ;(trackLoginAttempt as Mock).mockResolvedValue(undefined)
 })
 
 describe('POST /api/auth/forgot-password', () => {
+  describe('rate limiting', () => {
+    it('returns 400 when the rate limit is exceeded', async () => {
+      (checkPasswordResetRateLimit as Mock).mockRejectedValue(
+        new Error('Too many password reset requests. Please try again later.'),
+      )
+
+      const res = await POST(makeRequest({ email: 'user@example.com' }))
+
+      expect(res.status).toBe(429)
+      expect((await res.json()).error).toMatch(/too many/i)
+      expect(sendPasswordResetEmail).not.toHaveBeenCalled()
+    })
+
+    it('records an attempt before processing the email', async () => {
+      (createPasswordResetToken as Mock).mockResolvedValue({ token: 'tok', userId: 1 });
+      (sendPasswordResetEmail as Mock).mockResolvedValue(undefined)
+
+      await POST(makeRequest({ email: 'user@example.com' }))
+
+      expect(trackLoginAttempt).toHaveBeenCalledWith(
+        expect.objectContaining({ successful: true }),
+      )
+    })
+  })
+
   describe('input validation', () => {
     it('returns 400 when email is missing', async () => {
       const res = await POST(makeRequest({}))

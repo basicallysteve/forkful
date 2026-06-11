@@ -107,6 +107,23 @@ export async function trackLoginAttempt({ userId, successful, ipAddress }: { use
     })
 }
 
+// Successful logins always include a userId, so successful=1 + userId=null is
+// uniquely available to tag password-reset requests without touching the schema.
+export async function checkPasswordResetRateLimit(ipAddress: string): Promise<void> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const rows = await db.select({ id: login_attempts.id })
+        .from(login_attempts)
+        .where(and(
+            eq(login_attempts.ipAddress, ipAddress),
+            eq(login_attempts.successful, 1),
+            isNull(login_attempts.userId),
+            gte(login_attempts.dateAdded, oneHourAgo),
+        ))
+    if (rows.length >= 3) {
+        throw new Error('Too many password reset requests. Please try again later.')
+    }
+}
+
 function hashToken(rawToken: string): string {
     return crypto.createHash('sha256').update(rawToken).digest('hex')
 }
