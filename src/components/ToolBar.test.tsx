@@ -6,6 +6,10 @@ vi.mock('./ThemeToggle', () => ({
   default: () => <button type="button" aria-label="Switch to dark mode" />,
 }))
 
+vi.mock('./ThemedLogo', () => ({
+  default: () => <svg role="img" aria-label="Forkful logo" />,
+}))
+
 const leftOptions = [
   { label: 'Recipes', to: '/recipes' },
   { label: 'Foods', to: '/foods' },
@@ -32,7 +36,7 @@ const optionsWithChildren = [
 describe('ToolBar — desktop layout', () => {
   it('renders the brand logo and name', () => {
     render(<ToolBar />)
-    expect(screen.getByAltText('Forkful logo')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /forkful logo/i })).toBeInTheDocument()
     expect(screen.getByText('Forkful')).toBeInTheDocument()
   })
 

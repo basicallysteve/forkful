@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from './ThemeToggle'
+import ThemedLogo from './ThemedLogo'
 
 type MenuOption = {
     label: string;
@@ -12,8 +13,6 @@ type MenuOption = {
     align?: 'right';
     avatar?: { url: string | null; initial: string };
 }
-
-const logoSrc = "/forkful-logo.svg"
 
 function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -114,7 +113,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         <>
             <div className="toolbar">
                 <Link href="/" className="toolbar-brand">
-                    <img src={logoSrc} alt="Forkful logo" className="toolbar-logo" />
+                    <ThemedLogo size={34} />
                     <div className="toolbar-title">
                         <span className="toolbar-name">Forkful</span>
                         <span className="toolbar-tagline">Recipes worth repeating</span>
