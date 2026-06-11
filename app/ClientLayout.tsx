@@ -18,7 +18,7 @@ interface ClientLayoutProps {
   avatarUrl?: string | null
 }
 
-const MARKETING_PATHS = ['/about', '/blog']
+const MARKETING_PATHS = ['/about', '/blog', '/login', '/create-account']
 
 export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
   const pathname = usePathname()
