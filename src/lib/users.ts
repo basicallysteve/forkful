@@ -175,6 +175,14 @@ export async function redeemPasswordResetToken(rawToken: string, newPassword: st
 
         if (!claimed) throw new Error('Invalid or expired reset link')
 
+        // Guard against resetting to the same password
+        const [user] = await tx.select({ password: users.password })
+            .from(users)
+            .where(eq(users.id, claimed.userId))
+        if (user?.password && await bcrypt.compare(newPassword, user.password)) {
+            throw new Error('New password must be different from your current password')
+        }
+
         await tx.update(users)
             .set({ password: hashedPassword, passwordChangedAt: now })
             .where(eq(users.id, claimed.userId))
@@ -260,6 +268,14 @@ export async function updateUserPassword(userId: number, currentPassword: string
 }
 
 export async function forceResetPassword(userId: number, newPassword: string): Promise<void> {
+    const [user] = await db.select({ password: users.password }).from(users).where(eq(users.id, userId))
+    if (!user) throw new Error('User not found')
+
+    // Guard against resetting to the same password
+    if (user.password && await bcrypt.compare(newPassword, user.password)) {
+        throw new Error('New password must be different from your current password')
+    }
+
     const hashed = await hashPassword(newPassword)
     await db.update(users)
         .set({ password: hashed, passwordChangedAt: new Date() })

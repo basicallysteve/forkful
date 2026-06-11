@@ -2,22 +2,13 @@ import { NextResponse } from 'next/server'
 import { redeemPasswordResetToken, forceResetPassword } from '@/lib/users'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
-
-function isStrongPassword(password: string): boolean {
-  return (
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /[0-9]/.test(password) &&
-    /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)
-  )
-}
+import { isPasswordStrong } from '@/utils/password'
 
 export async function POST(request: Request) {
   try {
     const body: { token?: string; newPassword?: string } = await request.json()
 
-    if (!body.newPassword || typeof body.newPassword !== 'string' || !isStrongPassword(body.newPassword)) {
+    if (!body.newPassword || typeof body.newPassword !== 'string' || !isPasswordStrong(body.newPassword)) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' },
         { status: 400 },

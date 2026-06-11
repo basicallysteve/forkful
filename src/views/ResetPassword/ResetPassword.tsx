@@ -5,36 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Password } from 'primereact/password'
-
-const commonPasswords = [
-  'password', 'password1', 'password123', '123456', '12345678', '123456789',
-  'qwerty', 'qwerty123', 'abc123', 'letmein', 'welcome', 'admin', 'login',
-]
-
-interface PasswordValidation {
-  hasMinLength: boolean
-  hasUppercase: boolean
-  hasLowercase: boolean
-  hasNumber: boolean
-  hasSpecialChar: boolean
-  isNotCommon: boolean
-}
-
-function validatePassword(password: string): PasswordValidation {
-  const lower = password.toLowerCase()
-  return {
-    hasMinLength: password.length >= 8,
-    hasUppercase: /[A-Z]/.test(password),
-    hasLowercase: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    hasSpecialChar: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
-    isNotCommon: password.length === 0 || !commonPasswords.includes(lower),
-  }
-}
-
-function isPasswordValid(v: PasswordValidation): boolean {
-  return v.hasMinLength && v.hasUppercase && v.hasLowercase && v.hasNumber && v.hasSpecialChar && v.isNotCommon
-}
+import { validatePassword, isPasswordStrong } from '@/utils/password'
 
 type State =
   | { phase: 'idle' }
@@ -55,7 +26,7 @@ function ResetPassword() {
   const [state, setState] = useState<State>({ phase: 'idle' })
 
   const validation = useMemo(() => validatePassword(newPassword), [newPassword])
-  const passwordIsValid = useMemo(() => isPasswordValid(validation), [validation])
+  const passwordIsValid = useMemo(() => isPasswordStrong(newPassword), [newPassword])
   const passwordsMatch = useMemo(
     () => newPassword === confirmPassword && confirmPassword.length > 0,
     [newPassword, confirmPassword],
