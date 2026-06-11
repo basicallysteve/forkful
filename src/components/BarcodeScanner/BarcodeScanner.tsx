@@ -32,7 +32,7 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
         // Use native BarcodeDetector or lazily load the polyfill on browsers that lack it (e.g. iOS Safari)
         const DetectorClass: typeof BarcodeDetector = 'BarcodeDetector' in window
           ? BarcodeDetector
-          : (await import('barcode-detector/ponyfill')).BarcodeDetectorPolyfill as unknown as typeof BarcodeDetector
+          : (await import('barcode-detector/ponyfill')).BarcodeDetector as unknown as typeof BarcodeDetector
 
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
