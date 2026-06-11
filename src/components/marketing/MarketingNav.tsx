@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import styles from './MarketingNav.module.scss'
 import ThemedLogo from '../ThemedLogo'
 export default function MarketingNav() {

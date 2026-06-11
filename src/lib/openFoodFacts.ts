@@ -2,7 +2,7 @@ import type { OFFProduct } from '@/types/OpenFoodFacts'
 import type { Food } from '@/types/Food'
 
 const OFF_BASE = 'https://world.openfoodfacts.org'
-const USER_AGENT = 'Forkful/1.0 (https://github.com/basicallysteve/forkful)'
+const USER_AGENT = 'Forkful/1.0 (https://eatforkful.com)'
 
 interface OFFSearchResponse {
   products: OFFProduct[]

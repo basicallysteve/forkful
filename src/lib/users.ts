@@ -1,8 +1,9 @@
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and, gte, isNull, isNotNull, lt, or } from 'drizzle-orm'
 import { db } from '@/db'
-import { users, login_attempts } from '@/db/schema'
+import { users, login_attempts, passwordResetTokens, oauthAccounts } from '@/db/schema'
 import type { User } from '@/types/User'
 import bcrypt from 'bcrypt'
+import crypto from 'crypto'
 
 export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
@@ -17,13 +18,15 @@ export async function signUp(user: { username: string; email: string; password: 
     if (existingByEmail) throw new Error('Email already in use')
 
     const hashedPassword = await hashPassword(user.password)
+    const now = new Date()
     const [data] = await db.insert(users).values({
         username: user.username,
         email: user.email,
         password: hashedPassword,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
-        dateAdded: new Date(),
+        passwordChangedAt: now,
+        dateAdded: now,
         dateDeleted: null,
     }).returning();
 
@@ -104,14 +107,100 @@ export async function trackLoginAttempt({ userId, successful, ipAddress }: { use
     })
 }
 
-export async function resetPassword(email: string, newPassword: string): Promise<void> {
-    const [user] = await db.select().from(users).where(eq(users.email, email))
-    if (!user) {
-        throw new Error('User not found')
+// Successful logins always include a userId, so successful=1 + userId=null is
+// uniquely available to tag password-reset requests without touching the schema.
+export async function checkPasswordResetRateLimit(ipAddress: string): Promise<void> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const rows = await db.select({ id: login_attempts.id })
+        .from(login_attempts)
+        .where(and(
+            eq(login_attempts.ipAddress, ipAddress),
+            eq(login_attempts.successful, 1),
+            isNull(login_attempts.userId),
+            gte(login_attempts.dateAdded, oneHourAgo),
+        ))
+    if (rows.length >= 3) {
+        throw new Error('Too many password reset requests. Please try again later.')
     }
+}
 
+function hashToken(rawToken: string): string {
+    return crypto.createHash('sha256').update(rawToken).digest('hex')
+}
+
+export async function createPasswordResetToken(email: string): Promise<{ token: string; userId: number } | null> {
+    const [user] = await db.select({ id: users.id, password: users.password })
+        .from(users)
+        .where(and(eq(users.email, email), isNull(users.dateDeleted)))
+
+    if (!user || !user.password) return null
+
+    const now = new Date()
+
+    // Delete previous tokens for this user — expired, used, or superseded by this request
+    await db.delete(passwordResetTokens)
+        .where(and(
+            eq(passwordResetTokens.userId, user.id),
+            or(isNotNull(passwordResetTokens.usedAt), lt(passwordResetTokens.expiresAt, now)),
+        ))
+
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(rawToken)
+    const expiresAt = new Date(now.getTime() + 60 * 60 * 1000)
+
+    await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+    })
+
+    return { token: rawToken, userId: user.id }
+}
+
+export async function redeemPasswordResetToken(rawToken: string, newPassword: string): Promise<void> {
+    const tokenHash = hashToken(rawToken)
+    const now = new Date()
     const hashedPassword = await hashPassword(newPassword)
-    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id))
+
+    await db.transaction(async (tx) => {
+        // Atomically claim the token — only one concurrent request can win this update
+        const [claimed] = await tx.update(passwordResetTokens)
+            .set({ usedAt: now })
+            .where(and(
+                eq(passwordResetTokens.tokenHash, tokenHash),
+                isNull(passwordResetTokens.usedAt),
+                gte(passwordResetTokens.expiresAt, now),
+            ))
+            .returning({ userId: passwordResetTokens.userId })
+
+        if (!claimed) throw new Error('Invalid or expired reset link')
+
+        // Guard against resetting to the same password
+        const [user] = await tx.select({ password: users.password })
+            .from(users)
+            .where(eq(users.id, claimed.userId))
+        if (user?.password && await bcrypt.compare(newPassword, user.password)) {
+            throw new Error('New password must be different from your current password')
+        }
+
+        await tx.update(users)
+            .set({ password: hashedPassword, passwordChangedAt: now })
+            .where(eq(users.id, claimed.userId))
+    })
+}
+
+export async function getOAuthProvidersForEmail(email: string): Promise<string[]> {
+    const [user] = await db.select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.email, email), isNull(users.dateDeleted)))
+
+    if (!user) return []
+
+    const accounts = await db.select({ provider: oauthAccounts.provider })
+        .from(oauthAccounts)
+        .where(eq(oauthAccounts.userId, user.id))
+
+    return accounts.map(a => a.provider)
 }
 
 export async function getUser(userId: number): Promise<User | null> {
@@ -175,5 +264,20 @@ export async function updateUserPassword(userId: number, currentPassword: string
     const match = await bcrypt.compare(currentPassword, user.password)
     if (!match) throw new Error('Current password is incorrect')
     const hashed = await hashPassword(newPassword)
-    await db.update(users).set({ password: hashed }).where(eq(users.id, userId))
+    await db.update(users).set({ password: hashed, passwordChangedAt: new Date() }).where(eq(users.id, userId))
+}
+
+export async function forceResetPassword(userId: number, newPassword: string): Promise<void> {
+    const [user] = await db.select({ password: users.password }).from(users).where(eq(users.id, userId))
+    if (!user) throw new Error('User not found')
+
+    // Guard against resetting to the same password
+    if (user.password && await bcrypt.compare(newPassword, user.password)) {
+        throw new Error('New password must be different from your current password')
+    }
+
+    const hashed = await hashPassword(newPassword)
+    await db.update(users)
+        .set({ password: hashed, passwordChangedAt: new Date() })
+        .where(eq(users.id, userId))
 }

@@ -135,6 +135,14 @@ html[data-theme='light'] { @include quill-light; }
   .p-icon-field-right {
     width: 100%;
   }
+
+  // The lara-dark-blue PrimeReact theme hardcodes many colours as white, so
+  // the toggle icon inherits a white fill in light mode and becomes invisible.
+  // Explicitly pin the icon colour to a readable muted tone for both modes.
+  .p-password-show-icon,
+  .p-password-hide-icon {
+    color: var(--text-color-secondary);
+  }
 }
 
 // ── Input background alignment ────────────────────────────────────────────────
