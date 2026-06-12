@@ -40,6 +40,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account not found or not deactivated' }, { status: 400 })
     }
 
+    // Per-user rate limit — prevents brute-force via VPN/proxy rotation
+    const recentFailedByUser = await db
+      .select({ id: login_attempts.id })
+      .from(login_attempts)
+      .where(and(
+        eq(login_attempts.userId, user.id),
+        eq(login_attempts.successful, 0),
+        gte(login_attempts.dateAdded, oneHourAgo),
+      ))
+    if (recentFailedByUser.length >= 5) {
+      return NextResponse.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 })
+    }
+
     const match = await bcrypt.compare(password, user.password)
     if (!match) {
       await trackLoginAttempt({ userId: user.id, ipAddress, successful: false })

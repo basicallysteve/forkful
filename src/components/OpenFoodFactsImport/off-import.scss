@@ -1,18 +1,9 @@
 // ── OpenFoodFacts import dialog ───────────────────────────────────────────────
 
+// OFF import overrides — the tab bar sits flush so content padding is suppressed
+// and handled by .off-panel instead.
 .off-import-dialog {
-  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
-
-  .p-dialog-header {
-    background: var(--vscode-titlebar-bg);
-    border-bottom: 1px solid var(--vscode-border);
-    color: var(--vscode-text);
-    font-size: 15px;
-    padding: 14px 18px;
-  }
-
   .p-dialog-content {
-    background: var(--vscode-panel-strong);
     padding: 0;
   }
 }

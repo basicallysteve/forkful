@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { apiSignUp } from "@/lib/api/users"
 import { InputText } from 'primereact/inputtext'
-import { Checkbox } from 'primereact/checkbox'
 import { Password } from 'primereact/password'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import './createAccount.scss'
@@ -245,12 +244,8 @@ function CreateAccount() {
                       <label
                         key={cuisine}
                         className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? "is-active" : ""}`}
+                        onClick={() => handleCuisineToggle(cuisine)}
                       >
-                        <Checkbox
-                          className="checkbox-input"
-                          checked={cuisinePreferences.includes(cuisine)}
-                          onChange={() => handleCuisineToggle(cuisine)}
-                        />
                         <span className="checkbox-indicator" />
                         {cuisine}
                       </label>
@@ -266,12 +261,8 @@ function CreateAccount() {
                       <label
                         key={option}
                         className={`checkbox-option ${dietaryRestrictions.includes(option) ? "is-active" : ""}`}
+                        onClick={() => handleDietaryToggle(option)}
                       >
-                        <Checkbox
-                          className="checkbox-input"
-                          checked={dietaryRestrictions.includes(option)}
-                          onChange={() => handleDietaryToggle(option)}
-                        />
                         <span className="checkbox-indicator" />
                         {option}
                       </label>
@@ -281,12 +272,10 @@ function CreateAccount() {
                 </div>
 
                 <div className="form-field form-field-full">
-                  <label className="checkbox-option">
-                    <Checkbox
-                      className="checkbox-input"
-                      checked={marketingEmailOptIn}
-                      onChange={e => setMarketingEmailOptIn(!!e.checked)}
-                    />
+                  <label
+                    className={`checkbox-option${marketingEmailOptIn ? ' is-active' : ''}`}
+                    onClick={() => setMarketingEmailOptIn(prev => !prev)}
+                  >
                     <span className="checkbox-indicator" />
                     Send me news and updates about Forkful (optional)
                   </label>

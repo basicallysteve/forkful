@@ -4,9 +4,8 @@ import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
-import { Checkbox } from 'primereact/checkbox'
-import { Dialog } from 'primereact/dialog'
 import { InputText } from 'primereact/inputtext'
+import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -369,8 +368,7 @@ export default function Profile({ user }: ProfileProps) {
               <span className="field-label">Cuisine Preferences</span>
               <div className="checkbox-group">
                 {cuisineOptions.map(option => (
-                  <label key={option} className={`checkbox-option ${cuisine.includes(option) ? 'is-active' : ''}`}>
-                    <Checkbox className="checkbox-input" checked={cuisine.includes(option)} onChange={() => toggleCuisine(option)} />
+                  <label key={option} className={`checkbox-option ${cuisine.includes(option) ? 'is-active' : ''}`} onClick={() => toggleCuisine(option)}>
                     <span className="checkbox-indicator" />
                     {option}
                   </label>
@@ -381,8 +379,7 @@ export default function Profile({ user }: ProfileProps) {
               <span className="field-label">Dietary Restrictions</span>
               <div className="checkbox-group">
                 {dietaryOptions.map(option => (
-                  <label key={option} className={`checkbox-option ${dietary.includes(option) ? 'is-active' : ''}`}>
-                    <Checkbox className="checkbox-input" checked={dietary.includes(option)} onChange={() => toggleDietary(option)} />
+                  <label key={option} className={`checkbox-option ${dietary.includes(option) ? 'is-active' : ''}`} onClick={() => toggleDietary(option)}>
                     <span className="checkbox-indicator" />
                     {option}
                   </label>
@@ -408,12 +405,7 @@ export default function Profile({ user }: ProfileProps) {
           </div>
           <div className="panel-content">
             <div className="pref-group">
-              <label className="checkbox-option">
-                <Checkbox
-                  className="checkbox-input"
-                  checked={marketingOptIn}
-                  onChange={e => { setMarketingOptIn(!!e.checked); setEmailPrefSuccess(false) }}
-                />
+              <label className={`checkbox-option${marketingOptIn ? ' is-active' : ''}`} onClick={() => { setMarketingOptIn(prev => !prev); setEmailPrefSuccess(false) }}>
                 <span className="checkbox-indicator" />
                 Receive news and marketing emails
               </label>
@@ -571,12 +563,12 @@ export default function Profile({ user }: ProfileProps) {
       </div>
 
       {/* Account closure modal */}
-      <Dialog
+      <Modal
         visible={!!closureModal}
         onHide={() => { if (!closureSubmitting) setClosureModal(null) }}
         header={closureModal === 'deactivate' ? 'Deactivate your account?' : 'Delete your account?'}
-        modal
         style={{ width: '520px', maxWidth: '95vw' }}
+        className="closure-modal"
         footer={
           <div className="dialog-footer">
             <button
@@ -610,12 +602,7 @@ export default function Profile({ user }: ProfileProps) {
           <p className="field-label">Mind telling us why? (optional)</p>
           <div className="checkbox-group">
             {CLOSURE_REASONS.map(reason => (
-              <label key={reason} className={`checkbox-option ${closureReasons.includes(reason) ? 'is-active' : ''}`}>
-                <Checkbox
-                  className="checkbox-input"
-                  checked={closureReasons.includes(reason)}
-                  onChange={() => toggleReason(reason)}
-                />
+              <label key={reason} className={`checkbox-option ${closureReasons.includes(reason) ? 'is-active' : ''}`} onClick={() => toggleReason(reason)}>
                 <span className="checkbox-indicator" />
                 {reason}
               </label>
@@ -637,7 +624,7 @@ export default function Profile({ user }: ProfileProps) {
         </div>
 
         {closureError && <p className="field-error" role="alert">{closureError}</p>}
-      </Dialog>
+      </Modal>
     </div>
   )
 }

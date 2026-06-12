@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Dialog } from 'primereact/dialog'
+import Modal from '@/components/Modal/Modal'
 import { InputText } from 'primereact/inputtext'
 import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
 import { apiSearchOpenFoodFacts, apiGetProductByBarcode, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
@@ -137,15 +137,12 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
   }
 
   return (
-    <Dialog
+    <Modal
       visible={visible}
       onHide={onHide}
       header="Import from OpenFoodFacts"
-      modal
       className="off-import-dialog"
       style={{ width: '560px', maxWidth: '95vw' }}
-      closeIcon="pi pi-times"
-      dismissableMask
     >
       <div className="off-tabs">
         <button
@@ -221,6 +218,6 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
           )}
         </div>
       )}
-    </Dialog>
+    </Modal>
   )
 }

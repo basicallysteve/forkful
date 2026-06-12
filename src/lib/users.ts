@@ -1,4 +1,4 @@
-import { eq, and, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
+import { eq, and, gt, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedback, recipes } from '@/db/schema'
 import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
@@ -303,7 +303,9 @@ export async function deactivateAccount(userId: number): Promise<void> {
 }
 
 export async function reactivateAccount(userId: number): Promise<void> {
-    await db.update(users).set({ dateDeleted: null }).where(eq(users.id, userId))
+    await db.update(users)
+        .set({ dateDeleted: null, deactivationWarningEmailSentAt: null })
+        .where(eq(users.id, userId))
 }
 
 export async function deleteAccount(userId: number): Promise<void> {
@@ -358,29 +360,43 @@ export async function processDeactivatedAccounts(): Promise<{ warned: number; de
 
     let deleted = 0
     for (const user of toDelete) {
-        await deleteAccount(user.id)
-        sendGoodbyeEmail(user.email, user.username, 'deleted').catch(() => null)
-        deleted++
+        try {
+            await deleteAccount(user.id)
+            deleted++
+        } catch (err) {
+            console.error('[processDeactivatedAccounts] failed to delete user', user.id, err)
+        }
     }
 
-    // Send 11-month warning to accounts deactivated 330–364 days ago that haven't been warned yet
+    // Send 11-month warning to accounts deactivated 335–364 days ago that haven't been warned yet.
+    // Uses gt (not lt) so the window is between elevenMonthsAgo and twelveMonthsAgo, not beyond it.
     const toWarn = await db.select({ id: users.id, email: users.email, username: users.username, dateDeleted: users.dateDeleted })
         .from(users)
         .where(and(
             isNotNull(users.dateDeleted),
             lte(users.dateDeleted, elevenMonthsAgo),
-            lt(users.dateDeleted, twelveMonthsAgo),
+            gt(users.dateDeleted, twelveMonthsAgo),
             isNull(users.deactivationWarningEmailSentAt),
         ))
 
     let warned = 0
     for (const user of toWarn) {
-        const deletionDate = new Date(user.dateDeleted!.getTime() + 365 * 24 * 60 * 60 * 1000)
-        await sendDeactivationExpiryWarningEmail(user.email, user.username, deletionDate)
-        await db.update(users)
-            .set({ deactivationWarningEmailSentAt: now })
-            .where(eq(users.id, user.id))
-        warned++
+        try {
+            // Claim the warning slot atomically before sending — prevents double-send if
+            // two cron instances overlap and both selected this user before either updated.
+            const [claimed] = await db.update(users)
+                .set({ deactivationWarningEmailSentAt: now })
+                .where(and(eq(users.id, user.id), isNull(users.deactivationWarningEmailSentAt)))
+                .returning({ id: users.id })
+
+            if (!claimed) continue
+
+            const deletionDate = new Date(user.dateDeleted!.getTime() + 365 * 24 * 60 * 60 * 1000)
+            await sendDeactivationExpiryWarningEmail(user.email, user.username, deletionDate)
+            warned++
+        } catch (err) {
+            console.error('[processDeactivatedAccounts] failed to warn user', user.id, err)
+        }
     }
 
     return { warned, deleted }

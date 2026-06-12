@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Checkbox } from 'primereact/checkbox'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import './welcome.scss'
 
@@ -73,12 +72,8 @@ export default function Welcome() {
                 <label
                   key={cuisine}
                   className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? 'is-active' : ''}`}
+                  onClick={() => toggleCuisine(cuisine)}
                 >
-                  <Checkbox
-                    inputId={`cuisine-${cuisine}`}
-                    checked={cuisinePreferences.includes(cuisine)}
-                    onChange={() => toggleCuisine(cuisine)}
-                  />
                   {cuisine}
                 </label>
               ))}
@@ -93,12 +88,8 @@ export default function Welcome() {
                 <label
                   key={option}
                   className={`checkbox-option ${dietaryRestrictions.includes(option) ? 'is-active' : ''}`}
+                  onClick={() => toggleDietary(option)}
                 >
-                  <Checkbox
-                    inputId={`dietary-${option}`}
-                    checked={dietaryRestrictions.includes(option)}
-                    onChange={() => toggleDietary(option)}
-                  />
                   {option}
                 </label>
               ))}
@@ -106,12 +97,10 @@ export default function Welcome() {
           </div>
 
           <div className="welcome-section">
-            <label className="checkbox-option">
-              <Checkbox
-                inputId="marketing-opt-in"
-                checked={marketingEmailOptIn}
-                onChange={e => setMarketingEmailOptIn(!!e.checked)}
-              />
+            <label
+              className={`checkbox-option${marketingEmailOptIn ? ' is-active' : ''}`}
+              onClick={() => setMarketingEmailOptIn(prev => !prev)}
+            >
               Send me news and updates about Forkful (optional)
             </label>
           </div>

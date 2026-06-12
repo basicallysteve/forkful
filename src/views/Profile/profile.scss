@@ -190,12 +190,6 @@
     user-select: none;
     transition: border-color 120ms ease, background-color 120ms ease;
 
-    .p-checkbox {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-
     &.is-active {
       border-color: var(--vscode-accent);
       background: var(--accent-hover);
@@ -312,10 +306,242 @@
     font-size: 14px;
   }
 
+  .danger-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .danger-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    &__title {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--vscode-text);
+    }
+
+    &__desc {
+      margin: 0;
+      font-size: 13px;
+      color: var(--vscode-muted);
+      line-height: 1.4;
+    }
+  }
+
+  .secondary-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-accent);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--accent-hover);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  .danger-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-danger, #ef4444);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-danger, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+
+    &:hover {
+      background: var(--vscode-danger, #ef4444);
+      color: #ffffff;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  .ghost-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-text);
+    background: transparent;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+
+    &:hover {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
   @media (max-width: 720px) {
     .profile-header {
       flex-direction: column;
       align-items: flex-start;
     }
+  }
+}
+
+// Closure modal inner content — scoped to .closure-modal (set as className on Modal).
+// Lives outside .profile {} because PrimeReact appends Dialog to <body>.
+.closure-modal {
+  .modal__body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--vscode-text);
+  }
+
+  .modal__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--vscode-text);
+    display: block;
+  }
+
+  .checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .checkbox-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--vscode-text);
+    user-select: none;
+    transition: border-color 120ms ease, background-color 120ms ease;
+
+    &.is-active {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+
+      .checkbox-indicator {
+        border-color: var(--vscode-accent);
+        background: var(--vscode-accent);
+      }
+    }
+  }
+
+  .checkbox-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    border: 2px solid var(--vscode-muted);
+    flex-shrink: 0;
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .modal__textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-family: inherit;
+    padding: 8px 10px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 120ms ease;
+
+    &:focus { border-color: var(--vscode-accent); }
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: var(--vscode-error, #f44747);
+    margin: 0;
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 0 0;
+
+  .ghost-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-text);
+    background: transparent;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+
+    &:hover { border-color: var(--vscode-accent); background: var(--accent-hover); }
+    &:disabled { cursor: not-allowed; opacity: 0.5; }
+  }
+
+  .secondary-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-accent);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+
+    &:hover { background: var(--accent-hover); }
+    &:disabled { cursor: not-allowed; opacity: 0.5; }
+  }
+
+  .danger-button {
+    border-radius: 8px;
+    border: 1px solid var(--vscode-danger, #ef4444);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--vscode-danger, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+
+    &:hover { background: var(--vscode-danger, #ef4444); color: #ffffff; }
+    &:disabled { cursor: not-allowed; opacity: 0.5; }
   }
 }
