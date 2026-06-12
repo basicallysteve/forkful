@@ -1,12 +1,23 @@
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Apple from 'next-auth/providers/apple'
 import Credentials from 'next-auth/providers/credentials'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
 import { login, trackLoginAttempt } from '@/lib/users'
 import { findOrCreateOAuthUser } from '@/lib/oauth'
+
+class AccountDeactivatedError extends CredentialsSignin {
+  code = 'ACCOUNT_DEACTIVATED' as const
+}
+
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
+
+function isPasswordExpired(passwordChangedAt: Date | null | undefined): boolean {
+  if (!passwordChangedAt) return false
+  return passwordChangedAt.getTime() < Date.now() - NINETY_DAYS_MS
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -36,7 +47,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const user = await login(credentials.username, credentials.password, ipAddress)
           await trackLoginAttempt({ userId: Number(user.id), successful: true, ipAddress })
           return { id: String(user.id), name: user.username, email: user.email }
-        } catch {
+        } catch (err) {
+          if (err instanceof Error && err.message === 'ACCOUNT_DEACTIVATED') {
+            throw new AccountDeactivatedError()
+          }
           return null
         }
       },
@@ -56,17 +70,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const [existing] = await db
             .select({ userId: oauthAccounts.userId })
             .from(oauthAccounts)
+            .innerJoin(users, and(eq(users.id, oauthAccounts.userId), isNull(users.dateDeleted)))
             .where(eq(oauthAccounts.providerAccountId, account.providerAccountId))
           return !!existing
         }
         try {
-          await findOrCreateOAuthUser({
+          const userId = await findOrCreateOAuthUser({
             provider: account.provider,
             providerAccountId: account.providerAccountId,
             email: profile.email,
             name: profile.name ?? null,
             avatarUrl: (profile as { picture?: string }).picture ?? null,
           })
+          const [freshUser] = await db
+            .select({ dateDeleted: users.dateDeleted })
+            .from(users)
+            .where(eq(users.id, userId))
+          if (freshUser?.dateDeleted) return false
           return true
         } catch (err) {
           console.error('[auth] findOrCreateOAuthUser failed:', err)
@@ -80,6 +100,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // When the client calls update({ needsOnboarding: false }), clear the flag
       if (trigger === 'update' && session?.needsOnboarding === false) {
         token.needsOnboarding = false
+        return token
+      }
+
+      // After a password reset, refresh passwordChangedAt and clear the forced-reset flag
+      if (trigger === 'update' && session?.passwordChangedAt) {
+        token.passwordChangedAt = session.passwordChangedAt
+        token.needsPasswordReset = false
+        return token
+      }
+
+      // After a username change, refresh the username in the token
+      if (trigger === 'update' && session?.username) {
+        token.username = session.username
         return token
       }
 
@@ -124,15 +157,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
 
-      // On credential sign-in, populate username/avatar from DB
+      // On credential sign-in, populate username/avatar/passwordChangedAt from DB
       if (account?.provider === 'credentials' && token.userId && !token.username) {
         const [row] = await db
-          .select({ username: users.username, avatarUrl: users.avatarUrl })
+          .select({ username: users.username, avatarUrl: users.avatarUrl, passwordChangedAt: users.passwordChangedAt })
           .from(users)
           .where(eq(users.id, token.userId as number))
         if (row) {
           token.username = row.username
           token.avatarUrl = row.avatarUrl ?? null
+          token.passwordChangedAt = row.passwordChangedAt?.toISOString() ?? null
+          token.needsPasswordReset = isPasswordExpired(row.passwordChangedAt)
         }
       }
 
@@ -144,6 +179,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.name = token.username as string
       session.user.image = (token.avatarUrl as string | null) ?? session.user.image
       ;(session.user as { needsOnboarding?: boolean }).needsOnboarding = (token.needsOnboarding as boolean | undefined) ?? false
+      ;(session.user as { needsPasswordReset?: boolean }).needsPasswordReset = (token.needsPasswordReset as boolean | undefined) ?? false
       return session
     },
   },
@@ -155,4 +191,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: 'jwt',
   },
+
+  trustHost: true,
 })

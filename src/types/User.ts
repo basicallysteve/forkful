@@ -1,3 +1,6 @@
+export type RecipeSuggestionFrequency = 'never' | 'weekly' | 'monthly'
+export type PantryExpirationFrequency = 'never' | 'daily' | 'weekly'
+
 export type User = {
   id?: string | number
   username: string
@@ -7,6 +10,9 @@ export type User = {
   cuisinePreferences: string[] | null
   dietaryRestrictions: string[] | null
   avatarUrl?: string | null
+  marketingEmailOptIn: boolean
+  recipeSuggestionFrequency: RecipeSuggestionFrequency
+  pantryExpirationFrequency: PantryExpirationFrequency
   dateAdded: Date
   dateDeleted: Date | null
 }

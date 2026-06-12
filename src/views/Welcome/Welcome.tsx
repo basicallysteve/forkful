@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Checkbox } from 'primereact/checkbox'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import './welcome.scss'
 
@@ -12,6 +11,7 @@ export default function Welcome() {
   const { data: session, update } = useSession()
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
+  const [marketingEmailOptIn, setMarketingEmailOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,7 +35,7 @@ export default function Welcome() {
       const res = await fetch(`/api/users/${session.user.id}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences),
+        body: JSON.stringify({ ...preferences, marketingEmailOptIn }),
         credentials: 'same-origin',
       })
       if (!res.ok) {
@@ -72,12 +72,8 @@ export default function Welcome() {
                 <label
                   key={cuisine}
                   className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? 'is-active' : ''}`}
+                  onClick={() => toggleCuisine(cuisine)}
                 >
-                  <Checkbox
-                    inputId={`cuisine-${cuisine}`}
-                    checked={cuisinePreferences.includes(cuisine)}
-                    onChange={() => toggleCuisine(cuisine)}
-                  />
                   {cuisine}
                 </label>
               ))}
@@ -92,16 +88,21 @@ export default function Welcome() {
                 <label
                   key={option}
                   className={`checkbox-option ${dietaryRestrictions.includes(option) ? 'is-active' : ''}`}
+                  onClick={() => toggleDietary(option)}
                 >
-                  <Checkbox
-                    inputId={`dietary-${option}`}
-                    checked={dietaryRestrictions.includes(option)}
-                    onChange={() => toggleDietary(option)}
-                  />
                   {option}
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="welcome-section">
+            <label
+              className={`checkbox-option${marketingEmailOptIn ? ' is-active' : ''}`}
+              onClick={() => setMarketingEmailOptIn(prev => !prev)}
+            >
+              Send me news and updates about Forkful (optional)
+            </label>
           </div>
 
           <div className="welcome-footer">

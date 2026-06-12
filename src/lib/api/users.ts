@@ -1,16 +1,18 @@
+import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+
 export type SignUpData = {
   username: string
   email: string
   password: string
   cuisinePreferences: string[]
   dietaryRestrictions: string[]
+  marketingEmailOptIn?: boolean
 }
 
 export type SignUpResult = {
   id: string
   username: string
   email: string
-  
 }
 
 export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {
@@ -51,12 +53,62 @@ export async function apiUpdatePreferences(userId: string | number, cuisinePrefe
   return patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
 }
 
+export async function apiUpdateUsername(userId: string | number, username: string): Promise<void> {
+  return patchUser(userId, { action: 'username', username })
+}
+
+export async function apiUpdateEmailPreferences(userId: string | number, data: {
+  marketingEmailOptIn: boolean
+  recipeSuggestionFrequency: RecipeSuggestionFrequency
+  pantryExpirationFrequency: PantryExpirationFrequency
+}): Promise<void> {
+  return patchUser(userId, { action: 'emailPreferences', ...data })
+}
+
 export async function apiUpdateEmail(userId: string | number, email: string): Promise<void> {
   return patchUser(userId, { action: 'email', email })
 }
 
 export async function apiUpdatePassword(userId: string | number, currentPassword: string, newPassword: string): Promise<void> {
   return patchUser(userId, { action: 'password', currentPassword, newPassword })
+}
+
+export async function apiDeactivateAccount(userId: string | number): Promise<void> {
+  return patchUser(userId, { action: 'deactivate' })
+}
+
+export async function apiDeleteAccount(userId: string | number): Promise<void> {
+  return patchUser(userId, { action: 'delete' })
+}
+
+export async function apiSubmitAccountFeedback(userId: string | number, data: {
+  action: 'deactivated' | 'deleted'
+  reasons: string[]
+  comment?: string
+}): Promise<void> {
+  const res = await fetch(`/api/users/${userId}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? 'Failed to save feedback')
+  }
+}
+
+export async function apiReactivateAccount(username: string, password: string): Promise<void> {
+  const res = await fetch('/api/auth/reactivate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? 'Reactivation failed')
+  }
 }
 
 export async function apiUploadAvatar(userId: string | number, file: File): Promise<{ url: string }> {

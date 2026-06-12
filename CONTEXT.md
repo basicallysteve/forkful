@@ -16,7 +16,36 @@ A link between a User and an external identity provider. Stores the provider nam
 When an OAuth sign-in arrives with an email matching an existing User, the OAuth Account is silently linked to that User and the sign-in succeeds. No error is shown to the user.
 
 ## Username
-A unique, human-readable handle for a User. Derived automatically from the user's email at account creation (e.g. `jane.doe@gmail.com` → `janedoe`). Users may change it later in their profile. Never null.
+A unique, human-readable handle for a User. Derived automatically from the user's email at account creation (e.g. `jane.doe@gmail.com` → `janedoe`). Users may change it later in their profile. Must be 3–30 characters, alphanumeric (upper and lowercase) with hyphens and underscores allowed, no spaces. Never null.
+
+## Account Deactivation
+A reversible closure of a User's account. Sets `dateDeleted` on the user row; the user cannot log in while deactivated. All data (recipes, pantry items) is preserved. Reactivation requires an explicit confirmation step — valid credentials alone do not automatically restore access. If a User remains deactivated for 12 months without reactivating, their account is automatically promoted to Account Deletion by a background job.
+_Avoid_: suspension, soft delete (that term is reserved for content entities)
+
+## Deactivation Expiry Warning
+A transactional email sent to a deactivated User approximately 30 days before their account is eligible for automatic Account Deletion (i.e. at ~11 months of deactivation). Sent regardless of Marketing Email Opt-in status. The email states the scheduled deletion date and provides a link to reactivate.
+_Avoid_: deletion warning, expiry notice
+
+## Account Deletion
+A permanent, irreversible closure of a User's account. Hard-deletes the user row, all private recipes, pantry items, OAuth accounts, password reset tokens, and login attempts. Public recipes are anonymised (author set to null) rather than deleted. No grace period. Preceded by a confirmation modal and Account Closure Feedback collection.
+_Avoid_: deactivation, account removal
+
+## Account Closure Feedback
+Structured feedback collected in-app immediately before a User completes Account Deactivation or Account Deletion. Consists of one or more predefined reasons (e.g. "Not using it enough", "Missing features", "Privacy concerns", "Switching to another app") plus an optional free-text comment. Stored in the `account_feedback` table. Always optional for the user to provide. The UI is a PrimeReact `Dialog` modal.
+_Convention_: all modal dialogs in the app use the PrimeReact `Dialog` component. Custom `modal-overlay` / `modal` DOM structures are not used.
+
+## Goodbye Email
+A transactional email sent to a User upon Account Deactivation or Account Deletion. Always sent regardless of the User's Marketing Email Opt-in status. Distinct from marketing or digest emails.
+
+## Marketing Email Opt-in
+A boolean preference on a User indicating whether they consent to receive marketing and news emails. Defaults to false (opt-out). Must be explicitly enabled by the user. Surfaced at three points: the sign-up form (Credential Users), the Welcome Page (OAuth Users), and the profile page (all Users). Does not gate transactional emails (e.g. Goodbye Email, password reset).
+_Avoid_: email subscription, newsletter opt-in
+
+## Recipe Suggestion Email Frequency
+A preference on a User controlling how often they receive recipe suggestion digest emails. Values: `never` | `weekly` | `monthly`. Defaults to `weekly`. Sent by the `processRecipeSuggestions` cron job. Suggestions are scored and ranked using three signals: (1) Cuisine Type match against the user's Cuisine Preferences, (2) pantry overlap — recipes that use foods the user currently has in their pantry are boosted, with soonest-expiring pantry foods ranked highest, (3) hard dietary restriction filter — recipes are excluded unless their Dietary Tags cover all of the user's Dietary Restrictions.
+
+## Pantry Expiration Email Frequency
+A preference on a User controlling how often they receive pantry expiration reminder emails. Values: `never` | `daily` | `weekly`. Defaults to `weekly`. Sent by the `processPantryReminders` cron job. Daily users receive an email for items expiring within 1 day; weekly users receive an email for items expiring within 7 days, sent every Monday.
 
 ## First-Time OAuth User
 An OAuth User whose `onboardingCompletedAt` is null. Shown the Welcome Page once after their first sign-in. After completing or skipping onboarding, `onboardingCompletedAt` is set and the Welcome Page is never shown again.
@@ -33,6 +62,22 @@ A list of dietary constraints a User has (e.g. vegan, gluten-free). Optional. Se
 ## Session
 An authenticated context identifying the current User. Managed by Auth.js. Replaces the previous hand-rolled JWT cookie system.
 
+## Password Reset Token
+A cryptographically random, single-use token issued to a Credential User who has forgotten their password. Stored as a hash in the DB (never the raw value), valid for 1 hour, and marked used on redemption rather than deleted. Sent to the user's email as a link to the Reset Password Page.
+_Avoid_: reset link, reset code
+
+## Password Age
+The elapsed time since a Credential User last set or changed their password, tracked via `passwordChangedAt` on the `users` table. Set at account creation and updated on every successful password change.
+_Avoid_: password expiry, password timestamp
+
+## Forced Password Reset
+A session state (`needsPasswordReset: true`) applied to a Credential User whose Password Age exceeds 90 days. Detected in the Auth.js JWT callback and enforced by middleware, which redirects all routes to the Reset Password Page until the user completes a reset.
+_Avoid_: password expiry, password timeout, mandatory reset
+
+## Reset Password Page
+A single page (`/reset-password`) that handles two modes: (1) token mode — an unauthenticated user arriving via a Password Reset Token link; (2) forced mode — an authenticated user in a Forced Password Reset state. The form is identical in both modes; the backend call differs.
+_Avoid_: forgot password page, change password page
+
 ## Recipe
 A user-created cooking instruction set. Has a name, a Description, a Meal type, an optional Cuisine Type, optional Dietary Tags, optional prep/cook/total times, an optional Serves count, an ordered list of Recipe Steps, and an Ingredient list. Can be private (draft) or public+published (visible to all).
 
@@ -46,7 +91,7 @@ A panel shown at the bottom of the Ingredients tab summarising the five core mac
 The total macro values for a Recipe divided by Serves. Shown by default in the Recipe Nutrition Panel when Serves is set. The user may toggle to view totals instead; this preference is not persisted.
 
 ## Description
-A short summary field on a Recipe. Used for preview cards and SEO. Distinct from Recipe Steps — it is not procedural instruction.
+A rich-text (HTML) summary field on a Recipe. Used for preview cards and SEO. Distinct from Recipe Steps — it is not procedural instruction. When rendering in email templates, HTML tags must be stripped to plain text.
 
 ## Recipe Steps
 An ordered list of discrete instructions belonging to a Recipe. Each step has an optional title, a rich-text body (HTML), and optionally one or more images stored on Vercel Blob. Steps are reordered via up/down controls in the editor.

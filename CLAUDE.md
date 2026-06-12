@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git workflow
+
+**Always work on a feature branch — never commit directly to `main`.**
+
+Before starting any work, create a branch:
+```bash
+git checkout -b feat/<short-description>   # new feature
+git checkout -b fix/<short-description>    # bug fix
+git checkout -b chore/<short-description>  # tooling, deps, docs
+```
+
+When the work is done, push the branch and open a PR against `main`:
+```bash
+git push -u origin <branch-name>
+gh pr create --base main
+```
+
 ## Commands
 
 ```bash

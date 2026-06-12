@@ -57,7 +57,7 @@ describe('CreateAccount Page', () => {
     it('shows hint for username requirements', () => {
       renderWithProviders(<CreateAccount />)
 
-      expect(screen.getByText('At least 3 characters.')).toBeInTheDocument()
+      expect(screen.getByText('3–30 characters, letters, numbers, hyphens and underscores only.')).toBeInTheDocument()
     })
   })
 
@@ -437,6 +437,7 @@ describe('CreateAccount Page', () => {
           password: 'StrongPass1!',
           cuisinePreferences: [],
           dietaryRestrictions: [],
+          marketingEmailOptIn: false,
         })
       })
     })
@@ -462,6 +463,7 @@ describe('CreateAccount Page', () => {
           password: 'StrongPass1!',
           cuisinePreferences: ['Italian'],
           dietaryRestrictions: ['Vegan'],
+          marketingEmailOptIn: false,
         })
       })
     })

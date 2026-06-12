@@ -128,6 +128,11 @@
     line-height: 1.5;
   }
 
+  .field-error {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
   .password-input {
     border: 1px solid var(--vscode-border);
     border-radius: 8px;
@@ -283,6 +288,33 @@
       height: 1px;
       background: var(--vscode-border);
     }
+  }
+
+  .password-requirements {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .requirement {
+    font-size: 11px;
+    color: var(--vscode-muted);
+    opacity: 0.6;
+
+    &.valid {
+      color: var(--vscode-success);
+      opacity: 1;
+    }
+  }
+
+  .form-error {
+    color: var(--vscode-error, #f87171);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--error-bg, rgba(248, 113, 113, 0.1));
+    border: 1px solid var(--vscode-error, #f87171);
   }
 
   .form-links {

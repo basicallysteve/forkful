@@ -2,6 +2,9 @@ import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boo
 import type { Measurement } from '@/types/Food'
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
+export const recipeSuggestionFrequencyEnum = pgEnum('recipe_suggestion_frequency', ['never', 'weekly', 'monthly']);
+export const pantryExpirationFrequencyEnum = pgEnum('pantry_expiration_frequency', ['never', 'daily', 'weekly']);
+export const accountClosureActionEnum = pgEnum('account_closure_action', ['deactivated', 'deleted']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -69,8 +72,13 @@ export const users = pgTable('users', {
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
+  passwordChangedAt: timestamp('password_changed_at'),
+  marketingEmailOptIn: boolean('marketing_email_opt_in').notNull().default(false),
+  recipeSuggestionFrequency: recipeSuggestionFrequencyEnum('recipe_suggestion_frequency').notNull().default('weekly'),
+  pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
+  deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),
 });
 
 export const pantryItems = pgTable('pantry_items', {
@@ -103,6 +111,19 @@ export const oauthAccounts = pgTable('oauth_accounts', {
   providerAccountUnique: unique('oauth_accounts_provider_account_unique').on(t.provider, t.providerAccountId),
 }));
 
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  tokenHashUnique: unique('password_reset_tokens_token_hash_unique').on(t.tokenHash),
+}));
+
 export const login_attempts = pgTable('login_attempts', {
   id: serial('id').primaryKey(),
   userId: integer('user_id')
@@ -125,6 +146,15 @@ export const recipeSteps = pgTable('recipe_steps', {
 }, (t) => ({
   recipeStepsLookupIdx: index('recipe_steps_recipe_id_deleted_position_idx').on(t.recipeId, t.dateDeleted, t.position),
 }));
+
+export const accountFeedback = pgTable('account_feedback', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  action: accountClosureActionEnum('action').notNull(),
+  reasons: jsonb('reasons').$type<string[]>().notNull().default([]),
+  comment: text('comment'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 export const savedRecipes = pgTable('saved_recipes', {
   id: serial('id').primaryKey(),
