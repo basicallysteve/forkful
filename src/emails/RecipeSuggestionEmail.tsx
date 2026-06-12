@@ -2,7 +2,23 @@ import { BaseEmail } from './BaseEmail'
 
 /** Strip HTML tags so rich-text descriptions render safely as plain text in email. */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim()
+  // Iteratively remove tags until the string stabilises — prevents bypass via nested
+  // brackets like <<script>script> where one pass would leave a valid <script> tag.
+  let result = html
+  let prev: string
+  do {
+    prev = result
+    result = result.replace(/<[^>]*>/g, '')
+  } while (result !== prev)
+  // Decode HTML entities. &amp; MUST come last to prevent double-unescaping
+  // (e.g. &amp;lt; → &lt; → < if decoded in the wrong order).
+  return result
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim()
 }
 
 interface SuggestedRecipe {
