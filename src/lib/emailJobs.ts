@@ -1,6 +1,6 @@
-import { eq, and, isNull, lte, gte, inArray } from 'drizzle-orm'
+import { eq, and, isNull, lte, gte, inArray, isNotNull } from 'drizzle-orm'
 import { db } from '@/db'
-import { users, pantryItems, foods, recipes } from '@/db/schema'
+import { users, pantryItems, foods, recipes, ingredients } from '@/db/schema'
 import { sendPantryReminderEmail, sendRecipeSuggestionEmail } from '@/lib/email'
 
 export async function processPantryReminders(frequency: 'daily' | 'weekly'): Promise<{ sent: number }> {
@@ -63,6 +63,7 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
       email: users.email,
       username: users.username,
       cuisinePreferences: users.cuisinePreferences,
+      dietaryRestrictions: users.dietaryRestrictions,
     })
     .from(users)
     .where(and(
@@ -74,39 +75,82 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'https://eatforkful.com'
 
   for (const user of eligibleUsers) {
-    const prefs = (user.cuisinePreferences ?? []) as string[]
+    const cuisinePrefs = (user.cuisinePreferences ?? []) as string[]
+    const dietaryRestrictions = (user.dietaryRestrictions ?? []) as string[]
 
-    // Prefer recipes matching cuisine preferences; fall back to any public recipes
-    let suggestions = prefs.length > 0
+    // Fetch user's pantry food IDs, soonest-expiring first — used to boost recipes using those foods
+    const pantryFoods = await db
+      .select({ foodId: pantryItems.foodId, expirationDate: pantryItems.expirationDate })
+      .from(pantryItems)
+      .where(and(eq(pantryItems.userId, user.id), isNull(pantryItems.dateDeleted)))
+      .orderBy(pantryItems.expirationDate)
+      .limit(30)
+    const pantryFoodIds = new Set(pantryFoods.map(p => p.foodId))
+
+    // Fetch candidate public published recipes (fetch a wider pool so we can score and filter)
+    const candidates = await db
+      .select({
+        id: recipes.id,
+        name: recipes.name,
+        description: recipes.description,
+        cuisineType: recipes.cuisineType,
+        dietaryTags: recipes.dietaryTags,
+        slug: recipes.slug,
+      })
+      .from(recipes)
+      .where(and(
+        eq(recipes.isPublic, 1),
+        isNotNull(recipes.datePublished),
+        isNull(recipes.dateDeleted),
+      ))
+      .limit(50)
+
+    // Fetch ingredient food IDs for candidate recipes to identify pantry overlaps
+    const candidateIds = candidates.map(r => r.id)
+    const ingredientLinks = candidateIds.length > 0
       ? await db
-          .select({ name: recipes.name, description: recipes.description, cuisineType: recipes.cuisineType, slug: recipes.slug })
-          .from(recipes)
+          .select({ recipeId: ingredients.recipeId, foodId: ingredients.foodId })
+          .from(ingredients)
           .where(and(
-            eq(recipes.isPublic, 1),
-            isNull(recipes.dateDeleted),
-            inArray(recipes.cuisineType, prefs),
+            inArray(ingredients.recipeId, candidateIds),
+            isNull(ingredients.dateDeleted),
           ))
-          .orderBy(recipes.datePublished)
-          .limit(5)
       : []
-
-    if (suggestions.length < 3) {
-      const extra = await db
-        .select({ name: recipes.name, description: recipes.description, cuisineType: recipes.cuisineType, slug: recipes.slug })
-        .from(recipes)
-        .where(and(eq(recipes.isPublic, 1), isNull(recipes.dateDeleted)))
-        .orderBy(recipes.datePublished)
-        .limit(5)
-      const existing = new Set(suggestions.map(r => r.slug))
-      suggestions = [...suggestions, ...extra.filter(r => !existing.has(r.slug))].slice(0, 5)
+    const ingredientsByRecipe = new Map<number, number[]>()
+    for (const row of ingredientLinks) {
+      const list = ingredientsByRecipe.get(row.recipeId) ?? []
+      list.push(row.foodId)
+      ingredientsByRecipe.set(row.recipeId, list)
     }
 
-    if (suggestions.length === 0) continue
+    // Score and filter candidates
+    const scored = candidates
+      .filter(r => {
+        // Hard filter: dietary restrictions — recipe must cover all the user's restrictions
+        if (dietaryRestrictions.length === 0) return true
+        const tags = (r.dietaryTags ?? []) as string[]
+        return dietaryRestrictions.every(d => tags.includes(d))
+      })
+      .map(r => {
+        let score = 0
+        // Boost for cuisine match
+        if (cuisinePrefs.length > 0 && r.cuisineType && cuisinePrefs.includes(r.cuisineType)) score += 2
+        // Boost for each pantry ingredient used (especially useful for soon-expiring foods)
+        const recipeIngredients = ingredientsByRecipe.get(r.id) ?? []
+        for (const foodId of recipeIngredients) {
+          if (pantryFoodIds.has(foodId)) score += 1
+        }
+        return { ...r, score }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+
+    if (scored.length === 0) continue
 
     await sendRecipeSuggestionEmail(
       user.email,
       user.username,
-      suggestions.map(r => ({
+      scored.map(r => ({
         name: r.name,
         description: r.description ?? null,
         cuisineType: r.cuisineType ?? null,

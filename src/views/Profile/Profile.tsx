@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
 import { Checkbox } from 'primereact/checkbox'
+import { Dialog } from 'primereact/dialog'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
@@ -570,73 +571,73 @@ export default function Profile({ user }: ProfileProps) {
       </div>
 
       {/* Account closure modal */}
-      {closureModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal">
-            <h2 className="modal__title">
-              {closureModal === 'deactivate' ? 'Deactivate your account?' : 'Delete your account?'}
-            </h2>
-            <p className="modal__body">
-              {closureModal === 'deactivate'
-                ? 'Your account will be disabled. You can reactivate it any time by logging back in.'
-                : 'This will permanently delete your account and all your data. Public recipes will be anonymised. This cannot be undone.'}
-            </p>
+      <Dialog
+        visible={!!closureModal}
+        onHide={() => { if (!closureSubmitting) setClosureModal(null) }}
+        header={closureModal === 'deactivate' ? 'Deactivate your account?' : 'Delete your account?'}
+        modal
+        style={{ width: '520px', maxWidth: '95vw' }}
+        footer={
+          <div className="dialog-footer">
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setClosureModal(null)}
+              disabled={closureSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={closureModal === 'delete' ? 'danger-button' : 'secondary-button'}
+              onClick={confirmClosure}
+              disabled={closureSubmitting}
+            >
+              {closureSubmitting
+                ? 'Processing…'
+                : closureModal === 'deactivate' ? 'Yes, deactivate my account' : 'Yes, permanently delete my account'}
+            </button>
+          </div>
+        }
+      >
+        <p className="modal__body">
+          {closureModal === 'deactivate'
+            ? 'Your account will be disabled. You can reactivate it any time by logging back in.'
+            : 'This will permanently delete your account and all your data. Public recipes will be anonymised. This cannot be undone.'}
+        </p>
 
-            <div className="modal__section">
-              <p className="field-label">Mind telling us why? (optional)</p>
-              <div className="checkbox-group">
-                {CLOSURE_REASONS.map(reason => (
-                  <label key={reason} className={`checkbox-option ${closureReasons.includes(reason) ? 'is-active' : ''}`}>
-                    <Checkbox
-                      className="checkbox-input"
-                      checked={closureReasons.includes(reason)}
-                      onChange={() => toggleReason(reason)}
-                    />
-                    <span className="checkbox-indicator" />
-                    {reason}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="modal__section">
-              <label className="form-field">
-                <span className="field-label">Additional comments (optional)</span>
-                <textarea
-                  className="modal__textarea"
-                  value={closureComment}
-                  onChange={e => setClosureComment(e.target.value)}
-                  rows={3}
-                  placeholder="Anything else you'd like us to know…"
+        <div className="modal__section">
+          <p className="field-label">Mind telling us why? (optional)</p>
+          <div className="checkbox-group">
+            {CLOSURE_REASONS.map(reason => (
+              <label key={reason} className={`checkbox-option ${closureReasons.includes(reason) ? 'is-active' : ''}`}>
+                <Checkbox
+                  className="checkbox-input"
+                  checked={closureReasons.includes(reason)}
+                  onChange={() => toggleReason(reason)}
                 />
+                <span className="checkbox-indicator" />
+                {reason}
               </label>
-            </div>
-
-            {closureError && <p className="field-error" role="alert">{closureError}</p>}
-
-            <div className="modal__footer">
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => setClosureModal(null)}
-                disabled={closureSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={closureModal === 'delete' ? 'danger-button' : 'secondary-button'}
-                onClick={confirmClosure}
-                disabled={closureSubmitting}
-              >
-                {closureSubmitting
-                  ? 'Processing…'
-                  : closureModal === 'deactivate' ? 'Yes, deactivate my account' : 'Yes, permanently delete my account'}
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+
+        <div className="modal__section">
+          <label className="form-field">
+            <span className="field-label">Additional comments (optional)</span>
+            <textarea
+              className="modal__textarea"
+              value={closureComment}
+              onChange={e => setClosureComment(e.target.value)}
+              rows={3}
+              placeholder="Anything else you'd like us to know…"
+            />
+          </label>
+        </div>
+
+        {closureError && <p className="field-error" role="alert">{closureError}</p>}
+      </Dialog>
     </div>
   )
 }

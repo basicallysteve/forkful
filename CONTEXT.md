@@ -31,7 +31,8 @@ A permanent, irreversible closure of a User's account. Hard-deletes the user row
 _Avoid_: deactivation, account removal
 
 ## Account Closure Feedback
-Structured feedback collected in-app immediately before a User completes Account Deactivation or Account Deletion. Consists of one or more predefined reasons (e.g. "Not using it enough", "Missing features", "Privacy concerns", "Switching to another app") plus an optional free-text comment. Stored in the `account_feedback` table. Always optional for the user to provide.
+Structured feedback collected in-app immediately before a User completes Account Deactivation or Account Deletion. Consists of one or more predefined reasons (e.g. "Not using it enough", "Missing features", "Privacy concerns", "Switching to another app") plus an optional free-text comment. Stored in the `account_feedback` table. Always optional for the user to provide. The UI is a PrimeReact `Dialog` modal.
+_Convention_: all modal dialogs in the app use the PrimeReact `Dialog` component. Custom `modal-overlay` / `modal` DOM structures are not used.
 
 ## Goodbye Email
 A transactional email sent to a User upon Account Deactivation or Account Deletion. Always sent regardless of the User's Marketing Email Opt-in status. Distinct from marketing or digest emails.
@@ -41,10 +42,10 @@ A boolean preference on a User indicating whether they consent to receive market
 _Avoid_: email subscription, newsletter opt-in
 
 ## Recipe Suggestion Email Frequency
-A preference on a User controlling how often they receive recipe suggestion digest emails. Values: `never` | `weekly` | `monthly`. Defaults to `weekly`. The sending logic is not yet implemented; this field is stubbed for future use.
+A preference on a User controlling how often they receive recipe suggestion digest emails. Values: `never` | `weekly` | `monthly`. Defaults to `weekly`. Sent by the `processRecipeSuggestions` cron job. Suggestions are scored and ranked using three signals: (1) Cuisine Type match against the user's Cuisine Preferences, (2) pantry overlap — recipes that use foods the user currently has in their pantry are boosted, with soonest-expiring pantry foods ranked highest, (3) hard dietary restriction filter — recipes are excluded unless their Dietary Tags cover all of the user's Dietary Restrictions.
 
 ## Pantry Expiration Email Frequency
-A preference on a User controlling how often they receive pantry expiration reminder emails. Values: `never` | `daily` | `weekly`. Defaults to `weekly`. The sending logic is not yet implemented; this field is stubbed for future use.
+A preference on a User controlling how often they receive pantry expiration reminder emails. Values: `never` | `daily` | `weekly`. Defaults to `weekly`. Sent by the `processPantryReminders` cron job. Daily users receive an email for items expiring within 1 day; weekly users receive an email for items expiring within 7 days, sent every Monday.
 
 ## First-Time OAuth User
 An OAuth User whose `onboardingCompletedAt` is null. Shown the Welcome Page once after their first sign-in. After completing or skipping onboarding, `onboardingCompletedAt` is set and the Welcome Page is never shown again.
@@ -90,7 +91,7 @@ A panel shown at the bottom of the Ingredients tab summarising the five core mac
 The total macro values for a Recipe divided by Serves. Shown by default in the Recipe Nutrition Panel when Serves is set. The user may toggle to view totals instead; this preference is not persisted.
 
 ## Description
-A short summary field on a Recipe. Used for preview cards and SEO. Distinct from Recipe Steps — it is not procedural instruction.
+A rich-text (HTML) summary field on a Recipe. Used for preview cards and SEO. Distinct from Recipe Steps — it is not procedural instruction. When rendering in email templates, HTML tags must be stripped to plain text.
 
 ## Recipe Steps
 An ordered list of discrete instructions belonging to a Recipe. Each step has an optional title, a rich-text body (HTML), and optionally one or more images stored on Vercel Blob. Steps are reordered via up/down controls in the editor.

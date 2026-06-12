@@ -311,13 +311,19 @@ export async function deleteAccount(userId: number): Promise<void> {
         .from(users).where(eq(users.id, userId))
 
     await db.transaction(async (tx) => {
-        // Anonymise public recipes — FK onDelete:'set null' handles this when the user row is deleted,
-        // but we must first hard-delete private recipes (which the FK would also null, not delete).
+        // Hard-delete private recipes and unpublished public recipes.
+        // Published public recipes are anonymised via the FK onDelete:'set null' cascade when the user row is deleted.
         await tx.delete(recipes)
-            .where(and(eq(recipes.userId, userId), eq(recipes.isPublic, 0)))
+            .where(and(
+                eq(recipes.userId, userId),
+                or(
+                    eq(recipes.isPublic, 0),
+                    isNull(recipes.datePublished),
+                ),
+            ))
 
         // Hard-delete the user row — cascades to pantry_items, oauth_accounts,
-        // password_reset_tokens, login_attempts. Public recipes get userId set null via FK.
+        // password_reset_tokens, login_attempts. Published public recipes get userId set null via FK.
         await tx.delete(users).where(eq(users.id, userId))
     })
 

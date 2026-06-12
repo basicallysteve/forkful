@@ -1,5 +1,10 @@
 import { BaseEmail } from './BaseEmail'
 
+/** Strip HTML tags so rich-text descriptions render safely as plain text in email. */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim()
+}
+
 interface SuggestedRecipe {
   name: string
   description: string | null
@@ -50,7 +55,7 @@ export function RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixe
                 </p>
                 {recipe.description && (
                   <p style={{ margin: '0 0 12px', fontSize: 13, color: '#71717a', lineHeight: 1.5 }}>
-                    {recipe.description.length > 120 ? `${recipe.description.slice(0, 120)}…` : recipe.description}
+                    {(() => { const t = stripHtml(recipe.description); return t.length > 120 ? `${t.slice(0, 120)}…` : t })()}
                   </p>
                 )}
                 <a
