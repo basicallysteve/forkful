@@ -3,6 +3,8 @@ import { Resend } from 'resend'
 import { PasswordResetEmail } from '@/emails/PasswordResetEmail'
 import { GoodbyeEmail } from '@/emails/GoodbyeEmail'
 import { DeactivationExpiryWarningEmail } from '@/emails/DeactivationExpiryWarningEmail'
+import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
+import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
 
 function makeTrackingPixelUrl(): string | undefined {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
@@ -37,6 +39,40 @@ export async function sendGoodbyeEmail(to: string, username: string, action: 'de
     to,
     subject,
     react: GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl }),
+  })
+}
+
+export async function sendPantryReminderEmail(
+  to: string,
+  username: string,
+  items: Array<{ name: string; expirationDate: string; daysUntilExpiry: number }>,
+  pantryUrl: string,
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const trackingPixelUrl = makeTrackingPixelUrl()
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to,
+    subject: 'Items in your pantry are expiring soon',
+    react: PantryReminderEmail({ username, items, pantryUrl, trackingPixelUrl }),
+  })
+}
+
+export async function sendRecipeSuggestionEmail(
+  to: string,
+  username: string,
+  recipes: Array<{ name: string; description: string | null; cuisineType: string | null; slug: string }>,
+  baseUrl: string,
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  const trackingPixelUrl = makeTrackingPixelUrl()
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to,
+    subject: 'Recipe ideas picked for you',
+    react: RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixelUrl }),
   })
 }
 
