@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, type DialogProps } from 'primereact/dialog'
+import { Dialog } from 'primereact/dialog'
 import './modal.scss'
 
 interface ModalProps {
