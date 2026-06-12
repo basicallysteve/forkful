@@ -12,5 +12,4 @@ CREATE TABLE "account_feedback" (
 --> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "marketing_email_opt_in" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "recipe_suggestion_frequency" "recipe_suggestion_frequency" DEFAULT 'weekly' NOT NULL;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "pantry_expiration_frequency" "pantry_expiration_frequency" DEFAULT 'weekly' NOT NULL;--> statement-breakpoint
-ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_token_hash_unique" UNIQUE("token_hash");
+ALTER TABLE "users" ADD COLUMN "pantry_expiration_frequency" "pantry_expiration_frequency" DEFAULT 'weekly' NOT NULL;

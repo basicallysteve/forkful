@@ -1,13 +1,25 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
 import { PATCH } from './route'
 import { getSessionUser } from '@/lib/auth'
-import { updateUserPreferences, updateUserEmail, updateUserPassword } from '@/lib/users'
+import {
+  updateUserPreferences,
+  updateUserEmail,
+  updateUserPassword,
+  updateUsername,
+  updateEmailPreferences,
+  deactivateAccount,
+  deleteAccount,
+} from '@/lib/users'
 
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }))
 vi.mock('@/lib/users', () => ({
   updateUserPreferences: vi.fn(),
   updateUserEmail: vi.fn(),
   updateUserPassword: vi.fn(),
+  updateUsername: vi.fn(),
+  updateEmailPreferences: vi.fn(),
+  deactivateAccount: vi.fn(),
+  deleteAccount: vi.fn(),
 }))
 vi.mock('@/lib/TaskRunner', () => ({
   taskRunner: { run: vi.fn((fn: () => unknown) => fn()) },
@@ -229,6 +241,153 @@ describe('PATCH /api/users/[id] — password', () => {
 
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe('Current password is incorrect')
+  })
+})
+
+describe('PATCH /api/users/[id] — username', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('updates username and returns ok', async () => {
+    (updateUsername as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'username', username: 'new_alice' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(updateUsername).toHaveBeenCalledWith(42, 'new_alice')
+  })
+
+  it('returns 400 when username is too short', async () => {
+    const { request, params } = makeRequest('42', { action: 'username', username: 'ab' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateUsername).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when username contains invalid characters', async () => {
+    const { request, params } = makeRequest('42', { action: 'username', username: 'alice smith' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateUsername).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when username is taken', async () => {
+    (updateUsername as Mock).mockRejectedValue(new Error('Username already in use'))
+    const { request, params } = makeRequest('42', { action: 'username', username: 'taken_name' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Username already in use')
+  })
+})
+
+describe('PATCH /api/users/[id] — emailPreferences', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('updates email preferences and returns ok', async () => {
+    (updateEmailPreferences as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'emailPreferences',
+      marketingEmailOptIn: true,
+      recipeSuggestionFrequency: 'weekly',
+      pantryExpirationFrequency: 'daily',
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(updateEmailPreferences).toHaveBeenCalledWith(42, {
+      marketingEmailOptIn: true,
+      recipeSuggestionFrequency: 'weekly',
+      pantryExpirationFrequency: 'daily',
+    })
+  })
+
+  it('returns 400 when marketingEmailOptIn is not a boolean', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'emailPreferences',
+      marketingEmailOptIn: 'yes',
+      recipeSuggestionFrequency: 'weekly',
+      pantryExpirationFrequency: 'daily',
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateEmailPreferences).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for invalid recipeSuggestionFrequency', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'emailPreferences',
+      marketingEmailOptIn: false,
+      recipeSuggestionFrequency: 'hourly',
+      pantryExpirationFrequency: 'daily',
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateEmailPreferences).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for invalid pantryExpirationFrequency', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'emailPreferences',
+      marketingEmailOptIn: false,
+      recipeSuggestionFrequency: 'weekly',
+      pantryExpirationFrequency: 'monthly',
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateEmailPreferences).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/users/[id] — deactivate', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('deactivates the account and returns ok', async () => {
+    (deactivateAccount as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'deactivate' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(deactivateAccount).toHaveBeenCalledWith(42)
+  })
+})
+
+describe('PATCH /api/users/[id] — delete', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('deletes the account and returns ok', async () => {
+    (deleteAccount as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'delete' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(deleteAccount).toHaveBeenCalledWith(42)
   })
 })
 

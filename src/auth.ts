@@ -2,7 +2,7 @@ import NextAuth, { CredentialsSignin } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Apple from 'next-auth/providers/apple'
 import Credentials from 'next-auth/providers/credentials'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
 import { login, trackLoginAttempt } from '@/lib/users'
@@ -70,17 +70,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const [existing] = await db
             .select({ userId: oauthAccounts.userId })
             .from(oauthAccounts)
+            .innerJoin(users, and(eq(users.id, oauthAccounts.userId), isNull(users.dateDeleted)))
             .where(eq(oauthAccounts.providerAccountId, account.providerAccountId))
           return !!existing
         }
         try {
-          await findOrCreateOAuthUser({
+          const userId = await findOrCreateOAuthUser({
             provider: account.provider,
             providerAccountId: account.providerAccountId,
             email: profile.email,
             name: profile.name ?? null,
             avatarUrl: (profile as { picture?: string }).picture ?? null,
           })
+          const [freshUser] = await db
+            .select({ dateDeleted: users.dateDeleted })
+            .from(users)
+            .where(eq(users.id, userId))
+          if (freshUser?.dateDeleted) return false
           return true
         } catch (err) {
           console.error('[auth] findOrCreateOAuthUser failed:', err)

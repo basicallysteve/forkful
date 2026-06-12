@@ -149,7 +149,7 @@ export const recipeSteps = pgTable('recipe_steps', {
 
 export const accountFeedback = pgTable('account_feedback', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id'),
+  userId: integer('user_id').notNull(),
   action: accountClosureActionEnum('action').notNull(),
   reasons: jsonb('reasons').$type<string[]>().notNull().default([]),
   comment: text('comment'),
