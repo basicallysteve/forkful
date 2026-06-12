@@ -1,10 +1,10 @@
-import { eq, and, gte, isNull, isNotNull, lt, or } from 'drizzle-orm'
+import { eq, and, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedback, recipes } from '@/db/schema'
 import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
-import { sendGoodbyeEmail } from '@/lib/email'
+import { sendGoodbyeEmail, sendDeactivationExpiryWarningEmail } from '@/lib/email'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 
@@ -338,4 +338,44 @@ export async function createAccountFeedback(data: {
         reasons: data.reasons,
         comment: data.comment ?? null,
     })
+}
+
+export async function processDeactivatedAccounts(): Promise<{ warned: number; deleted: number }> {
+    const now = new Date()
+    const elevenMonthsAgo = new Date(now.getTime() - 335 * 24 * 60 * 60 * 1000)
+    const twelveMonthsAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+
+    // Auto-delete accounts deactivated for 12+ months
+    const toDelete = await db.select({ id: users.id, email: users.email, username: users.username })
+        .from(users)
+        .where(and(isNotNull(users.dateDeleted), lte(users.dateDeleted, twelveMonthsAgo)))
+
+    let deleted = 0
+    for (const user of toDelete) {
+        await deleteAccount(user.id)
+        sendGoodbyeEmail(user.email, user.username, 'deleted').catch(() => null)
+        deleted++
+    }
+
+    // Send 11-month warning to accounts deactivated 330–364 days ago that haven't been warned yet
+    const toWarn = await db.select({ id: users.id, email: users.email, username: users.username, dateDeleted: users.dateDeleted })
+        .from(users)
+        .where(and(
+            isNotNull(users.dateDeleted),
+            lte(users.dateDeleted, elevenMonthsAgo),
+            lt(users.dateDeleted, twelveMonthsAgo),
+            isNull(users.deactivationWarningEmailSentAt),
+        ))
+
+    let warned = 0
+    for (const user of toWarn) {
+        const deletionDate = new Date(user.dateDeleted!.getTime() + 365 * 24 * 60 * 60 * 1000)
+        await sendDeactivationExpiryWarningEmail(user.email, user.username, deletionDate)
+        await db.update(users)
+            .set({ deactivationWarningEmailSentAt: now })
+            .where(eq(users.id, user.id))
+        warned++
+    }
+
+    return { warned, deleted }
 }

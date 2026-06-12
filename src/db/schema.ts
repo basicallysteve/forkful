@@ -78,6 +78,7 @@ export const users = pgTable('users', {
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
+  deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),
 });
 
 export const pantryItems = pgTable('pantry_items', {
