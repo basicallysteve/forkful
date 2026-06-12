@@ -1,4 +1,5 @@
 import type { Food } from './Food'
+import type { Product } from './Product'
 
 export type PantryItemStatus = 'expired' | 'expiring-soon' | 'good'
 
@@ -7,10 +8,11 @@ type ServingSize = {
   unit?: string
 }
 
-
 export type PantryItem = {
   id: number
-  food: Food
+  sourceType: 'food' | 'product'
+  food?: Food       // set when sourceType === 'food'
+  product?: Product // set when sourceType === 'product'
   expirationDate: Date | null
   originalSize: ServingSize
   currentSize: ServingSize

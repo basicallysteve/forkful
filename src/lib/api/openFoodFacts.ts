@@ -15,4 +15,4 @@ export async function apiGetProductByBarcode(barcode: string): Promise<OFFProduc
   return data.product ?? null
 }
 
-export { mapOFFProductToFood } from '@/lib/openFoodFacts'
+export { mapOFFProductToFood, mapOFFProductToProduct } from '@/lib/openFoodFacts'

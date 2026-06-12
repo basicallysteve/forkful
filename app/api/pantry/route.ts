@@ -5,7 +5,9 @@ import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
 type CreateBody = {
-  foodId: number
+  sourceType?: 'food' | 'product'
+  foodId?: number
+  productId?: number
   expirationDate?: string | null
   originalSizeAmount: number
   originalSizeUnit?: string
@@ -51,8 +53,14 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: CreateBody = await request.json()
 
-  if (!Number.isInteger(body.foodId) || body.foodId <= 0) {
+  const sourceType = body.sourceType ?? (body.foodId ? 'food' : 'product')
+  const hasFoodId = Number.isInteger(body.foodId) && (body.foodId ?? 0) > 0
+  const hasProductId = Number.isInteger(body.productId) && (body.productId ?? 0) > 0
+  if (sourceType === 'food' && !hasFoodId) {
     return NextResponse.json({ error: 'Invalid foodId' }, { status: 400 })
+  }
+  if (sourceType === 'product' && !hasProductId) {
+    return NextResponse.json({ error: 'Invalid productId' }, { status: 400 })
   }
   if (typeof body.originalSizeAmount !== 'number' || body.originalSizeAmount <= 0) {
     return NextResponse.json({ error: 'originalSizeAmount must be a positive number' }, { status: 400 })

@@ -8,16 +8,20 @@ import { apiFetchFoods } from '@/lib/api/foods'
 import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
+import type { Product } from '@/types/Product'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
-import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
+import { SelectButton } from 'primereact/selectbutton'
 
 interface PantryStoreProps {
   existingItem?: PantryItem
 }
+
+type SourceMode = 'food' | 'product'
 
 export default function PantryStore({ existingItem }: PantryStoreProps) {
   const router = useRouter()
@@ -27,7 +31,13 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const updateItem = usePantryStore((state) => state.updateItem)
   const calculateItemStatus = usePantryStore((state) => state.calculateItemStatus)
 
-  const [foodName, setFoodName] = useState<string>(existingItem?.food.name || '')
+  // Determine initial source mode from existing item
+  const initialSourceMode: SourceMode = existingItem?.sourceType === 'product' ? 'product' : 'food'
+
+  const [sourceMode, setSourceMode] = useState<SourceMode>(initialSourceMode)
+  const [foodName, setFoodName] = useState<string>(existingItem?.food?.name || '')
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(existingItem?.product ?? null)
+  const [productSearchValue, setProductSearchValue] = useState<string>(existingItem?.product?.name || '')
   const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
   const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
   const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
@@ -41,14 +51,15 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<Food[]>([])
 
-  const [showImportDialog, setShowImportDialog] = useState(false)
+  const isEditing = !!existingItem
 
   useEffect(() => {
     apiFetchFoods().then(setFoods)
   }, [setFoods])
 
-  // Server-side search when local results are insufficient
+  // Server-side search when local results are insufficient (food mode only)
   useEffect(() => {
+    if (sourceMode !== 'food') return
     const query = foodName.trim().toLowerCase()
     if (!query) {
       setSearchResults([])
@@ -56,39 +67,31 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     }
 
     const localMatches = foods.filter(f => f.name.toLowerCase().includes(query))
-    
-    // If we have enough local matches, don't query the server
+
     if (localMatches.length >= 3) {
       setSearchResults([])
       return
     }
 
-    // Query server for additional results
     let cancelled = false
     const timer = setTimeout(() => {
       apiFetchFoods({ search: query }).then(serverResults => {
         if (!cancelled) {
-          // Merge server results with local results, removing duplicates
           const localIds = new Set(localMatches.map(f => f.id))
           const additionalResults = serverResults.filter(f => !localIds.has(f.id))
           setSearchResults(additionalResults)
         }
       }).catch(() => {
-        if (!cancelled) {
-          setSearchResults([])
-        }
+        if (!cancelled) setSearchResults([])
       })
-    }, 300) // Debounce
+    }, 300)
 
     return () => {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [foodName, foods])
+  }, [foodName, foods, sourceMode])
 
-  const isEditing = !!existingItem
-
-  // Combine local foods with server search results
   const allFoods = useMemo(() => {
     if (searchResults.length === 0) return foods
     const foodIds = new Set(foods.map(f => f.id))
@@ -97,16 +100,32 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
   const selectedFood = allFoods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
-  // Unit options constrained to the selected food's measurements, falling back to all units
+  // Measurements come from the selected food or product
   const unitOptions = useMemo(() => {
-    if (selectedFood && selectedFood.measurements.length > 0) {
-      return selectedFood.measurements.map((m) => ({ label: m.unit, value: m.unit }))
+    const measurements = sourceMode === 'food'
+      ? selectedFood?.measurements
+      : selectedProduct?.measurements
+    if (measurements && measurements.length > 0) {
+      return measurements.map((m) => ({ label: m.unit, value: m.unit }))
     }
     return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
-  }, [selectedFood])
+  }, [selectedFood, selectedProduct, sourceMode])
+
+  function handleProductSelected(product: Product) {
+    setSelectedProduct(product)
+    setProductSearchValue(product.name)
+    // Default units to product's serving unit
+    if (product.servingUnit) {
+      setOriginalUnit(product.servingUnit)
+      setCurrentUnit(product.servingUnit)
+    }
+  }
 
   async function handleSave() {
-    if (!selectedFood) return
+    const hasFood = sourceMode === 'food' && selectedFood
+    const hasProduct = sourceMode === 'product' && selectedProduct
+    if (!hasFood && !hasProduct) return
+
     setSaving(true)
     setSaveError(null)
     try {
@@ -121,7 +140,9 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
         if (updated) updateItem(updated)
       } else {
         const created = await apiCreatePantryItem({
-          foodId: selectedFood.id,
+          sourceType: sourceMode,
+          foodId: sourceMode === 'food' ? selectedFood!.id : undefined,
+          productId: sourceMode === 'product' ? selectedProduct!.id : undefined,
           originalSizeAmount: originalSize,
           originalSizeUnit: originalUnit,
           currentSizeAmount: currentSize,
@@ -142,13 +163,11 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     router.push('/pantry')
   }
 
-  const hasSelectedFood = !!selectedFood
+  const hasValidSelection = sourceMode === 'food' ? !!selectedFood : !!selectedProduct
   const hasValidOriginalSize = originalSize > 0
   const hasValidCurrentSize = currentSize >= 0
-  const sizeValid = canConvert(currentUnit, originalUnit)
-    ? currentSize <= originalSize
-    : true
-  const isSaveDisabled = saving || !hasSelectedFood || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
+  const sizeValid = canConvert(currentUnit, originalUnit) ? currentSize <= originalSize : true
+  const isSaveDisabled = saving || !hasValidSelection || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
 
   return (
     <div className="pantry-store-page">
@@ -156,19 +175,56 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
         <h1>{isEditing ? 'Edit Pantry Item' : 'Add Pantry Item'}</h1>
 
         <div className="form-container">
+          {/* Source mode toggle (only shown when creating) */}
+          {!isEditing && (
+            <div className="form-section">
+              <label>Item type</label>
+              <SelectButton
+                value={sourceMode}
+                onChange={(e) => {
+                  const next = e.value as SourceMode
+                  if (!next) return
+                  setSourceMode(next)
+                  if (next === 'food') { setSelectedProduct(null); setProductSearchValue('') }
+                  if (next === 'product') { setFoodName('') }
+                }}
+                options={[
+                  { label: 'Generic food', value: 'food' },
+                  { label: 'Specific product', value: 'product' },
+                ]}
+                optionLabel="label"
+                optionValue="value"
+              />
+              <small>
+                {sourceMode === 'food'
+                  ? 'Track a generic item like "Banana" or "Chicken Breast"'
+                  : 'Track a branded product — search by name or scan a barcode'}
+              </small>
+            </div>
+          )}
+
           <div className="form-section">
             <label htmlFor="food-select">
-              Food Item <span className="required">*</span>
+              {sourceMode === 'food' ? 'Food Item' : 'Product'} <span className="required">*</span>
             </label>
-            <Autocomplete
-              value={foodName}
-              options={allFoods}
-              getOptionLabel={(food) => food.name}
-              renderOptionMeta={(food) => `${food.calories} cal`}
-              onChange={setFoodName}
-              placeholder="Select a food item"
-              inputAriaLabel="Food item"
-            />
+            {sourceMode === 'food' ? (
+              <Autocomplete
+                value={foodName}
+                options={allFoods}
+                getOptionLabel={(food) => food.name}
+                renderOptionMeta={(food) => `${food.calories} cal`}
+                onChange={setFoodName}
+                placeholder="Select a food item"
+                inputAriaLabel="Food item"
+              />
+            ) : (
+              <ProductSearch
+                value={productSearchValue}
+                onChange={handleProductSelected}
+                placeholder="Search or scan a product"
+                inputAriaLabel="Product"
+              />
+            )}
           </div>
 
           <div className="form-section">
@@ -254,26 +310,12 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             >
               {saving ? 'Saving...' : isEditing ? 'Update Item' : 'Add Item'}
             </button>
-             <button
-                type="button"
-                className="ghost-button"
-                onClick={() => setShowImportDialog(true)}
-              >
-                Import from OpenFoodFacts
-              </button>
             <button onClick={handleCancel} className="btn btn-secondary">
               Cancel
             </button>
           </div>
         </div>
       </div>
-        <OpenFoodFactsImport
-            visible={showImportDialog}
-            onHide={() => setShowImportDialog(false)}
-            onImport={(food: Food) => useFoodStore.setState(state => ({
-              foods: state.foods.some(f => f.id === food.id) ? state.foods : [...state.foods, food],
-            }))}
-          />
     </div>
   )
 }

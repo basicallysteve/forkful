@@ -1,12 +1,13 @@
 import { eq, isNull, and } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods } from '@/db/schema'
-import type { Food, FoodSource, Measurement } from '@/types/Food'
+import { products } from '@/db/schema'
+import type { Product, ProductSource } from '@/types/Product'
+import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
-export type FoodQueryOptions = {
+export type ProductQueryOptions = {
   search?: string
-  sortBy?: 'name' | 'calories' | 'protein'
+  sortBy?: 'name' | 'calories'
   sortDir?: 'asc' | 'desc'
 }
 
@@ -15,10 +16,13 @@ function parseMeasurements(raw: unknown): Measurement[] {
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
-function mapFood(row: typeof foods.$inferSelect): Food {
+function mapProduct(row: typeof products.$inferSelect): Product {
   return {
     id: row.id,
     name: row.name,
+    barcode: row.barcode ?? undefined,
+    externalId: row.externalId ?? undefined,
+    parentFoodId: row.parentFoodId ?? undefined,
     calories: row.calories,
     protein: Number(row.protein ?? 0),
     carbs: Number(row.carbs ?? 0),
@@ -30,14 +34,13 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? 'g',
     measurements: parseMeasurements(row.measurements),
-    externalId: row.externalId ?? undefined,
-    source: (row.source as FoodSource) ?? 'manual',
+    source: (row.source as ProductSource) ?? 'manual',
   }
 }
 
-export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
+export async function getProducts(options: ProductQueryOptions = {}): Promise<Product[]> {
   try {
-    let rows = await db.select().from(foods).where(isNull(foods.dateDeleted))
+    let rows = await db.select().from(products).where(isNull(products.dateDeleted))
     if (options.search) {
       const term = options.search.toLowerCase()
       rows = rows.filter(r => r.name.toLowerCase().includes(term))
@@ -47,35 +50,42 @@ export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> 
         let cmp = 0
         if (options.sortBy === 'name') cmp = a.name.localeCompare(b.name)
         else if (options.sortBy === 'calories') cmp = a.calories - b.calories
-        else if (options.sortBy === 'protein') cmp = Number(a.protein ?? 0) - Number(b.protein ?? 0)
         return options.sortDir === 'desc' ? -cmp : cmp
       })
     }
-    return rows.map(mapFood)
+    return rows.map(mapProduct)
   } catch {
     return []
   }
 }
 
-export async function getFoodBySlug(slug: string): Promise<Food | null> {
-  const [row] = await db.select().from(foods).where(and(eq(foods.slug, slug), isNull(foods.dateDeleted)))
-  return row ? mapFood(row) : null
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const [row] = await db.select().from(products).where(and(eq(products.slug, slug), isNull(products.dateDeleted)))
+  return row ? mapProduct(row) : null
 }
 
-export async function getFoodById(id: number): Promise<Food | null> {
-  const [row] = await db.select().from(foods).where(and(eq(foods.id, id), isNull(foods.dateDeleted)))
-  return row ? mapFood(row) : null
+export async function getProductById(id: number): Promise<Product | null> {
+  const [row] = await db.select().from(products).where(and(eq(products.id, id), isNull(products.dateDeleted)))
+  return row ? mapProduct(row) : null
 }
 
-export async function getFoodByExternalId(externalId: string): Promise<Food | null> {
-  const [row] = await db.select().from(foods).where(and(eq(foods.externalId, externalId), isNull(foods.dateDeleted)))
-  return row ? mapFood(row) : null
+export async function getProductByBarcode(barcode: string): Promise<Product | null> {
+  const [row] = await db.select().from(products).where(and(eq(products.barcode, barcode), isNull(products.dateDeleted)))
+  return row ? mapProduct(row) : null
 }
 
-export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
-  const [row] = await db.insert(foods).values({
+export async function getProductByExternalId(externalId: string): Promise<Product | null> {
+  const [row] = await db.select().from(products).where(and(eq(products.externalId, externalId), isNull(products.dateDeleted)))
+  return row ? mapProduct(row) : null
+}
+
+export async function createProduct(data: Omit<Product, 'id'>): Promise<Product> {
+  const [row] = await db.insert(products).values({
     name: data.name,
     slug: toSlug(data.name),
+    barcode: data.barcode ?? null,
+    externalId: data.externalId ?? null,
+    parentFoodId: data.parentFoodId ?? null,
     calories: data.calories,
     protein: String(data.protein ?? 0),
     carbs: String(data.carbs ?? 0),
@@ -87,22 +97,20 @@ export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
     saturatedFat: data.saturatedFat != null ? String(data.saturatedFat) : null,
     sugar: data.sugar != null ? String(data.sugar) : null,
     sodium: data.sodium != null ? String(data.sodium) : null,
-    externalId: data.externalId ?? null,
     source: data.source ?? 'manual',
   }).returning()
-  return mapFood(row)
+  return mapProduct(row)
 }
 
-const NUTRITIONAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber', 'saturatedFat', 'sugar', 'sodium'] as const
-
-export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): Promise<Food | null> {
-  const [existing] = await db.select().from(foods).where(eq(foods.id, id))
-
-  const updates: Partial<typeof foods.$inferInsert> = {}
+export async function updateProduct(id: number, data: Partial<Omit<Product, 'id'>>): Promise<Product | null> {
+  const updates: Partial<typeof products.$inferInsert> = {}
   if (data.name !== undefined) {
     updates.name = data.name
     updates.slug = toSlug(data.name)
   }
+  if (data.barcode !== undefined) updates.barcode = data.barcode ?? null
+  if (data.externalId !== undefined) updates.externalId = data.externalId ?? null
+  if (data.parentFoodId !== undefined) updates.parentFoodId = data.parentFoodId ?? null
   if (data.calories !== undefined) updates.calories = data.calories
   if (data.protein !== undefined) updates.protein = String(data.protein)
   if (data.carbs !== undefined) updates.carbs = String(data.carbs)
@@ -114,21 +122,16 @@ export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): P
   if (data.saturatedFat !== undefined) updates.saturatedFat = data.saturatedFat != null ? String(data.saturatedFat) : null
   if (data.sugar !== undefined) updates.sugar = data.sugar != null ? String(data.sugar) : null
   if (data.sodium !== undefined) updates.sodium = data.sodium != null ? String(data.sodium) : null
-  if (data.externalId !== undefined) updates.externalId = data.externalId ?? null
 
-  if (existing?.source === 'open_food_facts') {
-    const current = mapFood(existing)
-    const nutritionChanged = NUTRITIONAL_FIELDS.some(
-      (field) => field in data && data[field] !== current[field]
-    )
-    if (nutritionChanged) updates.source = 'manual'
-  }
-
-  const [row] = await db.update(foods).set(updates).where(eq(foods.id, id)).returning()
-  return row ? mapFood(row) : null
+  const [row] = await db.update(products).set(updates).where(eq(products.id, id)).returning()
+  return row ? mapProduct(row) : null
 }
 
-export async function deleteFood(id: number): Promise<boolean> {
-  const deleted = await db.delete(foods).where(eq(foods.id, id)).returning()
-  return deleted.length > 0
+export async function deleteProduct(id: number): Promise<boolean> {
+  // Soft delete
+  const [row] = await db.update(products)
+    .set({ dateDeleted: new Date() })
+    .where(eq(products.id, id))
+    .returning()
+  return !!row
 }

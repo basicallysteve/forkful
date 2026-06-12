@@ -1,8 +1,9 @@
 import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, ilike, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { pantryItems, foods } from '@/db/schema'
+import { pantryItems, foods, products } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food, Measurement } from '@/types/Food'
+import type { Product } from '@/types/Product'
 import { calculatePantryStatus } from '@/utils/pantryStatus'
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
@@ -19,7 +20,7 @@ function parseMeasurements(raw: unknown): Measurement[] {
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
-function mapFood(row: typeof foods.$inferSelect): Food {
+function mapFoodRow(row: typeof foods.$inferSelect): Food {
   return {
     id: row.id,
     name: row.name,
@@ -34,11 +35,36 @@ function mapFood(row: typeof foods.$inferSelect): Food {
   }
 }
 
-function mapPantryItem(row: typeof pantryItems.$inferSelect, food: Food): PantryItem {
-  const expirationDate = row.expirationDate ? new Date(row.expirationDate) : null
+function mapProductRow(row: typeof products.$inferSelect): Product {
   return {
     id: row.id,
+    name: row.name,
+    barcode: row.barcode ?? undefined,
+    externalId: row.externalId ?? undefined,
+    parentFoodId: row.parentFoodId ?? undefined,
+    calories: row.calories,
+    protein: Number(row.protein ?? 0),
+    carbs: Number(row.carbs ?? 0),
+    fat: Number(row.fat ?? 0),
+    fiber: Number(row.fiber ?? 0),
+    servingSize: Number(row.servingSize ?? 1),
+    servingUnit: row.servingUnit ?? 'g',
+    measurements: parseMeasurements(row.measurements),
+  }
+}
+
+function mapPantryItem(
+  row: typeof pantryItems.$inferSelect,
+  food?: Food,
+  product?: Product
+): PantryItem {
+  const expirationDate = row.expirationDate ? new Date(row.expirationDate) : null
+  const sourceType = (row.sourceType as 'food' | 'product') ?? 'food'
+  return {
+    id: row.id,
+    sourceType,
     food,
+    product,
     expirationDate,
     originalSize: {
       size: Number(row.originalSizeAmount),
@@ -52,6 +78,11 @@ function mapPantryItem(row: typeof pantryItems.$inferSelect, food: Food): Pantry
     status: calculatePantryStatus(expirationDate),
     frozenDate: row.frozenDate ? new Date(row.frozenDate) : null,
   }
+}
+
+/** Resolve a display name from a pantry item row (for search filter). */
+function getItemName(food?: Food, product?: Product): string {
+  return food?.name ?? product?.name ?? ''
 }
 
 export async function getPantryItems(userId: number, options: PantryQueryOptions = {}): Promise<PantryItem[]> {
@@ -77,21 +108,14 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
       }
     })()
 
-    const searchFilter = options.search
-      ? ilike(foods.name, `%${options.search}%`)
-      : undefined
-
     const dir = options.sortDir === 'desc' ? 'DESC' : 'ASC'
     const orderBy = (() => {
       switch (options.sortBy) {
-        case 'name':
-          return options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)
         case 'addedDate':
           return options.sortDir === 'desc' ? desc(pantryItems.addedDate) : asc(pantryItems.addedDate)
         case 'expirationDate':
         case 'status':
         default:
-          // nulls last so items with no expiration date (status=good) sort after dated items
           return sql`${pantryItems.expirationDate} ${sql.raw(dir)} NULLS LAST`
       }
     })()
@@ -99,18 +123,38 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
     const rows = await db
       .select()
       .from(pantryItems)
-      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(products, eq(pantryItems.productId, products.id))
       .where(
         and(
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
-          isNull(foods.dateDeleted),
           statusFilter,
-          searchFilter,
         )
       )
       .orderBy(orderBy)
-    return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
+
+    let items = rows.map(row => mapPantryItem(
+      row.pantry_items,
+      row.foods ? mapFoodRow(row.foods) : undefined,
+      row.products ? mapProductRow(row.products) : undefined
+    ))
+
+    // Apply search filter in-memory (searches across food and product names)
+    if (options.search) {
+      const term = options.search.toLowerCase()
+      items = items.filter(item => getItemName(item.food, item.product).toLowerCase().includes(term))
+    }
+
+    // Apply name sort in-memory (since name comes from either foods or products)
+    if (options.sortBy === 'name') {
+      items.sort((a, b) => {
+        const cmp = getItemName(a.food, a.product).localeCompare(getItemName(b.food, b.product))
+        return options.sortDir === 'desc' ? -cmp : cmp
+      })
+    }
+
+    return items
   } catch (err) {
     console.error('getPantryItems failed:', err)
     return []
@@ -124,18 +168,22 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
     const rows = await db
       .select()
       .from(pantryItems)
-      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(products, eq(pantryItems.productId, products.id))
       .where(
         and(
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
-          isNull(foods.dateDeleted),
           lte(pantryItems.expirationDate, cutoff)
         )
       )
       .orderBy(asc(pantryItems.expirationDate))
       .limit(limit)
-    return rows.map(row => mapPantryItem(row.pantry_items, mapFood(row.foods)))
+    return rows.map(row => mapPantryItem(
+      row.pantry_items,
+      row.foods ? mapFoodRow(row.foods) : undefined,
+      row.products ? mapProductRow(row.products) : undefined
+    ))
   } catch {
     return []
   }
@@ -146,17 +194,21 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
     const [row] = await db
       .select()
       .from(pantryItems)
-      .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(foods, eq(pantryItems.foodId, foods.id))
+      .leftJoin(products, eq(pantryItems.productId, products.id))
       .where(
         and(
           eq(pantryItems.id, id),
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
-          isNull(foods.dateDeleted)
         )
       )
     if (!row) return null
-    return mapPantryItem(row.pantry_items, mapFood(row.foods))
+    return mapPantryItem(
+      row.pantry_items,
+      row.foods ? mapFoodRow(row.foods) : undefined,
+      row.products ? mapProductRow(row.products) : undefined
+    )
   } catch (err) {
     console.error('getPantryItemById failed:', err)
     return null
@@ -165,7 +217,9 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
 
 export type CreatePantryItemData = {
   userId: number
-  foodId: number
+  sourceType?: 'food' | 'product'
+  foodId?: number
+  productId?: number
   expirationDate?: Date | null
   originalSizeAmount: number
   originalSizeUnit?: string
@@ -174,9 +228,12 @@ export type CreatePantryItemData = {
 }
 
 export async function createPantryItem(data: CreatePantryItemData): Promise<PantryItem> {
+  const sourceType = data.sourceType ?? (data.foodId ? 'food' : 'product')
   const [row] = await db.insert(pantryItems).values({
     userId: data.userId,
-    foodId: data.foodId,
+    sourceType,
+    foodId: data.foodId ?? null,
+    productId: data.productId ?? null,
     expirationDate: data.expirationDate ?? null,
     originalSizeAmount: String(data.originalSizeAmount),
     originalSizeUnit: data.originalSizeUnit,
@@ -188,7 +245,7 @@ export async function createPantryItem(data: CreatePantryItemData): Promise<Pant
   return item
 }
 
-export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'userId' | 'foodId'>> & {
+export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'userId' | 'foodId' | 'productId' | 'sourceType'>> & {
   frozenDate?: Date | null
 }
 

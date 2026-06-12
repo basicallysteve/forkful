@@ -195,6 +195,63 @@ html[data-theme='light'] {
   }
 }
 
+// ── PrimeReact SelectButton ───────────────────────────────────────────────────
+// Reset PrimeReact's default SelectButton chrome and align it with the site's
+// tab/toggle pattern (same tokens used by .tab in recipe store.scss).
+
+.p-selectbutton {
+  display:         inline-flex;
+  gap:             6px;
+  background:      transparent;
+  border:          none;
+  padding:         0;
+
+  &.p-component { background: transparent; }
+
+  .p-button {
+    background:    transparent;
+    border:        1px solid var(--vscode-border);
+    border-radius: 8px !important; // override PrimeReact's square-corner buttonset default
+    padding:       8px 16px;
+    font-size:     13px;
+    font-family:   inherit;
+    color:         var(--vscode-muted);
+    box-shadow:    none;
+    transition:    border-color 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+
+    // Remove PrimeReact buttonset's flush-border overrides
+    &:first-child,
+    &:last-child,
+    &:not(:first-child):not(:last-child) {
+      border-radius: 8px !important;
+      border:        1px solid var(--vscode-border);
+      margin:        0;
+    }
+
+    &:hover:not(.p-highlight):not(:disabled) {
+      background:    var(--accent-hover);
+      border-color:  var(--vscode-accent);
+      color:         var(--vscode-text);
+    }
+
+    &:focus {
+      outline:    none;
+      box-shadow: var(--focus-ring);
+    }
+
+    &.p-highlight {
+      background:    var(--accent-hover-strong);
+      border-color:  var(--vscode-accent);
+      color:         var(--vscode-text);
+      box-shadow:    0 2px 8px var(--accent-glow);
+    }
+
+    .p-button-label {
+      font-weight: 500;
+    }
+  }
+}
+
 // The suggestions panel is portal-rendered so it must be styled globally.
 
 .p-autocomplete-panel {

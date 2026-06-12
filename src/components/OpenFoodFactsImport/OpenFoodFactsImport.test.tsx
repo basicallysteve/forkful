@@ -5,27 +5,17 @@ import OpenFoodFactsImport from './OpenFoodFactsImport'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import type { Food } from '@/types/Food'
 
-vi.mock('@/components/BarcodeScanner/BarcodeScanner', () => ({
-  default: ({ onDetected }: { onDetected: (code: string) => void }) => (
-    <button type="button" onClick={() => onDetected('1234567890')}>
-      Mock Scan
-    </button>
-  ),
-}))
-
 vi.mock('@/lib/api/openFoodFacts', () => ({
   apiSearchOpenFoodFacts: vi.fn(),
-  apiGetProductByBarcode: vi.fn(),
   mapOFFProductToFood: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
   apiCreateFood: vi.fn(),
-  apiFetchFoodByBarcode: vi.fn(),
 }))
 
-import { apiSearchOpenFoodFacts, apiGetProductByBarcode, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
-import { apiCreateFood, apiFetchFoodByBarcode } from '@/lib/api/foods'
+import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
+import { apiCreateFood } from '@/lib/api/foods'
 
 const mockProduct: OFFProduct = {
   code: '123',
@@ -75,9 +65,7 @@ describe('OpenFoodFactsImport', () => {
     vi.clearAllMocks()
     vi.mocked(mapOFFProductToFood).mockReturnValue(mockMappedFood)
     vi.mocked(apiCreateFood).mockResolvedValue(mockCreatedFood)
-    vi.mocked(apiFetchFoodByBarcode).mockResolvedValue(null)
     vi.mocked(apiSearchOpenFoodFacts).mockResolvedValue([])
-    vi.mocked(apiGetProductByBarcode).mockResolvedValue(null)
   })
 
   describe('Dialog visibility', () => {
@@ -88,12 +76,12 @@ describe('OpenFoodFactsImport', () => {
 
     it('does not render dialog content when visible is false', () => {
       renderComponent({ visible: false })
-      expect(screen.queryByText('Search by name')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText(/search foods/i)).not.toBeInTheDocument()
     })
   })
 
-  describe('Search tab', () => {
-    it('shows the search tab as active by default', () => {
+  describe('Search', () => {
+    it('shows the search input by default', () => {
       renderComponent()
       expect(screen.getByPlaceholderText(/search foods/i)).toBeInTheDocument()
     })
@@ -181,72 +169,6 @@ describe('OpenFoodFactsImport', () => {
       const { user } = await renderWithResults()
       await user.click(screen.getByRole('button', { name: /^import$/i }))
       expect(screen.getByRole('button', { name: /importing/i })).toBeDisabled()
-    })
-  })
-
-  describe('Tab switching', () => {
-    it('switches to the barcode tab when clicked', async () => {
-      const user = userEvent.setup()
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      expect(screen.getByRole('button', { name: /mock scan/i })).toBeInTheDocument()
-    })
-
-    it('clears error when switching tabs', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiSearchOpenFoodFacts).mockResolvedValue([])
-      renderComponent()
-      await user.type(screen.getByPlaceholderText(/search foods/i), 'nothing')
-      await waitFor(() => expect(screen.getByText(/no results found/i)).toBeInTheDocument(), { timeout: 1000 })
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      expect(screen.queryByText(/no results found/i)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Barcode tab', () => {
-    it('calls handleBarcodeDetected when barcode is scanned', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiGetProductByBarcode).mockResolvedValue(mockProduct)
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      await user.click(screen.getByRole('button', { name: /mock scan/i }))
-      await waitFor(() => expect(apiGetProductByBarcode).toHaveBeenCalledWith('1234567890'))
-    })
-
-    it('shows the product from barcode scan result', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiGetProductByBarcode).mockResolvedValue(mockProduct)
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      await user.click(screen.getByRole('button', { name: /mock scan/i }))
-      await waitFor(() => expect(screen.getByText('Greek Yogurt')).toBeInTheDocument())
-    })
-
-    it('shows "Already in library" when barcode matches a local food', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiFetchFoodByBarcode).mockResolvedValue(mockCreatedFood)
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      await user.click(screen.getByRole('button', { name: /mock scan/i }))
-      await waitFor(() => expect(screen.getByText(/already in library/i)).toBeInTheDocument())
-    })
-
-    it('shows an error when barcode lookup returns no product', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiGetProductByBarcode).mockResolvedValue(null)
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      await user.click(screen.getByRole('button', { name: /mock scan/i }))
-      await waitFor(() => expect(screen.getByText(/no product found/i)).toBeInTheDocument())
-    })
-
-    it('shows a "Scan another" button after finding a barcode product', async () => {
-      const user = userEvent.setup()
-      vi.mocked(apiGetProductByBarcode).mockResolvedValue(mockProduct)
-      renderComponent()
-      await user.click(screen.getByRole('button', { name: /scan barcode/i }))
-      await user.click(screen.getByRole('button', { name: /mock scan/i }))
-      await waitFor(() => expect(screen.getByRole('button', { name: /scan another/i })).toBeInTheDocument())
     })
   })
 
