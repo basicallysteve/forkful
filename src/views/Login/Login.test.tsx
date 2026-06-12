@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import Login from './Login'
+
+vi.mock('next-auth/react', () => ({
+  signIn: vi.fn().mockResolvedValue({ error: null, code: undefined, ok: true, url: '/' }),
+}))
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(ui)
@@ -181,6 +186,10 @@ describe('Login Page', () => {
   })
 
   describe('Navigation', () => {
+    beforeEach(() => {
+      vi.mocked(signIn).mockResolvedValue({ error: null, code: undefined, ok: true, url: '/' })
+    })
+
     it('renders cancel button linking to home', () => {
       renderWithProviders(<Login />)
 
@@ -202,6 +211,74 @@ describe('Login Page', () => {
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/')
+      })
+    })
+  })
+
+  describe('Account Deactivation', () => {
+    const deactivatedResult = { code: 'ACCOUNT_DEACTIVATED', error: 'CredentialsSignin', ok: false, url: null }
+    const successResult = { error: null, code: undefined, ok: true, url: '/' }
+
+    beforeEach(() => {
+      vi.mocked(signIn).mockResolvedValue(successResult)
+    })
+
+    async function triggerDeactivatedLogin() {
+      vi.mocked(signIn).mockResolvedValueOnce(deactivatedResult)
+      const user = userEvent.setup()
+      renderWithProviders(<Login />)
+      await user.type(screen.getByPlaceholderText('Enter your username'), 'testuser')
+      await user.type(screen.getByPlaceholderText('Enter your password'), 'mypassword')
+      await user.click(screen.getByRole('button', { name: /^login$/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Account Deactivated')).toBeInTheDocument()
+      })
+      return user
+    }
+
+    it('shows the reactivation prompt when sign-in returns ACCOUNT_DEACTIVATED', async () => {
+      await triggerDeactivatedLogin()
+      expect(screen.getByText(/Your account is currently deactivated/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /yes, reactivate my account/i })).toBeInTheDocument()
+    })
+
+    it('hides the login form when showing the reactivation prompt', async () => {
+      await triggerDeactivatedLogin()
+      expect(screen.queryByPlaceholderText('Enter your username')).not.toBeInTheDocument()
+    })
+
+    it('reactivates and redirects on confirmation', async () => {
+      const mockPush = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() })
+      vi.mocked(signIn).mockResolvedValueOnce(deactivatedResult).mockResolvedValueOnce(successResult)
+
+      const user = await triggerDeactivatedLogin()
+      await user.click(screen.getByRole('button', { name: /yes, reactivate my account/i }))
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/')
+      })
+    })
+
+    it('returns to the login form when cancel is clicked', async () => {
+      const user = await triggerDeactivatedLogin()
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+
+      expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument()
+      expect(screen.queryByText('Account Deactivated')).not.toBeInTheDocument()
+    })
+
+    it('shows an error when the reactivation API call fails', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(
+        JSON.stringify({ error: 'Too many attempts' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } },
+      ))
+
+      const user = await triggerDeactivatedLogin()
+      await user.click(screen.getByRole('button', { name: /yes, reactivate my account/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('Too many attempts')).toBeInTheDocument()
       })
     })
   })

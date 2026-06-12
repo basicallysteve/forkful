@@ -31,7 +31,7 @@ function Login() {
         password,
         redirect: false,
       })
-      if (result?.error === 'ACCOUNT_DEACTIVATED') {
+      if (result?.code === 'ACCOUNT_DEACTIVATED') {
         setShowReactivate(true)
       } else if (result?.error) {
         setError('Invalid username or password')

@@ -2,10 +2,10 @@ import NextAuth, { CredentialsSignin } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Apple from 'next-auth/providers/apple'
 import Credentials from 'next-auth/providers/credentials'
-import { eq, and, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
-import { login, trackLoginAttempt } from '@/lib/users'
+import { login, trackLoginAttempt, reactivateAccount } from '@/lib/users'
 import { findOrCreateOAuthUser } from '@/lib/oauth'
 
 class AccountDeactivatedError extends CredentialsSignin {
@@ -68,10 +68,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // the user lookup for these returning-Apple-user sessions via the same providerAccountId
           // fallback, so the token will be fully populated even without an email.
           const [existing] = await db
-            .select({ userId: oauthAccounts.userId })
+            .select({ userId: oauthAccounts.userId, dateDeleted: users.dateDeleted })
             .from(oauthAccounts)
-            .innerJoin(users, and(eq(users.id, oauthAccounts.userId), isNull(users.dateDeleted)))
+            .innerJoin(users, eq(users.id, oauthAccounts.userId))
             .where(eq(oauthAccounts.providerAccountId, account.providerAccountId))
+          if (existing?.dateDeleted) await reactivateAccount(existing.userId)
           return !!existing
         }
         try {
@@ -86,7 +87,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .select({ dateDeleted: users.dateDeleted })
             .from(users)
             .where(eq(users.id, userId))
-          if (freshUser?.dateDeleted) return false
+          if (freshUser?.dateDeleted) await reactivateAccount(userId)
           return true
         } catch (err) {
           console.error('[auth] findOrCreateOAuthUser failed:', err)
