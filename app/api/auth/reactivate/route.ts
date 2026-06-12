@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { users } from '@/db/schema'
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { reactivateAccount } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
 import bcrypt from 'bcrypt'
