@@ -2,12 +2,25 @@
 
 import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { Checkbox } from 'primereact/checkbox'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
+import { Dropdown } from 'primereact/dropdown'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
-import { apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar } from '@/lib/api/users'
-import type { User } from '@/types/User'
+import {
+  apiUpdatePreferences,
+  apiUpdateEmail,
+  apiUpdatePassword,
+  apiUploadAvatar,
+  apiUpdateUsername,
+  apiUpdateEmailPreferences,
+  apiDeactivateAccount,
+  apiDeleteAccount,
+  apiSubmitAccountFeedback,
+} from '@/lib/api/users'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
 import './profile.scss'
 
 const commonPasswords = [
@@ -17,6 +30,28 @@ const commonPasswords = [
   'sunshine', 'princess', 'starwars', 'superman', 'batman', 'shadow', 'michael',
   'jennifer', 'jessica', 'ashley', 'amanda', 'andrew', 'joshua', 'matthew',
   'daniel', 'david', 'james', 'robert', 'john', 'joseph', 'thomas', 'charles',
+]
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
+
+const CLOSURE_REASONS = [
+  'Not using it enough',
+  'Missing features',
+  'Privacy concerns',
+  'Switching to another app',
+  'Other',
+]
+
+const RECIPE_FREQUENCY_OPTIONS = [
+  { label: 'Never', value: 'never' },
+  { label: 'Weekly', value: 'weekly' },
+  { label: 'Monthly', value: 'monthly' },
+]
+
+const PANTRY_FREQUENCY_OPTIONS = [
+  { label: 'Never', value: 'never' },
+  { label: 'Daily', value: 'daily' },
+  { label: 'Weekly', value: 'weekly' },
 ]
 
 interface PasswordValidation {
@@ -48,9 +83,13 @@ interface ProfileProps {
   user: User
 }
 
+type ClosureModalState = null | 'deactivate' | 'delete'
+
 export default function Profile({ user }: ProfileProps) {
   const router = useRouter()
-  // Avatar section
+  const { update: updateSession } = useSession()
+
+  // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(user.avatarUrl)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -73,30 +112,38 @@ export default function Profile({ user }: ProfileProps) {
     }
   }
 
-  // Preferences section
+  // Username
+  const [username, setUsername] = useState(user.username)
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [usernameSuccess, setUsernameSuccess] = useState(false)
+  const isValidUsername = useMemo(() => USERNAME_REGEX.test(username), [username])
+  const usernameChanged = username !== user.username
+
+  async function saveUsername(e: React.FormEvent) {
+    e.preventDefault()
+    if (!isValidUsername || !usernameChanged) return
+    setUsernameSaving(true)
+    setUsernameError(null)
+    setUsernameSuccess(false)
+    try {
+      await apiUpdateUsername(user.id!, username)
+      await updateSession({ username })
+      setUsernameSuccess(true)
+      router.refresh()
+    } catch (err) {
+      setUsernameError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setUsernameSaving(false)
+    }
+  }
+
+  // Preferences
   const [cuisine, setCuisine] = useState<string[]>(user.cuisinePreferences ?? [])
   const [dietary, setDietary] = useState<string[]>(user.dietaryRestrictions ?? [])
   const [prefSaving, setPrefSaving] = useState(false)
   const [prefError, setPrefError] = useState<string | null>(null)
   const [prefSuccess, setPrefSuccess] = useState(false)
-
-  // Account section
-  const [email, setEmail] = useState(user.email)
-  const [emailSaving, setEmailSaving] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [emailSuccess, setEmailSuccess] = useState(false)
-
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [pwSaving, setPwSaving] = useState(false)
-  const [pwError, setPwError] = useState<string | null>(null)
-  const [pwSuccess, setPwSuccess] = useState(false)
-
-  const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email])
-  const newPasswordValidation = useMemo(() => validatePassword(newPassword), [newPassword])
-  const newPasswordIsValid = useMemo(() => isPasswordValid(newPasswordValidation), [newPasswordValidation])
-  const passwordsMatch = useMemo(() => newPassword === confirmPassword && confirmPassword.length > 0, [newPassword, confirmPassword])
 
   function toggleCuisine(option: string) {
     setCuisine(prev => prev.includes(option) ? prev.filter(c => c !== option) : [...prev, option])
@@ -121,6 +168,50 @@ export default function Profile({ user }: ProfileProps) {
       setPrefSaving(false)
     }
   }
+
+  // Email preferences
+  const [marketingOptIn, setMarketingOptIn] = useState(user.marketingEmailOptIn)
+  const [recipeFreq, setRecipeFreq] = useState<RecipeSuggestionFrequency>(user.recipeSuggestionFrequency)
+  const [pantryFreq, setPantryFreq] = useState<PantryExpirationFrequency>(user.pantryExpirationFrequency)
+  const [emailPrefSaving, setEmailPrefSaving] = useState(false)
+  const [emailPrefError, setEmailPrefError] = useState<string | null>(null)
+  const [emailPrefSuccess, setEmailPrefSuccess] = useState(false)
+
+  async function saveEmailPreferences() {
+    setEmailPrefSaving(true)
+    setEmailPrefError(null)
+    setEmailPrefSuccess(false)
+    try {
+      await apiUpdateEmailPreferences(user.id!, {
+        marketingEmailOptIn: marketingOptIn,
+        recipeSuggestionFrequency: recipeFreq,
+        pantryExpirationFrequency: pantryFreq,
+      })
+      setEmailPrefSuccess(true)
+    } catch (err) {
+      setEmailPrefError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setEmailPrefSaving(false)
+    }
+  }
+
+  // Account (email + password)
+  const [email, setEmail] = useState(user.email)
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailSuccess, setEmailSuccess] = useState(false)
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwSuccess, setPwSuccess] = useState(false)
+
+  const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email])
+  const newPasswordValidation = useMemo(() => validatePassword(newPassword), [newPassword])
+  const newPasswordIsValid = useMemo(() => isPasswordValid(newPasswordValidation), [newPasswordValidation])
+  const passwordsMatch = useMemo(() => newPassword === confirmPassword && confirmPassword.length > 0, [newPassword, confirmPassword])
 
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault()
@@ -156,6 +247,49 @@ export default function Profile({ user }: ProfileProps) {
     }
   }
 
+  // Account closure modal
+  const [closureModal, setClosureModal] = useState<ClosureModalState>(null)
+  const [closureReasons, setClosureReasons] = useState<string[]>([])
+  const [closureComment, setClosureComment] = useState('')
+  const [closureSubmitting, setClosureSubmitting] = useState(false)
+  const [closureError, setClosureError] = useState<string | null>(null)
+
+  function openClosureModal(type: 'deactivate' | 'delete') {
+    setClosureReasons([])
+    setClosureComment('')
+    setClosureError(null)
+    setClosureModal(type)
+  }
+
+  function toggleReason(reason: string) {
+    setClosureReasons(prev =>
+      prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason]
+    )
+  }
+
+  async function confirmClosure() {
+    if (!closureModal) return
+    setClosureSubmitting(true)
+    setClosureError(null)
+    try {
+      const action = closureModal === 'deactivate' ? 'deactivated' : 'deleted'
+      await apiSubmitAccountFeedback(user.id!, {
+        action,
+        reasons: closureReasons,
+        comment: closureComment || undefined,
+      })
+      if (closureModal === 'deactivate') {
+        await apiDeactivateAccount(user.id!)
+      } else {
+        await apiDeleteAccount(user.id!)
+      }
+      await signOut({ callbackUrl: '/' })
+    } catch (err) {
+      setClosureError(err instanceof Error ? err.message : 'Something went wrong')
+      setClosureSubmitting(false)
+    }
+  }
+
   return (
     <div className="profile">
       <div className="profile-content">
@@ -188,6 +322,39 @@ export default function Profile({ user }: ProfileProps) {
             <p className="profile-email-display">{user.email}</p>
           </div>
         </header>
+
+        {/* Username */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Username</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <form className="account-form" onSubmit={saveUsername}>
+              <label className={`form-field ${username.length > 0 && !isValidUsername ? 'has-error' : ''}`}>
+                <span className="field-label">Username</span>
+                <InputText
+                  value={username}
+                  onChange={e => { setUsername(e.target.value); setUsernameSuccess(false) }}
+                  autoComplete="username"
+                />
+                {username.length > 0 && !isValidUsername && (
+                  <span className="field-error" role="alert">
+                    3–30 characters, letters, numbers, hyphens and underscores only.
+                  </span>
+                )}
+              </label>
+              <div className="panel-footer">
+                {usernameSuccess && <span className="success-text">Username updated!</span>}
+                {usernameError && <span className="field-error" role="alert">{usernameError}</span>}
+                <button type="submit" className="primary-button" disabled={usernameSaving || !isValidUsername || !usernameChanged}>
+                  {usernameSaving ? 'Saving…' : 'Update Username'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
 
         {/* Preferences */}
         <section className="profile-panel">
@@ -231,7 +398,54 @@ export default function Profile({ user }: ProfileProps) {
           </div>
         </section>
 
-        {/* Account */}
+        {/* Email preferences */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Email Preferences</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <div className="pref-group">
+              <label className="checkbox-option">
+                <Checkbox
+                  className="checkbox-input"
+                  checked={marketingOptIn}
+                  onChange={e => { setMarketingOptIn(!!e.checked); setEmailPrefSuccess(false) }}
+                />
+                <span className="checkbox-indicator" />
+                Receive news and marketing emails
+              </label>
+            </div>
+            <div className="pref-group">
+              <span className="field-label">Recipe suggestion emails</span>
+              <Dropdown
+                value={recipeFreq}
+                options={RECIPE_FREQUENCY_OPTIONS}
+                onChange={e => { setRecipeFreq(e.value); setEmailPrefSuccess(false) }}
+                className="pref-dropdown"
+              />
+            </div>
+            <div className="pref-group">
+              <span className="field-label">Pantry expiration reminder emails</span>
+              <Dropdown
+                value={pantryFreq}
+                options={PANTRY_FREQUENCY_OPTIONS}
+                onChange={e => { setPantryFreq(e.value); setEmailPrefSuccess(false) }}
+                className="pref-dropdown"
+              />
+            </div>
+            <div className="panel-footer">
+              {emailPrefSuccess && <span className="success-text">Saved!</span>}
+              {emailPrefError && <span className="field-error" role="alert">{emailPrefError}</span>}
+              <button className="primary-button" onClick={saveEmailPreferences} disabled={emailPrefSaving}>
+                {emailPrefSaving ? 'Saving…' : 'Save Email Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Account (email + password) */}
         <section className="profile-panel">
           <div className="panel-toolbar">
             <div className="toolbar-tabs">
@@ -308,6 +522,38 @@ export default function Profile({ user }: ProfileProps) {
           </div>
         </section>
 
+        {/* Danger zone */}
+        <section className="profile-panel profile-panel--danger">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Account Management</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <div className="danger-zone">
+              <div className="danger-action">
+                <div>
+                  <p className="danger-action__title">Deactivate Account</p>
+                  <p className="danger-action__desc">Temporarily disable your account. You can reactivate it at any time by logging back in.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => openClosureModal('deactivate')}>
+                  Deactivate
+                </button>
+              </div>
+              <hr className="section-divider" />
+              <div className="danger-action">
+                <div>
+                  <p className="danger-action__title">Delete Account</p>
+                  <p className="danger-action__desc">Permanently delete your account and all associated data. Public recipes will be anonymised. This cannot be undone.</p>
+                </div>
+                <button type="button" className="danger-button" onClick={() => openClosureModal('delete')}>
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Billing placeholder */}
         <section className="profile-panel profile-panel--muted">
           <div className="panel-toolbar">
@@ -322,6 +568,75 @@ export default function Profile({ user }: ProfileProps) {
           </div>
         </section>
       </div>
+
+      {/* Account closure modal */}
+      {closureModal && (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal">
+            <h2 className="modal__title">
+              {closureModal === 'deactivate' ? 'Deactivate your account?' : 'Delete your account?'}
+            </h2>
+            <p className="modal__body">
+              {closureModal === 'deactivate'
+                ? 'Your account will be disabled. You can reactivate it any time by logging back in.'
+                : 'This will permanently delete your account and all your data. Public recipes will be anonymised. This cannot be undone.'}
+            </p>
+
+            <div className="modal__section">
+              <p className="field-label">Mind telling us why? (optional)</p>
+              <div className="checkbox-group">
+                {CLOSURE_REASONS.map(reason => (
+                  <label key={reason} className={`checkbox-option ${closureReasons.includes(reason) ? 'is-active' : ''}`}>
+                    <Checkbox
+                      className="checkbox-input"
+                      checked={closureReasons.includes(reason)}
+                      onChange={() => toggleReason(reason)}
+                    />
+                    <span className="checkbox-indicator" />
+                    {reason}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal__section">
+              <label className="form-field">
+                <span className="field-label">Additional comments (optional)</span>
+                <textarea
+                  className="modal__textarea"
+                  value={closureComment}
+                  onChange={e => setClosureComment(e.target.value)}
+                  rows={3}
+                  placeholder="Anything else you'd like us to know…"
+                />
+              </label>
+            </div>
+
+            {closureError && <p className="field-error" role="alert">{closureError}</p>}
+
+            <div className="modal__footer">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setClosureModal(null)}
+                disabled={closureSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={closureModal === 'delete' ? 'danger-button' : 'secondary-button'}
+                onClick={confirmClosure}
+                disabled={closureSubmitting}
+              >
+                {closureSubmitting
+                  ? 'Processing…'
+                  : closureModal === 'deactivate' ? 'Yes, deactivate my account' : 'Yes, permanently delete my account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ export default function Welcome() {
   const { data: session, update } = useSession()
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
+  const [marketingEmailOptIn, setMarketingEmailOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,7 +36,7 @@ export default function Welcome() {
       const res = await fetch(`/api/users/${session.user.id}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences),
+        body: JSON.stringify({ ...preferences, marketingEmailOptIn }),
         credentials: 'same-origin',
       })
       if (!res.ok) {
@@ -102,6 +103,17 @@ export default function Welcome() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="welcome-section">
+            <label className="checkbox-option">
+              <Checkbox
+                inputId="marketing-opt-in"
+                checked={marketingEmailOptIn}
+                onChange={e => setMarketingEmailOptIn(!!e.checked)}
+              />
+              Send me news and updates about Forkful (optional)
+            </label>
           </div>
 
           <div className="welcome-footer">

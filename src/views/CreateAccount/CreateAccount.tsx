@@ -58,6 +58,7 @@ function CreateAccount() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
+  const [marketingEmailOptIn, setMarketingEmailOptIn] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -106,6 +107,7 @@ function CreateAccount() {
         password,
         cuisinePreferences,
         dietaryRestrictions,
+        marketingEmailOptIn,
       })
     
       window.location.href = '/login'
@@ -150,7 +152,7 @@ function CreateAccount() {
                     autoComplete="username"
                   />
                   <span id="username-hint" className="field-hint">
-                    At least 3 characters.
+                    3–30 characters, letters, numbers, hyphens and underscores only.
                   </span>
                 </label>
 
@@ -276,6 +278,18 @@ function CreateAccount() {
                     ))}
                   </div>
                   <span className="field-hint">Help us recommend recipes that fit your diet.</span>
+                </div>
+
+                <div className="form-field form-field-full">
+                  <label className="checkbox-option">
+                    <Checkbox
+                      className="checkbox-input"
+                      checked={marketingEmailOptIn}
+                      onChange={e => setMarketingEmailOptIn(!!e.checked)}
+                    />
+                    <span className="checkbox-indicator" />
+                    Send me news and updates about Forkful (optional)
+                  </label>
                 </div>
               </div>
 

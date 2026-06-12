@@ -20,6 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await taskRunner.run(() => completeOnboarding(Number(id), {
       cuisinePreferences: isStringArray(body.cuisinePreferences) ? body.cuisinePreferences : [],
       dietaryRestrictions: isStringArray(body.dietaryRestrictions) ? body.dietaryRestrictions : [],
+      marketingEmailOptIn: body.marketingEmailOptIn === true,
     }))
     return NextResponse.json({ ok: true })
   } catch {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
+import { apiReactivateAccount } from '@/lib/api/users'
 
 function Login() {
   const router = useRouter()
@@ -13,6 +14,8 @@ function Login() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showReactivate, setShowReactivate] = useState(false)
+  const [reactivating, setReactivating] = useState(false)
   const canSubmit = useMemo(() => {
     return username.trim().length > 0 && password.length > 0
   }, [username, password])
@@ -28,7 +31,9 @@ function Login() {
         password,
         redirect: false,
       })
-      if (result?.error) {
+      if (result?.error === 'ACCOUNT_DEACTIVATED') {
+        setShowReactivate(true)
+      } else if (result?.error) {
         setError('Invalid username or password')
       } else {
         router.push("/")
@@ -41,9 +46,75 @@ function Login() {
     }
   }
 
+  async function handleReactivate() {
+    setReactivating(true)
+    setError(null)
+    try {
+      await apiReactivateAccount(username.trim(), password)
+      const result = await signIn('credentials', {
+        username: username.trim(),
+        password,
+        redirect: false,
+      })
+      if (result?.error) {
+        setError('Reactivation succeeded but sign-in failed. Please try logging in again.')
+        setShowReactivate(false)
+      } else {
+        router.push("/")
+        router.refresh()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reactivation failed')
+    } finally {
+      setReactivating(false)
+    }
+  }
+
   async function handleOAuth(provider: 'google') {
     setError(null)
     await signIn(provider, { callbackUrl: '/' })
+  }
+
+  if (showReactivate) {
+    return (
+      <div className="login">
+        <div className="account-content">
+          <header className="account-header">
+            <div>
+              <p className="account-label">Account Deactivated</p>
+              <h2 className="account-name">Welcome back</h2>
+              <p className="account-helper">
+                Your account is currently deactivated. Would you like to reactivate it?
+              </p>
+            </div>
+          </header>
+          <section className="account-panel">
+            <div className="panel-content">
+              {error && <div className="form-error">{error}</div>}
+              <div className="form-footer">
+                <div className="footer-actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => { setShowReactivate(false); setError(null) }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleReactivate}
+                    disabled={reactivating}
+                  >
+                    {reactivating ? 'Reactivating…' : 'Yes, reactivate my account'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
   }
 
   return (
