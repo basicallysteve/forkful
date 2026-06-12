@@ -244,8 +244,13 @@ function CreateAccount() {
                       <label
                         key={cuisine}
                         className={`checkbox-option ${cuisinePreferences.includes(cuisine) ? "is-active" : ""}`}
-                        onClick={() => handleCuisineToggle(cuisine)}
                       >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={cuisinePreferences.includes(cuisine)}
+                          onChange={() => handleCuisineToggle(cuisine)}
+                        />
                         <span className="checkbox-indicator" />
                         {cuisine}
                       </label>
@@ -261,8 +266,13 @@ function CreateAccount() {
                       <label
                         key={option}
                         className={`checkbox-option ${dietaryRestrictions.includes(option) ? "is-active" : ""}`}
-                        onClick={() => handleDietaryToggle(option)}
                       >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={dietaryRestrictions.includes(option)}
+                          onChange={() => handleDietaryToggle(option)}
+                        />
                         <span className="checkbox-indicator" />
                         {option}
                       </label>
