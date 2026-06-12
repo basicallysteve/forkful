@@ -4,6 +4,7 @@ import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedb
 import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
+import { sendGoodbyeEmail } from '@/lib/email'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 
@@ -293,7 +294,12 @@ export async function updateEmailPreferences(userId: number, data: {
 }
 
 export async function deactivateAccount(userId: number): Promise<void> {
+    const [user] = await db.select({ email: users.email, username: users.username })
+        .from(users).where(eq(users.id, userId))
     await db.update(users).set({ dateDeleted: new Date() }).where(eq(users.id, userId))
+    if (user) {
+        sendGoodbyeEmail(user.email, user.username, 'deactivated').catch(() => null)
+    }
 }
 
 export async function reactivateAccount(userId: number): Promise<void> {
@@ -301,6 +307,9 @@ export async function reactivateAccount(userId: number): Promise<void> {
 }
 
 export async function deleteAccount(userId: number): Promise<void> {
+    const [user] = await db.select({ email: users.email, username: users.username })
+        .from(users).where(eq(users.id, userId))
+
     await db.transaction(async (tx) => {
         // Anonymise public recipes — FK onDelete:'set null' handles this when the user row is deleted,
         // but we must first hard-delete private recipes (which the FK would also null, not delete).
@@ -311,6 +320,10 @@ export async function deleteAccount(userId: number): Promise<void> {
         // password_reset_tokens, login_attempts. Public recipes get userId set null via FK.
         await tx.delete(users).where(eq(users.id, userId))
     })
+
+    if (user) {
+        sendGoodbyeEmail(user.email, user.username, 'deleted').catch(() => null)
+    }
 }
 
 export async function createAccountFeedback(data: {
