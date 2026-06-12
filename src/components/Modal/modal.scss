@@ -1,0 +1,58 @@
+.app-modal {
+  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+
+  .p-dialog-header {
+    background: var(--vscode-titlebar-bg);
+    border-bottom: 1px solid var(--vscode-border);
+    color: var(--vscode-text);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px 18px;
+    border-radius: 12px 12px 0 0;
+
+    .p-dialog-header-icons {
+      gap: 4px;
+    }
+
+    .p-dialog-header-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--vscode-border);
+      background: transparent;
+      color: var(--vscode-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+
+      &:hover {
+        color: var(--vscode-text);
+        border-color: var(--vscode-accent);
+        background: var(--accent-hover);
+      }
+
+      .p-icon {
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
+  .p-dialog-content {
+    background: var(--vscode-panel-strong);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--vscode-text);
+  }
+
+  .p-dialog-footer {
+    background: var(--vscode-panel);
+    border-top: 1px solid var(--vscode-border);
+    padding: 12px 18px;
+    border-radius: 0 0 12px 12px;
+  }
+}

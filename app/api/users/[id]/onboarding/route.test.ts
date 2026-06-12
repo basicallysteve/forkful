@@ -51,6 +51,7 @@ describe('POST /api/users/[id]/onboarding', () => {
     expect(completeOnboarding).toHaveBeenCalledWith(1, {
       cuisinePreferences: ['Italian', 'Mexican'],
       dietaryRestrictions: ['Vegan'],
+      marketingEmailOptIn: false,
     })
   })
 
@@ -60,6 +61,7 @@ describe('POST /api/users/[id]/onboarding', () => {
     expect(completeOnboarding).toHaveBeenCalledWith(1, {
       cuisinePreferences: [],
       dietaryRestrictions: [],
+      marketingEmailOptIn: false,
     })
   })
 
@@ -72,6 +74,7 @@ describe('POST /api/users/[id]/onboarding', () => {
     expect(completeOnboarding).toHaveBeenCalledWith(1, {
       cuisinePreferences: [],
       dietaryRestrictions: ['Vegan'],
+      marketingEmailOptIn: false,
     })
   })
 })

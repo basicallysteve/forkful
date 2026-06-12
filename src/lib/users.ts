@@ -1,16 +1,38 @@
-import { eq, and, gte, isNull, isNotNull, lt, or } from 'drizzle-orm'
+import { eq, and, gt, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
 import { db } from '@/db'
-import { users, login_attempts, passwordResetTokens, oauthAccounts } from '@/db/schema'
-import type { User } from '@/types/User'
+import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedback, recipes } from '@/db/schema'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
+import { sendGoodbyeEmail, sendDeactivationExpiryWarningEmail } from '@/lib/email'
+
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
+
+function mapUser(row: typeof users.$inferSelect): User {
+  return {
+    id: String(row.id),
+    username: row.username,
+    email: row.email,
+    hasPassword: !!row.password,
+    cuisinePreferences: row.cuisinePreferences,
+    dietaryRestrictions: row.dietaryRestrictions,
+    avatarUrl: row.avatarUrl ?? null,
+    marketingEmailOptIn: row.marketingEmailOptIn,
+    recipeSuggestionFrequency: row.recipeSuggestionFrequency as RecipeSuggestionFrequency,
+    pantryExpirationFrequency: row.pantryExpirationFrequency as PantryExpirationFrequency,
+    dateAdded: row.dateAdded!,
+    dateDeleted: row.dateDeleted,
+  }
+}
 
 export async function hashPassword(password: string): Promise<string> {
     const saltRounds = 10
     return bcrypt.hash(password, saltRounds)
 }
 
-export async function signUp(user: { username: string; email: string; password: string, cuisinePreferences: string[], dietaryRestrictions: string[]}): Promise<User> {
+export async function signUp(user: { username: string; email: string; password: string; cuisinePreferences: string[]; dietaryRestrictions: string[]; marketingEmailOptIn?: boolean }): Promise<User> {
+    if (!USERNAME_REGEX.test(user.username)) throw new Error('Invalid username format')
+
     const [existingByUsername] = await db.select().from(users).where(eq(users.username, user.username))
     if (existingByUsername) throw new Error('Username already in use')
 
@@ -25,22 +47,13 @@ export async function signUp(user: { username: string; email: string; password: 
         password: hashedPassword,
         cuisinePreferences: user.cuisinePreferences,
         dietaryRestrictions: user.dietaryRestrictions,
+        marketingEmailOptIn: user.marketingEmailOptIn ?? false,
         passwordChangedAt: now,
         dateAdded: now,
         dateDeleted: null,
     }).returning();
 
-    return {
-        id: String(data.id),
-        username: data.username,
-        email: data.email,
-        hasPassword: true,
-        cuisinePreferences: data.cuisinePreferences,
-        dietaryRestrictions: data.dietaryRestrictions,
-        password: hashedPassword,
-        dateAdded: data.dateAdded!,
-        dateDeleted: data.dateDeleted,
-    }
+    return mapUser(data)
 }
 
 export async function login(username: string, password: string, ipAddress: string): Promise<User> {
@@ -85,17 +98,11 @@ export async function login(username: string, password: string, ipAddress: strin
         throw new Error('Invalid username or password')
     }
 
-    return {
-        id: String(user.id),
-        username: user.username,
-        email: user.email,
-        hasPassword: !!user.password,
-        cuisinePreferences: user.cuisinePreferences,
-        dietaryRestrictions: user.dietaryRestrictions,
-        avatarUrl: user.avatarUrl ?? null,
-        dateAdded: user.dateAdded!,
-        dateDeleted: user.dateDeleted,
+    if (user.dateDeleted) {
+        throw new Error('ACCOUNT_DEACTIVATED')
     }
+
+    return mapUser(user)
 }
 
 export async function trackLoginAttempt({ userId, successful, ipAddress }: { userId?: number; successful: boolean; ipAddress: string }) {
@@ -205,20 +212,8 @@ export async function getOAuthProvidersForEmail(email: string): Promise<string[]
 
 export async function getUser(userId: number): Promise<User | null> {
     const [user] = await db.select().from(users).where(eq(users.id, userId))
-    if (!user) {
-        return null
-    }
-    return {
-        id: String(user.id),
-        username: user.username,
-        email: user.email,
-        hasPassword: !!user.password,
-        cuisinePreferences: user.cuisinePreferences,
-        dietaryRestrictions: user.dietaryRestrictions,
-        avatarUrl: user.avatarUrl ?? null,
-        dateAdded: user.dateAdded!,
-        dateDeleted: user.dateDeleted,
-    }
+    if (!user) return null
+    return mapUser(user)
 }
 
 export async function updateUserAvatar(userId: number, avatarUrl: string, oldAvatarUrl: string | null): Promise<void> {
@@ -237,10 +232,11 @@ export async function deleteUserAvatar(userId: number, oldAvatarUrl: string | nu
     }
 }
 
-export async function completeOnboarding(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
+export async function completeOnboarding(userId: number, data: { cuisinePreferences: string[]; dietaryRestrictions: string[]; marketingEmailOptIn?: boolean }): Promise<void> {
     await db.update(users).set({
         cuisinePreferences: data.cuisinePreferences,
         dietaryRestrictions: data.dietaryRestrictions,
+        marketingEmailOptIn: data.marketingEmailOptIn ?? false,
         onboardingCompletedAt: new Date(),
     }).where(eq(users.id, userId))
 }
@@ -280,4 +276,128 @@ export async function forceResetPassword(userId: number, newPassword: string): P
     await db.update(users)
         .set({ password: hashed, passwordChangedAt: new Date() })
         .where(eq(users.id, userId))
+}
+
+export async function updateUsername(userId: number, newUsername: string): Promise<void> {
+    if (!USERNAME_REGEX.test(newUsername)) throw new Error('Invalid username format')
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.username, newUsername))
+    if (existing && existing.id !== userId) throw new Error('Username already in use')
+    await db.update(users).set({ username: newUsername }).where(eq(users.id, userId))
+}
+
+export async function updateEmailPreferences(userId: number, data: {
+    marketingEmailOptIn: boolean
+    recipeSuggestionFrequency: RecipeSuggestionFrequency
+    pantryExpirationFrequency: PantryExpirationFrequency
+}): Promise<void> {
+    await db.update(users).set(data).where(eq(users.id, userId))
+}
+
+export async function deactivateAccount(userId: number): Promise<void> {
+    const [user] = await db.select({ email: users.email, username: users.username })
+        .from(users).where(eq(users.id, userId))
+    await db.update(users).set({ dateDeleted: new Date() }).where(eq(users.id, userId))
+    if (user) {
+        sendGoodbyeEmail(user.email, user.username, 'deactivated').catch(() => null)
+    }
+}
+
+export async function reactivateAccount(userId: number): Promise<void> {
+    await db.update(users)
+        .set({ dateDeleted: null, deactivationWarningEmailSentAt: null })
+        .where(eq(users.id, userId))
+}
+
+export async function deleteAccount(userId: number): Promise<void> {
+    const [user] = await db.select({ email: users.email, username: users.username })
+        .from(users).where(eq(users.id, userId))
+
+    await db.transaction(async (tx) => {
+        // Hard-delete private recipes and unpublished public recipes.
+        // Published public recipes are anonymised via the FK onDelete:'set null' cascade when the user row is deleted.
+        await tx.delete(recipes)
+            .where(and(
+                eq(recipes.userId, userId),
+                or(
+                    eq(recipes.isPublic, 0),
+                    isNull(recipes.datePublished),
+                ),
+            ))
+
+        // Hard-delete the user row — cascades to pantry_items, oauth_accounts,
+        // password_reset_tokens, login_attempts. Published public recipes get userId set null via FK.
+        await tx.delete(users).where(eq(users.id, userId))
+    })
+
+    if (user) {
+        sendGoodbyeEmail(user.email, user.username, 'deleted').catch(() => null)
+    }
+}
+
+export async function createAccountFeedback(data: {
+    userId: number
+    action: 'deactivated' | 'deleted'
+    reasons: string[]
+    comment?: string
+}): Promise<void> {
+    await db.insert(accountFeedback).values({
+        userId: data.userId,
+        action: data.action,
+        reasons: data.reasons,
+        comment: data.comment ?? null,
+    })
+}
+
+export async function processDeactivatedAccounts(): Promise<{ warned: number; deleted: number }> {
+    const now = new Date()
+    const elevenMonthsAgo = new Date(now.getTime() - 335 * 24 * 60 * 60 * 1000)
+    const twelveMonthsAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+
+    // Auto-delete accounts deactivated for 12+ months
+    const toDelete = await db.select({ id: users.id, email: users.email, username: users.username })
+        .from(users)
+        .where(and(isNotNull(users.dateDeleted), lte(users.dateDeleted, twelveMonthsAgo)))
+
+    let deleted = 0
+    for (const user of toDelete) {
+        try {
+            await deleteAccount(user.id)
+            deleted++
+        } catch (err) {
+            console.error('[processDeactivatedAccounts] failed to delete user', user.id, err)
+        }
+    }
+
+    // Send 11-month warning to accounts deactivated 335–364 days ago that haven't been warned yet.
+    // Uses gt (not lt) so the window is between elevenMonthsAgo and twelveMonthsAgo, not beyond it.
+    const toWarn = await db.select({ id: users.id, email: users.email, username: users.username, dateDeleted: users.dateDeleted })
+        .from(users)
+        .where(and(
+            isNotNull(users.dateDeleted),
+            lte(users.dateDeleted, elevenMonthsAgo),
+            gt(users.dateDeleted, twelveMonthsAgo),
+            isNull(users.deactivationWarningEmailSentAt),
+        ))
+
+    let warned = 0
+    for (const user of toWarn) {
+        try {
+            // Claim the warning slot atomically before sending — prevents double-send if
+            // two cron instances overlap and both selected this user before either updated.
+            const [claimed] = await db.update(users)
+                .set({ deactivationWarningEmailSentAt: now })
+                .where(and(eq(users.id, user.id), isNull(users.deactivationWarningEmailSentAt)))
+                .returning({ id: users.id })
+
+            if (!claimed) continue
+
+            const deletionDate = new Date(user.dateDeleted!.getTime() + 365 * 24 * 60 * 60 * 1000)
+            await sendDeactivationExpiryWarningEmail(user.email, user.username, deletionDate)
+            warned++
+        } catch (err) {
+            console.error('[processDeactivatedAccounts] failed to warn user', user.id, err)
+        }
+    }
+
+    return { warned, deleted }
 }
