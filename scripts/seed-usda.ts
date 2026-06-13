@@ -252,7 +252,7 @@ console.log(`  ${portionsByFood.size.toLocaleString()} foods have portion data`)
 console.log('\nStreaming food_nutrient.csv (1.7 GB — this takes a minute)…')
 // fdcId → (nutrientId → amount)
 const nutrientByFood = new Map<string, Map<string, number>>()
-const wantedNids = new Set(Object.values(NID))
+const wantedNids = new Set<string>(Object.values(NID))
 let totalNutrientRows = 0
 let keptNutrientRows = 0
 
