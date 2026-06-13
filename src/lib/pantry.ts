@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, ilike, sql } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods, products } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'

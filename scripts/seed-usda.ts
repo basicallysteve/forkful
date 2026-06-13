@@ -338,6 +338,7 @@ for (const [fdcId, description] of targetFoods) {
   const existing = existingByExternalId.get(fdcId)
   if (existing) {
     if (existing.isDeleted) { skipped++; continue }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { slug: _slug, source: _src, ...updateFields } = buildValues(fdcId, description)
     toUpdate.push({ id: existing.id, values: updateFields })
   } else {
