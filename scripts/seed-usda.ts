@@ -3,7 +3,7 @@
  * Seed Foundation and SR Legacy foods from USDA FoodData Central bulk CSV files.
  *
  * Usage:
- *   bun --env-file .env.local run scripts/seed-usda.ts --dir ./data/usda
+ *   bun --env-file .env scripts/seed-usda.ts --dir ./data/usda
  *
  * Expects the FDC Full Download CSV files in --dir (food.csv, food_nutrient.csv, etc.)
  * Only "Foundation Food" and "SR Legacy Food" rows are imported — Branded is skipped.

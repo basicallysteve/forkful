@@ -129,6 +129,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
         and(
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
+          or(isNull(pantryItems.foodId), isNull(foods.dateDeleted)),
+          or(isNull(pantryItems.productId), isNull(products.dateDeleted)),
           statusFilter,
         )
       )
@@ -174,6 +176,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
         and(
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
+          or(isNull(pantryItems.foodId), isNull(foods.dateDeleted)),
+          or(isNull(pantryItems.productId), isNull(products.dateDeleted)),
           lte(pantryItems.expirationDate, cutoff)
         )
       )
@@ -201,6 +205,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
           eq(pantryItems.id, id),
           eq(pantryItems.userId, userId),
           isNull(pantryItems.dateDeleted),
+          or(isNull(pantryItems.foodId), isNull(foods.dateDeleted)),
+          or(isNull(pantryItems.productId), isNull(products.dateDeleted)),
         )
       )
     if (!row) return null

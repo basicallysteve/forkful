@@ -301,9 +301,13 @@ export default function Pantry() {
                         />
                       </td>
                       <td>
-                        <Link href={item.food ? `/foods/${toSlug(item.food.name)}` : '#'}>
-                          {item.food?.name ?? item.product?.name}
-                        </Link>
+                        {item.food ? (
+                          <Link href={`/foods/${toSlug(item.food.name)}`}>
+                            {item.food.name}
+                          </Link>
+                        ) : (
+                          <span>{item.product?.name}</span>
+                        )}
                       </td>
                       <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
                       <td>
@@ -370,9 +374,13 @@ export default function Pantry() {
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        <Link href={item.food ? `/foods/${toSlug(item.food.name)}` : '#'} className="card-title">
-                          {item.food?.name ?? item.product?.name}
-                        </Link>
+                        {item.food ? (
+                          <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
+                            {item.food.name}
+                          </Link>
+                        ) : (
+                          <span className="card-title">{item.product?.name}</span>
+                        )}
                         <div className="card-badges">
                           <span className={`status-badge ${getStatusClass(item.status)}`}>
                             {getStatusLabel(item.status)}

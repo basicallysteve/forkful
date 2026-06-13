@@ -109,7 +109,7 @@ A section at the top of the recipes list page, visible only to logged-in Users w
 A default hard filter applied to the recipes list for logged-in Users with Dietary Restrictions set. Hides recipes whose Dietary Tags do not cover all of the user's restrictions (recipes with no Dietary Tags are always shown). The user can toggle this filter off for the current browsing session; the toggle does not persist.
 
 ## Food
-A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from USDA FoodData Central (Foundation Foods or SR Legacy). Used exclusively as the basis for Recipe Ingredients. Not brand-specific and has no barcode. Distinct from a Product.
+A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from USDA FoodData Central (Foundation Foods or SR Legacy). Used exclusively as the basis for Recipe Ingredients. Not brand-specific and has no barcode. Distinct from a Product. _Exception_: a small number of legacy rows imported from Open Food Facts (before the Food/Product split) remain in the foods table with `source = 'open_food_facts'` and are grandfathered as Foods (see ADR-0008).
 _Avoid_: generic food, base food, parent food
 
 ## Product

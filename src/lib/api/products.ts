@@ -1,5 +1,4 @@
 import type { Product } from '@/types/Product'
-import { toSlug } from '@/utils/slug'
 
 export async function apiFetchProducts(options: { search?: string } = {}): Promise<Product[]> {
   const params = new URLSearchParams()
@@ -28,9 +27,8 @@ export async function apiCreateProduct(data: Omit<Product, 'id'>): Promise<Produ
   return res.json()
 }
 
-export async function apiUpdateProduct(product: Product): Promise<Product> {
-  const slug = toSlug(product.name)
-  const res = await fetch(`/api/products/${slug}`, {
+export async function apiUpdateProduct(currentSlug: string, product: Product): Promise<Product> {
+  const res = await fetch(`/api/products/${currentSlug}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(product),

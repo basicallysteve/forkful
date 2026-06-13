@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getProductBySlug, updateProduct, deleteProduct } from '@/lib/products'
 import { taskRunner } from '@/lib/TaskRunner'
-import { toSlug } from '@/utils/slug'
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -36,6 +34,3 @@ export async function DELETE(
   await taskRunner.run(() => deleteProduct(existing.id))
   return new NextResponse(null, { status: 204 })
 }
-
-// Silence unused import warning
-void toSlug

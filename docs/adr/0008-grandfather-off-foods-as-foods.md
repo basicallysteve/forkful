@@ -17,6 +17,6 @@ Going forward, new imports from Open Food Facts and USDA Branded Foods create ro
 
 ## Consequences
 - Zero data-migration risk. No existing recipes are broken.
-- The `foods` table will contain a small number of branded, barcoded rows indefinitely. These can be identified by `source = 'open_food_facts'` and a non-null `barcode`.
+- The `foods` table will contain a small number of branded rows indefinitely. These can be identified by `source = 'open_food_facts'` and a non-null `external_id` (which stores the OFF barcode).
 - The inconsistency fades naturally as users build out their Food library via USDA Foundation/SR Legacy imports.
 - Attempting to auto-match existing OFF rows to generic Foods (e.g. "Tyson Chicken Breast" → "Chicken Breast") was ruled out due to unreliable fuzzy name matching and the risk of corrupting ingredient references.

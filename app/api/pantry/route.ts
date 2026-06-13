@@ -53,15 +53,15 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: CreateBody = await request.json()
 
-  const sourceType = body.sourceType ?? (body.foodId ? 'food' : 'product')
   const hasFoodId = Number.isInteger(body.foodId) && (body.foodId ?? 0) > 0
   const hasProductId = Number.isInteger(body.productId) && (body.productId ?? 0) > 0
-  if (sourceType === 'food' && !hasFoodId) {
-    return NextResponse.json({ error: 'Invalid foodId' }, { status: 400 })
+  if (hasFoodId && hasProductId) {
+    return NextResponse.json({ error: 'Provide either foodId or productId, not both' }, { status: 400 })
   }
-  if (sourceType === 'product' && !hasProductId) {
-    return NextResponse.json({ error: 'Invalid productId' }, { status: 400 })
+  if (!hasFoodId && !hasProductId) {
+    return NextResponse.json({ error: 'Either foodId or productId is required' }, { status: 400 })
   }
+  const sourceType = body.sourceType ?? (hasFoodId ? 'food' : 'product')
   if (typeof body.originalSizeAmount !== 'number' || body.originalSizeAmount <= 0) {
     return NextResponse.json({ error: 'originalSizeAmount must be a positive number' }, { status: 400 })
   }
