@@ -74,6 +74,7 @@ export async function POST(request: Request) {
 
   const item = await taskRunner.run(() => createPantryItem({
     ...body,
+    sourceType,
     userId: user.userId,
     expirationDate: body.expirationDate ? new Date(body.expirationDate) : null,
   }))
