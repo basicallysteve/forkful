@@ -220,15 +220,18 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             onSelect={handleSelect}
             onFocus={handleFocus}
             onChange={(e) => {
-              if (typeof e.value === 'string') {
-                setInputValue(e.value)
-                if (!e.value.trim()) setSuggestions([])
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const val = e.value as any
+              if (typeof val === 'string') {
+                setInputValue(val)
+                if (!val.trim()) setSuggestions([])
               }
             }}
             field="name"
             optionGroupLabel="label"
             optionGroupChildren="items"
-            optionGroupTemplate={groupTemplate}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            optionGroupTemplate={groupTemplate as any}
             itemTemplate={itemTemplate}
             placeholder={importing ? 'Importing…' : placeholder}
             disabled={importing}

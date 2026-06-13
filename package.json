@@ -14,7 +14,8 @@
     "test:integration": "vitest --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "seed:usda": "bun --env-file .env scripts/seed-usda.ts --dir ./data/usda"
   },
   "dependencies": {
     "@react-email/render": "^2.0.8",

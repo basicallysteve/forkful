@@ -138,12 +138,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               <p className="serving-info">
                 <strong>Serving Size:</strong> {food.servingSize} {food.servingUnit}
               </p>
-              {food.barcode && (
-                <p className="serving-info">
-                  <strong>Barcode:</strong> {food.barcode}
-                </p>
-              )}
-              {food.measurements && food.measurements.length > 0 && (
+{food.measurements && food.measurements.length > 0 && (
                 <div className="measurements-info">
                   <strong>Available Measurements:</strong>
                   <div className="measurement-tags">

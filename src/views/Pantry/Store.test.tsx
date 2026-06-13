@@ -70,9 +70,7 @@ function renderWithProviders(
 
 function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
-    id: overrides.id,
     sourceType: 'food',
-    food: overrides.food,
     originalSize: { size: 1, unit: 'oz' },
     currentSize: { size: 1, unit: 'oz' },
     expirationDate: new Date(),

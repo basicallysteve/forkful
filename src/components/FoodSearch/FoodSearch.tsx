@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
-import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
+import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
 import { mapUSDAFoodToFood } from '@/lib/usda'
@@ -79,11 +79,14 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const [serverLocal, usdaRes, offProducts] = await Promise.all([
+        const [localResult, usdaResult, offResult] = await Promise.allSettled([
           apiFetchFoods({ search: query }),
           fetch(`/api/usda/search?q=${encodeURIComponent(query)}&type=foods`).then(r => r.ok ? r.json() : { foods: [] }),
-          apiSearchOpenFoodFacts(query).catch(() => []),
+          apiSearchOpenFoodFacts(query),
         ])
+        const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
+        const usdaRes    = usdaResult.status  === 'fulfilled' ? usdaResult.value  : { foods: [] }
+        const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
 
         const localIds = new Set(localFoods.map(f => f.id))
         const mergedLocal = [
@@ -114,12 +117,13 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
         if (filteredOFF.length > 0) {
           groups.push({ label: 'Open Food Facts', items: filteredOFF.map(p => ({ kind: 'off' as const, product: p })) })
         }
-
         setSuggestions(groups)
+        
       } catch {
         // Keep showing local results on error
       }
     }, 400)
+    
   }
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
@@ -163,6 +167,15 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
     <div className="food-search-group-label">{group.label}</div>
   )
 
+  function handleOnChange(e: AutoCompleteChangeEvent<SuggestionItem>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const val = e.value as any
+    if (typeof val === 'string') {
+      setInputValue(val)
+      if (!val.trim()) setSuggestions([])
+    }
+  }
+
   return (
     <div className={`food-search${importing ? ' food-search--importing' : ''}`}>
       <AutoComplete
@@ -173,16 +186,12 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
         completeMethod={handleComplete}
         onSelect={handleSelect}
         onFocus={handleFocus}
-        onChange={(e) => {
-          if (typeof e.value === 'string') {
-            setInputValue(e.value)
-            if (!e.value.trim()) setSuggestions([])
-          }
-        }}
+        onChange={handleOnChange}
         field="name"
         optionGroupLabel="label"
         optionGroupChildren="items"
-        optionGroupTemplate={groupTemplate}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        optionGroupTemplate={groupTemplate as any}
         itemTemplate={itemTemplate}
         placeholder={importing ? 'Importing…' : placeholder}
         disabled={importing}
