@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, sql } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, sql, ilike } from 'drizzle-orm'
 import { db } from '@/db'
 import { pantryItems, foods, products } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
@@ -47,9 +47,13 @@ function mapProductRow(row: typeof products.$inferSelect): Product {
     carbs: Number(row.carbs ?? 0),
     fat: Number(row.fat ?? 0),
     fiber: Number(row.fiber ?? 0),
+    saturatedFat: row.saturatedFat != null ? Number(row.saturatedFat) : undefined,
+    sugar: row.sugar != null ? Number(row.sugar) : undefined,
+    sodium: row.sodium != null ? Number(row.sodium) : undefined,
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? 'g',
     measurements: parseMeasurements(row.measurements),
+    source: (row.source as import('@/types/Product').ProductSource) ?? 'manual',
   }
 }
 
@@ -80,10 +84,6 @@ function mapPantryItem(
   }
 }
 
-/** Resolve a display name from a pantry item row (for search filter). */
-function getItemName(food?: Food, product?: Product): string {
-  return food?.name ?? product?.name ?? ''
-}
 
 export async function getPantryItems(userId: number, options: PantryQueryOptions = {}): Promise<PantryItem[]> {
   try {
@@ -111,6 +111,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
     const dir = options.sortDir === 'desc' ? 'DESC' : 'ASC'
     const orderBy = (() => {
       switch (options.sortBy) {
+        case 'name':
+          return sql`COALESCE(${foods.name}, ${products.name}) ${sql.raw(dir)}`
         case 'addedDate':
           return options.sortDir === 'desc' ? desc(pantryItems.addedDate) : asc(pantryItems.addedDate)
         case 'expirationDate':
@@ -132,31 +134,18 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
           or(isNull(pantryItems.foodId), isNull(foods.dateDeleted)),
           or(isNull(pantryItems.productId), isNull(products.dateDeleted)),
           statusFilter,
+          options.search
+            ? or(ilike(foods.name, `%${options.search}%`), ilike(products.name, `%${options.search}%`))
+            : undefined,
         )
       )
       .orderBy(orderBy)
 
-    let items = rows.map(row => mapPantryItem(
+    return rows.map(row => mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
       row.products ? mapProductRow(row.products) : undefined
     ))
-
-    // Apply search filter in-memory (searches across food and product names)
-    if (options.search) {
-      const term = options.search.toLowerCase()
-      items = items.filter(item => getItemName(item.food, item.product).toLowerCase().includes(term))
-    }
-
-    // Apply name sort in-memory (since name comes from either foods or products)
-    if (options.sortBy === 'name') {
-      items.sort((a, b) => {
-        const cmp = getItemName(a.food, a.product).localeCompare(getItemName(b.food, b.product))
-        return options.sortDir === 'desc' ? -cmp : cmp
-      })
-    }
-
-    return items
   } catch (err) {
     console.error('getPantryItems failed:', err)
     return []

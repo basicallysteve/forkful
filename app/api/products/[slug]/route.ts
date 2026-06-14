@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getProductBySlug, updateProduct, deleteProduct } from '@/lib/products'
+import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -15,6 +17,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const user = await getSessionUser(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { slug } = await params
   const existing = await getProductBySlug(slug)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -25,9 +29,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const user = await getSessionUser(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { slug } = await params
   const existing = await getProductBySlug(slug)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })

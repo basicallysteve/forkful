@@ -1,12 +1,16 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getProductByBarcode, createProduct } from '@/lib/products'
 import { getOpenFoodFactsProduct, mapOFFProductToProduct } from '@/lib/openFoodFacts'
+import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const user = await getSessionUser(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { code } = await params
   if (!code) return NextResponse.json({ error: 'Missing barcode' }, { status: 400 })
 

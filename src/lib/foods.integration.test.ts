@@ -88,7 +88,7 @@ describe('foods data layer (integration)', () => {
     expect(fetched).toBeNull()
   })
 
-it('resets source to manual when nutritional fields change on an OFF food', async () => {
+  it('resets source to manual when nutritional fields change on an OFF food', async () => {
     const created = await createFood({
       name: 'Test OFFFood',
       calories: 200,

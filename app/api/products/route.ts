@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getProducts, createProduct } from '@/lib/products'
+import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import type { Product } from '@/types/Product'
 import type { ProductQueryOptions } from '@/lib/products'
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const user = await getSessionUser(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: Omit<Product, 'id'> = await request.json()
   const product = await taskRunner.run(() => createProduct(body))
   return NextResponse.json(product, { status: 201 })
