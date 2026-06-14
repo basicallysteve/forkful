@@ -31,6 +31,13 @@ export async function DELETE(
   const { slug } = await params
   const existing = await getProductBySlug(slug)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await taskRunner.run(() => deleteProduct(existing.id))
+  try {
+    await taskRunner.run(() => deleteProduct(existing.id))
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('pantry')) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
+    }
+    throw err
+  }
   return new NextResponse(null, { status: 204 })
 }

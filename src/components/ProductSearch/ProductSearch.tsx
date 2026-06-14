@@ -5,7 +5,7 @@ import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
 import { SelectButton } from 'primereact/selectbutton'
 import { apiFetchProducts, apiFetchProductByBarcode, apiCreateProduct } from '@/lib/api/products'
-import { apiSearchOpenFoodFacts, apiGetProductByBarcode, mapOFFProductToProduct } from '@/lib/api/openFoodFacts'
+import { apiSearchOpenFoodFacts, mapOFFProductToProduct } from '@/lib/api/openFoodFacts'
 import { mapUSDABrandedToProduct } from '@/lib/usda'
 import type { Product } from '@/types/Product'
 import type { USDABrandedItem } from '@/lib/usda'
@@ -58,9 +58,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
 
-  // Sync display text when parent commits a new selection (product picked or cleared)
   useEffect(() => {
     setInputValue(value)
   }, [value])
@@ -72,39 +72,46 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       return
     }
 
+    latestQueryRef.current = query
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      if (latestQueryRef.current !== query) return
+
       try {
-        const [localProducts, usdaRes] = await Promise.all([
+        // Fetch local, USDA branded, and OFF in parallel — USDA shown before OFF
+        const [localResult, usdaResult, offResult] = await Promise.allSettled([
           apiFetchProducts({ search: query }),
           fetch(`/api/usda/search?q=${encodeURIComponent(query)}&type=branded`).then(r => r.ok ? r.json() : { products: [] }),
+          apiSearchOpenFoodFacts(query),
         ])
 
-        const localItems = localProducts.slice(0, 6)
+        if (latestQueryRef.current !== query) return
+
+        const localItems = localResult.status === 'fulfilled' ? localResult.value.slice(0, 6) : []
+        const usdaItems: USDABrandedItem[] = usdaResult.status === 'fulfilled'
+          ? ((usdaResult.value.products ?? []) as USDABrandedItem[]).slice(0, 8)
+          : []
+        const offItems: OFFProduct[] = offResult.status === 'fulfilled' ? offResult.value : []
+
         const localNames = new Set(localItems.map(p => p.name.toLowerCase()))
-        const usdaItems: USDABrandedItem[] = ((usdaRes.products ?? []) as USDABrandedItem[])
-          .filter(i => !localNames.has(i.description.toLowerCase()))
-          .slice(0, 8)
+        const filteredUSDA = usdaItems.filter(i => !localNames.has(i.description.toLowerCase()))
+        const takenNames = new Set([...localNames, ...filteredUSDA.map(i => i.description.toLowerCase())])
+        const filteredOFF = offItems
+          .filter(p => p.product_name && !takenNames.has(p.product_name.toLowerCase()))
+          .slice(0, 4)
+
+        // USDA results first, then OFF, merged under a single "Online" group
+        const onlineItems: SuggestionItem[] = [
+          ...filteredUSDA.map(i => ({ kind: 'usda' as const, item: i })),
+          ...filteredOFF.map(p => ({ kind: 'off' as const, product: p })),
+        ]
 
         const groups: SuggestionGroup[] = []
         if (localItems.length > 0) {
           groups.push({ label: 'In your library', items: localItems.map(p => ({ kind: 'local' as const, product: p })) })
         }
-        if (usdaItems.length > 0) {
-          groups.push({ label: 'From USDA Branded', items: usdaItems.map(i => ({ kind: 'usda' as const, item: i })) })
-        }
-
-        // OFF fallback if USDA returns fewer than 3 results
-        if (usdaItems.length < 3) {
-          try {
-            const offProducts = await apiSearchOpenFoodFacts(query)
-            const offItems = offProducts.slice(0, 5)
-            if (offItems.length > 0) {
-              groups.push({ label: 'Open Food Facts', items: offItems.map(p => ({ kind: 'off' as const, product: p })) })
-            }
-          } catch {
-            // OFF fallback is best-effort
-          }
+        if (onlineItems.length > 0) {
+          groups.push({ label: 'Online', items: onlineItems })
         }
 
         setSuggestions(groups)
@@ -124,12 +131,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
 
     setImporting(true)
     try {
-      let productData: Omit<Product, 'id'>
-      if (item.kind === 'usda') {
-        productData = mapUSDABrandedToProduct(item.item)
-      } else {
-        productData = mapOFFProductToProduct(item.product)
-      }
+      const productData: Omit<Product, 'id'> = item.kind === 'usda'
+        ? mapUSDABrandedToProduct(item.item)
+        : mapOFFProductToProduct(item.product)
       const created = await apiCreateProduct(productData)
       setInputValue(created.name)
       onChange(created)
@@ -144,21 +148,13 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
     setBarcodeLoading(true)
     setBarcodeError(null)
     try {
-      // 1. Check local products table
-      const local = await apiFetchProductByBarcode(code)
-      if (local) {
-        onChange(local)
-        return
-      }
-      // 2. Fall back to Open Food Facts
-      const offProduct = await apiGetProductByBarcode(code)
-      if (!offProduct) {
+      // Single server call: checks local DB, falls back to OFF, auto-creates if needed
+      const product = await apiFetchProductByBarcode(code)
+      if (!product) {
         setBarcodeError(`No product found for barcode ${code}.`)
         return
       }
-      const productData = mapOFFProductToProduct(offProduct)
-      const created = await apiCreateProduct(productData)
-      onChange(created)
+      onChange(product)
     } catch {
       setBarcodeError('Barcode lookup failed. Please try again.')
     } finally {

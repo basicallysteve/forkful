@@ -1,6 +1,6 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, and, ilike, asc, desc } from 'drizzle-orm'
 import { db } from '@/db'
-import { products } from '@/db/schema'
+import { products, pantryItems } from '@/db/schema'
 import type { Product, ProductSource } from '@/types/Product'
 import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
@@ -40,19 +40,14 @@ function mapProduct(row: typeof products.$inferSelect): Product {
 
 export async function getProducts(options: ProductQueryOptions = {}): Promise<Product[]> {
   try {
-    let rows = await db.select().from(products).where(isNull(products.dateDeleted))
-    if (options.search) {
-      const term = options.search.toLowerCase()
-      rows = rows.filter(r => r.name.toLowerCase().includes(term))
-    }
-    if (options.sortBy) {
-      rows = rows.sort((a, b) => {
-        let cmp = 0
-        if (options.sortBy === 'name') cmp = a.name.localeCompare(b.name)
-        else if (options.sortBy === 'calories') cmp = a.calories - b.calories
-        return options.sortDir === 'desc' ? -cmp : cmp
-      })
-    }
+    const where = options.search
+      ? and(isNull(products.dateDeleted), ilike(products.name, `%${options.search}%`))
+      : isNull(products.dateDeleted)
+
+    const orderByCol = options.sortBy === 'calories' ? products.calories : products.name
+    const orderBy = options.sortDir === 'desc' ? desc(orderByCol) : asc(orderByCol)
+
+    const rows = await db.select().from(products).where(where).orderBy(orderBy)
     return rows.map(mapProduct)
   } catch {
     return []
@@ -128,7 +123,13 @@ export async function updateProduct(id: number, data: Partial<Omit<Product, 'id'
 }
 
 export async function deleteProduct(id: number): Promise<boolean> {
-  // Soft delete
+  const [active] = await db
+    .select({ id: pantryItems.id })
+    .from(pantryItems)
+    .where(and(eq(pantryItems.productId, id), isNull(pantryItems.dateDeleted)))
+    .limit(1)
+  if (active) throw new Error('Cannot delete a product that is currently in the pantry')
+
   const [row] = await db.update(products)
     .set({ dateDeleted: new Date() })
     .where(eq(products.id, id))
