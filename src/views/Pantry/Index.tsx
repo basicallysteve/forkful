@@ -306,7 +306,7 @@ export default function Pantry() {
                             {item.food.name}
                           </Link>
                         ) : (
-                          <span>{item.product?.name}</span>
+                          <Link href={`/pantry/${item.id}/edit`}>{item.product?.name}</Link>
                         )}
                       </td>
                       <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
@@ -379,7 +379,7 @@ export default function Pantry() {
                             {item.food.name}
                           </Link>
                         ) : (
-                          <span className="card-title">{item.product?.name}</span>
+                          <Link href={`/pantry/${item.id}/edit`} className="card-title">{item.product?.name}</Link>
                         )}
                         <div className="card-badges">
                           <span className={`status-badge ${getStatusClass(item.status)}`}>

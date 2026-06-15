@@ -185,7 +185,19 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
     // Create a placeholder ingredient with the first food
     if (localFoods.length > 0) {
-      const defaultFood = localFoods[0]
+      // default to empty values
+      const defaultFood = {
+        id: 0,
+        name: '',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        servingSize: 1,
+        servingUnit: DEFAULT_SERVING_UNIT,
+        measurements: [],
+      }
       const newIngredient: Ingredient = {
         food: defaultFood,
         quantity: defaultFood.servingSize || 1,
