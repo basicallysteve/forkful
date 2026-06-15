@@ -20,7 +20,7 @@ import {
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { toSlug } from '@/utils/slug'
-import { calculateCalories } from '@/utils/unitConversion'
+import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -627,11 +627,16 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                           value={ingredient.servingUnit}
                           onChange={(e) => handleIngredientChange(i, 'servingUnit', e.value)}
                           options={(() => {
-                            const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
-                            const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
+                            const food = ingredient.food
+                            const stored = (food?.measurements || []).map((m) => m.unit)
+                            const allowed = food
+                              ? getAllowedUnits(food.servingUnit, food.density).filter(u => !stored.includes(u))
+                              : []
+                            const all = [...stored, ...allowed]
+                            const extra = ingredient.servingUnit && !all.includes(ingredient.servingUnit)
                               ? [ingredient.servingUnit]
                               : []
-                            return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+                            return [...all, ...extra].map((unit) => ({ label: unit, value: unit }))
                           })()}
                           ariaLabel={`Ingredient ${i + 1} unit`}
                         />
