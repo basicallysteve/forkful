@@ -9,7 +9,7 @@ import { apiCreatePantryItem, apiUpdatePantryItem } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
-import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
@@ -35,6 +35,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const initialSourceMode: SourceMode = existingItem?.sourceType === 'product' ? 'product' : 'food'
 
   const [sourceMode, setSourceMode] = useState<SourceMode>(initialSourceMode)
+  const [selectedFood, setSelectedFood] = useState<Food | null>(existingItem?.food ?? null)
   const [foodName, setFoodName] = useState<string>(existingItem?.food?.name || '')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(existingItem?.product ?? null)
   const [productSearchValue, setProductSearchValue] = useState<string>(existingItem?.product?.name || '')
@@ -49,56 +50,12 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [searchResults, setSearchResults] = useState<Food[]>([])
 
   const isEditing = !!existingItem
 
   useEffect(() => {
     apiFetchFoods().then(setFoods)
   }, [setFoods])
-
-  // Server-side search when local results are insufficient (food mode only)
-  useEffect(() => {
-    if (sourceMode !== 'food') return
-    const query = foodName.trim().toLowerCase()
-    if (!query) {
-      setSearchResults([])
-      return
-    }
-
-    const localMatches = foods.filter(f => f.name.toLowerCase().includes(query))
-
-    if (localMatches.length >= 3) {
-      setSearchResults([])
-      return
-    }
-
-    let cancelled = false
-    const timer = setTimeout(() => {
-      apiFetchFoods({ search: query }).then(serverResults => {
-        if (!cancelled) {
-          const localIds = new Set(localMatches.map(f => f.id))
-          const additionalResults = serverResults.filter(f => !localIds.has(f.id))
-          setSearchResults(additionalResults)
-        }
-      }).catch(() => {
-        if (!cancelled) setSearchResults([])
-      })
-    }, 300)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [foodName, foods, sourceMode])
-
-  const allFoods = useMemo(() => {
-    if (searchResults.length === 0) return foods
-    const foodIds = new Set(foods.map(f => f.id))
-    return [...foods, ...searchResults.filter(f => !foodIds.has(f.id))]
-  }, [foods, searchResults])
-
-  const selectedFood = allFoods.find(f => f.name.toLowerCase() === foodName.toLowerCase())
 
   // Measurements come from the selected food or product
   const unitOptions = useMemo(() => {
@@ -110,6 +67,15 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     }
     return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
   }, [selectedFood, selectedProduct, sourceMode])
+
+  function handleFoodSelected(food: Food) {
+    setSelectedFood(food)
+    setFoodName(food.name)
+    if (food.servingUnit) {
+      setOriginalUnit(food.servingUnit)
+      setCurrentUnit(food.servingUnit)
+    }
+  }
 
   function handleProductSelected(product: Product) {
     setSelectedProduct(product)
@@ -208,12 +174,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
               {sourceMode === 'food' ? 'Food Item' : 'Product'} <span className="required">*</span>
             </label>
             {sourceMode === 'food' ? (
-              <Autocomplete
+              <FoodSearch
                 value={foodName}
-                options={allFoods}
-                getOptionLabel={(food) => food.name}
-                renderOptionMeta={(food) => `${food.calories} cal`}
-                onChange={setFoodName}
+                localFoods={foods}
+                onChange={handleFoodSelected}
                 placeholder="Select a food item"
                 inputAriaLabel="Food item"
               />

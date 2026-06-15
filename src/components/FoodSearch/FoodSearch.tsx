@@ -7,9 +7,7 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
-import { mapUSDAFoodToFood } from '@/lib/usda'
 import type { Food } from '@/types/Food'
-import type { USDAFoodItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import './food-search.scss'
 
@@ -20,13 +18,11 @@ type SuggestionGroup = {
 
 type SuggestionItem =
   | { kind: 'local'; food: Food }
-  | { kind: 'usda'; item: USDAFoodItem }
   | { kind: 'off'; product: OFFProduct }
   | { kind: 'add'; name: string }
 
 function itemName(s: SuggestionItem): string {
   if (s.kind === 'local') return s.food.name
-  if (s.kind === 'usda') return s.item.description
   if (s.kind === 'off') return s.product.product_name
   return `Add "${s.name}" as a new food`
 }
@@ -34,10 +30,6 @@ function itemName(s: SuggestionItem): string {
 function itemMacros(s: SuggestionItem): string {
   if (s.kind === 'local') {
     return `${s.food.calories} cal · P ${s.food.protein}g · C ${s.food.carbs}g · F ${s.food.fat}g`
-  }
-  if (s.kind === 'usda') {
-    const f = mapUSDAFoodToFood(s.item)
-    return `${f.calories} cal · P ${f.protein}g · C ${f.carbs}g · F ${f.fat}g`
   }
   if (s.kind === 'off') {
     const f = mapOFFProductToFood(s.product)
@@ -83,9 +75,20 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
       return
     }
 
-    // Immediate: local food list
+    // Immediate: local food list, ranked by relevance (exact → starts-with → contains)
+    const lq = query.toLowerCase()
     const localMatches = localFoods
-      .filter(f => f.name.toLowerCase().includes(query.toLowerCase()))
+      .filter(f => f.name.toLowerCase().includes(lq))
+      .sort((a, b) => {
+        const an = a.name.toLowerCase()
+        const bn = b.name.toLowerCase()
+        const primaryA = an.split(',')[0]
+        const primaryB = bn.split(',')[0]
+        const rankA = an === lq ? 0 : primaryA.startsWith(lq) ? 1 : an.startsWith(lq) ? 2 : 3
+        const rankB = bn === lq ? 0 : primaryB.startsWith(lq) ? 1 : bn.startsWith(lq) ? 2 : 3
+        if (rankA !== rankB) return rankA - rankB
+        return an.localeCompare(bn)
+      })
       .slice(0, 6)
     setSuggestions(localMatches.length > 0
       ? [{ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) }]
@@ -98,16 +101,14 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
       if (latestQueryRef.current !== query) return
 
       try {
-        const [localResult, usdaResult, offResult] = await Promise.allSettled([
+        const [localResult, offResult] = await Promise.allSettled([
           apiFetchFoods({ search: query }),
-          fetch(`/api/usda/search?q=${encodeURIComponent(query)}&type=foods`).then(r => r.ok ? r.json() : { foods: [] }),
           apiSearchOpenFoodFacts(query),
         ])
 
         if (latestQueryRef.current !== query) return
 
         const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
-        const usdaRes    = usdaResult.status  === 'fulfilled' ? usdaResult.value  : { foods: [] }
         const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
 
         const localIds = new Set(localFoods.map(f => f.id))
@@ -116,23 +117,12 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
           ...serverLocal.filter(f => !localIds.has(f.id) && !localMatches.some(m => m.id === f.id)).slice(0, 3),
         ]
 
-        const usdaItems: USDAFoodItem[] = (usdaRes.foods ?? []).slice(0, 8)
         const localNames = new Set(mergedLocal.map(f => f.name.toLowerCase()))
-        const filteredUSDA = usdaItems.filter(i => !localNames.has(i.description.toLowerCase()))
-
-        const takenNames = new Set([
-          ...localNames,
-          ...filteredUSDA.map(i => i.description.toLowerCase()),
-        ])
         const filteredOFF = offProducts
-          .filter((p: OFFProduct) => p.product_name && !takenNames.has(p.product_name.toLowerCase()))
+          .filter((p: OFFProduct) => p.product_name && !localNames.has(p.product_name.toLowerCase()))
           .slice(0, 4)
 
-        // USDA first, then OFF — merged as a single "Online results" group
-        const onlineItems: SuggestionItem[] = [
-          ...filteredUSDA.map(i => ({ kind: 'usda' as const, item: i })),
-          ...filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p })),
-        ]
+        const onlineItems: SuggestionItem[] = filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p }))
 
         const groups: SuggestionGroup[] = []
         if (mergedLocal.length > 0) {
@@ -168,10 +158,7 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
 
     setImporting(true)
     try {
-      const foodData: Omit<Food, 'id'> = item.kind === 'usda'
-        ? mapUSDAFoodToFood(item.item)
-        : mapOFFProductToFood(item.product)
-      const created = await apiCreateFood(foodData)
+      const created = await apiCreateFood(mapOFFProductToFood(item.product))
       setInputValue(created.name)
       onChange(created)
     } catch {
