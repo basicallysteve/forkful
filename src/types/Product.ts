@@ -19,5 +19,6 @@ export type Product = {
   servingSize: number
   servingUnit: string
   measurements: Measurement[]
+  density?: number  // g/ml — enables mass↔volume conversion
   source?: ProductSource
 }

@@ -12,7 +12,7 @@ import type { Product } from '@/types/Product'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
-import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
+import { canConvert, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS } from '@/utils/unitConversion'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
@@ -58,15 +58,18 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     apiFetchFoods().then(setFoods)
   }, [setFoods])
 
-  // Measurements come from the selected food or product
+  // Measurements come from the selected food or product.
+  // When density is set, cross-category standard units are appended at runtime.
   const unitOptions = useMemo(() => {
-    const measurements = sourceMode === 'food'
-      ? selectedFood?.measurements
-      : selectedProduct?.measurements
-    if (measurements && measurements.length > 0) {
-      return measurements.map((m) => ({ label: m.unit, value: m.unit }))
+    const source = sourceMode === 'food' ? selectedFood : selectedProduct
+    if (!source) {
+      return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
     }
-    return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
+    const stored = source.measurements.map(m => m.unit)
+    const crossCategory = getAllowedUnits(source.servingUnit, source.density)
+      .filter(u => !stored.includes(u))
+    const all = [...stored, ...crossCategory]
+    return all.map(u => ({ label: u, value: u }))
   }, [selectedFood, selectedProduct, sourceMode])
 
   function handleFoodSelected(food: Food) {
@@ -140,13 +143,11 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     }
   }
 
-  function syncUnits(e: { value: string }) {
-
+  function syncUnits(unit: string) {
     const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
-    
-    setOriginalUnit(e.value)
+    setOriginalUnit(unit)
     if (currentSizeEqualsOriginal) {
-      setCurrentUnit(e.value)
+      setCurrentUnit(unit)
     }
   }
 
@@ -154,7 +155,8 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const hasValidSelection = sourceMode === 'food' ? !!selectedFood : !!selectedProduct
   const hasValidOriginalSize = originalSize > 0
   const hasValidCurrentSize = currentSize >= 0
-  const sizeValid = canConvert(currentUnit, originalUnit) ? currentSize <= originalSize : true
+  const activeDensity = (sourceMode === 'food' ? selectedFood : selectedProduct)?.density
+  const sizeValid = canConvert(currentUnit, originalUnit, activeDensity) ? currentSize <= originalSize : true
   const isSaveDisabled = saving || !hasValidSelection || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
 
   return (

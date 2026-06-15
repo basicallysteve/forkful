@@ -1,5 +1,7 @@
-import type { Food } from '@/types/Food'
+import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
+import { getUnitCategory } from '@/utils/unitConversion'
+import convert from 'convert-units'
 
 const USDA_BASE = 'https://api.nal.usda.gov/fdc/v1'
 
@@ -32,6 +34,104 @@ export interface USDABrandedItem extends USDAFoodItem {
   brandName?: string
   gtinUpc?: string
   householdServingFullText?: string
+}
+
+export interface USDAFoodPortion {
+  id?: number
+  amount?: number
+  gramWeight: number
+  portionDescription?: string
+  measureUnit?: {
+    id?: number
+    name?: string
+    abbreviation?: string
+  }
+  modifier?: string
+}
+
+interface USDADetailItem extends USDAFoodItem {
+  foodPortions?: USDAFoodPortion[]
+}
+
+// ---- Unit name normalisation ----
+
+const USDA_UNIT_ALIASES: Record<string, string> = {
+  cup: 'cup', cups: 'cup',
+  tbsp: 'Tbs', tbs: 'Tbs', tablespoon: 'Tbs', tablespoons: 'Tbs',
+  tsp: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  'fl oz': 'fl-oz', 'fl-oz': 'fl-oz', 'fluid ounce': 'fl-oz', 'fluid ounces': 'fl-oz',
+  ml: 'ml', milliliter: 'ml', milliliters: 'ml', millilitre: 'ml', millilitres: 'ml',
+  l: 'l', liter: 'l', liters: 'l', litre: 'l', litres: 'l',
+  g: 'g', gram: 'g', grams: 'g',
+  kg: 'kg', kilogram: 'kg', kilograms: 'kg',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  lb: 'lb', pound: 'lb', pounds: 'lb',
+  mg: 'mg', milligram: 'mg', milligrams: 'mg',
+}
+
+function normaliseUSDAUnit(raw: string | undefined): string | null {
+  if (!raw) return null
+  return USDA_UNIT_ALIASES[raw.toLowerCase().trim()] ?? null
+}
+
+// ---- Portion → Measurements + density ----
+
+export function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: Measurement[]; density?: number } {
+  const measurements: Measurement[] = []
+  let density: number | undefined
+
+  for (const portion of portions) {
+    const amount = portion.amount ?? 1
+    if (amount <= 0 || portion.gramWeight <= 0) continue
+
+    const rawUnit = portion.measureUnit?.abbreviation ?? portion.measureUnit?.name ?? portion.modifier
+    if (!rawUnit?.trim()) continue
+
+    const normUnit = normaliseUSDAUnit(rawUnit)
+
+    if (normUnit) {
+      // Known standard unit — use for density derivation if volume
+      const category = getUnitCategory(normUnit)
+      if (category === 'volume' && density === undefined) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mlPerUnit = convert(1).from(normUnit as any).to('ml' as any)
+          const mlTotal = mlPerUnit * amount
+          if (mlTotal > 0) {
+            density = Math.round((portion.gramWeight / mlTotal) * 10000) / 10000
+          }
+        } catch {
+          // unknown unit — skip
+        }
+      }
+      // mass portions are redundant with standard conversion — skip
+    } else {
+      // Unknown unit → treat as a Calibrated Custom Unit
+      const customUnit = rawUnit.toLowerCase().trim()
+      if (!measurements.some(m => m.unit === customUnit)) {
+        const gramsPerUnit = portion.gramWeight / amount
+        measurements.push({ unit: customUnit, gramsPerUnit: Math.round(gramsPerUnit * 100) / 100 })
+      }
+    }
+  }
+
+  return { measurements, density }
+}
+
+// ---- Food detail fetch ----
+
+export async function fetchFoodDetail(fdcId: number): Promise<USDADetailItem | null> {
+  try {
+    const apiKey = getApiKey()
+    const params = new URLSearchParams({ api_key: apiKey })
+    const res = await fetch(`${USDA_BASE}/food/${fdcId}?${params}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return null
+    return await res.json() as USDADetailItem
+  } catch {
+    return null
+  }
 }
 
 interface USDASearchResponse {
@@ -127,6 +227,7 @@ export async function searchUSDABranded(query: string): Promise<USDABrandedItem[
 /**
  * Maps a USDA Foundation/SR Legacy food item to a Food (generic, per 100g).
  * Foundation/SR Legacy nutrients are always expressed per 100g.
+ * Does not fetch portions — use importUSDAFood for full import with measurements and density.
  */
 export function mapUSDAFoodToFood(item: USDAFoodItem): Omit<Food, 'id'> {
   const n = item.foodNutrients
@@ -147,7 +248,6 @@ export function mapUSDAFoodToFood(item: USDAFoodItem): Omit<Food, 'id'> {
     })(),
     sodium: (() => {
       const v = getNutrientValueOrUndefined(n, SODIUM_ID)
-      // USDA Foundation/SR Legacy sodium is in mg already
       return v != null ? Math.round(v) : undefined
     })(),
     servingSize: 100,
@@ -159,15 +259,31 @@ export function mapUSDAFoodToFood(item: USDAFoodItem): Omit<Food, 'id'> {
 }
 
 /**
+ * Async import: maps a USDA Foundation/SR Legacy food to a Food, enriched with
+ * Measurements and Density derived from the food detail endpoint's foodPortions.
+ */
+export async function importUSDAFood(item: USDAFoodItem): Promise<Omit<Food, 'id'>> {
+  const base = mapUSDAFoodToFood(item)
+  const detail = await fetchFoodDetail(item.fdcId)
+  if (!detail?.foodPortions?.length) return base
+  const { measurements, density } = mapPortionsToData(detail.foodPortions)
+  return {
+    ...base,
+    measurements: [{ unit: 'g' }, ...measurements],
+    density,
+  }
+}
+
+/**
  * Maps a USDA Branded food item to a Product.
  * Branded foods have their own serving size from the label.
  * Nutrients in the USDA Branded database are expressed per 100g and must be scaled.
+ * Does not fetch portions — use importUSDABrandedProduct for full import.
  */
 export function mapUSDABrandedToProduct(item: USDABrandedItem): Omit<Product, 'id'> {
   const n = item.foodNutrients
   const servingSize = item.servingSize ?? 100
   const servingUnit = item.servingSizeUnit ?? 'g'
-  // Branded foods: nutrients are per 100g in FDC API; scale to serving size
   const isGramBased = /^g$/i.test(servingUnit)
   const scale = isGramBased ? servingSize / 100 : 1
 
@@ -196,5 +312,26 @@ export function mapUSDABrandedToProduct(item: USDABrandedItem): Omit<Product, 'i
     servingUnit,
     measurements: [{ unit: servingUnit }],
     source: 'usda_branded' as const,
+  }
+}
+
+/**
+ * Async import: maps a USDA Branded item to a Product, enriched with
+ * Measurements and Density fetched via the internal /api/usda/food/[fdcId] route.
+ * Safe to call from client components — no USDA API key is used directly.
+ */
+export async function importUSDABrandedProduct(item: USDABrandedItem): Promise<Omit<Product, 'id'>> {
+  const base = mapUSDABrandedToProduct(item)
+  try {
+    const res = await fetch(`/api/usda/food/${item.fdcId}`)
+    if (!res.ok) return base
+    const { measurements, density } = await res.json() as { measurements: Measurement[]; density: number | null }
+    return {
+      ...base,
+      measurements: [{ unit: base.servingUnit }, ...measurements],
+      ...(density != null ? { density } : {}),
+    }
+  } catch {
+    return base
   }
 }

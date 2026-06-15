@@ -6,7 +6,7 @@ import { useFoodStore } from '@/stores/food'
 import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
 import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
-import { getUnitCategory, convertUnit, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
+import { getUnitCategory, convertUnit, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
@@ -37,9 +37,11 @@ function Store({ existingFood }: FoodStoreProps) {
     servingSize: existingFood?.servingSize || 1,
     servingUnit: existingFood?.servingUnit || 'g',
     measurements: existingFood?.measurements || [{ unit: 'g' }],
+    density: existingFood?.density,
   })
 
   const [newMeasurement, setNewMeasurement] = useState('')
+  const [measurementError, setMeasurementError] = useState<string | null>(null)
 
   // Check for duplicate food name (case-insensitive, trimmed)
   const isDuplicateName = useMemo(() => {
@@ -57,21 +59,15 @@ function Store({ existingFood }: FoodStoreProps) {
     return getUnitCategory(food.servingUnit || 'g')
   }, [food.servingUnit])
 
-  // Get available measurement options based on serving unit category
+  // Get available measurement options based on serving unit category and density
   const availableMeasurementOptions = useMemo((): string[] => {
     const alreadyAdded = (food.measurements || []).map((m) => m.unit)
-    let availableUnits: string[] = []
-
-    if (servingUnitCategory === 'mass') {
-      availableUnits = [...MASS_UNITS, ...CUSTOM_UNITS]
-    } else if (servingUnitCategory === 'volume') {
-      availableUnits = [...VOLUME_UNITS, ...CUSTOM_UNITS]
-    } else {
-      availableUnits = [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS]
-    }
-
+    const standardUnits = getAllowedUnits(food.servingUnit || 'g', food.density)
+    const availableUnits = servingUnitCategory === 'custom'
+      ? standardUnits
+      : [...standardUnits, ...CUSTOM_UNITS]
     return availableUnits.filter(unit => !alreadyAdded.includes(unit))
-  }, [servingUnitCategory, food.measurements])
+  }, [servingUnitCategory, food.measurements, food.servingUnit, food.density])
 
   const canSave = useMemo(() => {
     return !!(
@@ -98,10 +94,13 @@ function Store({ existingFood }: FoodStoreProps) {
     if (food.measurements?.some((m) => m.unit === trimmed)) return
 
     const newUnitCategory = getUnitCategory(trimmed)
-    if (servingUnitCategory !== 'custom' && newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory) {
+    const crossCategory = newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory
+    if (servingUnitCategory !== 'custom' && crossCategory && !(food.density && food.density > 0)) {
+      setMeasurementError('Set a density value to add cross-category units (e.g. volume units on a mass-based food).')
       return
     }
 
+    setMeasurementError(null)
     setFood({
       ...food,
       measurements: [...(food.measurements || []), { unit: trimmed }],
@@ -174,6 +173,7 @@ function Store({ existingFood }: FoodStoreProps) {
       servingSize: food.servingSize!,
       servingUnit: food.servingUnit ?? 'g',
       measurements: food.measurements ?? [],
+      density: food.density,
     }
 
     if (isEditing && existingFood) {
@@ -294,6 +294,22 @@ function Store({ existingFood }: FoodStoreProps) {
                   <span className="field-hint">Unit of measurement. {servingUnitCategory !== 'custom' ? `Changing this will filter measurements to ${servingUnitCategory} units.` : ''}</span>
                 </label>
 
+                {servingUnitCategory !== 'custom' && (
+                  <label className="form-field">
+                    <span className="field-label">Density (g/ml)</span>
+                    <InputNumber
+                      min={0}
+                      minFractionDigits={0}
+                      maxFractionDigits={4}
+                      value={food.density ?? null}
+                      onValueChange={(e) => setFood({ ...food, density: (e.value != null && e.value > 0) ? e.value : undefined })}
+                      aria-label="Density in grams per millilitre"
+                      placeholder="—"
+                    />
+                    <span className="field-hint">Optional. Enables mass ↔ volume conversions (e.g. 0.91 for olive oil).</span>
+                  </label>
+                )}
+
                 <div className="form-field form-field-full">
                   <span className="field-label">Macronutrients (grams per serving)</span>
                   <div className="macro-grid">
@@ -392,7 +408,7 @@ function Store({ existingFood }: FoodStoreProps) {
                   <div className="measurements-list">
                     {food.measurements?.map((m) => {
                       const isCustom = getUnitCategory(m.unit) === 'custom'
-                      const canCalibrate = isCustom && servingUnitCategory === 'mass'
+                      const canCalibrate = isCustom && (servingUnitCategory === 'mass' || (servingUnitCategory === 'volume' && food.density != null && food.density > 0))
                       const isUncalibrated = isCustom && !m.gramsPerUnit
                       return (
                         <div key={m.unit} className={`measurement-tag ${isUncalibrated && canCalibrate ? 'measurement-tag-warn' : ''}`}>
@@ -430,7 +446,7 @@ function Store({ existingFood }: FoodStoreProps) {
                       value={newMeasurement}
                       options={availableMeasurementOptions}
                       getOptionLabel={(opt) => opt}
-                      onChange={(value) => setNewMeasurement(value)}
+                      onChange={(value) => { setNewMeasurement(value); setMeasurementError(null) }}
                       onSelect={(unit) => handleAddMeasurement(unit)}
                       placeholder="Add measurement (e.g. cup, tbsp)"
                       inputAriaLabel="Add measurement"
@@ -444,6 +460,9 @@ function Store({ existingFood }: FoodStoreProps) {
                       Add
                     </button>
                   </div>
+                  {measurementError && (
+                    <span className="field-error" role="alert">{measurementError}</span>
+                  )}
                   <span className="field-hint">
                     {servingUnitCategory !== 'custom' 
                       ? `Define which units can be used when measuring this food. Showing ${servingUnitCategory} and custom units.`

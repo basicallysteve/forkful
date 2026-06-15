@@ -134,6 +134,13 @@
       "when": 1781400000000,
       "tag": "0018_food_product_split",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781536556692,
+      "tag": "0019_rainy_mandarin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,123 +1,90 @@
-// Define unit categories
+import convert from 'convert-units'
+
 export type UnitCategory = 'mass' | 'volume' | 'custom'
 
-// Mass units supported for food
 export const MASS_UNITS = ['g', 'kg', 'oz', 'lb', 'mg'] as const
 export type MassUnit = typeof MASS_UNITS[number]
 
-// Volume units supported for food
 export const VOLUME_UNITS = ['ml', 'l', 'cup', 'Tbs', 'tsp', 'fl-oz'] as const
 export type VolumeUnit = typeof VOLUME_UNITS[number]
 
-// Common custom units (not convertible)
 export const CUSTOM_UNITS = ['slice', 'piece', 'serving', 'portion', 'loaf', 'can', 'bottle', 'package'] as const
 export type CustomUnit = typeof CUSTOM_UNITS[number]
 
 export type FoodUnit = MassUnit | VolumeUnit | CustomUnit
 
-// Conversion factors to base units (g for mass, ml for volume)
-const MASS_TO_GRAMS: Record<string, number> = {
-  mg: 0.001,
-  g: 1,
-  kg: 1000,
-  oz: 28.3495,
-  lb: 453.592,
-}
-
-const VOLUME_TO_ML: Record<string, number> = {
-  ml: 1,
-  l: 1000,
-  tsp: 4.92892,
-  Tbs: 14.7868,
-  'fl-oz': 29.5735,
-  cup: 236.588,
-}
-
-/**
- * Determines the category of a unit
- */
 export function getUnitCategory(unit: string): UnitCategory {
   if (MASS_UNITS.includes(unit as MassUnit)) return 'mass'
   if (VOLUME_UNITS.includes(unit as VolumeUnit)) return 'volume'
   return 'custom'
 }
 
-/**
- * Returns the allowed units based on the base serving unit category
- */
-export function getAllowedUnits(baseUnit: string): string[] {
+export function canConvert(fromUnit: string, toUnit: string, density?: number): boolean {
+  const fromCat = getUnitCategory(fromUnit)
+  const toCat = getUnitCategory(toUnit)
+  if (fromCat === 'custom' || toCat === 'custom') return false
+  if (fromCat === toCat) return true
+  return !!(density && density > 0)
+}
+
+export function convertUnit(value: number, fromUnit: string, toUnit: string, density?: number): number | null {
+  if (fromUnit === toUnit) return value
+
+  const fromCat = getUnitCategory(fromUnit)
+  const toCat = getUnitCategory(toUnit)
+
+  if (fromCat === 'custom' || toCat === 'custom') return null
+
+  try {
+    if (fromCat === toCat) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return convert(value).from(fromUnit as any).to(toUnit as any)
+    }
+
+    if (!density || density <= 0) return null
+
+    if (fromCat === 'mass' && toCat === 'volume') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const grams = convert(value).from(fromUnit as any).to('g' as any)
+      const ml = grams / density
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return convert(ml).from('ml' as any).to(toUnit as any)
+    }
+
+    // volume → mass
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ml = convert(value).from(fromUnit as any).to('ml' as any)
+    const grams = ml * density
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return convert(grams).from('g' as any).to(toUnit as any)
+  } catch {
+    return null
+  }
+}
+
+export function getAllowedUnits(baseUnit: string, density?: number): string[] {
   const category = getUnitCategory(baseUnit)
-  
+  const hasDensity = density != null && density > 0
+
   if (category === 'mass') {
-    return [...MASS_UNITS]
+    return hasDensity ? [...MASS_UNITS, ...VOLUME_UNITS] : [...MASS_UNITS]
   }
   if (category === 'volume') {
-    return [...VOLUME_UNITS]
+    return hasDensity ? [...VOLUME_UNITS, ...MASS_UNITS] : [...VOLUME_UNITS]
   }
-  // For custom units, allow same custom unit plus common custom units
   return [baseUnit, ...CUSTOM_UNITS.filter(u => u !== baseUnit)]
 }
 
-/**
- * Checks if a unit can be converted to another
- */
-export function canConvert(fromUnit: string, toUnit: string): boolean {
-  const fromCategory = getUnitCategory(fromUnit)
-  const toCategory = getUnitCategory(toUnit)
-  
-  // Can only convert within the same category (mass to mass, volume to volume)
-  // Custom units cannot be converted
-  return fromCategory === toCategory && fromCategory !== 'custom'
-}
-
-/**
- * Converts a value from one unit to another
- * Returns null if conversion is not possible
- */
-export function convertUnit(value: number, fromUnit: string, toUnit: string): number | null {
-  if (!canConvert(fromUnit, toUnit)) {
-    return null
-  }
-  
-  const fromCategory = getUnitCategory(fromUnit)
-  
-  if (fromCategory === 'mass') {
-    const fromFactor = MASS_TO_GRAMS[fromUnit]
-    const toFactor = MASS_TO_GRAMS[toUnit]
-    if (fromFactor === undefined || toFactor === undefined) return null
-    return (value * fromFactor) / toFactor
-  }
-  
-  if (fromCategory === 'volume') {
-    const fromFactor = VOLUME_TO_ML[fromUnit]
-    const toFactor = VOLUME_TO_ML[toUnit]
-    if (fromFactor === undefined || toFactor === undefined) return null
-    return (value * fromFactor) / toFactor
-  }
-  
-  return null
-}
-
 export interface CalculateCaloriesParams {
-  /** Calories per serving */
   baseCalories: number
-  /** The base serving size amount */
   baseServingSize: number
-  /** The base serving unit */
   baseServingUnit: string
-  /** The amount we want calories for */
   targetAmount: number
-  /** The unit of the target amount */
   targetUnit: string
-  /** Grams per one targetUnit (for calibrated custom units only) */
   gramsPerUnit?: number
+  density?: number
 }
 
-/**
- * Calculates calories for a given amount and unit based on food's per-serving calories.
- * For calibrated custom units, uses gramsPerUnit to convert via mass.
- * Returns null if the conversion is not possible (uncalibrated custom unit, or cross-category).
- */
 export function calculateCalories({
   baseCalories,
   baseServingSize,
@@ -125,30 +92,25 @@ export function calculateCalories({
   targetAmount,
   targetUnit,
   gramsPerUnit,
+  density,
 }: CalculateCaloriesParams): number | null {
-  // Same unit — simple ratio
   if (baseServingUnit === targetUnit) {
     return (baseCalories / baseServingSize) * targetAmount
   }
 
-  // Custom target unit with calibration: convert via grams → base unit
   if (getUnitCategory(targetUnit) === 'custom') {
     if (!gramsPerUnit || gramsPerUnit <= 0) return null
-    if (getUnitCategory(baseServingUnit) !== 'mass') return null
-    const targetInBaseUnit = convertUnit(targetAmount * gramsPerUnit, 'g', baseServingUnit)
-    if (targetInBaseUnit === null) return null
-    return (baseCalories / baseServingSize) * targetInBaseUnit
+    const gramsAmount = targetAmount * gramsPerUnit
+    const convertedAmount = convertUnit(gramsAmount, 'g', baseServingUnit, density)
+    if (convertedAmount === null) return null
+    return (baseCalories / baseServingSize) * convertedAmount
   }
 
-  // Standard unit: try direct category conversion
-  const convertedAmount = convertUnit(targetAmount, targetUnit, baseServingUnit)
+  const convertedAmount = convertUnit(targetAmount, targetUnit, baseServingUnit, density)
   if (convertedAmount === null) return null
   return (baseCalories / baseServingSize) * convertedAmount
 }
 
-/**
- * Returns a human-readable label for a unit
- */
 export function getUnitLabel(unit: string): string {
   const labels: Record<string, string> = {
     g: 'grams',
@@ -174,9 +136,6 @@ export function getUnitLabel(unit: string): string {
   return labels[unit] || unit
 }
 
-/**
- * Gets all available units grouped by category
- */
 export function getAllUnits(): { mass: string[]; volume: string[]; custom: string[] } {
   return {
     mass: [...MASS_UNITS],
