@@ -129,6 +129,27 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     router.push('/pantry')
   }
 
+  function syncSizes(e: { value: number }) {
+
+    const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
+    
+    setOriginalSize(e.value)
+    if (currentSizeEqualsOriginal) {
+      setCurrentSize(e.value)
+    }
+  }
+
+  function syncUnits(e: { value: string }) {
+
+    const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
+    
+    setOriginalUnit(e.value)
+    if (currentSizeEqualsOriginal) {
+      setCurrentUnit(e.value)
+    }
+  }
+
+
   const hasValidSelection = sourceMode === 'food' ? !!selectedFood : !!selectedProduct
   const hasValidOriginalSize = originalSize > 0
   const hasValidCurrentSize = currentSize >= 0
@@ -202,14 +223,14 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
                 minFractionDigits={0}
                 maxFractionDigits={2}
                 value={originalSize}
-                onValueChange={(e) => setOriginalSize(e.value ?? 1)}
+                onValueChange={(e) => syncSizes(e)}
                 placeholder="Enter size"
                 className="size-number"
               />
               <Dropdown
                 inputId="original-unit"
                 value={originalUnit}
-                onChange={(e) => setOriginalUnit(e.value)}
+                onChange={(e) => syncUnits(e.value)}
                 className="size-unit"
                 ariaLabel="Original size unit"
                 options={unitOptions}
