@@ -41,6 +41,7 @@ function Store({ existingFood }: FoodStoreProps) {
   })
 
   const [newMeasurement, setNewMeasurement] = useState('')
+  const [measurementError, setMeasurementError] = useState<string | null>(null)
 
   // Check for duplicate food name (case-insensitive, trimmed)
   const isDuplicateName = useMemo(() => {
@@ -95,9 +96,11 @@ function Store({ existingFood }: FoodStoreProps) {
     const newUnitCategory = getUnitCategory(trimmed)
     const crossCategory = newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory
     if (servingUnitCategory !== 'custom' && crossCategory && !(food.density && food.density > 0)) {
+      setMeasurementError('Set a density value to add cross-category units (e.g. volume units on a mass-based food).')
       return
     }
 
+    setMeasurementError(null)
     setFood({
       ...food,
       measurements: [...(food.measurements || []), { unit: trimmed }],
@@ -443,7 +446,7 @@ function Store({ existingFood }: FoodStoreProps) {
                       value={newMeasurement}
                       options={availableMeasurementOptions}
                       getOptionLabel={(opt) => opt}
-                      onChange={(value) => setNewMeasurement(value)}
+                      onChange={(value) => { setNewMeasurement(value); setMeasurementError(null) }}
                       onSelect={(unit) => handleAddMeasurement(unit)}
                       placeholder="Add measurement (e.g. cup, tbsp)"
                       inputAriaLabel="Add measurement"
@@ -457,6 +460,9 @@ function Store({ existingFood }: FoodStoreProps) {
                       Add
                     </button>
                   </div>
+                  {measurementError && (
+                    <span className="field-error" role="alert">{measurementError}</span>
+                  )}
                   <span className="field-hint">
                     {servingUnitCategory !== 'custom' 
                       ? `Define which units can be used when measuring this food. Showing ${servingUnitCategory} and custom units.`

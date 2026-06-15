@@ -143,13 +143,11 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     }
   }
 
-  function syncUnits(e: { value: string }) {
-
+  function syncUnits(unit: string) {
     const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
-    
-    setOriginalUnit(e.value)
+    setOriginalUnit(unit)
     if (currentSizeEqualsOriginal) {
-      setCurrentUnit(e.value)
+      setCurrentUnit(unit)
     }
   }
 

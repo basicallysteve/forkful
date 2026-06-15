@@ -124,7 +124,9 @@ export async function fetchFoodDetail(fdcId: number): Promise<USDADetailItem | n
   try {
     const apiKey = getApiKey()
     const params = new URLSearchParams({ api_key: apiKey })
-    const res = await fetch(`${USDA_BASE}/food/${fdcId}?${params}`)
+    const res = await fetch(`${USDA_BASE}/food/${fdcId}?${params}`, {
+      next: { revalidate: 3600 },
+    })
     if (!res.ok) return null
     return await res.json() as USDADetailItem
   } catch {
