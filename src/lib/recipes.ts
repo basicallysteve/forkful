@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not } from 'drizzle-orm'
 import { db } from '@/db'
 import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
@@ -16,6 +16,8 @@ export type RecipeQueryOptions = {
   sortBy?: 'date_published'
   sortDir?: 'asc' | 'desc'
   viewerId?: number
+  cuisinePreferences?: string[]
+  excludeForYouFeed?: boolean // internal flag to exclude from For You feed when ingredient filter is applied, since it doesn't support that filter
 }
 
 function parseMeasurements(raw: unknown): Measurement[] {
@@ -162,7 +164,7 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
               isNull(ingredients.dateDeleted),
               isNull(foods.dateDeleted),
               ilike(foods.name, `%${options.ingredient}%`)
-            ))
+            ) /* exclude from For You feed which doesn't support ingredient filter */)
         )
       : undefined
 
@@ -179,9 +181,10 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
             )
           : (options.published ? isNotNull(recipes.datePublished) : isNull(recipes.datePublished)))
       : undefined
-
+    
+    const excludeForYouFilter = options.cuisinePreferences !== undefined && options.excludeForYouFeed === true ? not(getForYouRecipesQuery(options.cuisinePreferences || [])) : undefined
     const baseQuery = db.select().from(recipes).where(
-      and(isNull(recipes.dateDeleted), publishedFilter ?? visibilityFilter, ingredientFilter)
+      and(isNull(recipes.dateDeleted), publishedFilter ?? visibilityFilter, ingredientFilter, excludeForYouFilter)
     )
 
     const orderedQuery = options.sortBy === 'date_published'
@@ -410,6 +413,15 @@ export async function reorderRecipeSteps(recipeId: number, orderedIds: number[])
   })
 }
 
+function getForYouRecipesQuery(cuisinePreferences: string[]) {
+  return and(
+    isNull(recipes.dateDeleted),
+    eq(recipes.isPublic, 1),
+    isNotNull(recipes.datePublished),
+    inArray(recipes.cuisineType, cuisinePreferences)
+  )
+}
+
 export async function getForYouRecipes(cuisinePreferences: string[], limit = 5): Promise<Recipe[]> {
   if (cuisinePreferences.length === 0) return []
   try {
@@ -417,12 +429,7 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
       .select()
       .from(recipes)
       .where(
-        and(
-          isNull(recipes.dateDeleted),
-          eq(recipes.isPublic, 1),
-          isNotNull(recipes.datePublished),
-          inArray(recipes.cuisineType, cuisinePreferences)
-        )
+        getForYouRecipesQuery(cuisinePreferences)
       )
       .orderBy(desc(recipes.datePublished))
       .limit(limit)

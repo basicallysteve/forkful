@@ -10,7 +10,7 @@ export default async function RecipesPage() {
   const dietaryRestrictions = user?.dietaryRestrictions ?? []
 
   const [recipes, forYouRecipes] = await Promise.all([
-    getRecipes({ viewerId: session?.userId }),
+    getRecipes({ viewerId: session?.userId, cuisinePreferences, excludeForYouFeed: true }),
     getForYouRecipes(cuisinePreferences),
   ])
 
