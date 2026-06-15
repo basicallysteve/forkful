@@ -8,7 +8,7 @@ import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import { toSlug } from "@/utils/slug"
-import { calculateCalories } from "@/utils/unitConversion"
+import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
 import { apiCreateRecipe } from "@/lib/api/recipes"
@@ -180,11 +180,16 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
           onChange={(e) => handleUnitChange(e.value)}
           disabled={readOnly}
           options={(() => {
-            const measurementUnits = (ingredient.food?.measurements || []).map((m) => m.unit)
-            const extra = ingredient.servingUnit && !measurementUnits.includes(ingredient.servingUnit)
+            const food = ingredient.food
+            const stored = (food?.measurements || []).map((m) => m.unit)
+            const allowed = food
+              ? getAllowedUnits(food.servingUnit, food.density).filter(u => !stored.includes(u))
+              : []
+            const all = [...stored, ...allowed]
+            const extra = ingredient.servingUnit && !all.includes(ingredient.servingUnit)
               ? [ingredient.servingUnit]
               : []
-            return [...measurementUnits, ...extra].map((unit) => ({ label: unit, value: unit }))
+            return [...all, ...extra].map((unit) => ({ label: unit, value: unit }))
           })()}
           ariaLabel="Serving unit"
         />

@@ -109,12 +109,16 @@ A section at the top of the recipes list page, visible only to logged-in Users w
 A default hard filter applied to the recipes list for logged-in Users with Dietary Restrictions set. Hides recipes whose Dietary Tags do not cover all of the user's restrictions (recipes with no Dietary Tags are always shown). The user can toggle this filter off for the current browsing session; the toggle does not persist.
 
 ## Food
-A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from USDA FoodData Central (Foundation Foods or SR Legacy). Used exclusively as the basis for Recipe Ingredients. Not brand-specific and has no barcode. Distinct from a Product. _Exception_: a small number of legacy rows imported from Open Food Facts (before the Food/Product split) remain in the foods table with `source = 'open_food_facts'` and are grandfathered as Foods (see ADR-0008).
+A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, an optional Density, and a Measurements list. Can be created manually or imported from USDA FoodData Central (Foundation Foods or SR Legacy). Used exclusively as the basis for Recipe Ingredients. Not brand-specific and has no barcode. Distinct from a Product. _Exception_: a small number of legacy rows imported from Open Food Facts (before the Food/Product split) remain in the foods table with `source = 'open_food_facts'` and are grandfathered as Foods (see ADR-0008).
 _Avoid_: generic food, base food, parent food
 
 ## Product
-A specific branded, purchasable food item (e.g. "Tyson Boneless Skinless Chicken Breast"). Has a barcode. Sourced from Open Food Facts or USDA Branded Foods, or created manually. Optionally linked to a parent Food — the link is not required (a Product with no Food parent can still be tracked in the Pantry). A Product is never used directly as a Recipe Ingredient; only its linked Food (if any) participates in recipes.
+A specific branded, purchasable food item (e.g. "Tyson Boneless Skinless Chicken Breast"). Has a barcode, an optional Density, and a Measurements list. Sourced from Open Food Facts or USDA Branded Foods, or created manually. Optionally linked to a parent Food — the link is not required (a Product with no Food parent can still be tracked in the Pantry). A Product is never used directly as a Recipe Ingredient; only its linked Food (if any) participates in recipes.
 _Avoid_: branded food, food product
+
+## Density
+An optional property on a Food or Product expressing how many grams one millilitre of the item weighs (g/ml). When set, enables cross-category unit conversion between mass and volume Measurements. For USDA-imported Foods and Products, auto-derived at import time from USDA Portion Data: if any portion entry has a volume unit and a gram weight (e.g. "1 cup = 128g"), density is calculated from that pair. If no volume portion exists, density is left null. Users may always override the auto-derived value in the editor. Stored as a nullable numeric column on both the `foods` and `products` tables.
+_Avoid_: specific gravity, weight per volume
 
 ## Serving Unit
 The unit in which a Food's nutrition data is anchored. Required in practice — the application always provides a value, though the column is not DB-constrained non-null. Defines what the Serving Size number means (e.g. `servingSize: 100, servingUnit: 'g'` means all nutrition values are per 100g). Belongs to exactly one unit category: mass, volume, or custom. Changing the Serving Unit within the same category automatically recalculates Serving Size to preserve calorie density. Cross-category changes are blocked.
@@ -123,16 +127,20 @@ The unit in which a Food's nutrition data is anchored. Required in practice — 
 The quantity of a Food (in its Serving Unit) that the nutrition values correspond to. Required. Always a positive number.
 
 ## Measurement
-A unit in which a Food can be expressed when added to a Recipe ingredient or tracked in the Pantry. Each Food has an explicit, author-curated list of Measurements. A Measurement is either a Standard Unit or a Calibrated Custom Unit. The Serving Unit is always included in a Food's Measurements.
+A unit in which a Food can be expressed when added to a Recipe ingredient or tracked in the Pantry. Each Food has an explicit, author-curated list of Measurements stored in the DB. When a Food has a Density set, the full Measurement list presented to the user is expanded at runtime to include Standard Units from the opposite category (mass units for a volume Food, volume units for a mass Food); these cross-category units are derived, not stored. A Measurement is either a Standard Unit or a Calibrated Custom Unit. The Serving Unit is always included in a Food's Measurements. For Foods and Products imported from USDA, Measurements are auto-populated at import time from USDA Portion Data; manually created Foods receive no auto-populated Measurements beyond the Serving Unit.
+
+## USDA Portion Data
+Portion descriptions attached to a USDA food record (e.g. "1 slice = 28g", "1 loaf = 567g"), available via the USDA full food detail endpoint (`/fdc/v1/food/{fdcId}`). Fetched during USDA import for both Foundation/SR Legacy Foods and Branded Products, and converted directly into Calibrated Custom Unit Measurements. If no portion data exists for a record, no extra Measurements are added. Not fetched for manually created Foods or Open Food Facts imports.
+_Avoid_: serving suggestions, portion sizes
 
 ## Standard Unit
-A mass unit (g, kg, oz, lb, mg) or volume unit (ml, l, cup, Tbs, tsp, fl-oz). Standard Units within the same category are mutually convertible using fixed conversion factors. A Food may only have Standard Units in the same category as its Serving Unit.
+A mass unit (g, kg, oz, lb, mg) or volume unit (ml, l, cup, Tbs, tsp, fl-oz). Standard Units within the same category are mutually convertible using fixed conversion factors. When a Food has a Density, Standard Units from the opposite category are also available as Measurements.
 
 ## Custom Unit
-A Measurement that is not a Standard Unit (e.g. slice, piece, loaf, can). Custom Units are food-specific and not mutually convertible. A Custom Unit becomes a Calibrated Custom Unit when a gram-weight per unit is defined for that Food. Custom Units with calibration are only available on Foods whose Serving Unit is a mass unit.
+A Measurement that is not a Standard Unit (e.g. slice, piece, loaf, can). Custom Units are food-specific and not mutually convertible. A Custom Unit becomes a Calibrated Custom Unit when a gram-weight per unit is defined for that Food.
 
 ## Calibrated Custom Unit
-A Custom Unit on a Food that has a defined gram-weight (e.g. "1 slice = 30g"). Enables automatic calorie calculation when that unit is used in a Recipe ingredient or Pantry entry. Only valid on Foods with a mass Serving Unit.
+A Custom Unit on a Food that has a defined gram-weight (e.g. "1 slice = 30g"). Enables automatic calorie calculation when that unit is used in a Recipe ingredient or Pantry entry. Valid on any Food whose Serving Unit is mass, or on any Food whose Serving Unit is volume and which has a Density set (the gram-weight is bridged to the volume Serving Unit via Density).
 
 ## Uncalibrated Custom Unit
 A Custom Unit on a Food that has no gram-weight defined. Calorie calculation returns zero when this unit is used in an ingredient. Flagged with a warning in the Food editor.

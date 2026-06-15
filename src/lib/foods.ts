@@ -30,6 +30,7 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? 'g',
     measurements: parseMeasurements(row.measurements),
+    density: row.density != null ? Number(row.density) : undefined,
     externalId: row.externalId ?? undefined,
     source: (row.source as FoodSource) ?? 'manual',
   }
@@ -94,6 +95,7 @@ export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
     servingSize: String(data.servingSize ?? 1),
     servingUnit: data.servingUnit,
     measurements: data.measurements ?? [],
+    density: data.density != null ? String(data.density) : null,
     saturatedFat: data.saturatedFat != null ? String(data.saturatedFat) : null,
     sugar: data.sugar != null ? String(data.sugar) : null,
     sodium: data.sodium != null ? String(data.sodium) : null,
@@ -121,6 +123,7 @@ export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): P
   if (data.servingSize !== undefined) updates.servingSize = String(data.servingSize)
   if (data.servingUnit !== undefined) updates.servingUnit = data.servingUnit
   if (data.measurements !== undefined) updates.measurements = data.measurements
+  if (data.density !== undefined) updates.density = data.density != null ? String(data.density) : null
   if (data.saturatedFat !== undefined) updates.saturatedFat = data.saturatedFat != null ? String(data.saturatedFat) : null
   if (data.sugar !== undefined) updates.sugar = data.sugar != null ? String(data.sugar) : null
   if (data.sodium !== undefined) updates.sodium = data.sodium != null ? String(data.sodium) : null
