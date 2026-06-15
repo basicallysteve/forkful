@@ -6,7 +6,7 @@ import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primere
 import { SelectButton } from 'primereact/selectbutton'
 import { apiFetchProducts, apiFetchProductByBarcode, apiCreateProduct } from '@/lib/api/products'
 import { apiSearchOpenFoodFacts, mapOFFProductToProduct } from '@/lib/api/openFoodFacts'
-import { mapUSDABrandedToProduct } from '@/lib/usda'
+import { mapUSDABrandedToProduct, importUSDABrandedProduct } from '@/lib/usda'
 import type { Product } from '@/types/Product'
 import type { USDABrandedItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
@@ -132,7 +132,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
     setImporting(true)
     try {
       const productData: Omit<Product, 'id'> = item.kind === 'usda'
-        ? mapUSDABrandedToProduct(item.item)
+        ? await importUSDABrandedProduct(item.item)
         : mapOFFProductToProduct(item.product)
       const created = await apiCreateProduct(productData)
       setInputValue(created.name)

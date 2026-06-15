@@ -19,6 +19,7 @@ export type Food = {
   servingSize: number
   servingUnit: string
   measurements: Measurement[]
+  density?: number  // g/ml — enables mass↔volume conversion
   externalId?: string
   source?: FoodSource
 }
