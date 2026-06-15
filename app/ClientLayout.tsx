@@ -3,7 +3,6 @@
 import ToolBar from '@/components/ToolBar'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
-import { toSlug } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
@@ -18,7 +17,7 @@ interface ClientLayoutProps {
   avatarUrl?: string | null
 }
 
-export default function ClientLayout({ children, recipes, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
+export default function ClientLayout({ children, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
   const isMarketingShell = !isLoggedIn
 
   const menuOptions = [
@@ -27,19 +26,6 @@ export default function ClientLayout({ children, recipes, isLoggedIn, username, 
       to: '/recipes',
       children: [
         { label: 'Browse All Recipes', to: '/recipes' },
-        { label: 'Add New Recipe', to: '/recipes/new' },
-        ...recipes.map((recipe: Recipe) => ({
-          label: recipe.name,
-          to: `/recipes/${toSlug(recipe.name)}`,
-        })),
-      ],
-    },
-    {
-      label: 'Foods',
-      to: '/foods',
-      children: [
-        { label: 'Browse All Foods', to: '/foods' },
-        { label: 'Add New Food', to: '/foods/new' },
       ],
     },
     {
