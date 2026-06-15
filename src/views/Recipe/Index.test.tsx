@@ -386,8 +386,8 @@ describe('Recipe View Page', () => {
       // Should now have 3 ingredients
       expect(screen.getByLabelText('Ingredient 3 name')).toBeInTheDocument()
       
-      // Total calories should be 250 + 75 = 325 (Ham added by default)
-      expect(await screen.findByText('325 calories')).toBeInTheDocument()
+      // New ingredient starts empty (0 cal) — user picks food via FoodSearch
+      expect(await screen.findByText('250 calories')).toBeInTheDocument()
 
       // Save the recipe
       await user.click(screen.getByRole('button', { name: /save/i }))

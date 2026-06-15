@@ -78,7 +78,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               >
                 Delete
               </button>
-              {food.source === 'manual' && (
+              {food.source !== 'usda' && (
                 <Link href={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
                   Edit
                 </Link>
