@@ -14,6 +14,7 @@ import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, canConvert } from '@/utils/unitConversion'
 import { InputNumber } from 'primereact/inputnumber'
+import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { SelectButton } from 'primereact/selectbutton'
 
@@ -129,13 +130,13 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     router.push('/pantry')
   }
 
-  function syncSizes(e: { value: number }) {
+  function syncSizes(e: InputNumberValueChangeEvent) {
 
     const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
     
-    setOriginalSize(e.value)
+    setOriginalSize(e.value ?? originalSize)
     if (currentSizeEqualsOriginal) {
-      setCurrentSize(e.value)
+      setCurrentSize(e.value ?? currentSize)
     }
   }
 
