@@ -44,6 +44,7 @@ const mockRecipes: Recipe[] = [
 const mockPantryItems: PantryItem[] = [
   {
     id: 1,
+    sourceType: 'food' as const,
     food: mockFood,
     expirationDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
     originalSize: { size: 1, unit: 'l' },
@@ -54,6 +55,7 @@ const mockPantryItems: PantryItem[] = [
   },
   {
     id: 2,
+    sourceType: 'food' as const,
     food: { ...mockFood, id: 2, name: 'Eggs' },
     expirationDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // yesterday
     originalSize: { size: 12, unit: 'count' },

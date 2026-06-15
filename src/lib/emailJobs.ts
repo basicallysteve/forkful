@@ -135,13 +135,14 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
     .where(and(
       inArray(pantryItems.userId, eligibleUsers.map(u => u.id)),
       isNull(pantryItems.dateDeleted),
+      isNotNull(pantryItems.foodId),
     ))
     .orderBy(pantryItems.expirationDate)
 
   const pantryFoodsByUser = new Map<number, Set<number>>()
   for (const row of allPantryFoods) {
     const set = pantryFoodsByUser.get(row.userId) ?? new Set<number>()
-    set.add(row.foodId)
+    set.add(row.foodId!)
     pantryFoodsByUser.set(row.userId, set)
   }
 

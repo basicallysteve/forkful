@@ -65,7 +65,7 @@ export const usePantryStore = create<PantryStore>((set, get) => ({
     return get().items.filter(item => item.status === status)
   },
   getItemsByFood: (foodId: number) => {
-    return get().items.filter(item => item.food.id === foodId)
+    return get().items.filter(item => item.food?.id === foodId)
   },
   getFrozenItems: () => {
     return get().items.filter(item => item.frozenDate !== null)

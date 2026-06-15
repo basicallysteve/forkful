@@ -1,13 +1,13 @@
-export type FoodSource = 'manual' | 'open_food_facts' | 'usda'
+import type { Measurement } from './Food'
 
-export type Measurement = {
-  unit: string
-  gramsPerUnit?: number
-}
+export type ProductSource = 'manual' | 'open_food_facts' | 'usda_branded'
 
-export type Food = {
+export type Product = {
   id: number
   name: string
+  barcode?: string
+  externalId?: string
+  parentFoodId?: number
   calories: number
   protein: number
   carbs: number
@@ -19,6 +19,5 @@ export type Food = {
   servingSize: number
   servingUnit: string
   measurements: Measurement[]
-  externalId?: string
-  source?: FoodSource
+  source?: ProductSource
 }

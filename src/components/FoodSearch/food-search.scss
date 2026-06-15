@@ -1,0 +1,48 @@
+.food-search {
+  position: relative;
+  width: 100%;
+
+  &--importing {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .p-autocomplete {
+    width: 100%;
+  }
+
+  .p-autocomplete-input {
+    width: 100%;
+  }
+}
+
+.food-search-group-label {
+  padding: 6px 12px 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #888);
+  border-top: 1px solid var(--border-color, #eee);
+
+  &:first-child {
+    border-top: none;
+  }
+}
+
+.food-search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0;
+
+  &-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  &-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted, #888);
+  }
+}
