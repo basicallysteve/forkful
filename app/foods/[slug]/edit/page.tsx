@@ -8,7 +8,7 @@ export default async function EditFoodPage({ params }: Props) {
   const { slug } = await params
   const food = await getFoodBySlug(slug)
 
-  if (!food) notFound()
+  if (!food || food.source !== 'manual') notFound()
 
   return <FoodStore existingFood={food} />
 }

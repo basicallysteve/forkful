@@ -109,7 +109,12 @@ A section at the top of the recipes list page, visible only to logged-in Users w
 A default hard filter applied to the recipes list for logged-in Users with Dietary Restrictions set. Hides recipes whose Dietary Tags do not cover all of the user's restrictions (recipes with no Dietary Tags are always shown). The user can toggle this filter off for the current browsing session; the toggle does not persist.
 
 ## Food
-A nutritional item in the library. Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from Open Food Facts. Shared across recipes, ingredients, and pantry items.
+A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro values (calories, protein, carbs, fat, fiber), a Serving Size, a Serving Unit, and a Measurements list. Can be created manually or imported from USDA FoodData Central (Foundation Foods or SR Legacy). Used exclusively as the basis for Recipe Ingredients. Not brand-specific and has no barcode. Distinct from a Product. _Exception_: a small number of legacy rows imported from Open Food Facts (before the Food/Product split) remain in the foods table with `source = 'open_food_facts'` and are grandfathered as Foods (see ADR-0008).
+_Avoid_: generic food, base food, parent food
+
+## Product
+A specific branded, purchasable food item (e.g. "Tyson Boneless Skinless Chicken Breast"). Has a barcode. Sourced from Open Food Facts or USDA Branded Foods, or created manually. Optionally linked to a parent Food — the link is not required (a Product with no Food parent can still be tracked in the Pantry). A Product is never used directly as a Recipe Ingredient; only its linked Food (if any) participates in recipes.
+_Avoid_: branded food, food product
 
 ## Serving Unit
 The unit in which a Food's nutrition data is anchored. Required in practice — the application always provides a value, though the column is not DB-constrained non-null. Defines what the Serving Size number means (e.g. `servingSize: 100, servingUnit: 'g'` means all nutrition values are per 100g). Belongs to exactly one unit category: mass, volume, or custom. Changing the Serving Unit within the same category automatically recalculates Serving Size to preserve calorie density. Cross-category changes are blocked.
@@ -139,4 +144,4 @@ A Food used in a Recipe, expressed as a quantity in a chosen Measurement. Calori
 A Recipe in which every Ingredient's calories can be fully calculated — i.e. no ingredient uses an Uncalibrated Custom Unit. Stored as a boolean on the Recipe and recomputed whenever the Recipe's ingredients are saved. Nutrition Complete status is used as a binary ranking signal: in public recipe discovery, Nutrition Complete recipes always rank above incomplete ones, regardless of the active sort order.
 
 ## Pantry Item
-A Food tracked as physical stock. Has an original size and a current size, each expressed as a quantity in a chosen Measurement from the Food's Measurements list. Units are constrained to the Food's Measurements — the same vocabulary used by Recipe ingredients.
+A unit of physical stock tracked in the user's pantry. Has an original size and a current size, each expressed as a quantity in a chosen Measurement. A Pantry Item has a `sourceType` discriminator that determines what it references: `'food'` (a generic Food, e.g. "Banana") or `'product'` (a branded Product, e.g. "Tyson Boneless Chicken Breast"). Exactly one of `foodId` or `productId` is set. A future `'recipe'` sourceType is reserved for tracking premade meals but is not yet implemented. Units are constrained to the Measurements of the referenced Food or Product.

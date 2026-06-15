@@ -5,7 +5,9 @@ import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
 type CreateBody = {
-  foodId: number
+  sourceType?: 'food' | 'product'
+  foodId?: number
+  productId?: number
   expirationDate?: string | null
   originalSizeAmount: number
   originalSizeUnit?: string
@@ -51,9 +53,15 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: CreateBody = await request.json()
 
-  if (!Number.isInteger(body.foodId) || body.foodId <= 0) {
-    return NextResponse.json({ error: 'Invalid foodId' }, { status: 400 })
+  const hasFoodId = Number.isInteger(body.foodId) && (body.foodId ?? 0) > 0
+  const hasProductId = Number.isInteger(body.productId) && (body.productId ?? 0) > 0
+  if (hasFoodId && hasProductId) {
+    return NextResponse.json({ error: 'Provide either foodId or productId, not both' }, { status: 400 })
   }
+  if (!hasFoodId && !hasProductId) {
+    return NextResponse.json({ error: 'Either foodId or productId is required' }, { status: 400 })
+  }
+  const sourceType = body.sourceType ?? (hasFoodId ? 'food' : 'product')
   if (typeof body.originalSizeAmount !== 'number' || body.originalSizeAmount <= 0) {
     return NextResponse.json({ error: 'originalSizeAmount must be a positive number' }, { status: 400 })
   }
@@ -66,6 +74,7 @@ export async function POST(request: Request) {
 
   const item = await taskRunner.run(() => createPantryItem({
     ...body,
+    sourceType,
     userId: user.userId,
     expirationDate: body.expirationDate ? new Date(body.expirationDate) : null,
   }))

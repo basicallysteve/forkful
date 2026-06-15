@@ -45,8 +45,7 @@ const mockFoods: Food[] = [
 
 function createPantryItem(overrides: Partial<PantryItem> & { id: number; food: Food }): PantryItem {
   return {
-    id: overrides.id,
-    food: overrides.food,
+    sourceType: 'food',
     originalSize: { size: 1, unit: 'oz' },
     currentSize: { size: 1, unit: 'oz' },
     expirationDate: new Date(),

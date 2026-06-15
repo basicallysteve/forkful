@@ -18,7 +18,7 @@ import {
   apiReorderRecipeSteps, apiUploadImage,
 } from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
-import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
+import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { toSlug } from '@/utils/slug'
 import { calculateCalories } from '@/utils/unitConversion'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -45,7 +45,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>({ ...recipe })
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
-  const [showImportDialog, setShowImportDialog] = useState(false)
   const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
   const [perServing, setPerServing] = useState(true)
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -186,7 +185,19 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
     // Create a placeholder ingredient with the first food
     if (localFoods.length > 0) {
-      const defaultFood = localFoods[0]
+      // default to empty values
+      const defaultFood = {
+        id: 0,
+        name: '',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+        servingSize: 1,
+        servingUnit: DEFAULT_SERVING_UNIT,
+        measurements: [],
+      }
       const newIngredient: Ingredient = {
         food: defaultFood,
         quantity: defaultFood.servingSize || 1,
@@ -585,25 +596,17 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                     <div className="ingredient-card-fields">
                       <label className="ingredient-field ingredient-field-name">
                         <span className="ingredient-field-label">Ingredient</span>
-                        <Autocomplete
+                        <FoodSearch
                           value={ingredient.food.name}
-                          options={localFoods}
-                          getOptionLabel={(opt) => opt.name}
-                          onChange={(next) => {
-                            const food = localFoods.find(f => f.name.toLowerCase() === next.toLowerCase())
-                            if (food) {
-                              handleIngredientFoodChange(i, food)
-                            } else if (next === '') {
-                              handleIngredientFoodChange(i, {
-                                id: -1, name: '', calories: 0, protein: 0, carbs: 0,
-                                fat: 0, fiber: 0, servingSize: 1, servingUnit: 'g', measurements: []
-                              })
+                          localFoods={localFoods}
+                          onChange={(food) => {
+                            if (!localFoods.some(f => f.id === food.id)) {
+                              setLocalFoods(prev => [...prev, food])
                             }
+                            handleIngredientFoodChange(i, food)
                           }}
-                          onSelect={(opt) => handleIngredientFoodChange(i, opt)}
-                          placeholder="Select food"
+                          placeholder="Search foods…"
                           inputAriaLabel={`Ingredient ${i + 1} name`}
-                          renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
                         />
                       </label>
                       <label className="ingredient-field ingredient-field-qty">
@@ -664,13 +667,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                 <button type="button" className="ghost-button add-ingredient-button" onClick={handleAddIngredient}>
                   + Add Ingredient
                 </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => setShowImportDialog(true)}
-                >
-                  Import from OpenFoodFacts
-                </button>
               </div>
             )}
 
@@ -726,11 +722,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         </section>
       </div>
 
-      <OpenFoodFactsImport
-        visible={showImportDialog}
-        onHide={() => setShowImportDialog(false)}
-        onImport={(food) => setLocalFoods((prev) => [...prev, food])}
-      />
     </div>
   )
 }

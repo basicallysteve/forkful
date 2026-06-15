@@ -78,9 +78,11 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               >
                 Delete
               </button>
-              <Link href={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
-                Edit
-              </Link>
+              {food.source !== 'usda' && (
+                <Link href={`/foods/${toSlug(food.name)}/edit`} className="primary-button">
+                  Edit
+                </Link>
+              )}
             </div>
           </div>
 
@@ -138,12 +140,7 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               <p className="serving-info">
                 <strong>Serving Size:</strong> {food.servingSize} {food.servingUnit}
               </p>
-              {food.barcode && (
-                <p className="serving-info">
-                  <strong>Barcode:</strong> {food.barcode}
-                </p>
-              )}
-              {food.measurements && food.measurements.length > 0 && (
+{food.measurements && food.measurements.length > 0 && (
                 <div className="measurements-info">
                   <strong>Available Measurements:</strong>
                   <div className="measurement-tags">
@@ -158,6 +155,20 @@ export default function FoodIndex({ food }: FoodIndexProps) {
             </div>
 
             <p className="macro-summary">{formatMacros()}</p>
+
+            {food.source === 'usda' && (
+              <p className="off-attribution">
+                Data from{' '}
+                <a
+                  href="https://fdc.nal.usda.gov"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  USDA FoodData Central
+                </a>
+                . Public domain.
+              </p>
+            )}
 
             {food.source === 'open_food_facts' && (
               <p className="off-attribution">

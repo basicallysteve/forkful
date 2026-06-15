@@ -297,13 +297,17 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food.name}`}
+                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
                         />
                       </td>
                       <td>
-                        <Link href={`/foods/${toSlug(item.food.name)}`}>
-                          {item.food.name}
-                        </Link>
+                        {item.food ? (
+                          <Link href={`/foods/${toSlug(item.food.name)}`}>
+                            {item.food.name}
+                          </Link>
+                        ) : (
+                          <Link href={`/pantry/${item.id}/edit`}>{item.product?.name}</Link>
+                        )}
                       </td>
                       <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
                       <td>
@@ -365,14 +369,18 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food.name}`}
+                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
                       />
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
-                          {item.food.name}
-                        </Link>
+                        {item.food ? (
+                          <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
+                            {item.food.name}
+                          </Link>
+                        ) : (
+                          <Link href={`/pantry/${item.id}/edit`} className="card-title">{item.product?.name}</Link>
+                        )}
                         <div className="card-badges">
                           <span className={`status-badge ${getStatusClass(item.status)}`}>
                             {getStatusLabel(item.status)}

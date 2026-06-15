@@ -13,6 +13,7 @@ const mockFood = { id: 1, name: 'Chicken Breast', calories: 165, protein: 31, ca
 // Raw shape returned by the API (dates as ISO strings, as JSON serialization produces)
 const mockRawItem = {
   id: 1,
+  sourceType: 'food' as const,
   food: mockFood,
   originalSize: { size: 16, unit: 'oz' },
   currentSize: { size: 8, unit: 'oz' },

@@ -127,6 +127,13 @@
       "when": 1781300000000,
       "tag": "0017_account_feedback_userid_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781400000000,
+      "tag": "0018_food_product_split",
+      "breakpoints": true
     }
   ]
 }

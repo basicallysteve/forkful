@@ -17,7 +17,9 @@ function parsePantryItem(raw: RawPantryItem): PantryItem {
 }
 
 export type CreatePantryItemData = {
-  foodId: number
+  sourceType?: 'food' | 'product'
+  foodId?: number
+  productId?: number
   expirationDate?: string | null
   originalSizeAmount: number
   originalSizeUnit?: string

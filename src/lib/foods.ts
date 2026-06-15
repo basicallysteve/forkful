@@ -1,4 +1,4 @@
-import { eq, isNull, and } from 'drizzle-orm'
+import { eq, isNull, and, ilike, asc, desc, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
 import type { Food, FoodSource, Measurement } from '@/types/Food'
@@ -30,27 +30,37 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? 'g',
     measurements: parseMeasurements(row.measurements),
-    barcode: row.barcode ?? undefined,
+    externalId: row.externalId ?? undefined,
     source: (row.source as FoodSource) ?? 'manual',
   }
 }
 
 export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
   try {
-    let rows = await db.select().from(foods).where(isNull(foods.dateDeleted))
-    if (options.search) {
-      const term = options.search.toLowerCase()
-      rows = rows.filter(r => r.name.toLowerCase().includes(term))
-    }
-    if (options.sortBy) {
-      rows = rows.sort((a, b) => {
-        let cmp = 0
-        if (options.sortBy === 'name') cmp = a.name.localeCompare(b.name)
-        else if (options.sortBy === 'calories') cmp = a.calories - b.calories
-        else if (options.sortBy === 'protein') cmp = Number(a.protein ?? 0) - Number(b.protein ?? 0)
-        return options.sortDir === 'desc' ? -cmp : cmp
-      })
-    }
+    const where = options.search
+      ? and(isNull(foods.dateDeleted), ilike(foods.name, `%${options.search}%`))
+      : isNull(foods.dateDeleted)
+
+    const orderBy = (() => {
+      if (options.search) {
+        const term = options.search
+        // Exact match → starts-with → contains, then alphabetical within each tier
+        return [
+          sql`CASE
+            WHEN ${foods.name} ILIKE ${term}                          THEN 0
+            WHEN SPLIT_PART(${foods.name}, ',', 1) ILIKE ${term + '%'} THEN 1
+            WHEN ${foods.name} ILIKE ${term + '%'}                    THEN 2
+            ELSE 3
+          END`,
+          asc(foods.name),
+        ]
+      }
+      if (options.sortBy === 'calories') return [options.sortDir === 'desc' ? desc(foods.calories) : asc(foods.calories)]
+      if (options.sortBy === 'protein') return [options.sortDir === 'desc' ? desc(foods.protein) : asc(foods.protein)]
+      return [options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)]
+    })()
+
+    const rows = await db.select().from(foods).where(where).orderBy(...orderBy)
     return rows.map(mapFood)
   } catch {
     return []
@@ -64,6 +74,11 @@ export async function getFoodBySlug(slug: string): Promise<Food | null> {
 
 export async function getFoodById(id: number): Promise<Food | null> {
   const [row] = await db.select().from(foods).where(and(eq(foods.id, id), isNull(foods.dateDeleted)))
+  return row ? mapFood(row) : null
+}
+
+export async function getFoodByExternalId(externalId: string): Promise<Food | null> {
+  const [row] = await db.select().from(foods).where(and(eq(foods.externalId, externalId), isNull(foods.dateDeleted)))
   return row ? mapFood(row) : null
 }
 
@@ -82,7 +97,7 @@ export async function createFood(data: Omit<Food, 'id'>): Promise<Food> {
     saturatedFat: data.saturatedFat != null ? String(data.saturatedFat) : null,
     sugar: data.sugar != null ? String(data.sugar) : null,
     sodium: data.sodium != null ? String(data.sodium) : null,
-    barcode: data.barcode ?? null,
+    externalId: data.externalId ?? null,
     source: data.source ?? 'manual',
   }).returning()
   return mapFood(row)
@@ -109,7 +124,7 @@ export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): P
   if (data.saturatedFat !== undefined) updates.saturatedFat = data.saturatedFat != null ? String(data.saturatedFat) : null
   if (data.sugar !== undefined) updates.sugar = data.sugar != null ? String(data.sugar) : null
   if (data.sodium !== undefined) updates.sodium = data.sodium != null ? String(data.sodium) : null
-  if (data.barcode !== undefined) updates.barcode = data.barcode ?? null
+  if (data.externalId !== undefined) updates.externalId = data.externalId ?? null
 
   if (existing?.source === 'open_food_facts') {
     const current = mapFood(existing)
@@ -120,11 +135,6 @@ export async function updateFood(id: number, data: Partial<Omit<Food, 'id'>>): P
   }
 
   const [row] = await db.update(foods).set(updates).where(eq(foods.id, id)).returning()
-  return row ? mapFood(row) : null
-}
-
-export async function getFoodByBarcode(barcode: string): Promise<Food | null> {
-  const [row] = await db.select().from(foods).where(and(eq(foods.barcode, barcode), isNull(foods.dateDeleted)))
   return row ? mapFood(row) : null
 }
 

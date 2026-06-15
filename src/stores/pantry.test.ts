@@ -31,6 +31,7 @@ const mockFood2: Food = {
 
 const createPantryItem = (overrides: Partial<PantryItem> = {}): PantryItem => ({
   id: 1,
+  sourceType: 'food',
   food: mockFood1,
   expirationDate: new Date('2025-12-20'),
   originalSize: { size: 2, unit: 'lb' },
@@ -61,7 +62,7 @@ describe('Pantry Store', () => {
       const { items } = usePantryStore.getState()
 
       expect(items).toHaveLength(1)
-      expect(items[0].food.id).toBe(1)
+      expect(items[0].food!.id).toBe(1)
       expect(items[0].originalSize.size).toBe(2)
     })
 
@@ -232,8 +233,8 @@ describe('Pantry Store', () => {
 
       const food1Items = usePantryStore.getState().getItemsByFood(1)
       expect(food1Items).toHaveLength(2)
-      expect(food1Items[0].food.id).toBe(1)
-      expect(food1Items[1].food.id).toBe(1)
+      expect(food1Items[0].food!.id).toBe(1)
+      expect(food1Items[1].food!.id).toBe(1)
     })
   })
 

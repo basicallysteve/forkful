@@ -34,6 +34,7 @@ const mockFood: Food = {
 function makeItem(overrides: Partial<PantryItem> = {}): PantryItem {
   return {
     id: 1,
+    sourceType: 'food',
     food: mockFood,
     originalSize: { size: 16, unit: 'oz' },
     currentSize: { size: 8, unit: 'oz' },
@@ -50,10 +51,10 @@ beforeEach(() => {
   resetFoodStore()
   vi.clearAllMocks()
   useFoodStore.setState({ foods: [mockFood] })
-  ;(useParams as Mock).mockReturnValue({ id: '1' })
+  ;(useParams as unknown as Mock).mockReturnValue({ id: '1' })
   // Re-install the throwing implementation; the next-navigation mock defines it
   // once at module load, and previous tests in this file may have overridden it.
-  ;(notFound as Mock).mockImplementation(() => {
+  ;(notFound as unknown as Mock).mockImplementation(() => {
     throw new Error('NEXT_NOT_FOUND')
   })
 })
@@ -92,7 +93,7 @@ describe('Edit Pantry Item Page — fetch fallback', () => {
     ;(apiFetchPantryItem as Mock).mockResolvedValue(null)
     // Don't throw — we only care that notFound was invoked, and the async
     // rerender would otherwise produce an uncaught NEXT_NOT_FOUND error.
-    ;(notFound as Mock).mockImplementation(() => undefined as never)
+    ;(notFound as unknown as Mock).mockImplementation(() => undefined as never)
 
     render(<EditPantryItemPage />)
 
@@ -103,7 +104,7 @@ describe('Edit Pantry Item Page — fetch fallback', () => {
   it('calls notFound() when the API rejects', async () => {
     usePantryStore.setState({ items: [] })
     ;(apiFetchPantryItem as Mock).mockRejectedValue(new Error('network'))
-    ;(notFound as Mock).mockImplementation(() => undefined as never)
+    ;(notFound as unknown as Mock).mockImplementation(() => undefined as never)
 
     render(<EditPantryItemPage />)
 
@@ -112,7 +113,7 @@ describe('Edit Pantry Item Page — fetch fallback', () => {
   })
 
   it('calls notFound() immediately when the id param is not a finite integer', () => {
-    ;(useParams as Mock).mockReturnValue({ id: 'not-a-number' })
+    ;(useParams as unknown as Mock).mockReturnValue({ id: 'not-a-number' })
 
     expect(() => render(<EditPantryItemPage />)).toThrow('NEXT_NOT_FOUND')
     expect(notFound).toHaveBeenCalled()

@@ -1,7 +1,8 @@
 import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index } from 'drizzle-orm/pg-core';
 import type { Measurement } from '@/types/Food'
 
-export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts']);
+export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts', 'usda']);
+export const productSourceEnum = pgEnum('product_source', ['manual', 'open_food_facts', 'usda_branded']);
 export const recipeSuggestionFrequencyEnum = pgEnum('recipe_suggestion_frequency', ['never', 'weekly', 'monthly']);
 export const pantryExpirationFrequencyEnum = pgEnum('pantry_expiration_frequency', ['never', 'daily', 'weekly']);
 export const accountClosureActionEnum = pgEnum('account_closure_action', ['deactivated', 'deleted']);
@@ -21,8 +22,32 @@ export const foods = pgTable('foods', {
   saturatedFat: numeric('saturated_fat', { precision: 10, scale: 2 }),
   sugar: numeric('sugar', { precision: 10, scale: 2 }),
   sodium: numeric('sodium', { precision: 10, scale: 1 }),
-  barcode: varchar('barcode', { length: 50 }),
+  externalId: varchar('external_id', { length: 100 }),
   source: foodSourceEnum('source').notNull().default('manual'),
+  dateAdded: timestamp('date_added').defaultNow(),
+  dateUpdated: timestamp('date_updated'),
+  dateDeleted: timestamp('date_deleted'),
+});
+
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique(),
+  barcode: varchar('barcode', { length: 50 }),
+  externalId: varchar('external_id', { length: 100 }),
+  parentFoodId: integer('parent_food_id').references(() => foods.id, { onDelete: 'set null' }),
+  calories: integer('calories').notNull(),
+  protein: numeric('protein', { precision: 10, scale: 2 }).notNull().default('0'),
+  carbs: numeric('carbs', { precision: 10, scale: 2 }).notNull().default('0'),
+  fat: numeric('fat', { precision: 10, scale: 2 }).notNull().default('0'),
+  fiber: numeric('fiber', { precision: 10, scale: 2 }).notNull().default('0'),
+  servingSize: numeric('serving_size', { precision: 10, scale: 2 }).notNull().default('1'),
+  servingUnit: varchar('serving_unit', { length: 50 }),
+  measurements: jsonb('measurements').$type<Measurement[]>().default([]),
+  saturatedFat: numeric('saturated_fat', { precision: 10, scale: 2 }),
+  sugar: numeric('sugar', { precision: 10, scale: 2 }),
+  sodium: numeric('sodium', { precision: 10, scale: 1 }),
+  source: productSourceEnum('source').notNull().default('manual'),
   dateAdded: timestamp('date_added').defaultNow(),
   dateUpdated: timestamp('date_updated'),
   dateDeleted: timestamp('date_deleted'),
@@ -86,9 +111,11 @@ export const pantryItems = pgTable('pantry_items', {
   userId: integer('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  sourceType: varchar('source_type', { length: 20 }).notNull().default('food'),
   foodId: integer('food_id')
-    .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
+  productId: integer('product_id')
+    .references(() => products.id, { onDelete: 'cascade' }),
   expirationDate: timestamp('expiration_date'),
   originalSizeAmount: numeric('original_size_amount', { precision: 10, scale: 2 }).notNull(),
   originalSizeUnit: varchar('original_size_unit', { length: 50 }),
