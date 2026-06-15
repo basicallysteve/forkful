@@ -12,7 +12,7 @@ import type { Product } from '@/types/Product'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
-import { canConvert, getAllowedUnits, CUSTOM_UNITS } from '@/utils/unitConversion'
+import { canConvert, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS } from '@/utils/unitConversion'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
@@ -63,7 +63,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const unitOptions = useMemo(() => {
     const source = sourceMode === 'food' ? selectedFood : selectedProduct
     if (!source) {
-      return [...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
+      return [...MASS_UNITS, ...VOLUME_UNITS, ...CUSTOM_UNITS].map((u) => ({ label: u, value: u }))
     }
     const stored = source.measurements.map(m => m.unit)
     const crossCategory = getAllowedUnits(source.servingUnit, source.density)

@@ -76,7 +76,7 @@ function normaliseUSDAUnit(raw: string | undefined): string | null {
 
 // ---- Portion → Measurements + density ----
 
-function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: Measurement[]; density?: number } {
+export function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: Measurement[]; density?: number } {
   const measurements: Measurement[] = []
   let density: number | undefined
 
@@ -85,31 +85,34 @@ function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: Measure
     if (amount <= 0 || portion.gramWeight <= 0) continue
 
     const rawUnit = portion.measureUnit?.abbreviation ?? portion.measureUnit?.name ?? portion.modifier
+    if (!rawUnit?.trim()) continue
+
     const normUnit = normaliseUSDAUnit(rawUnit)
 
-    if (!normUnit) continue
-
-    const category = getUnitCategory(normUnit)
-
-    if (category === 'custom') {
-      const gramsPerUnit = portion.gramWeight / amount
-      if (!measurements.some(m => m.unit === normUnit)) {
-        measurements.push({ unit: normUnit, gramsPerUnit: Math.round(gramsPerUnit * 100) / 100 })
-      }
-    } else if (category === 'volume' && density === undefined) {
-      // Use the first volume portion to derive density
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mlPerUnit = convert(1).from(normUnit as any).to('ml' as any)
-        const mlTotal = mlPerUnit * amount
-        if (mlTotal > 0) {
-          density = Math.round((portion.gramWeight / mlTotal) * 10000) / 10000
+    if (normUnit) {
+      // Known standard unit — use for density derivation if volume
+      const category = getUnitCategory(normUnit)
+      if (category === 'volume' && density === undefined) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mlPerUnit = convert(1).from(normUnit as any).to('ml' as any)
+          const mlTotal = mlPerUnit * amount
+          if (mlTotal > 0) {
+            density = Math.round((portion.gramWeight / mlTotal) * 10000) / 10000
+          }
+        } catch {
+          // unknown unit — skip
         }
-      } catch {
-        // unknown unit — skip
+      }
+      // mass portions are redundant with standard conversion — skip
+    } else {
+      // Unknown unit → treat as a Calibrated Custom Unit
+      const customUnit = rawUnit.toLowerCase().trim()
+      if (!measurements.some(m => m.unit === customUnit)) {
+        const gramsPerUnit = portion.gramWeight / amount
+        measurements.push({ unit: customUnit, gramsPerUnit: Math.round(gramsPerUnit * 100) / 100 })
       }
     }
-    // mass portions are redundant with standard conversion — skip
   }
 
   return { measurements, density }
@@ -117,10 +120,11 @@ function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: Measure
 
 // ---- Food detail fetch ----
 
-async function fetchFoodDetail(fdcId: number): Promise<USDADetailItem | null> {
+export async function fetchFoodDetail(fdcId: number): Promise<USDADetailItem | null> {
   try {
     const apiKey = getApiKey()
-    const res = await fetch(`${USDA_BASE}/food/${fdcId}?api_key=${apiKey}`)
+    const params = new URLSearchParams({ api_key: apiKey })
+    const res = await fetch(`${USDA_BASE}/food/${fdcId}?${params}`)
     if (!res.ok) return null
     return await res.json() as USDADetailItem
   } catch {
@@ -311,16 +315,21 @@ export function mapUSDABrandedToProduct(item: USDABrandedItem): Omit<Product, 'i
 
 /**
  * Async import: maps a USDA Branded item to a Product, enriched with
- * Measurements and Density derived from the food detail endpoint's foodPortions.
+ * Measurements and Density fetched via the internal /api/usda/food/[fdcId] route.
+ * Safe to call from client components — no USDA API key is used directly.
  */
 export async function importUSDABrandedProduct(item: USDABrandedItem): Promise<Omit<Product, 'id'>> {
   const base = mapUSDABrandedToProduct(item)
-  const detail = await fetchFoodDetail(item.fdcId)
-  if (!detail?.foodPortions?.length) return base
-  const { measurements, density } = mapPortionsToData(detail.foodPortions)
-  return {
-    ...base,
-    measurements: [{ unit: base.servingUnit }, ...measurements],
-    density,
+  try {
+    const res = await fetch(`/api/usda/food/${item.fdcId}`)
+    if (!res.ok) return base
+    const { measurements, density } = await res.json() as { measurements: Measurement[]; density: number | null }
+    return {
+      ...base,
+      measurements: [{ unit: base.servingUnit }, ...measurements],
+      ...(density != null ? { density } : {}),
+    }
+  } catch {
+    return base
   }
 }

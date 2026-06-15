@@ -64,12 +64,13 @@ export function convertUnit(value: number, fromUnit: string, toUnit: string, den
 
 export function getAllowedUnits(baseUnit: string, density?: number): string[] {
   const category = getUnitCategory(baseUnit)
+  const hasDensity = density != null && density > 0
 
   if (category === 'mass') {
-    return density ? [...MASS_UNITS, ...VOLUME_UNITS] : [...MASS_UNITS]
+    return hasDensity ? [...MASS_UNITS, ...VOLUME_UNITS] : [...MASS_UNITS]
   }
   if (category === 'volume') {
-    return density ? [...VOLUME_UNITS, ...MASS_UNITS] : [...VOLUME_UNITS]
+    return hasDensity ? [...VOLUME_UNITS, ...MASS_UNITS] : [...VOLUME_UNITS]
   }
   return [baseUnit, ...CUSTOM_UNITS.filter(u => u !== baseUnit)]
 }

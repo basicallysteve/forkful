@@ -94,7 +94,7 @@ function Store({ existingFood }: FoodStoreProps) {
 
     const newUnitCategory = getUnitCategory(trimmed)
     const crossCategory = newUnitCategory !== 'custom' && newUnitCategory !== servingUnitCategory
-    if (servingUnitCategory !== 'custom' && crossCategory && !food.density) {
+    if (servingUnitCategory !== 'custom' && crossCategory && !(food.density && food.density > 0)) {
       return
     }
 
@@ -299,7 +299,7 @@ function Store({ existingFood }: FoodStoreProps) {
                       minFractionDigits={0}
                       maxFractionDigits={4}
                       value={food.density ?? null}
-                      onValueChange={(e) => setFood({ ...food, density: e.value ?? undefined })}
+                      onValueChange={(e) => setFood({ ...food, density: (e.value != null && e.value > 0) ? e.value : undefined })}
                       aria-label="Density in grams per millilitre"
                       placeholder="—"
                     />
@@ -405,7 +405,7 @@ function Store({ existingFood }: FoodStoreProps) {
                   <div className="measurements-list">
                     {food.measurements?.map((m) => {
                       const isCustom = getUnitCategory(m.unit) === 'custom'
-                      const canCalibrate = isCustom && (servingUnitCategory === 'mass' || (servingUnitCategory === 'volume' && !!food.density))
+                      const canCalibrate = isCustom && (servingUnitCategory === 'mass' || (servingUnitCategory === 'volume' && food.density != null && food.density > 0))
                       const isUncalibrated = isCustom && !m.gramsPerUnit
                       return (
                         <div key={m.unit} className={`measurement-tag ${isUncalibrated && canCalibrate ? 'measurement-tag-warn' : ''}`}>
