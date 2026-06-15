@@ -55,7 +55,6 @@ export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> 
           asc(foods.name),
         ]
       }
-      const dir = options.sortDir === 'desc' ? 'desc' : 'asc'
       if (options.sortBy === 'calories') return [options.sortDir === 'desc' ? desc(foods.calories) : asc(foods.calories)]
       if (options.sortBy === 'protein') return [options.sortDir === 'desc' ? desc(foods.protein) : asc(foods.protein)]
       return [options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)]
