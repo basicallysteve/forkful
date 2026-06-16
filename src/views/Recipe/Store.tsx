@@ -256,12 +256,6 @@ function Store() {
   }, [recipe])
 
   // Check for duplicate recipe name (case-insensitive, trimmed)
-  const isDuplicateName = useMemo(() => {
-    const trimmedName = recipe.name?.trim().toLowerCase()
-    if (!trimmedName) return false
-    return recipes.some(r => r.name.trim().toLowerCase() === trimmedName)
-  }, [recipe.name, recipes])
-
   // Find similar recipes based on ingredient overlap using Jaccard similarity
   const similarRecipe = useMemo(() => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return null
@@ -283,8 +277,8 @@ function Store() {
   }, [recipe.ingredients, recipes])
 
   const canSave = useMemo(() => {
-    return !!(recipe.name && recipe.meal && recipe.description && !isDuplicateName)
-  }, [recipe, isDuplicateName])
+    return !!(recipe.name && recipe.meal && recipe.description)
+  }, [recipe])
 
     const canPublish = useMemo(() => {
         return !!(canSave && ingredientCount > 0)
@@ -353,22 +347,15 @@ function Store() {
 
   const detailsTabContent = (<form className="store-form">
               <div className="form-grid">
-                <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
+                <label className="form-field">
                   <span className="field-label">Name</span>
                   <InputText
-                    className={isDuplicateName ? 'input-error' : undefined}
                     type="text"
                     value={recipe.name}
                     placeholder="e.g. Smoky chipotle chili"
                     onChange={(e) => setRecipe({ ...recipe, name: e.target.value })}
-                    aria-invalid={isDuplicateName}
-                    aria-describedby={isDuplicateName ? "name-error" : undefined}
                   />
-                  {isDuplicateName ? (
-                    <span id="name-error" className="field-error" role="alert">A recipe with this name already exists.</span>
-                  ) : (
-                    <span className="field-hint">Give your recipe a clear, inviting title.</span>
-                  )}
+                  <span className="field-hint">Give your recipe a clear, inviting title.</span>
                 </label>
 
                 <div className="form-field">

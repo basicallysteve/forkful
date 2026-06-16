@@ -75,89 +75,28 @@ function renderWithProviders(
 }
 
 describe('Store Page - Recipe Creation', () => {
-  describe('Duplicate Recipe Name Validation', () => {
-    it('shows error when recipe name matches existing recipe (exact match)', async () => {
+  describe('Save Recipe button enablement', () => {
+    it('enables Save Recipe button when all required fields are filled', async () => {
       const user = userEvent.setup()
       renderWithProviders(<Store />)
 
       const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
       await user.type(nameInput, 'Ham and Cheese Sandwich')
 
-      expect(screen.getByRole('alert')).toHaveTextContent('A recipe with this name already exists.')
-      expect(nameInput).toHaveAttribute('aria-invalid', 'true')
-    })
-
-    it('shows error when recipe name matches existing recipe (case-insensitive)', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Store />)
-
-      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
-      await user.type(nameInput, 'HAM AND CHEESE SANDWICH')
-
-      expect(screen.getByRole('alert')).toHaveTextContent('A recipe with this name already exists.')
-    })
-
-    it('shows error when recipe name matches existing recipe (trimmed whitespace)', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Store />)
-
-      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
-      await user.type(nameInput, '  Ham and Cheese Sandwich  ')
-
-      expect(screen.getByRole('alert')).toHaveTextContent('A recipe with this name already exists.')
-    })
-
-    it('does not show error for unique recipe name', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Store />)
-
-      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
-      await user.type(nameInput, 'Unique Recipe Name')
-
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(nameInput).toHaveAttribute('aria-invalid', 'false')
-    })
-
-    it('disables Save Recipe button when duplicate name exists', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Store />)
-
-      // Fill out all fields with a duplicate name
-      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
-      await user.type(nameInput, 'Ham and Cheese Sandwich')
-
-      // Select a meal option
       const lunchRadio = screen.getByRole('radio', { name: /lunch/i })
       await user.click(lunchRadio)
 
-      // Fill description
       const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
       await user.type(descriptionInput, 'A test description')
 
-      // Save button should be disabled
-      const saveButton = screen.getByRole('button', { name: /save recipe/i })
-      expect(saveButton).toBeDisabled()
-    })
-
-    it('enables Save Recipe button when name is unique and all fields are filled', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(<Store />)
-
-      // Fill out all fields with a unique name
-      const nameInput = screen.getByPlaceholderText('e.g. Smoky chipotle chili')
-      await user.type(nameInput, 'Unique Recipe')
-
-      // Select a meal option
-      const lunchRadio = screen.getByRole('radio', { name: /lunch/i })
-      await user.click(lunchRadio)
-
-      // Fill description
-      const descriptionInput = screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.')
-      await user.type(descriptionInput, 'A test description')
-
-      // Save button should be enabled
       const saveButton = screen.getByRole('button', { name: /save recipe/i })
       expect(saveButton).not.toBeDisabled()
+    })
+
+    it('disables Save Recipe button when required fields are missing', async () => {
+      renderWithProviders(<Store />)
+      const saveButton = screen.getByRole('button', { name: /save recipe/i })
+      expect(saveButton).toBeDisabled()
     })
   })
 
