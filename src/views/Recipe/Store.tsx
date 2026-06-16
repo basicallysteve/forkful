@@ -314,6 +314,7 @@ function Store() {
     const newId = recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
     return {
       id: newId,
+      shortId: '',
       name: recipe.name!.trim(),
       meal: recipe.meal,
       description: recipe.description!,
