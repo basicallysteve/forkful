@@ -25,6 +25,7 @@ interface SuggestedRecipe {
   name: string
   description: string | null
   cuisineType: string | null
+  shortId: string
   slug: string
 }
 

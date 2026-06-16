@@ -62,7 +62,7 @@ export async function sendPantryReminderEmail(
 export async function sendRecipeSuggestionEmail(
   to: string,
   username: string,
-  recipes: Array<{ name: string; description: string | null; cuisineType: string | null; slug: string }>,
+  recipes: Array<{ name: string; description: string | null; cuisineType: string | null; shortId: string; slug: string }>,
   baseUrl: string,
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)

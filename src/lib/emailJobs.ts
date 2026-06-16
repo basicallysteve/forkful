@@ -98,6 +98,7 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
       description: recipes.description,
       cuisineType: recipes.cuisineType,
       dietaryTags: recipes.dietaryTags,
+      shortId: recipes.shortId,
       slug: recipes.slug,
     })
     .from(recipes)
@@ -183,6 +184,7 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
         name: r.name,
         description: r.description ?? null,
         cuisineType: r.cuisineType ?? null,
+        shortId: r.shortId,
         slug: r.slug ?? '',
       })),
       baseUrl,
