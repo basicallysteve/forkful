@@ -430,7 +430,7 @@ function getForYouRecipesQuery(cuisinePreferences: string[]): SQL<unknown> {
 export async function getForYouRecipes(cuisinePreferences: string[], limit = 5): Promise<Recipe[]> {
   if (cuisinePreferences.length === 0) return []
   try {
-    const rows = await db
+    const query =  db
       .select()
       .from(recipes)
       .where(
@@ -438,6 +438,7 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
       )
       .orderBy(desc(recipes.datePublished))
       .limit(limit)
+    const rows = await query
     return buildRecipesBatch(rows)
   } catch {
     return []

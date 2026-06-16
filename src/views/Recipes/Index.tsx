@@ -21,11 +21,12 @@ interface RecipesProps {
 }
 
 export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [], isAuthenticated = false }: RecipesProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
+  const storeRecipes = useRecipeStore((state) => state.recipes)
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
+  const [storeHydrated, setStoreHydrated] = useState(false)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
@@ -34,11 +35,16 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
   const [applyDietaryFilter, setApplyDietaryFilter] = useState(true)
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
+  // Populate the store from server-provided data. Until the store is hydrated,
+  // render directly from initialRecipes so there's no flash of "no recipes".
   useEffect(() => {
-    if (initialRecipes) {
+    if (initialRecipes !== undefined) {
       setRecipes(initialRecipes)
     }
-  }, [initialRecipes, setRecipes])
+    setStoreHydrated(true)
+  }, [initialRecipes, setRecipes, setStoreHydrated])
+
+  const recipes = storeHydrated ? storeRecipes : (initialRecipes ?? [])
 
   const filteredAndSortedRecipes = useMemo(() => {
     let filtered = filterMeal === 'all'
