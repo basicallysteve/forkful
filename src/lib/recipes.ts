@@ -413,13 +413,13 @@ export async function reorderRecipeSteps(recipeId: number, orderedIds: number[])
   })
 }
 
-function getForYouRecipesQuery(cuisinePreferences: string[]) {
+function getForYouRecipesQuery(cuisinePreferences: string[]): SQL<unknown> {
   return and(
     isNull(recipes.dateDeleted),
     eq(recipes.isPublic, 1),
     isNotNull(recipes.datePublished),
     inArray(recipes.cuisineType, cuisinePreferences)
-  )
+  )!
 }
 
 export async function getForYouRecipes(cuisinePreferences: string[], limit = 5): Promise<Recipe[]> {

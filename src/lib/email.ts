@@ -5,7 +5,7 @@ import { GoodbyeEmail } from '@/emails/GoodbyeEmail'
 import { DeactivationExpiryWarningEmail } from '@/emails/DeactivationExpiryWarningEmail'
 import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
-
+import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
 function makeTrackingPixelUrl(): string | undefined {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   if (!baseUrl) return undefined
@@ -90,3 +90,15 @@ export async function sendDeactivationExpiryWarningEmail(to: string, username: s
     react: DeactivationExpiryWarningEmail({ username, deletionDate: formatted, reactivateUrl, trackingPixelUrl }),
   })
 }
+
+export async function sendUserAccountCreationEmail(username: string): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to: "steven@eatforkful.com",
+    subject: 'New user signed up',
+    react: NewUserNotificationEmail({ username }),
+  })
+}
+
