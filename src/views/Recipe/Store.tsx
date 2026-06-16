@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { Recipe } from "@/types/Recipe"
+import type { Recipe, CreateRecipeInput } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
@@ -304,11 +304,8 @@ function Store() {
     })
   }
 
-  function createRecipe(publish: boolean): Recipe {
-    const newId = recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
+  function createRecipe(publish: boolean): CreateRecipeInput {
     return {
-      id: newId,
-      shortId: '',
       name: recipe.name!.trim(),
       meal: recipe.meal,
       description: recipe.description!,
@@ -317,7 +314,6 @@ function Store() {
       date_added: new Date(),
       date_published: publish ? new Date() : null,
       isPublic: publish,
-      nutritionComplete: true,
     }
   }
 

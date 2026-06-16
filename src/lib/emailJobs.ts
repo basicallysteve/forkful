@@ -2,6 +2,7 @@ import { eq, and, isNull, lte, gte, inArray, isNotNull, desc } from 'drizzle-orm
 import { db } from '@/db'
 import { users, pantryItems, foods, recipes, ingredients } from '@/db/schema'
 import { sendPantryReminderEmail, sendRecipeSuggestionEmail } from '@/lib/email'
+import { toSlug } from '@/utils/slug'
 
 export async function processPantryReminders(frequency: 'daily' | 'weekly'): Promise<{ sent: number }> {
   const now = new Date()
@@ -185,7 +186,7 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
         description: r.description ?? null,
         cuisineType: r.cuisineType ?? null,
         shortId: r.shortId,
-        slug: r.slug ?? '',
+        slug: r.slug ?? toSlug(r.name),
       })),
       baseUrl,
     )
