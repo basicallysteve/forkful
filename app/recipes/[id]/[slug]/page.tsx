@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { getRecipeByShortId, isSaved } from '@/lib/recipes'
 import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
@@ -16,7 +16,7 @@ export default async function RecipePage({ params }: Props) {
 
   const canonicalSlug = toSlug(recipe.name)
   if (slug !== canonicalSlug) {
-    redirect(`/recipes/${id}/${canonicalSlug}`)
+    permanentRedirect(`/recipes/${id}/${canonicalSlug}`)
   }
 
   const isOwner = session !== null && recipe.userId === session.userId

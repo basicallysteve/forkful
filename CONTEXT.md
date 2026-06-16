@@ -79,7 +79,7 @@ A single page (`/reset-password`) that handles two modes: (1) token mode — an 
 _Avoid_: forgot password page, change password page
 
 ## Recipe Short ID
-An opaque, 8-character nanoid assigned to a Recipe at creation time and never changed. Used as the stable lookup key in URLs (`/recipes/[shortId]/[slug]`) and API routes (`/api/recipes/[shortId]`). Not derived from the recipe name. Collision-proof across all users.
+An opaque, 8-character nanoid assigned to a Recipe at creation time and never changed. Used as the stable lookup key in URLs (`/recipes/[shortId]/[slug]`) and API routes (`/api/recipes/[shortId]`). Not derived from the recipe name. Collision probability is negligible at any realistic recipe count.
 _Avoid_: recipe ID (that term refers to the numeric primary key), slug
 
 ## Recipe

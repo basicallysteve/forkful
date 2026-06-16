@@ -10,10 +10,10 @@ Recipe URLs used a slug derived purely from the recipe name (`/recipes/chicken-s
 Add an opaque 8-character nanoid `shortId` column to the `recipes` table. The new canonical URL structure is `/recipes/[shortId]/[slug]` (e.g. `/recipes/x7k2m9ab/chicken-soup`).
 
 - The server resolves the recipe by `shortId` alone; the slug segment is ignored for lookup.
-- If the slug in the request is absent or stale (e.g. after a rename), the server 301-redirects to the canonical URL with the current slug — preserving SEO and keeping old links working.
+- If the slug in the request is absent or stale (e.g. after a rename), the server issues a 308 permanent redirect (Next.js `permanentRedirect`) to the canonical URL with the current slug — preserving SEO and keeping old links working.
 - API routes switch from `/api/recipes/[slug]` to `/api/recipes/[id]` for consistency.
 - The global unique constraint on `recipes.slug` is dropped — slug is now cosmetic only.
-- All existing recipe rows are backfilled with a generated nanoid in the migration.
+- All existing recipe rows are backfilled in the migration using `translate(encode(gen_random_bytes(6), 'base64'), '+/=', '-_')` — 6 bytes of entropy encoded as 8 base64url characters (48 bits).
 
 ## Alternatives considered
 - **ID-prefixed slug** (`/recipes/42-chicken-soup`): exposes the auto-increment primary key, enabling enumeration of all recipes and leaking growth metrics.

@@ -8,6 +8,7 @@ import type { Ingredient } from '@/types/Ingredient'
 import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { nanoid } from 'nanoid'
+import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
 
@@ -220,7 +221,7 @@ function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
   return ingredientList.every((ing) => ing.calories > 0 || ing.quantity === 0)
 }
 
-export async function createRecipe(data: Omit<Recipe, 'id' | 'nutritionComplete'>): Promise<Recipe> {
+export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
   const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   const [row] = await db.insert(recipes).values({
     name: data.name,

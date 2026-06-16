@@ -1,4 +1,4 @@
-import type { Recipe } from '@/types/Recipe'
+import type { Recipe, CreateRecipeInput } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 
 export type RecipeQueryOptions = {
@@ -27,7 +27,7 @@ export async function apiFetchRecipe(shortId: string): Promise<Recipe | null> {
   return res.json()
 }
 
-export async function apiCreateRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
+export async function apiCreateRecipe(data: CreateRecipeInput): Promise<Recipe> {
   const res = await fetch('/api/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
