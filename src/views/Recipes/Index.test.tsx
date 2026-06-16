@@ -25,6 +25,7 @@ const mockFoods: Food[] = [
 const mockRecipes: Recipe[] = [
   {
     id: 1,
+    shortId: 'aaa11111',
     name: 'Ham and Cheese Sandwich',
     meal: 'Lunch',
     description: 'A delicious sandwich made with ham and cheese.',
@@ -40,6 +41,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 2,
+    shortId: 'bbb22222',
     name: 'Spaghetti Bolognese',
     meal: 'Dinner',
     description: 'A classic Italian pasta dish with a rich meat sauce.',
@@ -55,6 +57,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 3,
+    shortId: 'ccc33333',
     name: 'Caesar Salad',
     meal: 'Lunch',
     description: 'A fresh salad with romaine lettuce, croutons, and Caesar dressing.',
@@ -282,9 +285,9 @@ describe('Recipes Page', () => {
       renderWithProviders(<Recipes />)
 
       const links = screen.getAllByRole('link')
-      expect(links.some(link => link.getAttribute('href') === '/recipes/ham-and-cheese-sandwich')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/spaghetti-bolognese')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/caesar-salad')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/aaa11111/ham-and-cheese-sandwich')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/bbb22222/spaghetti-bolognese')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/ccc33333/caesar-salad')).toBe(true)
     })
   })
 })

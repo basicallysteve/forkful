@@ -3,6 +3,7 @@ import { type RecipeStep } from "@/types/RecipeStep"
 
 export type Recipe = {
   id: number
+  shortId: string
   name: string
   meal?: "Lunch" | "Dinner" | "Breakfast" | "Snack" | "Dessert"
   description: string

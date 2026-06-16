@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getRecipeBySlug, updateRecipeStep, deleteRecipeStep } from '@/lib/recipes'
+import { getRecipeByShortId, updateRecipeStep, deleteRecipeStep } from '@/lib/recipes'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 
-type Params = { params: Promise<{ slug: string; stepId: string }> }
+type Params = { params: Promise<{ id: string; stepId: string }> }
 
 export async function PUT(request: Request, { params }: Params) {
-  const { slug, stepId } = await params
+  const { id, stepId } = await params
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const recipe = await getRecipeBySlug(slug, session.userId)
+  const recipe = await getRecipeByShortId(id, session.userId)
   if (!recipe) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (recipe.userId !== session.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -20,14 +20,13 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-  const { slug, stepId } = await params
+  const { id, stepId } = await params
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const recipe = await getRecipeBySlug(slug, session.userId)
+  const recipe = await getRecipeByShortId(id, session.userId)
   if (!recipe) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (recipe.userId !== session.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   await taskRunner.run(() => deleteRecipeStep(Number(stepId), recipe.id))
   return new NextResponse(null, { status: 204 })
 }
-

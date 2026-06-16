@@ -23,6 +23,7 @@ const mockFoods: Food[] = [
 const mockRecipes: Recipe[] = [
   {
     id: 1,
+    shortId: 'aaa11111',
     name: 'Ham and Cheese Sandwich',
     meal: 'Lunch',
     description: 'A delicious sandwich made with ham and cheese.',
@@ -39,6 +40,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 2,
+    shortId: 'bbb22222',
     name: 'Spaghetti Bolognese',
     meal: 'Dinner',
     description: 'A classic Italian pasta dish with a rich meat sauce.',
@@ -256,7 +258,7 @@ describe('Store Page - Recipe Creation', () => {
 
       // Check that the link exists and points to the right recipe
       const suggestionLink = await screen.findByRole('link', { name: /ham and cheese sandwich/i })
-      expect(suggestionLink).toHaveAttribute('href', '/recipes/ham-and-cheese-sandwich')
+      expect(suggestionLink).toHaveAttribute('href', '/recipes/aaa11111/ham-and-cheese-sandwich')
     })
   })
 

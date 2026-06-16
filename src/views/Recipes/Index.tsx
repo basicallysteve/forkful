@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
-import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
@@ -112,7 +111,7 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
     toDelete.forEach(recipe => deleteRecipe(recipe.id))
     setSelectedRecipes(new Set())
     try {
-      await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
+      await Promise.all(toDelete.map(recipe => apiDeleteRecipe(recipe.shortId)))
     } catch (err) {
       console.error('Failed to delete recipes from server:', err)
       try {

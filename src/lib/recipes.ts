@@ -7,6 +7,7 @@ import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
+import { nanoid } from 'nanoid'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
 
@@ -98,6 +99,7 @@ function mapRecipeRow(
 ): Recipe {
   return {
     id: row.id,
+    shortId: row.shortId,
     name: row.name,
     meal: row.meal as Recipe['meal'] | undefined,
     description: row.description ?? '',
@@ -199,12 +201,12 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
   }
 }
 
-export async function getRecipeBySlug(slug: string, viewerId?: number): Promise<Recipe | null> {
+export async function getRecipeByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
   const visibilityFilter = viewerId !== undefined
     ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
     : eq(recipes.isPublic, 1)
   const [row] = await db.select().from(recipes).where(
-    and(eq(recipes.slug, slug), isNull(recipes.dateDeleted), visibilityFilter)
+    and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
   )
   return row ? buildRecipe(row) : null
 }
@@ -222,6 +224,7 @@ export async function createRecipe(data: Omit<Recipe, 'id' | 'nutritionComplete'
   const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   const [row] = await db.insert(recipes).values({
     name: data.name,
+    shortId: nanoid(8),
     slug: toSlug(data.name),
     meal: data.meal,
     description: data.description,

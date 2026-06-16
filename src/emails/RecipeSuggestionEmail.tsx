@@ -65,7 +65,7 @@ export function RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixe
                   </p>
                 )}
                 <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#09090b' }}>
-                  <a href={`${baseUrl}/recipes/${recipe.slug}`} style={{ color: '#09090b', textDecoration: 'none' }}>
+                  <a href={`${baseUrl}/recipes/${recipe.shortId}/${recipe.slug}`} style={{ color: '#09090b', textDecoration: 'none' }}>
                     {recipe.name}
                   </a>
                 </p>
@@ -75,7 +75,7 @@ export function RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixe
                   </p>
                 )}
                 <a
-                  href={`${baseUrl}/recipes/${recipe.slug}`}
+                  href={`${baseUrl}/recipes/${recipe.shortId}/${recipe.slug}`}
                   style={{ fontSize: 13, color: '#10b981', fontWeight: 600, textDecoration: 'none' }}
                 >
                   View recipe →

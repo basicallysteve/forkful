@@ -1,17 +1,23 @@
-import { notFound } from 'next/navigation'
-import { getRecipeBySlug, isSaved } from '@/lib/recipes'
+import { notFound, redirect } from 'next/navigation'
+import { getRecipeByShortId, isSaved } from '@/lib/recipes'
 import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
+import { toSlug } from '@/utils/slug'
 import RecipeIndex from '@/views/Recipe/Index'
 
-type Props = { params: Promise<{ slug: string }> }
+type Props = { params: Promise<{ id: string; slug: string }> }
 
 export default async function RecipePage({ params }: Props) {
-  const { slug } = await params
+  const { id, slug } = await params
   const [foods, session] = await Promise.all([getFoods(), getSessionUser()])
-  const recipe = await getRecipeBySlug(slug, session?.userId)
+  const recipe = await getRecipeByShortId(id, session?.userId)
 
   if (!recipe) notFound()
+
+  const canonicalSlug = toSlug(recipe.name)
+  if (slug !== canonicalSlug) {
+    redirect(`/recipes/${id}/${canonicalSlug}`)
+  }
 
   const isOwner = session !== null && recipe.userId === session.userId
   const canSave = session !== null && recipe.isPublic && !isOwner

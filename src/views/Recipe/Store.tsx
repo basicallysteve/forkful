@@ -7,7 +7,7 @@ import type { Recipe } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
-import { toSlug } from "@/utils/slug"
+import { toRecipeUrl } from "@/utils/slug"
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
@@ -332,7 +332,7 @@ function Store() {
       const newRecipe = createRecipe(false)
       const created = await apiCreateRecipe(newRecipe)
       addRecipeToStore(created)
-      router.push(`/recipes/${toSlug(created.name)}`)
+      router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist new recipe:', err)
     }
@@ -344,7 +344,7 @@ function Store() {
       const newRecipe = createRecipe(true)
       const created = await apiCreateRecipe(newRecipe)
       addRecipeToStore(created)
-      router.push(`/recipes/${toSlug(created.name)}`)
+      router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist published recipe:', err)
     }
@@ -450,7 +450,7 @@ function Store() {
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <Link href={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link href={toRecipeUrl(similarRecipe.recipe.shortId, similarRecipe.recipe.name)} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}

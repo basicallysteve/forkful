@@ -78,6 +78,10 @@ _Avoid_: password expiry, password timeout, mandatory reset
 A single page (`/reset-password`) that handles two modes: (1) token mode — an unauthenticated user arriving via a Password Reset Token link; (2) forced mode — an authenticated user in a Forced Password Reset state. The form is identical in both modes; the backend call differs.
 _Avoid_: forgot password page, change password page
 
+## Recipe Short ID
+An opaque, 8-character nanoid assigned to a Recipe at creation time and never changed. Used as the stable lookup key in URLs (`/recipes/[shortId]/[slug]`) and API routes (`/api/recipes/[shortId]`). Not derived from the recipe name. Collision-proof across all users.
+_Avoid_: recipe ID (that term refers to the numeric primary key), slug
+
 ## Recipe
 A user-created cooking instruction set. Has a name, a Description, a Meal type, an optional Cuisine Type, optional Dietary Tags, optional prep/cook/total times, an optional Serves count, an ordered list of Recipe Steps, and an Ingredient list. Can be private (draft) or public+published (visible to all).
 

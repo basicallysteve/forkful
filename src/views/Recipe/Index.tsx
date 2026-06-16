@@ -19,7 +19,6 @@ import {
 } from '@/lib/api/recipes'
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
-import { toSlug } from '@/utils/slug'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 
@@ -224,11 +223,9 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     })
   }
 
-  const recipeSlug = toSlug(recipe.name)
-
   async function handleAddStep() {
     try {
-      const step = await apiCreateRecipeStep(recipeSlug, { content: '' })
+      const step = await apiCreateRecipeStep(recipe.shortId, { content: '' })
       setSteps((prev) => [...prev, step])
     } catch (err) {
       console.error('Failed to add step:', err)
@@ -243,7 +240,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     if (existing) clearTimeout(existing)
     stepDebounceTimers.current.set(key, setTimeout(async () => {
       try {
-        await apiUpdateRecipeStep(recipeSlug, stepId, { [field]: value })
+        await apiUpdateRecipeStep(recipe.shortId, stepId, { [field]: value })
       } catch (err) {
         console.error('Failed to update step:', err)
       }
@@ -253,7 +250,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   async function handleDeleteStep(stepId: number) {
     setSteps((prev) => prev.filter((s) => s.id !== stepId))
     try {
-      await apiDeleteRecipeStep(recipeSlug, stepId)
+      await apiDeleteRecipeStep(recipe.shortId, stepId)
     } catch (err) {
       console.error('Failed to delete step:', err)
     }
@@ -268,7 +265,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
     setSteps(next)
     try {
-      await apiReorderRecipeSteps(recipeSlug, next.map((s) => s.id))
+      await apiReorderRecipeSteps(recipe.shortId, next.map((s) => s.id))
     } catch (err) {
       console.error('Failed to reorder steps:', err)
     }
@@ -340,10 +337,10 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     setSavePending(true)
     try {
       if (saved) {
-        await apiUnsaveRecipe(toSlug(recipe.name))
+        await apiUnsaveRecipe(recipe.shortId)
         setSaved(false)
       } else {
-        await apiSaveRecipe(toSlug(recipe.name))
+        await apiSaveRecipe(recipe.shortId)
         setSaved(true)
       }
     } catch (err) {
