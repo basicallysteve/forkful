@@ -6,6 +6,7 @@ import { DeactivationExpiryWarningEmail } from '@/emails/DeactivationExpiryWarni
 import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
 import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
+import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
 function makeTrackingPixelUrl(): string | undefined {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   if (!baseUrl) return undefined
@@ -88,6 +89,29 @@ export async function sendDeactivationExpiryWarningEmail(to: string, username: s
     to,
     subject: 'Your Forkful account will be deleted soon',
     react: DeactivationExpiryWarningEmail({ username, deletionDate: formatted, reactivateUrl, trackingPixelUrl }),
+  })
+}
+
+export async function sendReviewReportSummaryEmail(
+  to: string,
+  reportCount: number,
+  reports: Array<{
+    reason: string
+    reviewAuthor: string | null
+    reviewRating: number
+    reviewBody: string | null
+    reportedAt: string
+    reporterUsername: string | null
+    reportComment: string | null
+  }>,
+  adminUrl: string,
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to,
+    subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on Forkful`,
+    react: ReviewReportSummaryEmail({ reportCount, reports, adminUrl }),
   })
 }
 

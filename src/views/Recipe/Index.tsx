@@ -21,6 +21,7 @@ import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
+import ReviewsTab from '@/views/Recipe/ReviewsTab'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -32,9 +33,11 @@ interface RecipeProps {
   canEdit?: boolean
   canSave?: boolean
   initialSaved?: boolean
+  isLoggedIn?: boolean
+  currentUserId?: number | null
 }
 
-export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false, currentUserId = null }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
@@ -46,6 +49,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
   const [steps, setSteps] = useState<RecipeStep[]>(recipe.steps ?? [])
   const [perServing, setPerServing] = useState(true)
+  const [activePanel, setActivePanel] = useState<'ingredients' | 'reviews'>('ingredients')
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   let publishedText = "Unpublished"
@@ -543,6 +547,15 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                 <span className="tab is-active">{displayRecipe.meal}</span>
               )}
               <span className="tab">{totalCalories} calories</span>
+              {currentRecipe.isPublic && !editMode && (
+                <button
+                  type="button"
+                  className={`tab-btn${activePanel === 'reviews' ? ' is-active' : ''}`}
+                  onClick={() => setActivePanel(activePanel === 'reviews' ? 'ingredients' : 'reviews')}
+                >
+                  Reviews
+                </button>
+              )}
             </div>
             <div className={editMode ? 'toolbar-actions edit-actions' : 'toolbar-actions'}>
               {editMode ? (
@@ -583,7 +596,15 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           </div>
 
           <div className="panel-content">
-            <div className="ingredient-list" role="list">
+            {activePanel === 'reviews' && (
+              <ReviewsTab
+                recipeShortId={currentRecipe.shortId}
+                isLoggedIn={isLoggedIn}
+                isOwner={canEdit ?? false}
+                currentUserId={currentUserId}
+              />
+            )}
+            <div className="ingredient-list" role="list" style={activePanel === 'reviews' ? { display: 'none' } : undefined}>
               {displayRecipe.ingredients.length === 0 && (
                 <p className="ingredient-empty">No ingredients added yet.</p>
               )}
@@ -672,7 +693,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
               </div>
             )}
 
-            <div className="nutrition-panel">
+            <div className="nutrition-panel" style={activePanel === 'reviews' ? { display: 'none' } : undefined}>
               <div className="nutrition-panel-header">
                 <div className="nutrition-serves">
                   <span className="nutrition-serves-label">Serves</span>

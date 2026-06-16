@@ -791,6 +791,265 @@
   flex: 1;
 }
 
+// ── Reviews Tab ───────────────────────────────────────────────────────────────
+
+.reviews-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reviews-aggregate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--accent-hover);
+  border: 1px solid var(--vscode-border);
+  border-radius: 10px;
+}
+
+.reviews-avg-rating {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vscode-text);
+}
+
+.reviews-avg-emoji {
+  font-size: 18px;
+}
+
+.reviews-count {
+  font-size: 13px;
+  color: var(--vscode-muted);
+}
+
+.reviews-empty {
+  color: var(--vscode-muted);
+  font-size: 14px;
+  padding: 12px;
+  border: 1px dashed var(--vscode-border);
+  border-radius: 10px;
+  background: var(--accent-hover);
+  margin: 0;
+}
+
+.reviews-loading {
+  color: var(--vscode-muted);
+  font-size: 14px;
+  padding: 12px;
+}
+
+.reviews-login-prompt {
+  color: var(--vscode-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.review-card {
+  padding: 14px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 10px;
+  background: var(--vscode-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-card--highlight {
+  border-color: var(--vscode-accent);
+  background: var(--accent-hover);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.review-most-helpful-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--vscode-accent);
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.review-author {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-text);
+}
+
+.review-date {
+  font-size: 12px;
+  color: var(--vscode-muted);
+}
+
+.review-edited {
+  font-size: 12px;
+  color: var(--vscode-muted);
+  font-style: italic;
+}
+
+.review-body {
+  margin: 0;
+  font-size: 14px;
+  color: var(--vscode-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review-footer-left,
+.review-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-like-btn {
+  font-size: 13px;
+  color: var(--vscode-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 120ms ease;
+
+  &:hover {
+    color: var(--vscode-accent);
+  }
+
+  &.is-liked {
+    color: var(--vscode-accent);
+  }
+}
+
+.review-like-count {
+  font-size: 13px;
+  color: var(--vscode-muted);
+}
+
+.review-action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--vscode-accent);
+  border-radius: 10px;
+  background: var(--accent-hover);
+}
+
+.review-form-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-text);
+}
+
+.review-body-input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--vscode-text);
+  background: var(--vscode-panel);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.5;
+
+  &::placeholder {
+    color: var(--vscode-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--vscode-accent);
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.review-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.report-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.report-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-text);
+}
+
+.report-reason-select {
+  width: 100%;
+}
+
+.report-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+// ── Reviews tab button ────────────────────────────────────────────────────────
+
+.tab-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--vscode-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    border-color: var(--vscode-border);
+    color: var(--vscode-text);
+  }
+
+  &.is-active {
+    border-color: var(--vscode-accent);
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+}
+
 @media (max-width: 775px) {
   .recipe-content {
     padding: 16px 12px 14px;

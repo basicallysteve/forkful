@@ -199,3 +199,47 @@ export const savedRecipes = pgTable('saved_recipes', {
 }, (t) => ({
   userRecipeUnique: unique('saved_recipes_user_recipe_unique').on(t.userId, t.recipeId),
 }));
+
+export const reviewReportReasonEnum = pgEnum('review_report_reason', ['spam', 'offensive_language', 'harassment', 'off_topic']);
+
+export const reviews = pgTable('reviews', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'set null' }),
+  recipeId: integer('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'cascade' }),
+  rating: integer('rating').notNull(),
+  body: text('body'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+  dateUpdated: timestamp('date_updated'),
+}, (t) => ({
+  userRecipeUnique: unique('reviews_user_recipe_unique').on(t.userId, t.recipeId),
+  recipeIdIdx: index('reviews_recipe_id_idx').on(t.recipeId),
+}));
+
+export const reviewLikes = pgTable('review_likes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'set null' }),
+  reviewId: integer('review_id')
+    .notNull()
+    .references(() => reviews.id, { onDelete: 'cascade' }),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  userReviewUnique: unique('review_likes_user_review_unique').on(t.userId, t.reviewId),
+}));
+
+export const reviewReports = pgTable('review_reports', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .references(() => users.id, { onDelete: 'set null' }),
+  reviewId: integer('review_id')
+    .notNull()
+    .references(() => reviews.id, { onDelete: 'cascade' }),
+  reason: reviewReportReasonEnum('reason').notNull(),
+  comment: text('comment'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  userReviewUnique: unique('review_reports_user_review_unique').on(t.userId, t.reviewId),
+}));
