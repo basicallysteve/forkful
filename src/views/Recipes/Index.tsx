@@ -38,15 +38,32 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
 
   useEffect(() => {
     if (hasFetched) return
-    const timer = setTimeout(() => setShowSkeleton(true), 150)
-    apiFetchRecipes().then((data) => {
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) setShowSkeleton(true)
+    }, 150)
+
+    apiFetchRecipes()
+      .then((data) => {
+        if (!cancelled) {
+          setRecipes(data)
+          setHasFetched(true)
+          setShowSkeleton(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShowSkeleton(false)
+          setHasFetched(true)
+        }
+      })
+      .finally(() => clearTimeout(timer))
+
+    return () => {
+      cancelled = true
       clearTimeout(timer)
-      setRecipes(data)
-      setHasFetched(true)
-      setShowSkeleton(false)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    }
+  }, [hasFetched, setRecipes, setHasFetched, setShowSkeleton])
 
   const forYouIds = useMemo(() => new Set(forYouRecipes.map((r) => r.id)), [forYouRecipes])
   const recipes = useMemo(() => storeRecipes.filter((r) => !forYouIds.has(r.id)), [storeRecipes, forYouIds])

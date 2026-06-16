@@ -35,15 +35,32 @@ export default function Foods() {
 
   useEffect(() => {
     if (hasFetched) return
-    const timer = setTimeout(() => setShowSkeleton(true), 150)
-    apiFetchFoods().then((data) => {
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) setShowSkeleton(true)
+    }, 150)
+
+    apiFetchFoods()
+      .then((data) => {
+        if (!cancelled) {
+          setFoods(data)
+          setHasFetched(true)
+          setShowSkeleton(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShowSkeleton(false)
+          setHasFetched(true)
+        }
+      })
+      .finally(() => clearTimeout(timer))
+
+    return () => {
+      cancelled = true
       clearTimeout(timer)
-      setFoods(data)
-      setHasFetched(true)
-      setShowSkeleton(false)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    }
+  }, [hasFetched, setFoods, setHasFetched, setShowSkeleton])
 
   const filteredAndSortedFoods = useMemo(() => {
     let filtered = foods
