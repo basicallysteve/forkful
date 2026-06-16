@@ -1,5 +1,5 @@
 import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
-import { sendUserAccountCreationEmail } from '@/lib/email'
+
 export type SignUpData = {
   username: string
   email: string
@@ -26,7 +26,6 @@ export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error ?? 'Registration failed')
   }
-  await sendUserAccountCreationEmail(data.username)
   return res.json()
 }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { signUp } from '@/lib/users'
+import { sendUserAccountCreationEmail } from '@/lib/email'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       dietaryRestrictions: body.dietaryRestrictions ?? [],
       marketingEmailOptIn: body.marketingEmailOptIn === true,
     })
+    sendUserAccountCreationEmail(body.username.trim()).catch(() => {})
     return NextResponse.json(user, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed'
