@@ -3,7 +3,6 @@
 import ToolBar from '@/components/ToolBar'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
-import type { Recipe } from '@/types/Recipe'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
 import { Analytics } from "@vercel/analytics/next"
@@ -11,7 +10,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 interface ClientLayoutProps {
   children: React.ReactNode
-  recipes: Recipe[]
   isLoggedIn: boolean
   username: string | null
   avatarUrl?: string | null
