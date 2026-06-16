@@ -5,6 +5,7 @@ import type { RecipeStep } from '@/types/RecipeStep'
 
 const mockRecipe: Recipe = {
   id: 1,
+  shortId: 'abc12345',
   name: 'Pasta',
   meal: 'Dinner',
   description: 'A pasta dish',
@@ -84,7 +85,7 @@ describe('apiUpdateRecipe', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRecipe } as Response)
     const result = await apiUpdateRecipe(mockRecipe)
     expect(result).toEqual(mockRecipe)
-    expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta', expect.objectContaining({ method: 'PUT' }))
+    expect(fetch).toHaveBeenCalledWith('/api/recipes/abc12345', expect.objectContaining({ method: 'PUT' }))
   })
 })
 

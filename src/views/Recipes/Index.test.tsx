@@ -25,6 +25,7 @@ const mockFoods: Food[] = [
 const mockRecipes: Recipe[] = [
   {
     id: 1,
+    shortId: 'aaa11111',
     name: 'Ham and Cheese Sandwich',
     meal: 'Lunch',
     description: 'A delicious sandwich made with ham and cheese.',
@@ -40,6 +41,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 2,
+    shortId: 'bbb22222',
     name: 'Spaghetti Bolognese',
     meal: 'Dinner',
     description: 'A classic Italian pasta dish with a rich meat sauce.',
@@ -55,6 +57,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 3,
+    shortId: 'ccc33333',
     name: 'Caesar Salad',
     meal: 'Lunch',
     description: 'A fresh salad with romaine lettuce, croutons, and Caesar dressing.',
@@ -282,9 +285,9 @@ describe('Recipes Page', () => {
       renderWithProviders(<Recipes />)
 
       const links = screen.getAllByRole('link')
-      expect(links.some(link => link.getAttribute('href') === '/recipes/ham-and-cheese-sandwich')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/spaghetti-bolognese')).toBe(true)
-      expect(links.some(link => link.getAttribute('href') === '/recipes/caesar-salad')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/aaa11111/ham-and-cheese-sandwich')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/bbb22222/spaghetti-bolognese')).toBe(true)
+      expect(links.some(link => link.getAttribute('href') === '/recipes/ccc33333/caesar-salad')).toBe(true)
     })
   })
 })
@@ -295,6 +298,7 @@ describe('Recipes filters and actions', () => {
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
+        shortId: 'ccc11111',
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
@@ -304,6 +308,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 2,
+        shortId: 'ccc22222',
         name: 'Garlic Pasta',
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
@@ -313,6 +318,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 3,
+        shortId: 'ccc33333',
         name: 'Berry Oatmeal',
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
@@ -337,6 +343,7 @@ describe('Recipes filters and actions', () => {
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
+        shortId: 'ccc11111',
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
@@ -346,6 +353,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 2,
+        shortId: 'ccc22222',
         name: 'Garlic Pasta',
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
@@ -355,6 +363,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 3,
+        shortId: 'ccc33333',
         name: 'Berry Oatmeal',
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
@@ -377,6 +386,7 @@ describe('Recipes filters and actions', () => {
     renderWithProviders(<Recipes />, { recipes: [
       {
         id: 1,
+        shortId: 'ccc11111',
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
@@ -386,6 +396,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 2,
+        shortId: 'ccc22222',
         name: 'Garlic Pasta',
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
@@ -395,6 +406,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 3,
+        shortId: 'ccc33333',
         name: 'Berry Oatmeal',
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
@@ -421,6 +433,7 @@ describe('Recipes filters and actions', () => {
     renderWithProviders(<Recipes isAuthenticated />, { recipes: [
       {
         id: 1,
+        shortId: 'ccc11111',
         name: 'Chili Bowl',
         meal: 'Lunch',
         description: 'A spicy bowl of chili.',
@@ -430,6 +443,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 2,
+        shortId: 'ccc22222',
         name: 'Garlic Pasta',
         meal: 'Dinner',
         description: 'Pasta with garlic sauce.',
@@ -439,6 +453,7 @@ describe('Recipes filters and actions', () => {
       },
       {
         id: 3,
+        shortId: 'ccc33333',
         name: 'Berry Oatmeal',
         meal: 'Breakfast',
         description: 'Oatmeal topped with fresh berries.',
@@ -461,6 +476,7 @@ describe('For You section', () => {
   it('renders For You section when forYouRecipes are provided', () => {
     const forYouRecipes: Recipe[] = [{
       id: 99,
+      shortId: 'ddd99999',
       name: 'Italian Pasta',
       meal: 'Dinner',
       description: 'A classic Italian dish.',
@@ -487,17 +503,17 @@ describe('For You section', () => {
 
 describe('Dietary restriction filter', () => {
   const veganRecipe: Recipe = {
-    id: 10, name: 'Vegan Bowl', meal: 'Lunch', description: 'Vegan.',
+    id: 10, shortId: 'eee10000', name: 'Vegan Bowl', meal: 'Lunch', description: 'Vegan.',
     ingredients: [], dietaryTags: ['Vegan'], isPublic: true,
     nutritionComplete: true,
   }
   const nonVeganRecipe: Recipe = {
-    id: 11, name: 'Beef Stew', meal: 'Dinner', description: 'Has meat.',
+    id: 11, shortId: 'eee11000', name: 'Beef Stew', meal: 'Dinner', description: 'Has meat.',
     ingredients: [], dietaryTags: ['Gluten-Free'], isPublic: true,
     nutritionComplete: true,
   }
   const untaggedRecipe: Recipe = {
-    id: 12, name: 'Mystery Soup', meal: 'Dinner', description: 'Unknown.',
+    id: 12, shortId: 'eee12000', name: 'Mystery Soup', meal: 'Dinner', description: 'Unknown.',
     ingredients: [], isPublic: true,
     nutritionComplete: true,
   }

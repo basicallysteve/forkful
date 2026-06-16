@@ -141,6 +141,13 @@
       "when": 1781536556692,
       "tag": "0019_rainy_mandarin",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781571430432,
+      "tag": "0020_dazzling_riptide",
+      "breakpoints": true
     }
   ]
 }

@@ -58,7 +58,8 @@ export const products = pgTable('products', {
 export const recipes = pgTable('recipes', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  slug: varchar('slug', { length: 255 }).unique(),
+  shortId: varchar('short_id', { length: 8 }).notNull().unique(),
+  slug: varchar('slug', { length: 255 }),
   meal: varchar('meal', { length: 50 }),
   description: text('description'),
   prepTime: integer('prep_time'),

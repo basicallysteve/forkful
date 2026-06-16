@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
-import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
@@ -22,11 +21,12 @@ interface RecipesProps {
 }
 
 export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [], isAuthenticated = false }: RecipesProps) {
-  const recipes = useRecipeStore((state) => state.recipes)
+  const storeRecipes = useRecipeStore((state) => state.recipes)
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
+  const [storeHydrated, setStoreHydrated] = useState(false)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
@@ -35,11 +35,18 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
   const [applyDietaryFilter, setApplyDietaryFilter] = useState(true)
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
+  // Populate the store from server-provided data. Until the store is hydrated,
+  // render directly from initialRecipes so there's no flash of "no recipes".
+  // React 18 batches both setState calls here into a single re-render — no cascading renders.
   useEffect(() => {
-    if (initialRecipes) {
+    if (initialRecipes !== undefined) {
       setRecipes(initialRecipes)
     }
-  }, [initialRecipes, setRecipes])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStoreHydrated(true)
+  }, [initialRecipes, setRecipes, setStoreHydrated])
+
+  const recipes = storeHydrated ? storeRecipes : (initialRecipes ?? [])
 
   const filteredAndSortedRecipes = useMemo(() => {
     let filtered = filterMeal === 'all'
@@ -112,7 +119,7 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
     toDelete.forEach(recipe => deleteRecipe(recipe.id))
     setSelectedRecipes(new Set())
     try {
-      await Promise.all(toDelete.map(recipe => apiDeleteRecipe(toSlug(recipe.name))))
+      await Promise.all(toDelete.map(recipe => apiDeleteRecipe(recipe.shortId)))
     } catch (err) {
       console.error('Failed to delete recipes from server:', err)
       try {

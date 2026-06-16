@@ -13,6 +13,10 @@ export function toSlug(text: string): string {
     .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
 }
 
+export function toRecipeUrl(shortId: string, name: string): string {
+  return `/recipes/${shortId}/${toSlug(name)}`
+}
+
 /**
  * Finds an item in an array by its slug.
  * @param items - Array of items with name property
