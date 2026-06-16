@@ -37,10 +37,12 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
 
   // Populate the store from server-provided data. Until the store is hydrated,
   // render directly from initialRecipes so there's no flash of "no recipes".
+  // React 18 batches both setState calls here into a single re-render — no cascading renders.
   useEffect(() => {
     if (initialRecipes !== undefined) {
       setRecipes(initialRecipes)
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStoreHydrated(true)
   }, [initialRecipes, setRecipes, setStoreHydrated])
 
