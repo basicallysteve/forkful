@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { Card } from 'primereact/card'
+import { Skeleton } from 'primereact/skeleton'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiDeleteFood } from '@/lib/api/foods'
+import { apiDeleteFood, apiFetchFoods } from '@/lib/api/foods'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
@@ -16,17 +17,15 @@ import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsI
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
 
-interface FoodsProps {
-  initialFoods?: Food[]
-}
-
-export default function Foods({ initialFoods }: FoodsProps) {
+export default function Foods() {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
   const addFood = useFoodStore((state) => state.addFood)
   const deleteFood = useFoodStore((state) => state.deleteFood)
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
+  const [hasFetched, setHasFetched] = useState(foods.length > 0)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [selectedFoods, setSelectedFoods] = useState<Set<number>>(new Set())
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -35,10 +34,16 @@ export default function Foods({ initialFoods }: FoodsProps) {
   const [showImportDialog, setShowImportDialog] = useState(false)
 
   useEffect(() => {
-    if (initialFoods) {
-      setFoods(initialFoods)
-    }
-  }, [initialFoods, setFoods])
+    if (hasFetched) return
+    const timer = setTimeout(() => setShowSkeleton(true), 150)
+    apiFetchFoods().then((data) => {
+      clearTimeout(timer)
+      setFoods(data)
+      setHasFetched(true)
+      setShowSkeleton(false)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const filteredAndSortedFoods = useMemo(() => {
     let filtered = foods
@@ -127,6 +132,31 @@ export default function Foods({ initialFoods }: FoodsProps) {
     if (food.carbs) parts.push(`C: ${food.carbs}g`)
     if (food.fat) parts.push(`F: ${food.fat}g`)
     return parts.length > 0 ? parts.join(' | ') : '-'
+  }
+
+  if (!hasFetched) {
+    if (!showSkeleton) return null
+    return (
+      <div className="foods-list">
+        <div className="foods-content">
+          <header className="foods-header">
+            <div>
+              <Skeleton width="4rem" height="1rem" className="mb-2" />
+              <Skeleton width="6rem" height="1.5rem" />
+            </div>
+          </header>
+          <section className="foods-panel">
+            <div className="panel-content">
+              <div className="food-cards">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} height="8rem" borderRadius="8px" />
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
   }
 
   return (

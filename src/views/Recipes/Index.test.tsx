@@ -78,6 +78,7 @@ function renderWithProviders(
 ) {
   resetRecipeStore()
   useRecipeStore.setState((state) => ({ ...state, recipes }))
+  vi.mocked(apiFetchRecipes).mockResolvedValue(recipes)
   return render(ui)
 }
 
@@ -123,9 +124,9 @@ describe('Recipes Page', () => {
       expect(screen.getByText('1 ingredient')).toBeInTheDocument()
     })
 
-    it('shows empty state when no recipes', () => {
+    it('shows empty state when no recipes', async () => {
       renderWithProviders(<Recipes />, { recipes: [] })
-      expect(screen.getByText('No recipes found. Start by adding a new recipe!')).toBeInTheDocument()
+      expect(await screen.findByText('No recipes found. Start by adding a new recipe!')).toBeInTheDocument()
     })
   })
 

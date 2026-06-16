@@ -6,9 +6,11 @@ import { useFoodStore, resetFoodStore } from '@/stores/food'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
+import { apiFetchFoods } from '@/lib/api/foods'
 
 vi.mock('@/lib/api/foods', () => ({
   apiDeleteFood: vi.fn(async () => {}),
+  apiFetchFoods: vi.fn(async () => []),
 }))
 
 const mockFoods: Food[] = [
@@ -75,6 +77,7 @@ function renderWithProviders(
     isFoodUsedInRecipe: isFoodUsedInRecipe ?? state.isFoodUsedInRecipe,
   }))
   useRecipeStore.setState((state) => ({ ...state, recipes }))
+  vi.mocked(apiFetchFoods).mockResolvedValue(foods)
 
   return render(ui)
 }
@@ -112,9 +115,9 @@ describe('Foods List Page', () => {
       expect(cards.length).toBeGreaterThan(0)
     })
 
-    it('shows empty state when no foods', () => {
+    it('shows empty state when no foods', async () => {
       renderWithProviders(<Foods />, { foods: [] })
-      expect(screen.getByText('No foods found. Start by adding a new food item!')).toBeInTheDocument()
+      expect(await screen.findByText('No foods found. Start by adding a new food item!')).toBeInTheDocument()
     })
 
     it('renders Add Food link', () => {
