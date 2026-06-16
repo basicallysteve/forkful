@@ -8,25 +8,27 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import { Toast } from 'primereact/toast'
+import { Skeleton } from 'primereact/skeleton'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
 
 interface RecipesProps {
-  initialRecipes?: Recipe[]
   forYouRecipes?: Recipe[]
   dietaryRestrictions?: string[]
   isAuthenticated?: boolean
 }
 
-export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRestrictions = [], isAuthenticated = false }: RecipesProps) {
+export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], isAuthenticated = false }: RecipesProps) {
   const storeRecipes = useRecipeStore((state) => state.recipes)
   const setRecipes = useRecipeStore((state) => state.setRecipes)
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
-  const [storeHydrated, setStoreHydrated] = useState(false)
+  // true when store is pre-populated (e.g. back-navigation) — skips redundant fetch
+  const [hasFetched, setHasFetched] = useState(storeRecipes.length > 0)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
   const [filterMeal, setFilterMeal] = useState<Recipe['meal'] | 'all'>('all')
   const [sortBy, setSortBy] = useState<SortOption>('date_added')
@@ -35,18 +37,37 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
   const [applyDietaryFilter, setApplyDietaryFilter] = useState(true)
   const mealOptions: Array<Recipe['meal'] | 'all'> = ['all', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
-  // Populate the store from server-provided data. Until the store is hydrated,
-  // render directly from initialRecipes so there's no flash of "no recipes".
-  // React 18 batches both setState calls here into a single re-render — no cascading renders.
   useEffect(() => {
-    if (initialRecipes !== undefined) {
-      setRecipes(initialRecipes)
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStoreHydrated(true)
-  }, [initialRecipes, setRecipes, setStoreHydrated])
+    if (hasFetched) return
+    let cancelled = false
+    const timer = setTimeout(() => {
+      if (!cancelled) setShowSkeleton(true)
+    }, 150)
 
-  const recipes = storeHydrated ? storeRecipes : (initialRecipes ?? [])
+    apiFetchRecipes()
+      .then((data) => {
+        if (!cancelled) {
+          setRecipes(data)
+          setHasFetched(true)
+          setShowSkeleton(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShowSkeleton(false)
+          setHasFetched(true)
+        }
+      })
+      .finally(() => clearTimeout(timer))
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [hasFetched, setRecipes, setHasFetched, setShowSkeleton])
+
+  const forYouIds = useMemo(() => new Set(forYouRecipes.map((r) => r.id)), [forYouRecipes])
+  const recipes = useMemo(() => storeRecipes.filter((r) => !forYouIds.has(r.id)), [storeRecipes, forYouIds])
 
   const filteredAndSortedRecipes = useMemo(() => {
     let filtered = filterMeal === 'all'
@@ -143,6 +164,31 @@ export default function Recipes({ initialRecipes, forYouRecipes = [], dietaryRes
       original.forEach(recipe => updateRecipe(recipe))
       toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipes', detail: 'You may not have permission to edit one or more of the selected recipes.', life: 4000 })
     }
+  }
+
+  if (!hasFetched) {
+    if (!showSkeleton) return null
+    return (
+      <div className="recipes-list">
+        <div className="recipes-content">
+          <header className="recipes-header">
+            <div>
+              <Skeleton width="4rem" height="1rem" className="mb-2" />
+              <Skeleton width="8rem" height="1.5rem" />
+            </div>
+          </header>
+          <section className="recipes-panel">
+            <div className="panel-content">
+              <div className="recipe-cards">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} height="12rem" borderRadius="8px" />
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    )
   }
 
   return (
