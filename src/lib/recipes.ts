@@ -1,5 +1,6 @@
 import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not } from 'drizzle-orm'
 import { db } from '@/db'
+import type { SQL } from 'drizzle-orm'
 import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
