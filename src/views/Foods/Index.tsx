@@ -24,6 +24,7 @@ export default function Foods() {
   const deleteFood = useFoodStore((state) => state.deleteFood)
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
+  // true when store is pre-populated (e.g. back-navigation) — skips redundant fetch
   const [hasFetched, setHasFetched] = useState(foods.length > 0)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [selectedFoods, setSelectedFoods] = useState<Set<number>>(new Set())

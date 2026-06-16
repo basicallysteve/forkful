@@ -26,6 +26,7 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
   const deleteRecipe = useRecipeStore((state) => state.deleteRecipe)
   const updateRecipe = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
+  // true when store is pre-populated (e.g. back-navigation) — skips redundant fetch
   const [hasFetched, setHasFetched] = useState(storeRecipes.length > 0)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [selectedRecipes, setSelectedRecipes] = useState<Set<number>>(new Set())
