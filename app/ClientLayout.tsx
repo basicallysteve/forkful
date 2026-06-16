@@ -24,9 +24,6 @@ export default function ClientLayout({ children, isLoggedIn, username, avatarUrl
     {
       label: 'Recipes',
       to: '/recipes',
-      children: [
-        { label: 'Browse All Recipes', to: '/recipes' },
-      ],
     },
     {
       label: 'Pantry',

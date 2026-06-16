@@ -1,6 +1,5 @@
-import type { Recipe } from '@/types/Recipe'
+import type { Recipe, CreateRecipeInput } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
-import { toSlug } from '@/utils/slug'
 
 export type RecipeQueryOptions = {
   ingredient?: string
@@ -21,14 +20,14 @@ export async function apiFetchRecipes(options: RecipeQueryOptions = {}): Promise
   return res.json()
 }
 
-export async function apiFetchRecipe(slug: string): Promise<Recipe | null> {
-  const res = await fetch(`/api/recipes/${slug}`)
+export async function apiFetchRecipe(shortId: string): Promise<Recipe | null> {
+  const res = await fetch(`/api/recipes/${shortId}`)
   if (res.status === 404) return null
   if (!res.ok) throw new Error('Failed to fetch recipe')
   return res.json()
 }
 
-export async function apiCreateRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe> {
+export async function apiCreateRecipe(data: CreateRecipeInput): Promise<Recipe> {
   const res = await fetch('/api/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,8 +38,7 @@ export async function apiCreateRecipe(data: Omit<Recipe, 'id'>): Promise<Recipe>
 }
 
 export async function apiUpdateRecipe(recipe: Recipe): Promise<Recipe> {
-  const slug = toSlug(recipe.name)
-  const res = await fetch(`/api/recipes/${slug}`, {
+  const res = await fetch(`/api/recipes/${recipe.shortId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(recipe),
@@ -49,8 +47,8 @@ export async function apiUpdateRecipe(recipe: Recipe): Promise<Recipe> {
   return res.json()
 }
 
-export async function apiDeleteRecipe(slug: string): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}`, { method: 'DELETE' })
+export async function apiDeleteRecipe(shortId: string): Promise<void> {
+  const res = await fetch(`/api/recipes/${shortId}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete recipe')
 }
 
@@ -60,31 +58,31 @@ export async function apiFetchSavedRecipes(): Promise<Recipe[]> {
   return res.json()
 }
 
-export async function apiSaveRecipe(slug: string): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}/save`, { method: 'POST' })
+export async function apiSaveRecipe(shortId: string): Promise<void> {
+  const res = await fetch(`/api/recipes/${shortId}/save`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to save recipe')
 }
 
-export async function apiUnsaveRecipe(slug: string): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}/save`, { method: 'DELETE' })
+export async function apiUnsaveRecipe(shortId: string): Promise<void> {
+  const res = await fetch(`/api/recipes/${shortId}/save`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to unsave recipe')
 }
 
-export async function apiIsRecipeSaved(slug: string): Promise<boolean> {
-  const res = await fetch(`/api/recipes/${slug}/save`)
+export async function apiIsRecipeSaved(shortId: string): Promise<boolean> {
+  const res = await fetch(`/api/recipes/${shortId}/save`)
   if (!res.ok) return false
   const data = await res.json()
   return data.saved
 }
 
-export async function apiFetchRecipeSteps(slug: string): Promise<RecipeStep[]> {
-  const res = await fetch(`/api/recipes/${slug}/steps`)
+export async function apiFetchRecipeSteps(shortId: string): Promise<RecipeStep[]> {
+  const res = await fetch(`/api/recipes/${shortId}/steps`)
   if (!res.ok) throw new Error('Failed to fetch steps')
   return res.json()
 }
 
-export async function apiCreateRecipeStep(slug: string, data: { title?: string; content: string }): Promise<RecipeStep> {
-  const res = await fetch(`/api/recipes/${slug}/steps`, {
+export async function apiCreateRecipeStep(shortId: string, data: { title?: string; content: string }): Promise<RecipeStep> {
+  const res = await fetch(`/api/recipes/${shortId}/steps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -93,8 +91,8 @@ export async function apiCreateRecipeStep(slug: string, data: { title?: string; 
   return res.json()
 }
 
-export async function apiUpdateRecipeStep(slug: string, stepId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep> {
-  const res = await fetch(`/api/recipes/${slug}/steps/${stepId}`, {
+export async function apiUpdateRecipeStep(shortId: string, stepId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep> {
+  const res = await fetch(`/api/recipes/${shortId}/steps/${stepId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -103,13 +101,13 @@ export async function apiUpdateRecipeStep(slug: string, stepId: number, data: { 
   return res.json()
 }
 
-export async function apiDeleteRecipeStep(slug: string, stepId: number): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}/steps/${stepId}`, { method: 'DELETE' })
+export async function apiDeleteRecipeStep(shortId: string, stepId: number): Promise<void> {
+  const res = await fetch(`/api/recipes/${shortId}/steps/${stepId}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete step')
 }
 
-export async function apiReorderRecipeSteps(slug: string, orderedIds: number[]): Promise<void> {
-  const res = await fetch(`/api/recipes/${slug}/steps`, {
+export async function apiReorderRecipeSteps(shortId: string, orderedIds: number[]): Promise<void> {
+  const res = await fetch(`/api/recipes/${shortId}/steps`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderedIds }),

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Card } from 'primereact/card'
 import { Checkbox } from 'primereact/checkbox'
 import DOMPurify from 'dompurify'
-import { toSlug } from '@/utils/slug'
+import { toRecipeUrl } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
 import './recipe-card.scss'
 
@@ -36,7 +36,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           />
         </div>
       )}
-      <Link href={`/recipes/${toSlug(recipe.name)}`} className="card-content">
+      <Link href={toRecipeUrl(recipe.shortId, recipe.name)} className="card-content">
         <div className="card-header">
           <h3 className="card-title">{recipe.name}</h3>
           <div className="card-badges">

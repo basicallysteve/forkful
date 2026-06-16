@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getRecipes, getRecipeBySlug, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved, getTopRecipes } from './recipes'
+import { getRecipes, getRecipeByShortId, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved, getTopRecipes } from './recipes'
 import { createFood, deleteFood } from './foods'
 import { signUp } from './users'
 import type { Food } from '@/types/Food'
@@ -69,7 +69,7 @@ describe('recipes data layer (integration)', () => {
     expect(created.ingredients).toHaveLength(1)
     expect(created.ingredients[0].food.name).toBe('Test Ingredient Food')
 
-    const fetched = await getRecipeBySlug('test-pasta')
+    const fetched = await getRecipeByShortId(created.shortId)
     expect(fetched).not.toBeNull()
     expect(fetched!.name).toBe('Test Pasta')
   })
@@ -139,7 +139,7 @@ describe('recipes data layer (integration)', () => {
     const deleted = await deleteRecipe(created.id)
     expect(deleted).toBe(true)
 
-    const fetched = await getRecipeBySlug('test-deleteme')
+    const fetched = await getRecipeByShortId(created.shortId)
     expect(fetched).toBeNull()
   })
 

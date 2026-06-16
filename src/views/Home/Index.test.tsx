@@ -21,6 +21,7 @@ const mockFood: Food = {
 const mockRecipes: Recipe[] = [
   {
     id: 1,
+    shortId: 'aaa11111',
     name: 'Chocolate Milk',
     meal: 'Snack',
     description: 'Yummy chocolate milk!',
@@ -31,6 +32,7 @@ const mockRecipes: Recipe[] = [
   },
   {
     id: 2,
+    shortId: 'bbb22222',
     name: 'Ham and Cheese Sandwich',
     meal: 'Lunch',
     description: 'A simple and quick lunch!',

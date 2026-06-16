@@ -1,8 +1,11 @@
 import { type Ingredient } from "@/types/Ingredient"
 import { type RecipeStep } from "@/types/RecipeStep"
 
+export type CreateRecipeInput = Omit<Recipe, 'id' | 'shortId' | 'nutritionComplete'>
+
 export type Recipe = {
   id: number
+  shortId: string
   name: string
   meal?: "Lunch" | "Dinner" | "Breakfast" | "Snack" | "Dessert"
   description: string

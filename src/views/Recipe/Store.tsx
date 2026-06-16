@@ -3,11 +3,11 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { Recipe } from "@/types/Recipe"
+import type { Recipe, CreateRecipeInput } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
-import { toSlug } from "@/utils/slug"
+import { toRecipeUrl } from "@/utils/slug"
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
@@ -255,13 +255,6 @@ function Store() {
     return recipe.ingredients ? recipe.ingredients.length : 0
   }, [recipe])
 
-  // Check for duplicate recipe name (case-insensitive, trimmed)
-  const isDuplicateName = useMemo(() => {
-    const trimmedName = recipe.name?.trim().toLowerCase()
-    if (!trimmedName) return false
-    return recipes.some(r => r.name.trim().toLowerCase() === trimmedName)
-  }, [recipe.name, recipes])
-
   // Find similar recipes based on ingredient overlap using Jaccard similarity
   const similarRecipe = useMemo(() => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return null
@@ -283,8 +276,8 @@ function Store() {
   }, [recipe.ingredients, recipes])
 
   const canSave = useMemo(() => {
-    return !!(recipe.name && recipe.meal && recipe.description && !isDuplicateName)
-  }, [recipe, isDuplicateName])
+    return !!(recipe.name && recipe.meal && recipe.description)
+  }, [recipe])
 
     const canPublish = useMemo(() => {
         return !!(canSave && ingredientCount > 0)
@@ -310,10 +303,8 @@ function Store() {
     })
   }
 
-  function createRecipe(publish: boolean): Recipe {
-    const newId = recipes.length > 0 ? Math.max(...recipes.map(r => r.id)) + 1 : 1
+  function createRecipe(publish: boolean): CreateRecipeInput {
     return {
-      id: newId,
       name: recipe.name!.trim(),
       meal: recipe.meal,
       description: recipe.description!,
@@ -322,7 +313,6 @@ function Store() {
       date_added: new Date(),
       date_published: publish ? new Date() : null,
       isPublic: publish,
-      nutritionComplete: true,
     }
   }
 
@@ -332,7 +322,7 @@ function Store() {
       const newRecipe = createRecipe(false)
       const created = await apiCreateRecipe(newRecipe)
       addRecipeToStore(created)
-      router.push(`/recipes/${toSlug(created.name)}`)
+      router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist new recipe:', err)
     }
@@ -344,7 +334,7 @@ function Store() {
       const newRecipe = createRecipe(true)
       const created = await apiCreateRecipe(newRecipe)
       addRecipeToStore(created)
-      router.push(`/recipes/${toSlug(created.name)}`)
+      router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist published recipe:', err)
     }
@@ -352,22 +342,15 @@ function Store() {
 
   const detailsTabContent = (<form className="store-form">
               <div className="form-grid">
-                <label className={`form-field ${isDuplicateName ? 'has-error' : ''}`}>
+                <label className="form-field">
                   <span className="field-label">Name</span>
                   <InputText
-                    className={isDuplicateName ? 'input-error' : undefined}
                     type="text"
                     value={recipe.name}
                     placeholder="e.g. Smoky chipotle chili"
                     onChange={(e) => setRecipe({ ...recipe, name: e.target.value })}
-                    aria-invalid={isDuplicateName}
-                    aria-describedby={isDuplicateName ? "name-error" : undefined}
                   />
-                  {isDuplicateName ? (
-                    <span id="name-error" className="field-error" role="alert">A recipe with this name already exists.</span>
-                  ) : (
-                    <span className="field-hint">Give your recipe a clear, inviting title.</span>
-                  )}
+                  <span className="field-hint">Give your recipe a clear, inviting title.</span>
                 </label>
 
                 <div className="form-field">
@@ -450,7 +433,7 @@ function Store() {
           <div className="similar-recipe-suggestion" role="alert">
             <span className="suggestion-icon">💡</span>
             <span className="suggestion-text">
-              Similar recipe found: <Link href={`/recipes/${toSlug(similarRecipe.recipe.name)}`} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
+              Similar recipe found: <Link href={toRecipeUrl(similarRecipe.recipe.shortId, similarRecipe.recipe.name)} className="suggestion-link">{similarRecipe.recipe.name}</Link> ({Math.round(similarRecipe.similarity * 100)}% ingredient match)
             </span>
           </div>
         )}

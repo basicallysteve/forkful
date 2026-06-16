@@ -32,7 +32,7 @@ export default async function RootLayout({
   const avatarUrl = session?.user?.image ?? null
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Prevents flash of wrong theme by applying stored preference before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />

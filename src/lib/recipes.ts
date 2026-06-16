@@ -7,6 +7,8 @@ import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
+import { nanoid } from 'nanoid'
+import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
 
@@ -98,6 +100,7 @@ function mapRecipeRow(
 ): Recipe {
   return {
     id: row.id,
+    shortId: row.shortId,
     name: row.name,
     meal: row.meal as Recipe['meal'] | undefined,
     description: row.description ?? '',
@@ -199,12 +202,12 @@ export async function getRecipes(options: RecipeQueryOptions = {}): Promise<Reci
   }
 }
 
-export async function getRecipeBySlug(slug: string, viewerId?: number): Promise<Recipe | null> {
+export async function getRecipeByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
   const visibilityFilter = viewerId !== undefined
     ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
     : eq(recipes.isPublic, 1)
   const [row] = await db.select().from(recipes).where(
-    and(eq(recipes.slug, slug), isNull(recipes.dateDeleted), visibilityFilter)
+    and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
   )
   return row ? buildRecipe(row) : null
 }
@@ -218,10 +221,11 @@ function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
   return ingredientList.every((ing) => ing.calories > 0 || ing.quantity === 0)
 }
 
-export async function createRecipe(data: Omit<Recipe, 'id' | 'nutritionComplete'>): Promise<Recipe> {
+export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
   const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   const [row] = await db.insert(recipes).values({
     name: data.name,
+    shortId: nanoid(8),
     slug: toSlug(data.name),
     meal: data.meal,
     description: data.description,
@@ -426,7 +430,7 @@ function getForYouRecipesQuery(cuisinePreferences: string[]): SQL<unknown> {
 export async function getForYouRecipes(cuisinePreferences: string[], limit = 5): Promise<Recipe[]> {
   if (cuisinePreferences.length === 0) return []
   try {
-    const rows = await db
+    const query =  db
       .select()
       .from(recipes)
       .where(
@@ -434,6 +438,7 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
       )
       .orderBy(desc(recipes.datePublished))
       .limit(limit)
+    const rows = await query
     return buildRecipesBatch(rows)
   } catch {
     return []

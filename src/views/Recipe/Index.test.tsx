@@ -24,6 +24,7 @@ const mockFoods: Food[] = [
 
 const mockRecipe: RecipeType = {
   id: 1,
+  shortId: 'aaa11111',
   name: 'Ham and Cheese Sandwich',
   meal: 'Lunch',
   description: 'A delicious sandwich made with ham and cheese.',
@@ -42,6 +43,7 @@ const mockRecipes: RecipeType[] = [
   mockRecipe,
   {
     id: 2,
+    shortId: 'bbb22222',
     name: 'Spaghetti Bolognese',
     meal: 'Dinner',
     description: 'A classic Italian pasta dish.',
