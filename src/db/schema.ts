@@ -228,6 +228,7 @@ export const reviewLikes = pgTable('review_likes', {
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 }, (t) => ({
   userReviewUnique: unique('review_likes_user_review_unique').on(t.userId, t.reviewId),
+  reviewIdIdx: index('review_likes_review_id_idx').on(t.reviewId),
 }));
 
 export const reviewReports = pgTable('review_reports', {
@@ -242,4 +243,6 @@ export const reviewReports = pgTable('review_reports', {
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 }, (t) => ({
   userReviewUnique: unique('review_reports_user_review_unique').on(t.userId, t.reviewId),
+  reviewIdIdx: index('review_reports_review_id_idx').on(t.reviewId),
+  dateAddedIdx: index('review_reports_date_added_idx').on(t.dateAdded),
 }));

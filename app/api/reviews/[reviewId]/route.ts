@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
-import { updateReview, deleteReview } from '@/lib/reviews'
+import { updateReview, deleteReviewByOwner } from '@/lib/reviews'
 import { taskRunner } from '@/lib/TaskRunner'
 
 type Params = { params: Promise<{ reviewId: string }> }
@@ -29,9 +29,8 @@ export async function DELETE(_request: Request, { params }: Params) {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Only the review author can delete their own review via this route.
-  // Admin deletion goes through /api/admin/reports/[reportId]/review.
-  const deleted = await taskRunner.run(() => deleteReview(Number(reviewId)))
-  if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const result = await taskRunner.run(() => deleteReviewByOwner(Number(reviewId), session.userId))
+  if (result === 'not_found') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (result === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   return new NextResponse(null, { status: 204 })
 }

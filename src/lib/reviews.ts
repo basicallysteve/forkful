@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, count, avg, gte } from 'drizzle-orm'
+import { eq, and, isNull, desc, count, avg, gte, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db'
 import { reviews, reviewLikes, reviewReports, recipes, users } from '@/db/schema'
@@ -42,10 +42,11 @@ export async function getReviewsForRecipe(recipeId: number, viewerUserId?: numbe
 
   let likedReviewIds = new Set<number>()
   if (viewerUserId !== undefined) {
+    const reviewIds = rows.map((r) => r.review.id)
     const likes = await db
       .select({ reviewId: reviewLikes.reviewId })
       .from(reviewLikes)
-      .where(eq(reviewLikes.userId, viewerUserId))
+      .where(and(eq(reviewLikes.userId, viewerUserId), inArray(reviewLikes.reviewId, reviewIds)))
     likedReviewIds = new Set(likes.map((l) => l.reviewId))
   }
 
@@ -138,6 +139,14 @@ export async function deleteReview(reviewId: number): Promise<boolean> {
   return deleted.length > 0
 }
 
+export async function deleteReviewByOwner(reviewId: number, userId: number): Promise<'deleted' | 'not_found' | 'forbidden'> {
+  const [review] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, reviewId))
+  if (!review) return 'not_found'
+  if (review.userId !== userId) return 'forbidden'
+  await db.delete(reviews).where(eq(reviews.id, reviewId))
+  return 'deleted'
+}
+
 export async function toggleReviewLike(userId: number, reviewId: number): Promise<{ liked: boolean }> {
   const [review] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, reviewId))
   if (!review) throw new Error('Review not found')
@@ -153,7 +162,7 @@ export async function toggleReviewLike(userId: number, reviewId: number): Promis
     return { liked: false }
   }
 
-  await db.insert(reviewLikes).values({ userId, reviewId })
+  await db.insert(reviewLikes).values({ userId, reviewId }).onConflictDoNothing()
   return { liked: true }
 }
 

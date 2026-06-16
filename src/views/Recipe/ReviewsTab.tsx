@@ -61,19 +61,22 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
   const [reportComment, setReportComment] = useState('')
   const [reportSubmitting, setReportSubmitting] = useState(false)
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async (signal: AbortSignal) => {
+    setLoading(true)
     try {
       const data = await apiFetchReviews(recipeShortId)
-      setReviews(data)
+      if (!signal.aborted) setReviews(data)
     } catch {
       // silent — empty state handles it
     } finally {
-      setLoading(false)
+      if (!signal.aborted) setLoading(false)
     }
   }, [recipeShortId])
 
   useEffect(() => {
-    fetchReviews()
+    const controller = new AbortController()
+    fetchReviews(controller.signal)
+    return () => controller.abort()
   }, [fetchReviews])
 
   const myReview = currentUserId ? reviews.find((r) => r.userId === currentUserId) : null
@@ -291,8 +294,9 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
         style={{ width: '420px' }}
       >
         <div className="report-dialog">
-          <label className="report-label">Reason</label>
+          <label className="report-label" htmlFor="report-reason">Reason</label>
           <select
+            id="report-reason"
             className="meta-select report-reason-select"
             value={reportReason}
             onChange={(e) => setReportReason(e.target.value as ReviewReportReason)}
@@ -301,8 +305,9 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
-          <label className="report-label">Additional details (optional)</label>
+          <label className="report-label" htmlFor="report-comment">Additional details (optional)</label>
           <textarea
+            id="report-comment"
             className="review-body-input"
             value={reportComment}
             onChange={(e) => setReportComment(e.target.value)}
