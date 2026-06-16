@@ -2,9 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import ClientLayout from './ClientLayout'
-import { getRecipes } from '@/lib/recipes'
 import { auth } from '@/auth'
-import type { Recipe } from '@/types/Recipe'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
 import 'primeicons/primeicons.css';
@@ -24,8 +22,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const recipes: Recipe[] = await getRecipes()
-
   const session = await auth()
   const isLoggedIn = !!session?.user
   const username = session?.user?.name ?? null
@@ -38,7 +34,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />
       </head>
       <body>
-        <ClientLayout recipes={recipes} isLoggedIn={isLoggedIn} username={username} avatarUrl={avatarUrl}>{children}</ClientLayout>
+        <ClientLayout isLoggedIn={isLoggedIn} username={username} avatarUrl={avatarUrl}>{children}</ClientLayout>
       </body>
     </html>
   )
