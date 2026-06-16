@@ -255,7 +255,6 @@ function Store() {
     return recipe.ingredients ? recipe.ingredients.length : 0
   }, [recipe])
 
-  // Check for duplicate recipe name (case-insensitive, trimmed)
   // Find similar recipes based on ingredient overlap using Jaccard similarity
   const similarRecipe = useMemo(() => {
     if (!recipe.ingredients || recipe.ingredients.length === 0) return null
