@@ -31,7 +31,6 @@ export default async function RecipePage({ params }: Props) {
       canSave={canSave}
       initialSaved={initialSaved}
       isLoggedIn={session !== null}
-      currentUserId={session?.userId ?? null}
     />
   )
 }

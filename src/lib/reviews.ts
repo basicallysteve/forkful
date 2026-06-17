@@ -9,10 +9,10 @@ function mapReview(
   likeCount: number,
   authorUsername: string | null,
   likedByCurrentUser: boolean,
+  isOwnReview: boolean,
 ): Review {
   return {
     id: row.id,
-    userId: row.userId,
     recipeId: row.recipeId,
     rating: row.rating,
     body: row.body,
@@ -21,6 +21,7 @@ function mapReview(
     dateUpdated: row.dateUpdated,
     authorUsername,
     likedByCurrentUser,
+    isOwnReview,
   }
 }
 
@@ -56,6 +57,7 @@ export async function getReviewsForRecipe(recipeId: number, viewerUserId?: numbe
       Number(row.likeCount),
       row.authorUsername ?? null,
       likedReviewIds.has(row.review.id),
+      viewerUserId !== undefined && row.review.userId === viewerUserId,
     )
   )
 }
@@ -89,7 +91,7 @@ export async function getReviewByUser(userId: number, recipeId: number): Promise
     .groupBy(reviews.id, users.username)
 
   if (!row) return null
-  return mapReview(row.review, Number(row.likeCount), row.authorUsername ?? null, false)
+  return mapReview(row.review, Number(row.likeCount), row.authorUsername ?? null, false, false)
 }
 
 export async function createReview(input: CreateReviewInput): Promise<Review> {
@@ -113,7 +115,7 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
   }).returning()
 
   const [author] = await db.select({ username: users.username }).from(users).where(eq(users.id, input.userId))
-  return mapReview(row, 0, author?.username ?? null, false)
+  return mapReview(row, 0, author?.username ?? null, false, true)
 }
 
 export async function updateReview(reviewId: number, userId: number, input: UpdateReviewInput): Promise<Review | null> {
@@ -131,7 +133,7 @@ export async function updateReview(reviewId: number, userId: number, input: Upda
 
   const [likeRow] = await db.select({ likeCount: count() }).from(reviewLikes).where(eq(reviewLikes.reviewId, reviewId))
   const [author] = await db.select({ username: users.username }).from(users).where(eq(users.id, userId))
-  return mapReview(row, Number(likeRow?.likeCount ?? 0), author?.username ?? null, false)
+  return mapReview(row, Number(likeRow?.likeCount ?? 0), author?.username ?? null, false, true)
 }
 
 export async function deleteReview(reviewId: number): Promise<boolean> {
@@ -204,7 +206,7 @@ export async function getReportById(reportId: number): Promise<ReviewReport | nu
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false),
+    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
   }
 }
 
@@ -236,7 +238,7 @@ export async function getOpenReports(): Promise<ReviewReport[]> {
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false),
+    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
   }))
 }
 
@@ -274,6 +276,6 @@ export async function getReportsSince(since: Date): Promise<ReviewReport[]> {
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false),
+    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
   }))
 }

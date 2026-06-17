@@ -34,10 +34,9 @@ interface RecipeProps {
   canSave?: boolean
   initialSaved?: boolean
   isLoggedIn?: boolean
-  currentUserId?: number | null
 }
 
-export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false, currentUserId = null }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
@@ -601,7 +600,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                 recipeShortId={currentRecipe.shortId}
                 isLoggedIn={isLoggedIn}
                 isOwner={canEdit ?? false}
-                currentUserId={currentUserId}
               />
             )}
             <div className="ingredient-list" role="list" style={activePanel === 'reviews' ? { display: 'none' } : undefined}>

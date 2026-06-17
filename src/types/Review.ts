@@ -1,6 +1,5 @@
 export type Review = {
   id: number
-  userId: number | null
   recipeId: number
   rating: number
   body: string | null
@@ -9,6 +8,7 @@ export type Review = {
   dateUpdated: Date | null
   authorUsername: string | null
   likedByCurrentUser: boolean
+  isOwnReview: boolean
 }
 
 export type ReviewAggregate = {

@@ -17,7 +17,6 @@ interface Props {
   recipeShortId: string
   isLoggedIn: boolean
   isOwner: boolean
-  currentUserId?: number | null
 }
 
 const REPORT_REASONS: { value: ReviewReportReason; label: string }[] = [
@@ -56,7 +55,7 @@ function getMostHelpful(reviews: Review[]): Review | null {
   )
 }
 
-export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, currentUserId }: Props) {
+export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner }: Props) {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -91,7 +90,7 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
     return () => controller.abort()
   }, [fetchReviews])
 
-  const myReview = currentUserId ? reviews.find((r) => r.userId === currentUserId) : null
+  const myReview = reviews.find((r) => r.isOwnReview) ?? null
   const mostHelpful = getMostHelpful(reviews)
   const otherReviews = mostHelpful ? reviews.filter((r) => r.id !== mostHelpful.id) : reviews
 
@@ -168,7 +167,7 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
   }
 
   function renderReview(review: Review, highlight = false) {
-    const isMyReview = currentUserId !== null && currentUserId !== undefined && review.userId === currentUserId
+    const isMyReview = review.isOwnReview
     const isEditing = editingId === review.id
 
     return (
