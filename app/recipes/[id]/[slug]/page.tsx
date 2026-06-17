@@ -30,6 +30,7 @@ export default async function RecipePage({ params }: Props) {
       canEdit={isOwner}
       canSave={canSave}
       initialSaved={initialSaved}
+      isLoggedIn={session !== null}
     />
   )
 }

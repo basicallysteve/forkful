@@ -9,6 +9,11 @@ export type SessionUser = {
   needsPasswordReset: boolean
 }
 
+export function isAdmin(userId: number): boolean {
+  const adminId = process.env.ADMIN_USER_ID
+  return adminId !== undefined && userId === Number(adminId)
+}
+
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth()
   if (!session?.user?.id) return null

@@ -157,3 +157,27 @@ A Recipe in which every Ingredient's calories can be fully calculated — i.e. n
 
 ## Pantry Item
 A unit of physical stock tracked in the user's pantry. Has an original size and a current size, each expressed as a quantity in a chosen Measurement. A Pantry Item has a `sourceType` discriminator that determines what it references: `'food'` (a generic Food, e.g. "Banana") or `'product'` (a branded Product, e.g. "Tyson Boneless Chicken Breast"). Exactly one of `foodId` or `productId` is set. A future `'recipe'` sourceType is reserved for tracking premade meals but is not yet implemented. Units are constrained to the Measurements of the referenced Food or Product.
+
+## Review
+A star rating (1–5) plus an optional text body left by a User on a public Recipe authored by another User. One Review per User per Recipe, enforced by a unique constraint. Can be edited in place (no revision history); `dateUpdated` tracks when it last changed. On Account Deletion the author is anonymised (userId set to null); on Account Deactivation the Review is preserved and visible. A User cannot review their own Recipe. Reviews can only be submitted on public Recipes, enforced at the API layer.
+_Avoid_: comment, feedback, rating
+
+## Review Report
+A moderation signal submitted by a User against a Review whose content they consider inappropriate. Consists of a required reason selected from a fixed list ("Spam", "Offensive language", "Harassment", "Off-topic") and an optional free-text comment. One Report per User per Review, enforced by a unique constraint. Reports cascade-delete when the Review is deleted. The Recipe author cannot delete a Review directly; they may only submit a Review Report. Actioned by the Admin.
+_Avoid_: flag, complaint
+
+## Admin
+The User account designated as the moderation authority, identified by the `ADMIN_USER_ID` environment variable. Reviews a queue of open Review Reports and takes one of two actions: dismiss the report (Review stays) or delete the Review (all reports on it cascade-delete).
+_Avoid_: moderator, superuser
+
+## Review Aggregate
+The average star rating and total Review count for a Recipe, computed at query time from the `reviews` table. Displayed on the recipe detail page as e.g. "★ 4.2 · 18 reviews". No denormalised column on the Recipe.
+_Avoid_: rating score, review summary
+
+## Review Like
+An upvote cast by a User on another User's Review. One Like per User per Review, enforced by a unique constraint. Toggled — clicking again removes the Like. A User cannot Like their own Review. Displayed as a count on the Review ("Liked by X chefs"). On Account Deletion the liker is anonymised (userId set to null) — the count is preserved since only the count is displayed, not who liked it.
+_Avoid_: helpful vote, upvote, reaction
+
+## Most Helpful Review
+The Review on a Recipe with the highest Like count, pinned to the top of the Reviews tab with a "Most helpful" label. Ties broken by `dateAdded` (older Review wins). Only shown when at least one Like exists across the recipe's reviews.
+_Avoid_: top review, featured review
