@@ -988,6 +988,22 @@
   }
 }
 
+.char-count {
+  font-size: 12px;
+  color: var(--vscode-muted);
+  text-align: right;
+  margin-top: -4px;
+
+  &--warn {
+    color: var(--vscode-warning, #d4a017);
+  }
+
+  &--over {
+    color: var(--vscode-error, #e05252);
+    font-weight: 600;
+  }
+}
+
 .review-edit-form {
   display: flex;
   flex-direction: column;

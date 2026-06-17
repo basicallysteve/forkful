@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Rating } from 'primereact/rating'
-import { Dialog } from 'primereact/dialog'
+import Modal from '@/components/Modal/Modal'
 import type { Review, ReviewReportReason } from '@/types/Review'
 import {
   apiFetchReviews,
@@ -27,8 +27,20 @@ const REPORT_REASONS: { value: ReviewReportReason; label: string }[] = [
   { value: 'off_topic', label: 'Off-topic' },
 ]
 
+const REVIEW_BODY_MAX = 2000
+const REPORT_COMMENT_MAX = 500
+
 const CHEF_ON = <span style={{ fontSize: '20px' }}>👨🏽‍🍳</span>
 const CHEF_OFF = <span style={{ fontSize: '20px', opacity: 0.25 }}>👨🏽‍🍳</span>
+
+function CharCount({ value, max }: { value: string; max: number }) {
+  const remaining = max - value.length
+  return (
+    <span className={`char-count${remaining < 0 ? ' char-count--over' : remaining <= max * 0.1 ? ' char-count--warn' : ''}`}>
+      {remaining < 0 ? `${Math.abs(remaining)} over limit` : `${remaining} remaining`}
+    </span>
+  )
+}
 
 function formatDate(date: Date | string): string {
   return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
@@ -184,9 +196,10 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
               rows={3}
               placeholder="Update your review…"
             />
+            <CharCount value={editBody} max={REVIEW_BODY_MAX} />
             <div className="review-edit-actions">
               <button type="button" className="ghost-button" onClick={() => setEditingId(null)}>Cancel</button>
-              <button type="button" className="primary-button" onClick={() => handleEditSave(review.id)}>Save</button>
+              <button type="button" className="primary-button" onClick={() => handleEditSave(review.id)} disabled={editBody.length > REVIEW_BODY_MAX}>Save</button>
             </div>
           </div>
         ) : (
@@ -273,10 +286,11 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
             rows={3}
             placeholder="Share your thoughts… (optional)"
           />
+          <CharCount value={newBody} max={REVIEW_BODY_MAX} />
           <button
             type="submit"
             className="primary-button"
-            disabled={newRating === 0 || submitting}
+            disabled={newRating === 0 || submitting || newBody.length > REVIEW_BODY_MAX}
           >
             {submitting ? 'Submitting…' : 'Submit review'}
           </button>
@@ -287,7 +301,7 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
         <p className="reviews-login-prompt">Sign in to leave a review.</p>
       )}
 
-      <Dialog
+      <Modal
         header="Report this review"
         visible={reportingId !== null}
         onHide={() => { setReportingId(null); setReportComment('') }}
@@ -314,6 +328,7 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
             rows={3}
             placeholder="Describe the issue…"
           />
+          <CharCount value={reportComment} max={REPORT_COMMENT_MAX} />
           <div className="report-dialog-actions">
             <button type="button" className="ghost-button" onClick={() => { setReportingId(null); setReportComment('') }}>
               Cancel
@@ -322,13 +337,13 @@ export default function ReviewsTab({ recipeShortId, isLoggedIn, isOwner, current
               type="button"
               className="danger-button"
               onClick={handleReportSubmit}
-              disabled={reportSubmitting}
+              disabled={reportSubmitting || reportComment.length > REPORT_COMMENT_MAX}
             >
               {reportSubmitting ? 'Submitting…' : 'Submit report'}
             </button>
           </div>
         </div>
-      </Dialog>
+      </Modal>
     </div>
   )
 }
