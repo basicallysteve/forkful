@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSessionUser } from '@/lib/auth'
+import { getSessionUser, isAdmin } from '@/lib/auth'
 import { getOpenReports } from '@/lib/reviews'
-
-function isAdmin(userId: number): boolean {
-  const adminId = process.env.ADMIN_USER_ID
-  return adminId !== undefined && userId === Number(adminId)
-}
 
 export async function GET() {
   const session = await getSessionUser()

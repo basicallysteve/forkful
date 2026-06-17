@@ -19,6 +19,9 @@ export async function POST(request: Request, { params }: Params) {
   if (!VALID_REASONS.includes(reason)) {
     return NextResponse.json({ error: 'Invalid reason' }, { status: 400 })
   }
+  if (comment !== undefined && (typeof comment !== 'string' || comment.length > 500)) {
+    return NextResponse.json({ error: 'Comment must be 500 characters or fewer' }, { status: 400 })
+  }
 
   try {
     await taskRunner.run(() =>

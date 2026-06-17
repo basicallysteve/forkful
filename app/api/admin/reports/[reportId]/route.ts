@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getSessionUser } from '@/lib/auth'
+import { getSessionUser, isAdmin } from '@/lib/auth'
 import { dismissReport } from '@/lib/reviews'
 import { taskRunner } from '@/lib/TaskRunner'
 
 type Params = { params: Promise<{ reportId: string }> }
-
-function isAdmin(userId: number): boolean {
-  const adminId = process.env.ADMIN_USER_ID
-  return adminId !== undefined && userId === Number(adminId)
-}
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { reportId } = await params

@@ -16,6 +16,9 @@ export async function PUT(request: Request, { params }: Params) {
   if (rating !== undefined && (typeof rating !== 'number' || rating < 1 || rating > 5)) {
     return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 })
   }
+  if (reviewBody !== undefined && reviewBody !== null && (typeof reviewBody !== 'string' || reviewBody.length > 2000)) {
+    return NextResponse.json({ error: 'Review body must be 2000 characters or fewer' }, { status: 400 })
+  }
 
   const updated = await taskRunner.run(() =>
     updateReview(Number(reviewId), session.userId, { rating, body: reviewBody })

@@ -140,10 +140,10 @@ export async function deleteReview(reviewId: number): Promise<boolean> {
 }
 
 export async function deleteReviewByOwner(reviewId: number, userId: number): Promise<'deleted' | 'not_found' | 'forbidden'> {
-  const [review] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, reviewId))
-  if (!review) return 'not_found'
-  if (review.userId !== userId) return 'forbidden'
-  await db.delete(reviews).where(eq(reviews.id, reviewId))
+  const [existing] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, reviewId))
+  if (!existing) return 'not_found'
+  if (existing.userId !== userId) return 'forbidden'
+  await db.delete(reviews).where(and(eq(reviews.id, reviewId), eq(reviews.userId, userId)))
   return 'deleted'
 }
 
@@ -173,6 +173,39 @@ export async function createReviewReport(input: CreateReviewReportInput): Promis
     reason: input.reason,
     comment: input.comment ?? null,
   })
+}
+
+export async function getReportById(reportId: number): Promise<ReviewReport | null> {
+  const author = alias(users, 'author')
+  const reporter = alias(users, 'reporter')
+
+  const [row] = await db
+    .select({
+      report: reviewReports,
+      review: reviews,
+      likeCount: count(reviewLikes.id),
+      reviewAuthorUsername: author.username,
+      reporterUsername: reporter.username,
+    })
+    .from(reviewReports)
+    .innerJoin(reviews, eq(reviews.id, reviewReports.reviewId))
+    .leftJoin(reviewLikes, eq(reviewLikes.reviewId, reviews.id))
+    .leftJoin(author, eq(author.id, reviews.userId))
+    .leftJoin(reporter, eq(reporter.id, reviewReports.userId))
+    .where(eq(reviewReports.id, reportId))
+    .groupBy(reviewReports.id, reviews.id, author.username, reporter.username)
+
+  if (!row) return null
+  return {
+    id: row.report.id,
+    userId: row.report.userId,
+    reviewId: row.report.reviewId,
+    reason: row.report.reason,
+    comment: row.report.comment,
+    dateAdded: row.report.dateAdded,
+    reporterUsername: row.reporterUsername ?? null,
+    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false),
+  }
 }
 
 export async function getOpenReports(): Promise<ReviewReport[]> {
