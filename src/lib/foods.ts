@@ -38,20 +38,26 @@ function mapFood(row: typeof foods.$inferSelect): Food {
 
 export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
   try {
-    const where = options.search
-      ? and(isNull(foods.dateDeleted), ilike(foods.name, `%${options.search}%`))
-      : isNull(foods.dateDeleted)
+    const words = options.search ? options.search.trim().split(/\s+/).filter(Boolean) : []
+    const phrase = options.search?.trim() ?? ''
+
+    const where = (() => {
+      if (words.length === 0) return isNull(foods.dateDeleted)
+      // Multi-word: every word must appear in the name (AND), order-independent
+      return and(isNull(foods.dateDeleted), ...words.map((w) => ilike(foods.name, `%${w}%`)))
+    })()
 
     const orderBy = (() => {
-      if (options.search) {
-        const term = options.search
-        // Exact match → starts-with → contains, then alphabetical within each tier
+      if (words.length > 0) {
+        // Tier 0: exact phrase · 1: primary name starts with phrase · 2: name starts with phrase
+        // Tier 3: phrase appears as substring · 4: all words present but scattered
         return [
           sql`CASE
-            WHEN ${foods.name} ILIKE ${term}                          THEN 0
-            WHEN SPLIT_PART(${foods.name}, ',', 1) ILIKE ${term + '%'} THEN 1
-            WHEN ${foods.name} ILIKE ${term + '%'}                    THEN 2
-            ELSE 3
+            WHEN ${foods.name} ILIKE ${phrase}                           THEN 0
+            WHEN SPLIT_PART(${foods.name}, ',', 1) ILIKE ${phrase + '%'} THEN 1
+            WHEN ${foods.name} ILIKE ${phrase + '%'}                     THEN 2
+            WHEN ${foods.name} ILIKE ${'%' + phrase + '%'}               THEN 3
+            ELSE 4
           END`,
           asc(foods.name),
         ]
