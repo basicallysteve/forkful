@@ -157,7 +157,7 @@
   .mi-ingredient-resolution {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     flex-wrap: wrap;
   }
@@ -197,11 +197,38 @@
     }
   }
 
-  .mi-candidates {
+  .mi-candidates-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mi-candidates-header {
     display: flex;
     align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mi-candidates-carousel {
+    display: flex;
     gap: 6px;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    min-width: 0;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mi-candidate-btn {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+    }
   }
 
   .mi-candidate-btn {

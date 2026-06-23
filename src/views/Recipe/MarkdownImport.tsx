@@ -350,18 +350,29 @@ function IngredientRow({
         )}
 
         {!override.skipped && effectiveStatus === 'candidates' && !override.selectedFood && (
-          <div className="mi-candidates">
-            <span className="mi-badge mi-badge--warn">No exact match</span>
-            {candidates?.map((c: Food) => (
-              <button
-                key={c.id}
-                type="button"
-                className="mi-candidate-btn"
-                onClick={() => onOverride({ selectedFood: c })}
-              >
-                {c.name}
-              </button>
-            ))}
+          <div className="mi-candidates-block">
+            <div className="mi-candidates-header">
+              <span className="mi-badge mi-badge--warn">No exact match</span>
+              <div className="mi-candidates-carousel">
+                {candidates?.map((c: Food) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="mi-candidate-btn"
+                    onClick={() => onOverride({ selectedFood: c })}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <FoodSearch
+              value={override.searchText}
+              localFoods={localFoods}
+              onChange={(food) => onOverride({ selectedFood: food, searchText: food.name })}
+              placeholder="Or search for a food…"
+              inputAriaLabel="Search food"
+            />
           </div>
         )}
 
