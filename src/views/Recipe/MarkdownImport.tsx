@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Dropdown } from 'primereact/dropdown'
@@ -8,9 +8,9 @@ import { InputNumber } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
 import { recipeLanguage } from '@/utils/recipeLanguage'
 import { parseRecipeMarkdown } from '@/utils/recipeMarkdownParser'
-import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { toRecipeUrl } from '@/utils/slug'
 import { calculateCalories } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
@@ -53,7 +53,6 @@ type Mode = 'editor' | 'resolving' | 'preview'
 
 export default function MarkdownImport() {
   const router = useRouter()
-  const foods = useFoodStore((state) => state.foods)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
 
   const [markdown, setMarkdown] = useState(TEMPLATE)
@@ -271,7 +270,6 @@ export default function MarkdownImport() {
                     key={i}
                     resolved={r}
                     override={override}
-                    foods={foods}
                     resolvedFood={resolvedFood ?? null}
                     onOverride={(patch) => updateOverride(i, patch)}
                   />
@@ -320,18 +318,29 @@ export default function MarkdownImport() {
 function IngredientRow({
   resolved,
   override,
-  foods,
   resolvedFood,
   onOverride,
 }: {
   resolved: ResolvedIngredient
   override: IngredientOverride
-  foods: Food[]
   resolvedFood: Food | null
   onOverride: (patch: Partial<IngredientOverride>) => void
 }) {
   const { status, parsed, candidates } = resolved
   const effectiveStatus = override.selectedFood ? 'matched' : status
+
+  const [searchResults, setSearchResults] = useState<Food[]>([])
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleSearch(query: string) {
+    onOverride({ searchText: query })
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (query.length < 2) { setSearchResults([]); return }
+    searchTimeout.current = setTimeout(async () => {
+      const results = await apiFetchFoods({ search: query })
+      setSearchResults(results.slice(0, 10))
+    }, 200)
+  }
 
   return (
     <div className={`mi-ingredient-row mi-ingredient-row--${override.skipped ? 'skipped' : effectiveStatus}`}>
@@ -367,9 +376,9 @@ function IngredientRow({
             <span className="mi-badge mi-badge--error">Not found</span>
             <Autocomplete
               value={override.searchText}
-              options={foods}
+              options={searchResults}
               getOptionLabel={(f) => f.name}
-              onChange={(v) => onOverride({ searchText: v })}
+              onChange={handleSearch}
               onSelect={(f) => onOverride({ selectedFood: f, searchText: f.name })}
               placeholder="Search for a food…"
               inputAriaLabel="Search food"

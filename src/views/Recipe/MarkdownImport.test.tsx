@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFoodStore, resetFoodStore } from '@/stores/food'
+import { resetFoodStore } from '@/stores/food'
 import { resetRecipeStore } from '@/stores/recipes'
 import type { Food } from '@/types/Food'
 import type { ParsedIngredient } from '@/utils/recipeMarkdownParser'
@@ -68,11 +68,17 @@ const mockRice: Food = {
 }
 
 // Build a per-test fetch mock so we can customise resolve-ingredients responses
-function buildFetchMock(resolvedIngredients: ResolvedIngredient[]) {
+function buildFetchMock(resolvedIngredients: ResolvedIngredient[], foodSearchResults: Food[] = []) {
   return vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = String(url)
     if (urlStr.includes('resolve-ingredients')) {
       return new Response(JSON.stringify({ results: resolvedIngredients }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    if (urlStr.includes('/api/foods')) {
+      return new Response(JSON.stringify(foodSearchResults), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -107,14 +113,12 @@ const { default: Store } = await import('./Store')
 function renderImport() {
   resetFoodStore()
   resetRecipeStore()
-  useFoodStore.setState({ foods: [mockChicken, mockRice] })
   return render(React.createElement(MarkdownImport))
 }
 
 function renderStore() {
   resetFoodStore()
   resetRecipeStore()
-  useFoodStore.setState({ foods: [mockChicken, mockRice] })
   return render(React.createElement(Store))
 }
 
