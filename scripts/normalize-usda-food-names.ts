@@ -6,13 +6,15 @@
  * human-readable name for each, and updates name + slug in place.
  *
  * Usage:
- *   bun --env-file .env.local scripts/normalize-usda-food-names.ts
+ *   bun run normalize:usda-names
+ *   bun --env-file .env.production scripts/normalize-usda-food-names.ts
  *
  * Options:
  *   --dry-run   Print proposed changes without writing to the DB
  *   --batch N   Number of concurrent Claude calls (default: 5)
  *
- * Re-runnable: already-normalized names (no ALL-CAPS tokens) are skipped.
+ * Re-runnable: foods whose name contains a comma outside of parentheses are
+ * considered un-normalized and will be processed; all others are skipped.
  * LLM failures fall back to the raw description; those rows are logged at the end.
  */
 

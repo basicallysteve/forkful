@@ -249,6 +249,7 @@ const NORMALIZE_PROMPT = `You are a food name normalizer. Convert raw USDA FoodD
 Rules:
 - Output ONLY the normalized name — no explanation, no punctuation at the end
 - Use title case
+- NEVER use a comma outside of parentheses in the output — the result must pass a comma-free test outside parens
 - The first token(s) form the natural noun; put qualifying details in parentheses after
 - Reorder tokens so the name reads naturally in English (e.g. "JAM, FIG" → "Fig Jam", not "Jam (fig)")
 - Collapse all comma-separated USDA qualifiers into a single parenthetical suffix when they are true qualifiers rather than part of the noun (e.g. "CHICKEN, BREAST, BONELESS, SKINLESS, RAW" → "Chicken Breast (boneless, skinless, raw)")
@@ -265,7 +266,7 @@ BREAD, WHITE → White Bread
 OIL, OLIVE → Olive Oil
 NUTS, ALMONDS, RAW → Almonds (raw)
 CHEESE, CHEDDAR → Cheddar Cheese
-SALMON, ATLANTIC, FARMED, RAW → Salmon, Atlantic (farmed, raw)`
+SALMON, ATLANTIC, FARMED, RAW → Atlantic Salmon (farmed, raw)`
 
 let _anthropicClient: Anthropic | null = null
 function getAnthropicClient(): Anthropic {
@@ -288,7 +289,6 @@ export async function normalizeUSDAFoodName(rawDescription: string): Promise<str
     })
     const message = await stream.finalMessage()
     const text = message.content.find(b => b.type === 'text')?.text?.trim()
-    console.log(`[usda-normalize] "${rawDescription}" → "${text}"`)
     if (text) return text
     console.error(`[usda-normalize] Empty response for: ${rawDescription}`)
     return rawDescription

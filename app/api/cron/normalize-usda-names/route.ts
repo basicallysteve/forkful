@@ -63,9 +63,8 @@ export async function GET(request: Request) {
   const usdaFoods = allFoods.filter(r => r.source === 'usda')
   const needsNormalization = usdaFoods.filter(r => isUSDANameRaw(r.name))
 
-  // Nothing left — migration complete
+  // Already complete from a previous run — return without emailing again
   if (needsNormalization.length === 0) {
-    await sendUSDANormalizationCompleteEmail(usdaFoods.length, 0)
     return NextResponse.json({ ok: true, status: 'complete', total: usdaFoods.length })
   }
 
@@ -88,6 +87,7 @@ export async function GET(request: Request) {
             creditExhausted = true
             return
           }
+          console.error(`[cron/normalize-usda-names] id=${row.id} error:`, err)
           failed++
           return
         }

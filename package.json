@@ -16,7 +16,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:usda": "bun --env-file .env scripts/seed-usda.ts --dir ./data/usda",
-    "normalize:usda-names": "bun --env-file .env scripts/normalize-usda-food-names.ts"
+    "normalize:usda-names": "bun --env-file .env.production scripts/normalize-usda-food-names.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
