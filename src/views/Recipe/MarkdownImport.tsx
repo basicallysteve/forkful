@@ -183,6 +183,19 @@ export default function MarkdownImport() {
             basicSetup={{ lineNumbers: false, foldGutter: false, highlightActiveLine: true }}
           />
         </div>
+        <div className="mi-format-ref">
+          <span className="mi-format-ref-title">Format reference</span>
+          <dl className="mi-format-grid">
+            <dt># Title</dt>          <dd>Recipe name</dd>
+            <dt>meal: Dinner</dt>     <dd>Breakfast · Lunch · Dinner · Snack · Dessert</dd>
+            <dt>serves: 4</dt>        <dd>Number of servings</dd>
+            <dt>prepTime: 15</dt>     <dd>Prep time in minutes</dd>
+            <dt>cookTime: 30</dt>     <dd>Cook time in minutes</dd>
+            <dt>## Ingredients</dt>   <dd>One ingredient per line, starting with <code>-</code></dd>
+            <dt>- 500g chicken</dt>   <dd>Quantity + unit attached <em>or</em> separated: <code>2 cup rice</code></dd>
+            <dt>## Steps</dt>         <dd>Numbered list: <code>1. Do this.</code></dd>
+          </dl>
+        </div>
         {error && <p className="mi-error" role="alert">{error}</p>}
         <div className="mi-editor-footer">
           <button
