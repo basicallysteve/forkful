@@ -21,7 +21,7 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   const updated = await taskRunner.run(() =>
-    updateReview(Number(reviewId), session.userId, { rating, body: reviewBody })
+    updateReview({ reviewId: Number(reviewId), userId: session.userId, input: { rating, body: reviewBody } })
   )
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(updated)

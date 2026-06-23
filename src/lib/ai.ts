@@ -28,7 +28,7 @@ function getAnthropicClient(): Anthropic {
   return _anthropicClient
 }
 
-async function callAnthropic(model: string, systemPrompt: string, userMessage: string): Promise<string> {
+async function callAnthropic({ model, systemPrompt, userMessage }: { model: string; systemPrompt: string; userMessage: string }): Promise<string> {
   try {
     const message = await getAnthropicClient().messages.create({
       model,
@@ -50,11 +50,11 @@ async function callAnthropic(model: string, systemPrompt: string, userMessage: s
  * "AI Completion" for conventions callers must follow (XML tags for user data,
  * caller-owned output validation, AIBudgetExhaustedError handling).
  */
-export async function complete(
-  systemPrompt: string,
-  userMessage: string,
-  aiModel: AIModel,
-): Promise<string> {
-  if (aiModel.provider === 'anthropic') return callAnthropic(aiModel.model, systemPrompt, userMessage)
+export async function complete({ systemPrompt, userMessage, aiModel }: {
+  systemPrompt: string;
+  userMessage: string;
+  aiModel: AIModel;
+}): Promise<string> {
+  if (aiModel.provider === 'anthropic') return callAnthropic({ model: aiModel.model, systemPrompt, userMessage })
   throw new Error(`Unknown AI provider: "${aiModel.provider}"`)
 }

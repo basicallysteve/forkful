@@ -263,11 +263,11 @@ SALMON, ATLANTIC, FARMED, RAW → Atlantic Salmon (farmed, raw)`
 
 export async function normalizeUSDAFoodName(rawDescription: string): Promise<string> {
   try {
-    const text = await complete(
-      NORMALIZE_SYSTEM_PROMPT,
-      `<usda_description>${rawDescription}</usda_description>`,
-      Models.anthropicHaiku,
-    )
+    const text = await complete({
+      systemPrompt: NORMALIZE_SYSTEM_PROMPT,
+      userMessage: `<usda_description>${rawDescription}</usda_description>`,
+      aiModel: Models.anthropicHaiku,
+    })
     if (text) return text
     console.error(`[usda-normalize] Empty response for: ${rawDescription}`)
     return rawDescription

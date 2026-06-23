@@ -72,7 +72,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const ext = EXT_MAP[file.type]
   const blob = await put(`avatars/${targetId}-${Date.now()}.${ext}`, file, { access: 'public', contentType: file.type })
 
-  await taskRunner.run(() => updateUserAvatar(targetId, blob.url, oldAvatarUrl))
+  await taskRunner.run(() => updateUserAvatar({ userId: targetId, avatarUrl: blob.url, oldAvatarUrl }))
   await reissueSession(sessionUser, blob.url)
 
   return NextResponse.json({ url: blob.url })

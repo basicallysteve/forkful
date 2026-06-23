@@ -14,7 +14,7 @@ export async function PUT(request: Request, { params }: Params) {
   if (recipe.userId !== session.userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body: { title?: string | null; content?: string } = await request.json()
-  const step = await taskRunner.run(() => updateRecipeStep(Number(stepId), recipe.id, body))
+  const step = await taskRunner.run(() => updateRecipeStep({ stepId: Number(stepId), recipeId: recipe.id, data: body }))
   if (!step) return NextResponse.json({ error: 'Step not found' }, { status: 404 })
   return NextResponse.json(step)
 }

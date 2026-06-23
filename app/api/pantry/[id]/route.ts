@@ -49,7 +49,7 @@ export async function PUT(request: Request, { params }: Params) {
   const id = parseId(rawId)
   if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const body: UpdateBody = await request.json()
-  const updated = await taskRunner.run(() => updatePantryItem(id, user.userId, parseUpdateBody(body)))
+  const updated = await taskRunner.run(() => updatePantryItem({ id, userId: user.userId, data: parseUpdateBody(body) }))
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(updated)
 }
