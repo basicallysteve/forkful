@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Dropdown } from 'primereact/dropdown'
@@ -10,6 +10,7 @@ import { recipeLanguage } from '@/utils/recipeLanguage'
 import { parseRecipeMarkdown } from '@/utils/recipeMarkdownParser'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { toRecipeUrl } from '@/utils/slug'
 import { calculateCalories } from '@/utils/unitConversion'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
@@ -54,6 +55,11 @@ type Mode = 'editor' | 'resolving' | 'preview'
 export default function MarkdownImport() {
   const router = useRouter()
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
+  const setFoods = useFoodStore((state) => state.setFoods)
+
+  useEffect(() => {
+    apiFetchFoods().then(setFoods).catch(() => {})
+  }, [setFoods])
 
   const [markdown, setMarkdown] = useState(TEMPLATE)
   const [mode, setMode] = useState<Mode>('editor')
