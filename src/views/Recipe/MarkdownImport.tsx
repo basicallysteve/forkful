@@ -10,8 +10,7 @@ import { recipeLanguage } from '@/utils/recipeLanguage'
 import { parseRecipeMarkdown } from '@/utils/recipeMarkdownParser'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiCreateRecipe } from '@/lib/api/recipes'
-import { apiCreateRecipeStep } from '@/lib/api/recipes'
+import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
 import { toRecipeUrl } from '@/utils/slug'
 import { calculateCalories } from '@/utils/unitConversion'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
@@ -149,11 +148,12 @@ export default function MarkdownImport() {
         isPublic: false,
       })
 
-      // Create steps sequentially
       if (parsed.steps.length > 0) {
-        for (const stepText of parsed.steps) {
-          await apiCreateRecipeStep(created.shortId, { content: `<p>${stepText}</p>` })
-        }
+        await Promise.all(
+          parsed.steps.map((stepText) =>
+            apiCreateRecipeStep(created.shortId, { content: `<p>${stepText}</p>` })
+          )
+        )
       }
 
       addRecipeToStore(created)
@@ -259,7 +259,7 @@ export default function MarkdownImport() {
             <h3 className="mi-section-title">Ingredients</h3>
             {hasUnresolved && (
               <p className="mi-warning">
-                Some ingredients could not be matched. Skipped ingredients will not contribute to nutrition totals.
+                Some ingredients need attention. Pick a match or click Skip for each highlighted row before creating the recipe.
               </p>
             )}
             <div className="mi-ingredient-list">

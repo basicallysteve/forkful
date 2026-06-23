@@ -1,4 +1,4 @@
-import { eq, isNull, and, ilike, asc, desc, sql } from 'drizzle-orm'
+import { eq, isNull, and, or, ilike, asc, desc, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
 import type { Food, FoodSource, Measurement } from '@/types/Food'
@@ -62,6 +62,21 @@ export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> 
     })()
 
     const rows = await db.select().from(foods).where(where).orderBy(...orderBy)
+    return rows.map(mapFood)
+  } catch {
+    return []
+  }
+}
+
+export async function getFoodsByNames(names: string[]): Promise<Food[]> {
+  if (names.length === 0) return []
+  try {
+    const conditions = names.map((name) => ilike(foods.name, `%${name}%`))
+    const rows = await db
+      .select()
+      .from(foods)
+      .where(and(isNull(foods.dateDeleted), or(...conditions)))
+      .orderBy(asc(foods.name))
     return rows.map(mapFood)
   } catch {
     return []
