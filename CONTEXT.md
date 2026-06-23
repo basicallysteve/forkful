@@ -182,6 +182,18 @@ _Avoid_: moderator, superuser
 The average star rating and total Review count for a Recipe, computed at query time from the `reviews` table. Displayed on the recipe detail page as e.g. "★ 4.2 · 18 reviews". No denormalised column on the Recipe.
 _Avoid_: rating score, review summary
 
+## Markdown Recipe Import
+An alternative recipe creation mode on the New Recipe page. The user writes a single structured markdown document — title, metadata (meal, serves, prep/cook time), ingredient list, and numbered steps — which is parsed and converted into a Recipe in one step. Distinct from the Guided Recipe Form (the existing two-tab form). Both modes produce the same Recipe schema; Markdown Recipe Import is purely an authoring shortcut.
+_Avoid_: paste import, bulk create, template import
+
+## Recipe Import Preview
+The intermediate state between submitting a Markdown Recipe Import and committing the Recipe to the database. Shows the parsed Recipe with each Ingredient either resolved (matched to a Food), substitutable (up to 3 candidate Foods presented for the user to choose from), or skippable (omitted from the Recipe with a warning that Nutrition Complete status may be affected). Metadata fields not present in the markdown (meal, serves, etc.) are shown as editable fallbacks. The user must confirm the Preview before the Recipe is created.
+_Avoid_: parse result, import confirmation
+
+## Ingredient Resolution
+The process of matching a parsed ingredient string (from a Markdown Recipe Import) to a Food in the database. First tries a case-insensitive substring match; if no match is found, returns up to 3 candidate Foods ranked by relevance for the user to choose from in the Recipe Import Preview. An ingredient that cannot be matched may be skipped, in which case it is omitted from the Recipe and the Recipe may not be Nutrition Complete.
+_Avoid_: food lookup, ingredient matching
+
 ## Review Like
 An upvote cast by a User on another User's Review. One Like per User per Review, enforced by a unique constraint. Toggled — clicking again removes the Like. A User cannot Like their own Review. Displayed as a count on the Review ("Liked by X chefs"). On Account Deletion the liker is anonymised (userId set to null) — the count is preserved since only the count is displayed, not who liked it.
 _Avoid_: helpful vote, upvote, reaction

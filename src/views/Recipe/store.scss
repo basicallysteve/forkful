@@ -106,6 +106,17 @@
     gap: 6px;
   }
 
+  .toolbar-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    padding: 3px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel-deep);
+  }
+
   .tab {
     cursor: pointer;
     padding: 8px 12px;
