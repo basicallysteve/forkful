@@ -36,6 +36,26 @@ vi.mock('next/dynamic', () => ({
 // Suppress the recipeLanguage module — it imports @codemirror/language which is irrelevant here
 vi.mock('@/utils/recipeLanguage', () => ({ recipeLanguage: [] }))
 
+vi.mock('@/components/FoodSearch/FoodSearch', () => ({
+  default: ({ onChange, placeholder, inputAriaLabel }: {
+    value: string
+    localFoods: unknown[]
+    onChange: (food: Food) => void
+    placeholder?: string
+    inputAriaLabel?: string
+  }) =>
+    React.createElement('input', {
+      placeholder,
+      'aria-label': inputAriaLabel,
+      'data-testid': 'food-search',
+      readOnly: true,
+      value: '',
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        try { onChange(JSON.parse(e.target.value)) } catch { /* no-op */ }
+      },
+    }),
+}))
+
 vi.mock('@/lib/api/recipes', () => ({
   apiCreateRecipe: vi.fn(async (r) => ({ ...r, id: 99, shortId: 'test1234', nutritionComplete: false })),
   apiCreateRecipeStep: vi.fn(async () => ({ id: 1, recipeId: 99, position: 1, content: '' })),
@@ -68,17 +88,11 @@ const mockRice: Food = {
 }
 
 // Build a per-test fetch mock so we can customise resolve-ingredients responses
-function buildFetchMock(resolvedIngredients: ResolvedIngredient[], foodSearchResults: Food[] = []) {
+function buildFetchMock(resolvedIngredients: ResolvedIngredient[]) {
   return vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = String(url)
     if (urlStr.includes('resolve-ingredients')) {
       return new Response(JSON.stringify({ results: resolvedIngredients }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-    if (urlStr.includes('/api/foods')) {
-      return new Response(JSON.stringify(foodSearchResults), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })

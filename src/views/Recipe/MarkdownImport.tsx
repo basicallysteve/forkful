@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Dropdown } from 'primereact/dropdown'
@@ -10,10 +10,10 @@ import { recipeLanguage } from '@/utils/recipeLanguage'
 import { parseRecipeMarkdown } from '@/utils/recipeMarkdownParser'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
-import { apiFetchFoods } from '@/lib/api/foods'
 import { toRecipeUrl } from '@/utils/slug'
 import { calculateCalories } from '@/utils/unitConversion'
-import Autocomplete from '@/components/Autocomplete/Autocomplete'
+import FoodSearch from '@/components/FoodSearch/FoodSearch'
+import { useFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
 import type { ResolvedIngredient } from '@/types/RecipeImport'
@@ -328,19 +328,7 @@ function IngredientRow({
 }) {
   const { status, parsed, candidates } = resolved
   const effectiveStatus = override.selectedFood ? 'matched' : status
-
-  const [searchResults, setSearchResults] = useState<Food[]>([])
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  function handleSearch(query: string) {
-    onOverride({ searchText: query })
-    if (searchTimeout.current) clearTimeout(searchTimeout.current)
-    if (query.length < 2) { setSearchResults([]); return }
-    searchTimeout.current = setTimeout(async () => {
-      const results = await apiFetchFoods({ search: query })
-      setSearchResults(results.slice(0, 10))
-    }, 200)
-  }
+  const localFoods = useFoodStore((state) => state.foods)
 
   return (
     <div className={`mi-ingredient-row mi-ingredient-row--${override.skipped ? 'skipped' : effectiveStatus}`}>
@@ -374,12 +362,10 @@ function IngredientRow({
         {!override.skipped && effectiveStatus === 'unresolved' && !override.selectedFood && (
           <div className="mi-search">
             <span className="mi-badge mi-badge--error">Not found</span>
-            <Autocomplete
+            <FoodSearch
               value={override.searchText}
-              options={searchResults}
-              getOptionLabel={(f) => f.name}
-              onChange={handleSearch}
-              onSelect={(f) => onOverride({ selectedFood: f, searchText: f.name })}
+              localFoods={localFoods}
+              onChange={(food) => onOverride({ selectedFood: food, searchText: food.name })}
               placeholder="Search for a food…"
               inputAriaLabel="Search food"
             />
