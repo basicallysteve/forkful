@@ -301,6 +301,29 @@ describe('MarkdownImport — preview state', () => {
     expect(await screen.findByTestId('markdown-editor')).toBeInTheDocument()
   })
 
+  it('Create Recipe button is disabled when any ingredient is unresolved and not skipped', async () => {
+    const resolved: ResolvedIngredient[] = [
+      makeResolved(
+        { raw: '- 2 tsp mystery spice', quantity: 2, unit: 'tsp', foodName: 'mystery spice' },
+        { status: 'unresolved', food: undefined }
+      ),
+    ]
+    await goToPreview(resolved)
+    expect(screen.getByRole('button', { name: /create recipe/i })).toBeDisabled()
+  })
+
+  it('Create Recipe button enables after skipping an unresolved ingredient', async () => {
+    const resolved: ResolvedIngredient[] = [
+      makeResolved(
+        { raw: '- 2 tsp mystery spice', quantity: 2, unit: 'tsp', foodName: 'mystery spice' },
+        { status: 'unresolved', food: undefined }
+      ),
+    ]
+    const user = await goToPreview(resolved)
+    await user.click(screen.getByRole('button', { name: /skip ingredient/i }))
+    expect(screen.getByRole('button', { name: /create recipe/i })).not.toBeDisabled()
+  })
+
   it('Create Recipe button is disabled when the name is empty', async () => {
     const user = await goToPreview([])
     const nameInput = screen.getByDisplayValue('Test Recipe')

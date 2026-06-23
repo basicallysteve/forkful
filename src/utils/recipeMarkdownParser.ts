@@ -20,6 +20,11 @@ export interface ParsedRecipe {
 
 const KNOWN_UNITS = new Set([...MASS_UNITS, ...VOLUME_UNITS])
 
+// Maps lowercase → canonical casing expected by unitConversion (e.g. 'tbs' → 'Tbs', 'fl-oz' → 'fl-oz')
+const CANONICAL_UNIT = new Map<string, string>(
+  [...MASS_UNITS, ...VOLUME_UNITS].map((u) => [u.toLowerCase(), u])
+)
+
 // Matches: optional "- " then quantity (may be attached to unit, e.g. "500g"), unit, food name
 // Examples: "500g chicken breast", "2 cup yogurt", "1 tsp cumin", "2.5 oz butter"
 const INGREDIENT_PATTERN = /^-?\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z][a-zA-Z-]*)\s+(.+)$/
@@ -30,7 +35,7 @@ export function parseIngredientLine(raw: string): ParsedIngredient {
   if (!match) return { raw: trimmed, quantity: null, unit: null, foodName: null }
 
   const quantity = parseFloat(match[1].replace(',', '.'))
-  const unit = match[2]
+  const unit = CANONICAL_UNIT.get(match[2].toLowerCase()) ?? match[2]
   const foodName = match[3].trim()
 
   if (isNaN(quantity)) return { raw: trimmed, quantity: null, unit: null, foodName: null }

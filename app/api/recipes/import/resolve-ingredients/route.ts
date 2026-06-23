@@ -13,6 +13,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
+  const malformed = ingredients.some((ing) => ing === null || typeof ing !== 'object' || typeof ing.raw !== 'string')
+  if (malformed) {
+    return NextResponse.json({ error: 'Invalid ingredient shape' }, { status: 400 })
+  }
+
   const results: ResolvedIngredient[] = await Promise.all(
     ingredients.map(async (ing): Promise<ResolvedIngredient> => {
       const base = { raw: ing.raw, parsed: { quantity: ing.quantity, unit: ing.unit, foodName: ing.foodName } }

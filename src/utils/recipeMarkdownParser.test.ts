@@ -37,6 +37,24 @@ describe('parseIngredientLine', () => {
   })
 })
 
+describe('parseIngredientLine — unit normalisation', () => {
+  it('normalises lowercase tbs to canonical Tbs', () => {
+    expect(parseIngredientLine('2 tbs olive oil').unit).toBe('Tbs')
+  })
+
+  it('normalises uppercase G to canonical g', () => {
+    expect(parseIngredientLine('100 G flour').unit).toBe('g')
+  })
+
+  it('preserves unknown units unchanged', () => {
+    expect(parseIngredientLine('1 handful spinach').unit).toBe('handful')
+  })
+
+  it('normalises fl-oz regardless of case', () => {
+    expect(parseIngredientLine('2 FL-OZ milk').unit).toBe('fl-oz')
+  })
+})
+
 describe('isKnownUnit', () => {
   it('recognises mass units', () => {
     expect(isKnownUnit('g')).toBe(true)

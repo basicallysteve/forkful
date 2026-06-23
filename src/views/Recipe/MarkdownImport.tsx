@@ -122,6 +122,7 @@ export default function MarkdownImport() {
           if (!food) return null
           const qty = r.parsed.quantity ?? 1
           const unit = r.parsed.unit ?? food.servingUnit
+          const measurement = food.measurements?.find((m) => m.unit === unit)
           const calories =
             calculateCalories({
               baseCalories: food.calories || 0,
@@ -129,6 +130,7 @@ export default function MarkdownImport() {
               baseServingUnit: food.servingUnit,
               targetAmount: qty,
               targetUnit: unit,
+              gramsPerUnit: measurement?.gramsPerUnit,
             }) ?? 0
           return { food, quantity: qty, servingUnit: unit, calories }
         })
@@ -305,7 +307,7 @@ export default function MarkdownImport() {
             type="button"
             className="primary-button"
             onClick={handleCreate}
-            disabled={submitting || !previewName.trim()}
+            disabled={submitting || !previewName.trim() || hasUnresolved}
           >
             {submitting ? 'Creating…' : 'Create Recipe'}
           </button>
