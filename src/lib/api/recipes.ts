@@ -91,7 +91,7 @@ export async function apiCreateRecipeStep(shortId: string, data: { title?: strin
   return res.json()
 }
 
-export async function apiUpdateRecipeStep(shortId: string, stepId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep> {
+export async function apiUpdateRecipeStep({ shortId, stepId, data }: { shortId: string; stepId: number; data: { title?: string | null; content?: string } }): Promise<RecipeStep> {
   const res = await fetch(`/api/recipes/${shortId}/steps/${stepId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

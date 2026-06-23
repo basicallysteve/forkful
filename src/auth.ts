@@ -44,7 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ipAddress = getClientIp(request.headers)
 
         try {
-          const user = await login(credentials.username, credentials.password, ipAddress)
+          const user = await login({ username: credentials.username, password: credentials.password, ipAddress })
           await trackLoginAttempt({ userId: Number(user.id), successful: true, ipAddress })
           return { id: String(user.id), name: user.username, email: user.email }
         } catch (err) {

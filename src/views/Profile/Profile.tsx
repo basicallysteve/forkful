@@ -160,7 +160,7 @@ export default function Profile({ user }: ProfileProps) {
     setPrefError(null)
     setPrefSuccess(false)
     try {
-      await apiUpdatePreferences(user.id!, cuisine, dietary)
+      await apiUpdatePreferences({ userId: user.id!, cuisinePreferences: cuisine, dietaryRestrictions: dietary })
       setPrefSuccess(true)
     } catch (e) {
       setPrefError(e instanceof Error ? e.message : 'Save failed')
@@ -235,7 +235,7 @@ export default function Profile({ user }: ProfileProps) {
     setPwError(null)
     setPwSuccess(false)
     try {
-      await apiUpdatePassword(user.id!, currentPassword, newPassword)
+      await apiUpdatePassword({ userId: user.id!, currentPassword, newPassword })
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')

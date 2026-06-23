@@ -64,7 +64,7 @@ export async function processPantryReminders(frequency: 'daily' | 'weekly'): Pro
       }
     })
 
-    await sendPantryReminderEmail(user.email, user.username, items, `${baseUrl}/pantry`)
+    await sendPantryReminderEmail({ to: user.email, username: user.username, items, pantryUrl: `${baseUrl}/pantry` })
     sent++
   }
 
@@ -178,10 +178,10 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
 
     if (scored.length === 0) continue
 
-    await sendRecipeSuggestionEmail(
-      user.email,
-      user.username,
-      scored.map(r => ({
+    await sendRecipeSuggestionEmail({
+      to: user.email,
+      username: user.username,
+      recipes: scored.map(r => ({
         name: r.name,
         description: r.description ?? null,
         cuisineType: r.cuisineType ?? null,
@@ -189,7 +189,7 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
         slug: r.slug ?? toSlug(r.name),
       })),
       baseUrl,
-    )
+    })
     sent++
   }
 

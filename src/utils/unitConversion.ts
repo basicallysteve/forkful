@@ -27,7 +27,7 @@ export function canConvert(fromUnit: string, toUnit: string, density?: number): 
   return !!(density && density > 0)
 }
 
-export function convertUnit(value: number, fromUnit: string, toUnit: string, density?: number): number | null {
+export function convertUnit({ value, fromUnit, toUnit, density }: { value: number; fromUnit: string; toUnit: string; density?: number }): number | null {
   if (fromUnit === toUnit) return value
 
   const fromCat = getUnitCategory(fromUnit)
@@ -101,12 +101,12 @@ export function calculateCalories({
   if (getUnitCategory(targetUnit) === 'custom') {
     if (!gramsPerUnit || gramsPerUnit <= 0) return null
     const gramsAmount = targetAmount * gramsPerUnit
-    const convertedAmount = convertUnit(gramsAmount, 'g', baseServingUnit, density)
+    const convertedAmount = convertUnit({ value: gramsAmount, fromUnit: 'g', toUnit: baseServingUnit, density })
     if (convertedAmount === null) return null
     return (baseCalories / baseServingSize) * convertedAmount
   }
 
-  const convertedAmount = convertUnit(targetAmount, targetUnit, baseServingUnit, density)
+  const convertedAmount = convertUnit({ value: targetAmount, fromUnit: targetUnit, toUnit: baseServingUnit, density })
   if (convertedAmount === null) return null
   return (baseCalories / baseServingSize) * convertedAmount
 }

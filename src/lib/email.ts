@@ -26,7 +26,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   })
 }
 
-export async function sendGoodbyeEmail(to: string, username: string, action: 'deactivated' | 'deleted'): Promise<void> {
+export async function sendGoodbyeEmail({ to, username, action }: { to: string; username: string; action: 'deactivated' | 'deleted' }): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   const reactivateUrl = baseUrl ? `${baseUrl}/login` : undefined
@@ -43,12 +43,12 @@ export async function sendGoodbyeEmail(to: string, username: string, action: 'de
   })
 }
 
-export async function sendPantryReminderEmail(
-  to: string,
-  username: string,
-  items: Array<{ name: string; expirationDate: string; daysUntilExpiry: number }>,
-  pantryUrl: string,
-): Promise<void> {
+export async function sendPantryReminderEmail({ to, username, items, pantryUrl }: {
+  to: string;
+  username: string;
+  items: Array<{ name: string; expirationDate: string; daysUntilExpiry: number }>;
+  pantryUrl: string;
+}): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const trackingPixelUrl = makeTrackingPixelUrl()
 
@@ -60,12 +60,12 @@ export async function sendPantryReminderEmail(
   })
 }
 
-export async function sendRecipeSuggestionEmail(
-  to: string,
-  username: string,
-  recipes: Array<{ name: string; description: string | null; cuisineType: string | null; shortId: string; slug: string }>,
-  baseUrl: string,
-): Promise<void> {
+export async function sendRecipeSuggestionEmail({ to, username, recipes, baseUrl }: {
+  to: string;
+  username: string;
+  recipes: Array<{ name: string; description: string | null; cuisineType: string | null; shortId: string; slug: string }>;
+  baseUrl: string;
+}): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const trackingPixelUrl = makeTrackingPixelUrl()
 
@@ -77,7 +77,7 @@ export async function sendRecipeSuggestionEmail(
   })
 }
 
-export async function sendDeactivationExpiryWarningEmail(to: string, username: string, deletionDate: Date): Promise<void> {
+export async function sendDeactivationExpiryWarningEmail({ to, username, deletionDate }: { to: string; username: string; deletionDate: Date }): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   const reactivateUrl = baseUrl ? `${baseUrl}/login` : 'https://eatforkful.com/login'
@@ -92,9 +92,9 @@ export async function sendDeactivationExpiryWarningEmail(to: string, username: s
   })
 }
 
-export async function sendReviewReportSummaryEmail(
-  to: string,
-  reportCount: number,
+export async function sendReviewReportSummaryEmail({ to, reportCount, reports, adminUrl }: {
+  to: string;
+  reportCount: number;
   reports: Array<{
     reason: string
     reviewAuthor: string | null
@@ -103,9 +103,9 @@ export async function sendReviewReportSummaryEmail(
     reportedAt: string
     reporterUsername: string | null
     reportComment: string | null
-  }>,
-  adminUrl: string,
-): Promise<void> {
+  }>;
+  adminUrl: string;
+}): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',

@@ -133,7 +133,7 @@ function Store({ existingFood }: FoodStoreProps) {
     // Recalculate servingSize when switching within the same standard category
     let newServingSize = food.servingSize
     if (newCategory === oldCategory && newCategory !== 'custom') {
-      const converted = convertUnit(food.servingSize || 1, food.servingUnit || 'g', newUnit)
+      const converted = convertUnit({ value: food.servingSize || 1, fromUnit: food.servingUnit || 'g', toUnit: newUnit })
       if (converted !== null) newServingSize = Math.round(converted * 100) / 100
     }
 

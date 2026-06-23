@@ -385,7 +385,7 @@ export async function createRecipeStep(recipeId: number, data: { title?: string;
   return mapStep(row)
 }
 
-export async function updateRecipeStep(stepId: number, recipeId: number, data: { title?: string | null; content?: string }): Promise<RecipeStep | null> {
+export async function updateRecipeStep({ stepId, recipeId, data }: { stepId: number; recipeId: number; data: { title?: string | null; content?: string } }): Promise<RecipeStep | null> {
   const updates: Partial<typeof recipeSteps.$inferInsert> = {}
   if (data.title !== undefined) updates.title = data.title
   if (data.content !== undefined) updates.content = sanitizeRichText(data.content)

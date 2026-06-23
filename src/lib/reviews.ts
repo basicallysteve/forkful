@@ -4,13 +4,13 @@ import { db } from '@/db'
 import { reviews, reviewLikes, reviewReports, recipes, users } from '@/db/schema'
 import type { Review, ReviewAggregate, CreateReviewInput, UpdateReviewInput, CreateReviewReportInput, ReviewReport } from '@/types/Review'
 
-function mapReview(
-  row: typeof reviews.$inferSelect,
-  likeCount: number,
-  authorUsername: string | null,
-  likedByCurrentUser: boolean,
-  isOwnReview: boolean,
-): Review {
+function mapReview({ row, likeCount, authorUsername, likedByCurrentUser, isOwnReview }: {
+  row: typeof reviews.$inferSelect;
+  likeCount: number;
+  authorUsername: string | null;
+  likedByCurrentUser: boolean;
+  isOwnReview: boolean;
+}): Review {
   return {
     id: row.id,
     recipeId: row.recipeId,
@@ -52,13 +52,13 @@ export async function getReviewsForRecipe(recipeId: number, viewerUserId?: numbe
   }
 
   return rows.map((row) =>
-    mapReview(
-      row.review,
-      Number(row.likeCount),
-      row.authorUsername ?? null,
-      likedReviewIds.has(row.review.id),
-      viewerUserId !== undefined && row.review.userId === viewerUserId,
-    )
+    mapReview({
+      row: row.review,
+      likeCount: Number(row.likeCount),
+      authorUsername: row.authorUsername ?? null,
+      likedByCurrentUser: likedReviewIds.has(row.review.id),
+      isOwnReview: viewerUserId !== undefined && row.review.userId === viewerUserId,
+    })
   )
 }
 
@@ -91,7 +91,7 @@ export async function getReviewByUser(userId: number, recipeId: number): Promise
     .groupBy(reviews.id, users.username)
 
   if (!row) return null
-  return mapReview(row.review, Number(row.likeCount), row.authorUsername ?? null, false, false)
+  return mapReview({ row: row.review, likeCount: Number(row.likeCount), authorUsername: row.authorUsername ?? null, likedByCurrentUser: false, isOwnReview: false })
 }
 
 export async function createReview(input: CreateReviewInput): Promise<Review> {
@@ -115,10 +115,10 @@ export async function createReview(input: CreateReviewInput): Promise<Review> {
   }).returning()
 
   const [author] = await db.select({ username: users.username }).from(users).where(eq(users.id, input.userId))
-  return mapReview(row, 0, author?.username ?? null, false, true)
+  return mapReview({ row, likeCount: 0, authorUsername: author?.username ?? null, likedByCurrentUser: false, isOwnReview: true })
 }
 
-export async function updateReview(reviewId: number, userId: number, input: UpdateReviewInput): Promise<Review | null> {
+export async function updateReview({ reviewId, userId, input }: { reviewId: number; userId: number; input: UpdateReviewInput }): Promise<Review | null> {
   const updates: Partial<typeof reviews.$inferInsert> = { dateUpdated: new Date() }
   if (input.rating !== undefined) updates.rating = input.rating
   if (input.body !== undefined) updates.body = input.body
@@ -133,7 +133,7 @@ export async function updateReview(reviewId: number, userId: number, input: Upda
 
   const [likeRow] = await db.select({ likeCount: count() }).from(reviewLikes).where(eq(reviewLikes.reviewId, reviewId))
   const [author] = await db.select({ username: users.username }).from(users).where(eq(users.id, userId))
-  return mapReview(row, Number(likeRow?.likeCount ?? 0), author?.username ?? null, false, true)
+  return mapReview({ row, likeCount: Number(likeRow?.likeCount ?? 0), authorUsername: author?.username ?? null, likedByCurrentUser: false, isOwnReview: true })
 }
 
 export async function deleteReview(reviewId: number): Promise<boolean> {
@@ -206,7 +206,7 @@ export async function getReportById(reportId: number): Promise<ReviewReport | nu
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
+    review: mapReview({ row: row.review, likeCount: Number(row.likeCount), authorUsername: row.reviewAuthorUsername ?? null, likedByCurrentUser: false, isOwnReview: false }),
   }
 }
 
@@ -238,7 +238,7 @@ export async function getOpenReports(): Promise<ReviewReport[]> {
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
+    review: mapReview({ row: row.review, likeCount: Number(row.likeCount), authorUsername: row.reviewAuthorUsername ?? null, likedByCurrentUser: false, isOwnReview: false }),
   }))
 }
 
@@ -276,6 +276,6 @@ export async function getReportsSince(since: Date): Promise<ReviewReport[]> {
     comment: row.report.comment,
     dateAdded: row.report.dateAdded,
     reporterUsername: row.reporterUsername ?? null,
-    review: mapReview(row.review, Number(row.likeCount), row.reviewAuthorUsername ?? null, false, false),
+    review: mapReview({ row: row.review, likeCount: Number(row.likeCount), authorUsername: row.reviewAuthorUsername ?? null, likedByCurrentUser: false, isOwnReview: false }),
   }))
 }

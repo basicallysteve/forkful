@@ -243,7 +243,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     if (existing) clearTimeout(existing)
     stepDebounceTimers.current.set(key, setTimeout(async () => {
       try {
-        await apiUpdateRecipeStep(recipe.shortId, stepId, { [field]: value })
+        await apiUpdateRecipeStep({ shortId: recipe.shortId, stepId, data: { [field]: value } })
       } catch (err) {
         console.error('Failed to update step:', err)
       }

@@ -88,7 +88,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (!body.newPassword || body.newPassword.length < 8) {
         return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
       }
-      await taskRunner.run(() => updateUserPassword(targetId, body.currentPassword, body.newPassword))
+      await taskRunner.run(() => updateUserPassword({ userId: targetId, currentPassword: body.currentPassword, newPassword: body.newPassword }))
       return NextResponse.json({ ok: true })
     }
 

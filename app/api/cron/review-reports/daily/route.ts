@@ -36,10 +36,10 @@ export async function GET(request: Request) {
     const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'https://eatforkful.com'
     const adminUrl = `${baseUrl}/admin/reports`
 
-    await sendReviewReportSummaryEmail(
-      admin.email,
-      reports.length,
-      reports.map((r) => ({
+    await sendReviewReportSummaryEmail({
+      to: admin.email,
+      reportCount: reports.length,
+      reports: reports.map((r) => ({
         reason: r.reason,
         reviewAuthor: r.review.authorUsername,
         reviewRating: r.review.rating,
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         reportComment: r.comment,
       })),
       adminUrl,
-    )
+    })
 
     return NextResponse.json({ ok: true, sent: true, count: reports.length })
   } catch (err) {

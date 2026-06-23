@@ -126,12 +126,14 @@ describe('PUT /api/pantry/[id]', () => {
     )
 
     expect(updatePantryItem).toHaveBeenCalledWith(
-      1,
-      42,
       expect.objectContaining({
-        expirationDate: expect.any(Date),
-        frozenDate: expect.any(Date),
-        currentSizeAmount: 4,
+        id: 1,
+        userId: 42,
+        data: expect.objectContaining({
+          expirationDate: expect.any(Date),
+          frozenDate: expect.any(Date),
+          currentSizeAmount: 4,
+        }),
       }),
     )
   })
@@ -147,9 +149,11 @@ describe('PUT /api/pantry/[id]', () => {
     )
 
     expect(updatePantryItem).toHaveBeenCalledWith(
-      1,
-      42,
-      expect.objectContaining({ frozenDate: null, expirationDate: null }),
+      expect.objectContaining({
+        id: 1,
+        userId: 42,
+        data: expect.objectContaining({ frozenDate: null, expirationDate: null }),
+      }),
     )
   })
 
@@ -160,7 +164,7 @@ describe('PUT /api/pantry/[id]', () => {
 
     await PUT(createPutRequest({ currentSizeAmount: 4 }), makeParams('1'))
 
-    const [, , data] = (updatePantryItem as Mock).mock.calls[0]
+    const [{ data }] = (updatePantryItem as Mock).mock.calls[0]
     expect(data).toEqual({ currentSizeAmount: 4 })
     expect(data).not.toHaveProperty('expirationDate')
     expect(data).not.toHaveProperty('frozenDate')

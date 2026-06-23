@@ -56,7 +56,7 @@ export async function signUp(user: { username: string; email: string; password: 
     return mapUser(data)
 }
 
-export async function login(username: string, password: string, ipAddress: string): Promise<User> {
+export async function login({ username, password, ipAddress }: { username: string; password: string; ipAddress: string }): Promise<User> {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
 
     // IP-based rate limit — catches attempts against non-existent usernames too
@@ -216,7 +216,7 @@ export async function getUser(userId: number): Promise<User | null> {
     return mapUser(user)
 }
 
-export async function updateUserAvatar(userId: number, avatarUrl: string, oldAvatarUrl: string | null): Promise<void> {
+export async function updateUserAvatar({ userId, avatarUrl, oldAvatarUrl }: { userId: number; avatarUrl: string; oldAvatarUrl: string | null }): Promise<void> {
     await db.update(users).set({ avatarUrl }).where(eq(users.id, userId))
     if (oldAvatarUrl) {
         const { del } = await import('@vercel/blob')
@@ -254,7 +254,7 @@ export async function updateUserEmail(userId: number, newEmail: string): Promise
     await db.update(users).set({ email: newEmail }).where(eq(users.id, userId))
 }
 
-export async function updateUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+export async function updateUserPassword({ userId, currentPassword, newPassword }: { userId: number; currentPassword: string; newPassword: string }): Promise<void> {
     const [user] = await db.select().from(users).where(eq(users.id, userId))
     if (!user || !user.password) throw new Error('User not found')
     const match = await bcrypt.compare(currentPassword, user.password)
@@ -298,7 +298,7 @@ export async function deactivateAccount(userId: number): Promise<void> {
         .from(users).where(eq(users.id, userId))
     await db.update(users).set({ dateDeleted: new Date() }).where(eq(users.id, userId))
     if (user) {
-        sendGoodbyeEmail(user.email, user.username, 'deactivated').catch(() => null)
+        sendGoodbyeEmail({ to: user.email, username: user.username, action: 'deactivated' }).catch(() => null)
     }
 }
 
@@ -330,7 +330,7 @@ export async function deleteAccount(userId: number): Promise<void> {
     })
 
     if (user) {
-        sendGoodbyeEmail(user.email, user.username, 'deleted').catch(() => null)
+        sendGoodbyeEmail({ to: user.email, username: user.username, action: 'deleted' }).catch(() => null)
     }
 }
 
@@ -392,7 +392,7 @@ export async function processDeactivatedAccounts(): Promise<{ warned: number; de
             if (!claimed) continue
 
             const deletionDate = new Date(user.dateDeleted!.getTime() + 365 * 24 * 60 * 60 * 1000)
-            await sendDeactivationExpiryWarningEmail(user.email, user.username, deletionDate)
+            await sendDeactivationExpiryWarningEmail({ to: user.email, username: user.username, deletionDate })
             warned++
         } catch (err) {
             console.error('[processDeactivatedAccounts] failed to warn user', user.id, err)

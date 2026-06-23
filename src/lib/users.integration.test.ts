@@ -106,12 +106,12 @@ describe('users integration tests', () => {
             dietaryRestrictions: []
         }
         await signUp(user)
-        const loggedIn = await login('testlogin', 'password123', '127.0.0.1')
+        const loggedIn = await login({ username: 'testlogin', password: 'password123', ipAddress: '127.0.0.1' })
         expect(loggedIn.username).toBe('testlogin')
     })
 
     it('should reject login for non-existent user', async () => {
-        await expect(login('testnonexistent', 'password123', '127.0.0.1')).rejects.toThrow('Invalid username or password')
+        await expect(login({ username: 'testnonexistent', password: 'password123', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
     })
 
     it('should reject login with wrong password', async () => {
@@ -123,7 +123,7 @@ describe('users integration tests', () => {
             dietaryRestrictions: []
         }
         await signUp(user)
-        await expect(login('testlogin2', 'wrongpassword', '127.0.0.1')).rejects.toThrow('Invalid username or password')
+        await expect(login({ username: 'testlogin2', password: 'wrongpassword', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
     })
 
     it('should block login after 5 failed attempts for the same user', async () => {
@@ -140,7 +140,7 @@ describe('users integration tests', () => {
             await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '10.0.0.1' })
         }
 
-        await expect(login('testlogin3', 'password123', '10.0.0.2')).rejects.toThrow('Too many failed login attempts. Please try again later.')
+        await expect(login({ username: 'testlogin3', password: 'password123', ipAddress: '10.0.0.2' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
     })
 
     it('should block login after 5 failed attempts from the same IP', async () => {
@@ -158,7 +158,7 @@ describe('users integration tests', () => {
         }
 
         // Different username, same IP — should still be blocked
-        await expect(login('testnonexistent', 'password123', '192.168.1.1')).rejects.toThrow('Too many failed login attempts. Please try again later.')
+        await expect(login({ username: 'testnonexistent', password: 'password123', ipAddress: '192.168.1.1' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
     })
 
     it('should not block login attempts from a different IP', async () => {
@@ -178,7 +178,7 @@ describe('users integration tests', () => {
         }
 
         // Different IP — should not be blocked by the IP rate limit or per-user rate limit
-        const loggedIn = await login('testlogin5', 'password123', '192.168.2.2')
+        const loggedIn = await login({ username: 'testlogin5', password: 'password123', ipAddress: '192.168.2.2' })
         expect(loggedIn.username).toBe('testlogin5')
     })
 })
