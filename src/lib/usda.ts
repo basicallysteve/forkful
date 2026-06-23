@@ -322,7 +322,6 @@ export async function importUSDAFood(item: USDAFoodItem): Promise<Omit<Food, 'id
     fetchFoodDetail(item.fdcId),
   ])
   const name = await normalizeUSDAFoodName(item.description)
-  console.log(`[usda-normalize] "${item.description}" → "${name}"`)
   const withName = { ...base, name }
   if (!detail?.foodPortions?.length) return withName
   const { measurements, density } = mapPortionsToData(detail.foodPortions)

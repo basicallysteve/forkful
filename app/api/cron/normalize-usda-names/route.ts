@@ -5,10 +5,6 @@ import { foods } from '@/db/schema'
 import { normalizeUSDAFoodName, isUSDANameRaw, AIBudgetExhaustedError } from '@/lib/usda'
 import { toSlug } from '@/utils/slug'
 import { taskRunner } from '@/lib/TaskRunner'
-import {
-  sendUSDANormalizationCompleteEmail,
-  sendUSDANormalizationPausedEmail,
-} from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -114,18 +110,12 @@ export async function GET(request: Request) {
   }
 
   if (creditExhausted) {
-    // Remaining = everything we didn't successfully process in this run
     const remaining = needsNormalization.length - normalized
-    await sendUSDANormalizationPausedEmail(remaining)
     return NextResponse.json({ ok: true, status: 'paused', normalized, failed, remaining })
   }
 
-  // If this was the last batch and every item was updated, the migration is complete.
-  // Failed items will still be raw and retried next run, so only send completion when
-  // nothing raw remains after this batch.
   const rawAfterBatch = needsNormalization.length - normalized
   if (rawAfterBatch === 0) {
-    await sendUSDANormalizationCompleteEmail(usdaFoods.length, 0)
     return NextResponse.json({ ok: true, status: 'complete', normalized, total: usdaFoods.length })
   }
 
