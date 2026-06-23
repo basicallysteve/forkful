@@ -19,10 +19,10 @@ synchronous run take ~3 hours — far beyond any reasonable local script or CI t
 
 ## Decision
 
-Run the backfill as a Vercel cron (`0 * * * *`, hourly). Each invocation processes up to 40
-un-normalized USDA foods — the safe ceiling for the Hobby-plan 60-second function timeout at
-45 RPM. The cron is added to `vercel.json` temporarily and removed after the completion email
-is received.
+Run the backfill as a Vercel cron (`0 9 * * *`, daily at 09:00 UTC). Each invocation processes
+up to 40 un-normalized USDA foods — the safe ceiling for the Hobby-plan 60-second function
+timeout at 45 RPM. The cron is added to `vercel.json` temporarily and removed after the
+completion email is received.
 
 Two email signals:
 - **Completion** — all `source = 'usda'` foods pass `isUSDANameRaw` check → email sent,
@@ -33,7 +33,10 @@ Two email signals:
 
 ## Consequences
 
-- At 40 foods/hour the backfill completes in ~200 hours (~8 days) on Hobby plan.
+- At 40 foods/day the backfill completes in ~200 days on Hobby plan. For the initial backfill
+  of ~8,000 existing rows, running `scripts/normalize-usda-food-names.ts` locally is strongly
+  preferred — it has no timeout and will complete in ~3 hours. The daily cron serves as an
+  ongoing safety net for any rows the script misses or that arrive later.
 - The CLI script (`scripts/normalize-usda-food-names.ts`) remains useful for local testing
   and for running the migration faster on a machine with no timeout constraints.
 - `isUSDANameRaw` is exported from `src/lib/usda.ts` so both the script and the cron share
