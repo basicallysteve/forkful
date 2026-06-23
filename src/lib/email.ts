@@ -7,6 +7,8 @@ import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
 import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
 import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
+import { USDANormalizationCompleteEmail } from '@/emails/USDANormalizationCompleteEmail'
+import { USDANormalizationPausedEmail } from '@/emails/USDANormalizationPausedEmail'
 function makeTrackingPixelUrl(): string | undefined {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   if (!baseUrl) return undefined
@@ -112,6 +114,28 @@ export async function sendReviewReportSummaryEmail(
     to,
     subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on Forkful`,
     react: ReviewReportSummaryEmail({ reportCount, reports, adminUrl }),
+  })
+}
+
+const ADMIN_EMAIL = 'steven@eatforkful.com'
+
+export async function sendUSDANormalizationCompleteEmail(normalized: number, failed: number): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to: ADMIN_EMAIL,
+    subject: 'USDA food name normalization complete',
+    react: USDANormalizationCompleteEmail({ normalized, failed }),
+  })
+}
+
+export async function sendUSDANormalizationPausedEmail(remaining: number): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    to: ADMIN_EMAIL,
+    subject: 'USDA normalization paused — Anthropic credits exhausted',
+    react: USDANormalizationPausedEmail({ remaining }),
   })
 }
 

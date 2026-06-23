@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import { getUnitCategory } from '@/utils/unitConversion'
@@ -224,6 +225,82 @@ export async function searchUSDABranded(query: string): Promise<USDABrandedItem[
 
 // ---- Mapping functions ----
 
+// ---- USDA name normalization ----
+
+/** Thrown when the Anthropic API returns 402 (billing credits exhausted). */
+export class AnthropicCreditExhaustedError extends Error {
+  constructor() {
+    super('Anthropic API credits exhausted')
+    this.name = 'AnthropicCreditExhaustedError'
+  }
+}
+
+/**
+ * Returns true if a food name still needs USDA normalization.
+ * A name is considered raw if it contains a comma outside of parentheses —
+ * the hallmark of the USDA comma-reversed format, even after title-casing.
+ */
+export function isUSDANameRaw(name: string): boolean {
+  return name.replace(/\([^)]*\)/g, '').includes(',')
+}
+
+const NORMALIZE_PROMPT = `You are a food name normalizer. Convert raw USDA FoodData Central descriptions into clean, human-readable food names.
+
+Rules:
+- Output ONLY the normalized name — no explanation, no punctuation at the end
+- Use title case
+- The first token(s) form the natural noun; put qualifying details in parentheses after
+- Reorder tokens so the name reads naturally in English (e.g. "JAM, FIG" → "Fig Jam", not "Jam (fig)")
+- Collapse all comma-separated USDA qualifiers into a single parenthetical suffix when they are true qualifiers rather than part of the noun (e.g. "CHICKEN, BREAST, BONELESS, SKINLESS, RAW" → "Chicken Breast (boneless, skinless, raw)")
+- Prenominal adjectives that are inseparable from the noun belong before it, not in parentheses (e.g. "JUICE, ORANGE" → "Orange Juice", "MILK, WHOLE" → "Whole Milk")
+- Keep it concise — omit redundant words like "NFS" (not further specified), "NS" (not specified)
+
+Examples:
+CHICKEN, BREAST, BONELESS, SKINLESS, RAW → Chicken Breast (boneless, skinless, raw)
+JAM, FIG → Fig Jam
+BEEF, GROUND, 80% LEAN → Ground Beef (80% lean)
+MILK, WHOLE → Whole Milk
+JUICE, ORANGE → Orange Juice
+BREAD, WHITE → White Bread
+OIL, OLIVE → Olive Oil
+NUTS, ALMONDS, RAW → Almonds (raw)
+CHEESE, CHEDDAR → Cheddar Cheese
+SALMON, ATLANTIC, FARMED, RAW → Salmon, Atlantic (farmed, raw)`
+
+let _anthropicClient: Anthropic | null = null
+function getAnthropicClient(): Anthropic {
+  if (!_anthropicClient) _anthropicClient = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  })
+  return _anthropicClient
+}
+
+export async function normalizeUSDAFoodName(rawDescription: string): Promise<string> {
+  try {
+    const client = getAnthropicClient()
+    const stream = await client.messages.stream({
+      model: 'claude-opus-4-8',
+      max_tokens: 100,
+      thinking: { type: 'adaptive' },
+      messages: [
+        { role: 'user', content: `${NORMALIZE_PROMPT}\n\n${rawDescription} →` },
+      ],
+    })
+    const message = await stream.finalMessage()
+    const text = message.content.find(b => b.type === 'text')?.text?.trim()
+    console.log(`[usda-normalize] "${rawDescription}" → "${text}"`)
+    if (text) return text
+    console.error(`[usda-normalize] Empty response for: ${rawDescription}`)
+    return rawDescription
+  } catch (err) {
+    if (err instanceof Anthropic.APIError && err.status === 402) {
+      throw new AnthropicCreditExhaustedError()
+    }
+    console.error(`[usda-normalize] Failed to normalize "${rawDescription}":`, err)
+    return rawDescription
+  }
+}
+
 /**
  * Maps a USDA Foundation/SR Legacy food item to a Food (generic, per 100g).
  * Foundation/SR Legacy nutrients are always expressed per 100g.
@@ -260,15 +337,20 @@ export function mapUSDAFoodToFood(item: USDAFoodItem): Omit<Food, 'id'> {
 
 /**
  * Async import: maps a USDA Foundation/SR Legacy food to a Food, enriched with
- * Measurements and Density derived from the food detail endpoint's foodPortions.
+ * a normalized name and Measurements and Density derived from foodPortions.
  */
 export async function importUSDAFood(item: USDAFoodItem): Promise<Omit<Food, 'id'>> {
-  const base = mapUSDAFoodToFood(item)
-  const detail = await fetchFoodDetail(item.fdcId)
-  if (!detail?.foodPortions?.length) return base
+  const [base, detail] = await Promise.all([
+    Promise.resolve(mapUSDAFoodToFood(item)),
+    fetchFoodDetail(item.fdcId),
+  ])
+  const name = await normalizeUSDAFoodName(item.description)
+  console.log(`[usda-normalize] "${item.description}" → "${name}"`)
+  const withName = { ...base, name }
+  if (!detail?.foodPortions?.length) return withName
   const { measurements, density } = mapPortionsToData(detail.foodPortions)
   return {
-    ...base,
+    ...withName,
     measurements: [{ unit: 'g' }, ...measurements],
     density,
   }
