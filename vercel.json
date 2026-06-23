@@ -23,10 +23,6 @@
     {
       "path": "/api/cron/review-reports/daily",
       "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/normalize-usda-names",
-      "schedule": "0 9 * * *"
     }
   ]
 }

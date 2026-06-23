@@ -1,5 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
 import type { Food, Measurement } from '@/types/Food'
+import { complete, Models, AIBudgetExhaustedError } from '@/lib/ai'
+export { AIBudgetExhaustedError } from '@/lib/ai'
 import type { Product } from '@/types/Product'
 import { getUnitCategory } from '@/utils/unitConversion'
 import convert from 'convert-units'
@@ -227,14 +228,6 @@ export async function searchUSDABranded(query: string): Promise<USDABrandedItem[
 
 // ---- USDA name normalization ----
 
-/** Thrown when the Anthropic API returns 402 (billing credits exhausted). */
-export class AnthropicCreditExhaustedError extends Error {
-  constructor() {
-    super('Anthropic API credits exhausted')
-    this.name = 'AnthropicCreditExhaustedError'
-  }
-}
-
 /**
  * Returns true if a food name still needs USDA normalization.
  * A name is considered raw if it contains a comma outside of parentheses —
@@ -244,7 +237,7 @@ export function isUSDANameRaw(name: string): boolean {
   return name.replace(/\([^)]*\)/g, '').includes(',')
 }
 
-const NORMALIZE_PROMPT = `You are a food name normalizer. Convert raw USDA FoodData Central descriptions into clean, human-readable food names.
+const NORMALIZE_SYSTEM_PROMPT = `You are a food name normalizer. Convert raw USDA FoodData Central descriptions into clean, human-readable food names.
 
 Rules:
 - Output ONLY the normalized name — no explanation, no punctuation at the end
@@ -268,34 +261,18 @@ NUTS, ALMONDS, RAW → Almonds (raw)
 CHEESE, CHEDDAR → Cheddar Cheese
 SALMON, ATLANTIC, FARMED, RAW → Atlantic Salmon (farmed, raw)`
 
-let _anthropicClient: Anthropic | null = null
-function getAnthropicClient(): Anthropic {
-  if (!_anthropicClient) _anthropicClient = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  })
-  return _anthropicClient
-}
-
 export async function normalizeUSDAFoodName(rawDescription: string): Promise<string> {
   try {
-    const client = getAnthropicClient()
-    const stream = await client.messages.stream({
-      model: 'claude-opus-4-8',
-      max_tokens: 100,
-      thinking: { type: 'adaptive' },
-      messages: [
-        { role: 'user', content: `${NORMALIZE_PROMPT}\n\n${rawDescription} →` },
-      ],
-    })
-    const message = await stream.finalMessage()
-    const text = message.content.find(b => b.type === 'text')?.text?.trim()
+    const text = await complete(
+      NORMALIZE_SYSTEM_PROMPT,
+      `<usda_description>${rawDescription}</usda_description>`,
+      Models.anthropicHaiku,
+    )
     if (text) return text
     console.error(`[usda-normalize] Empty response for: ${rawDescription}`)
     return rawDescription
   } catch (err) {
-    if (err instanceof Anthropic.APIError && err.status === 402) {
-      throw new AnthropicCreditExhaustedError()
-    }
+    if (err instanceof AIBudgetExhaustedError) throw err
     console.error(`[usda-normalize] Failed to normalize "${rawDescription}":`, err)
     return rawDescription
   }

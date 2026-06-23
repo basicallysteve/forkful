@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { isNull, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
-import { normalizeUSDAFoodName, isUSDANameRaw, AnthropicCreditExhaustedError } from '@/lib/usda'
+import { normalizeUSDAFoodName, isUSDANameRaw, AIBudgetExhaustedError } from '@/lib/usda'
 import { toSlug } from '@/utils/slug'
+import { taskRunner } from '@/lib/TaskRunner'
 import {
   sendUSDANormalizationCompleteEmail,
   sendUSDANormalizationPausedEmail,
@@ -83,7 +84,7 @@ export async function GET(request: Request) {
         try {
           newName = await limiter.throttle(() => normalizeUSDAFoodName(row.name))
         } catch (err) {
-          if (err instanceof AnthropicCreditExhaustedError) {
+          if (err instanceof AIBudgetExhaustedError) {
             creditExhausted = true
             return
           }
@@ -101,10 +102,11 @@ export async function GET(request: Request) {
         if (allSlugs.has(slug) && slug !== row.slug) slug = `${slug}-${row.id}`
         allSlugs.add(slug)
 
-        await db
-          .update(foods)
-          .set({ name: newName, slug, dateUpdated: new Date() })
-          .where(eq(foods.id, row.id))
+        await taskRunner.run(() =>
+          db.update(foods)
+            .set({ name: newName, slug, dateUpdated: new Date() })
+            .where(eq(foods.id, row.id))
+        )
 
         normalized++
       })

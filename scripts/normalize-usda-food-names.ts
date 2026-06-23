@@ -22,7 +22,7 @@ import { parseArgs } from 'node:util'
 import { isNull, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
-import { normalizeUSDAFoodName, isUSDANameRaw, AnthropicCreditExhaustedError } from '@/lib/usda'
+import { normalizeUSDAFoodName, isUSDANameRaw, AIBudgetExhaustedError } from '@/lib/usda'
 import { toSlug } from '@/utils/slug'
 
 const { values: args } = parseArgs({
@@ -106,15 +106,15 @@ if (DRY_RUN) {
   process.exit(0)
 }
 
-// ── Normalize in concurrent batches ──────────────────────────────────────────
+// ── Normalize and write inline ────────────────────────────────────────────────
 
 const RATE_LIMIT = 45 // stay safely under the 50 RPM API limit
 const limiter = new RateLimiter(RATE_LIMIT, 60_000)
 
 console.log(`\nNormalizing with concurrency=${CONCURRENCY}, rate limit=${RATE_LIMIT}/min…`)
 
-type Result = { id: number; oldName: string; newName: string; newSlug: string; failed: boolean }
-const results: Result[] = []
+let successes = 0
+const failedNames: { id: number; name: string }[] = []
 let done = 0
 
 let creditExhausted = false
@@ -127,24 +127,32 @@ for (const batch of chunk(toProcess, CONCURRENCY)) {
       try {
         newName = await limiter.throttle(() => normalizeUSDAFoodName(row.name))
       } catch (err) {
-        if (err instanceof AnthropicCreditExhaustedError) {
+        if (err instanceof AIBudgetExhaustedError) {
           creditExhausted = true
           console.error('\n[usda-normalize] Anthropic credits exhausted — stopping early.')
           return
         }
         throw err
       }
+
       // If the LLM returned the unchanged raw string, treat it as a failure.
-      const failed = newName === row.name
+      if (newName === row.name) {
+        failedNames.push({ id: row.id, name: row.name })
+        done++
+        progress(done, toProcess.length)
+        return
+      }
 
       let baseSlug = toSlug(newName)
-      // Avoid colliding with a different food's slug; keep the row's own slug if it matches.
-      if (allSlugs.has(baseSlug) && baseSlug !== row.slug) {
-        baseSlug = `${baseSlug}-${row.id}`
-      }
+      if (allSlugs.has(baseSlug) && baseSlug !== row.slug) baseSlug = `${baseSlug}-${row.id}`
       allSlugs.add(baseSlug)
 
-      results.push({ id: row.id, oldName: row.name, newName, newSlug: baseSlug, failed })
+      await db
+        .update(foods)
+        .set({ name: newName, slug: baseSlug, dateUpdated: new Date() })
+        .where(eq(foods.id, row.id))
+
+      successes++
       done++
       progress(done, toProcess.length)
     })
@@ -152,39 +160,16 @@ for (const batch of chunk(toProcess, CONCURRENCY)) {
 }
 process.stdout.write('\n')
 
-// ── Write updates to DB ───────────────────────────────────────────────────────
-
-const successes = results.filter(r => !r.failed)
-const failures  = results.filter(r => r.failed)
-
-if (successes.length > 0) {
-  console.log(`\nWriting ${successes.length.toLocaleString()} updates…`)
-  let written = 0
-  for (const batch of chunk(successes, 20)) {
-    await Promise.all(
-      batch.map(r =>
-        db
-          .update(foods)
-          .set({ name: r.newName, slug: r.newSlug, dateUpdated: new Date() })
-          .where(eq(foods.id, r.id))
-      )
-    )
-    written += batch.length
-    progress(written, successes.length)
-  }
-  process.stdout.write('\n')
-}
-
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log('\n─────────────────────────────────────────')
-console.log(`  Normalized:  ${successes.length.toLocaleString()}`)
+console.log(`  Normalized:  ${successes.toLocaleString()}`)
 console.log(`  Skipped:     ${alreadyNormalized.toLocaleString()} (already normalized)`)
-console.log(`  LLM failed:  ${failures.length.toLocaleString()}`)
-if (failures.length > 0) {
+console.log(`  LLM failed:  ${failedNames.length.toLocaleString()}`)
+if (failedNames.length > 0) {
   console.log('\n  Failed names (raw USDA description kept):')
-  for (const f of failures) {
-    console.log(`    [id=${f.id}] ${f.oldName}`)
+  for (const f of failedNames) {
+    console.log(`    [id=${f.id}] ${f.name}`)
   }
 }
 console.log('─────────────────────────────────────────')
