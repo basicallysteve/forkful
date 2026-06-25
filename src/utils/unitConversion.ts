@@ -65,11 +65,7 @@ export function convertUnit({ value, fromUnit, toUnit, density }: { value: numbe
 export function getAllowedUnits(baseUnit: string, density?: number): string[] {
   const category = getUnitCategory(baseUnit)
   const hasDensity = density != null && density > 0
-  if(hasDensity) {
-    console.log(`Density is available: ${density}`)
-    console.log(`Base unit: ${baseUnit}, category: ${category}`)
-    console.log(`Allowed units: ${[...MASS_UNITS, ...VOLUME_UNITS]}`)
-  }
+
   if (category === 'mass') {
     return hasDensity ? [...MASS_UNITS, ...VOLUME_UNITS] : [...MASS_UNITS]
   }
@@ -98,15 +94,7 @@ export function calculateCalories({
   gramsPerUnit,
   density,
 }: CalculateCaloriesParams): number | null {
-  console.log('Calculating calories with params:', {
-    baseCalories,
-    baseServingSize,
-    baseServingUnit,
-    targetAmount,
-    targetUnit,
-    gramsPerUnit,
-    density,
-  })
+
   if (baseServingUnit === targetUnit) {
     return (baseCalories / baseServingSize) * targetAmount
   }
