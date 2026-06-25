@@ -71,7 +71,7 @@ const USDA_UNIT_ALIASES: Record<string, string> = {
   mg: 'mg', milligram: 'mg', milligrams: 'mg',
 }
 
-function normaliseUSDAUnit(raw: string | undefined): string | null {
+export function normaliseUSDAUnit(raw: string | undefined): string | null {
   if (!raw) return null
   return USDA_UNIT_ALIASES[raw.toLowerCase().trim()] ?? null
 }
@@ -86,7 +86,9 @@ export function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: 
     const amount = portion.amount ?? 1
     if (amount <= 0 || portion.gramWeight <= 0) continue
 
-    const rawUnit = portion.measureUnit?.abbreviation ?? portion.measureUnit?.name ?? portion.modifier
+    const unitFromMeasure = [portion.measureUnit?.abbreviation, portion.measureUnit?.name]
+      .find(v => v && v.trim() && v.toLowerCase().trim() !== 'undetermined')
+    const rawUnit = unitFromMeasure ?? portion.modifier
     if (!rawUnit?.trim()) continue
 
     const normUnit = normaliseUSDAUnit(rawUnit)
