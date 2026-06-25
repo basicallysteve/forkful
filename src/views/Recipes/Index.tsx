@@ -10,6 +10,7 @@ import { Checkbox } from 'primereact/checkbox'
 import { Toast } from 'primereact/toast'
 import { Skeleton } from 'primereact/skeleton'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
+import Link from 'next/link'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
 type SortDirection = 'asc' | 'desc'
@@ -201,9 +202,16 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
             <h2 className="recipes-name">All Recipes</h2>
           </div>
           <div className="recipes-meta">
-            <span className="pill pill-primary">{recipes.length} recipes</span>
+            
+            <span className="pill">{recipes.length} recipes</span>
             {selectedRecipes.size > 0 && (
               <span className="pill pill-ghost">{selectedRecipes.size} selected</span>
+            )}
+
+            { isAuthenticated && (
+              <Link href="/recipes/new" className="pill pill-primary">
+                Add New
+              </Link>
             )}
           </div>
         </header>

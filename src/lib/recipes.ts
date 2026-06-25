@@ -40,6 +40,7 @@ function mapFood(row: typeof foods.$inferSelect): Food {
     servingSize: Number(row.servingSize ?? 1),
     servingUnit: row.servingUnit ?? 'g',
     measurements: parseMeasurements(row.measurements),
+    density: row.density != null ? Number(row.density) : undefined,
   }
 }
 
@@ -67,6 +68,7 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
       targetAmount: quantity,
       targetUnit: servingUnit,
       gramsPerUnit: measurement?.gramsPerUnit,
+      density: food.density,
     }) ?? 0
     return { food, quantity, calories, servingUnit }
   })

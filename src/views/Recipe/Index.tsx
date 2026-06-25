@@ -131,6 +131,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       targetAmount: quantity,
       targetUnit: servingUnit,
       gramsPerUnit: measurement?.gramsPerUnit,
+      density: food.density,
     }) ?? 0
     return Math.round(raw)
   }

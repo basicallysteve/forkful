@@ -83,6 +83,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       baseServingUnit: ingredient.food?.servingUnit || DEFAULT_SERVING_UNIT,
       targetAmount: 1,
       targetUnit: ingredient.servingUnit,
+      density: ingredient.food?.density,
     }) || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
@@ -102,6 +103,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       baseServingUnit,
       targetAmount: ingredient.quantity,
       targetUnit: newUnit,
+      density: food.density,
     })
     
     // If conversion is possible, use calculated calories; otherwise keep current calories

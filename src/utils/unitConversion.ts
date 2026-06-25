@@ -94,6 +94,7 @@ export function calculateCalories({
   gramsPerUnit,
   density,
 }: CalculateCaloriesParams): number | null {
+
   if (baseServingUnit === targetUnit) {
     return (baseCalories / baseServingSize) * targetAmount
   }
