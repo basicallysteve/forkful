@@ -297,11 +297,16 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                         />
                       </td>
                       <td>
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          <span className="pantry-item-name">
+                            {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                          </span>
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`}>
                             {item.food.name}
                           </Link>
@@ -369,12 +374,17 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                       />
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          <span className="card-title">
+                            {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                          </span>
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
                             {item.food.name}
                           </Link>

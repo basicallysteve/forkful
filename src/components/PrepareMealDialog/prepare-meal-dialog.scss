@@ -1,0 +1,213 @@
+.prepare-meal-dialog {
+  .prepare-config,
+  .prepare-deductions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .prepare-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .prepare-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vscode-text);
+  }
+
+  .prepare-optional {
+    font-weight: 400;
+    color: var(--vscode-muted);
+  }
+
+  .prepare-required {
+    font-weight: 400;
+    color: var(--vscode-muted);
+    font-size: 12px;
+  }
+
+  .prepare-input {
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 120ms ease;
+
+    &:focus {
+      outline: none;
+      border-color: var(--vscode-accent);
+    }
+  }
+
+  .prepare-field-error {
+    font-size: 12px;
+    color: var(--vscode-danger, #f44747);
+  }
+
+  .prepare-field-checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+    cursor: pointer;
+  }
+
+  .prepare-checkbox-label {
+    font-size: 13px;
+    color: var(--vscode-text);
+    cursor: pointer;
+  }
+
+  .prepare-loading,
+  .prepare-hint {
+    font-size: 13px;
+    color: var(--vscode-muted);
+    margin: 0;
+  }
+
+  .prepare-no-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+
+    p { margin: 0; font-size: 13px; color: var(--vscode-text); }
+  }
+
+  .prepare-error {
+    font-size: 13px;
+    color: var(--vscode-danger, #f44747);
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-danger, #f44747);
+    border-radius: 8px;
+    background: rgba(244, 71, 71, 0.06);
+  }
+
+  // Deduction step
+  .deduction-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel);
+  }
+
+  .deduction-ingredient {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .deduction-food-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vscode-text);
+  }
+
+  .deduction-recipe-qty {
+    font-size: 12px;
+    color: var(--vscode-muted);
+  }
+
+  .deduction-no-stock {
+    font-size: 12px;
+    color: var(--vscode-muted);
+    font-style: italic;
+    margin: 0;
+  }
+
+  .deduction-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .deduction-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+    cursor: pointer;
+    transition: border-color 120ms ease;
+
+    input[type="radio"] { margin-top: 2px; flex-shrink: 0; accent-color: var(--vscode-accent); }
+
+    &.is-selected {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+    }
+  }
+
+  .deduction-option-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .deduction-option-name {
+    font-size: 13px;
+    color: var(--vscode-text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .deduction-expiry-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #f59e0b;
+    white-space: nowrap;
+  }
+
+  .deduction-option-stock {
+    font-size: 12px;
+    color: var(--vscode-muted);
+  }
+
+  .deduction-amount {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  .deduction-amount-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--vscode-text);
+  }
+
+  .deduction-hint {
+    font-size: 12px;
+    color: var(--vscode-muted);
+    margin: 0;
+  }
+}

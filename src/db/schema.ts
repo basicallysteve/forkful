@@ -119,6 +119,9 @@ export const pantryItems = pgTable('pantry_items', {
     .references(() => foods.id, { onDelete: 'cascade' }),
   productId: integer('product_id')
     .references(() => products.id, { onDelete: 'cascade' }),
+  recipeId: integer('recipe_id')
+    .references(() => recipes.id, { onDelete: 'set null' }),
+  recipeNameSnapshot: varchar('recipe_name_snapshot', { length: 255 }),
   expirationDate: timestamp('expiration_date'),
   originalSizeAmount: numeric('original_size_amount', { precision: 10, scale: 2 }).notNull(),
   originalSizeUnit: varchar('original_size_unit', { length: 50 }),
