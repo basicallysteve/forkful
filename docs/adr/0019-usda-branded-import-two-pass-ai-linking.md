@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Products can optionally carry a `parentFoodId` linking them to a generic Food. This link enables recipe nutrition tracking when a user adds a branded Product to their pantry — the system uses the parent Food's per-100g nutrition data. Without the link, a Product in the pantry contributes nothing to recipe suggestions.
+Products can optionally carry a `parentFoodId` linking them to a generic Food. This link enables recipe nutrition tracking when a user adds a branded Product to their pantry — the system uses the parent Food's per-100g nutrition data. Without the link, a Product can still be tracked in the pantry but may not contribute to recipe-level nutrition calculations.
 
 Importing USDA Branded Foods from the FDC Full Download CSV creates hundreds of thousands of Product rows. Each row needs a `parentFoodId` resolved from the existing `foods` table (Foundation/SR Legacy Foods). The match is non-trivial: a branded name like `"TYSON, Boneless Skinless Chicken Breast, 3 lb"` must map to a canonical Food like `"Chicken Breast (boneless, skinless, raw)"`.
 
@@ -36,6 +36,5 @@ The linker applies to all unlinked Products regardless of source (`usda_branded`
 ## Consequences
 
 - The `products` table will have a period where newly imported rows have `parentFoodId = null`. This is acceptable — the link is optional by design and pantry tracking works without it.
-- Running the linker on Open Food Facts products may yield fewer matches (noisier names) but will not produce incorrect links — the LLM returns `"none"` when confidence is low.
+- Running the linker on Open Food Facts products may yield fewer matches (noisier names). The LLM is prompted to return `"none"` when confidence is low, which minimises incorrect links, though LLM output is not guaranteed to be error-free. The dry-run flag exists precisely to allow human review before committing results at scale.
 - LLM costs are bounded by the number of unlinked Products that have at least one candidate Food in the DB (zero-candidate rows are fast-pathed without an LLM call).
-- The dry-run flag makes it safe to preview AI decisions before a production linking run.

@@ -42,8 +42,20 @@ const { values: args } = parseArgs({
 })
 
 const DRY_RUN = args['dry-run'] ?? false
-const LIMIT = args.limit ? parseInt(args.limit, 10) : DEFAULT_LIMIT
-const CONCURRENCY = args.concurrency ? parseInt(args.concurrency, 10) : DEFAULT_CONCURRENCY
+
+const rawLimit = args.limit ? parseInt(args.limit, 10) : NaN
+if (args.limit && (isNaN(rawLimit) || rawLimit <= 0)) {
+  console.error(`Error: --limit must be a positive integer (got "${args.limit}")`)
+  process.exit(1)
+}
+const LIMIT = isNaN(rawLimit) ? DEFAULT_LIMIT : rawLimit
+
+const rawConcurrency = args.concurrency ? parseInt(args.concurrency, 10) : NaN
+if (args.concurrency && (isNaN(rawConcurrency) || rawConcurrency <= 0)) {
+  console.error(`Error: --concurrency must be a positive integer (got "${args.concurrency}")`)
+  process.exit(1)
+}
+const CONCURRENCY = isNaN(rawConcurrency) ? DEFAULT_CONCURRENCY : rawConcurrency
 
 if (DRY_RUN) console.log('\n⚠  DRY RUN — no writes will be made\n')
 
@@ -138,14 +150,14 @@ function chunk<T>(arr: T[], size: number): T[][] {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 console.log('\nQuerying unlinked products…')
-const unlinked = await db
+const baseQuery = db
   .select({ id: products.id, name: products.name, source: products.source })
   .from(products)
   .where(and(isNull(products.parentFoodId), isNull(products.dateDeleted)))
 
-const toProcess = unlinked.slice(0, LIMIT)
-console.log(`  ${unlinked.length.toLocaleString()} unlinked products total`)
-if (LIMIT < Infinity) console.log(`  Processing first ${LIMIT.toLocaleString()} (--limit)`)
+const toProcess = await (LIMIT < Infinity ? baseQuery.limit(LIMIT) : baseQuery)
+console.log(`  ${toProcess.length.toLocaleString()} unlinked products to process`)
+if (LIMIT < Infinity) console.log(`  Limited to first ${LIMIT.toLocaleString()} (--limit)`)
 console.log(`  Concurrency: ${CONCURRENCY}`)
 console.log()
 

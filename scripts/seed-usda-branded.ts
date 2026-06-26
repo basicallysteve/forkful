@@ -391,7 +391,7 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
   // slug: leave room for -fdcId suffix (fdcIds up to 8 digits + hyphen = 9 chars)
   const baseSlug = toSlug(name).slice(0, 245)
   const slug = takenSlugs.has(baseSlug) ? `${baseSlug}-${fdcId}` : baseSlug
-  takenSlugs.add(slug)
+  // takenSlugs.add() is intentionally omitted here — caller reserves the slug only for inserts
 
   // Clamp all numeric fields to their DB column limits.
   // Bad data in the CSV (e.g. absurd bulk serving sizes) is safer to cap than crash.
@@ -437,7 +437,9 @@ for (const [fdcId, meta] of targetBranded) {
     const { slug: _slug, source: _src, parentFoodId: _pid, ...updateFields } = buildValues(fdcId, meta)
     toUpdate.push({ id: existing.id, values: updateFields })
   } else {
-    toInsert.push(buildValues(fdcId, meta))
+    const values = buildValues(fdcId, meta)
+    takenSlugs.add(values.slug!)
+    toInsert.push(values)
   }
 }
 
