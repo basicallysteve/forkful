@@ -1,4 +1,6 @@
 import type { Food, Measurement } from '@/types/Food'
+import { complete, Models, AIBudgetExhaustedError } from '@/lib/ai'
+export { AIBudgetExhaustedError } from '@/lib/ai'
 import type { Product } from '@/types/Product'
 import { getUnitCategory } from '@/utils/unitConversion'
 import convert from 'convert-units'
@@ -69,7 +71,7 @@ const USDA_UNIT_ALIASES: Record<string, string> = {
   mg: 'mg', milligram: 'mg', milligrams: 'mg',
 }
 
-function normaliseUSDAUnit(raw: string | undefined): string | null {
+export function normaliseUSDAUnit(raw: string | undefined): string | null {
   if (!raw) return null
   return USDA_UNIT_ALIASES[raw.toLowerCase().trim()] ?? null
 }
@@ -84,7 +86,9 @@ export function mapPortionsToData(portions: USDAFoodPortion[]): { measurements: 
     const amount = portion.amount ?? 1
     if (amount <= 0 || portion.gramWeight <= 0) continue
 
-    const rawUnit = portion.measureUnit?.abbreviation ?? portion.measureUnit?.name ?? portion.modifier
+    const unitFromMeasure = [portion.measureUnit?.abbreviation, portion.measureUnit?.name]
+      .find(v => v && v.trim() && v.toLowerCase().trim() !== 'undetermined')
+    const rawUnit = unitFromMeasure ?? portion.modifier
     if (!rawUnit?.trim()) continue
 
     const normUnit = normaliseUSDAUnit(rawUnit)
@@ -224,6 +228,58 @@ export async function searchUSDABranded(query: string): Promise<USDABrandedItem[
 
 // ---- Mapping functions ----
 
+// ---- USDA name normalization ----
+
+/**
+ * Returns true if a food name still needs USDA normalization.
+ * A name is considered raw if it contains a comma outside of parentheses —
+ * the hallmark of the USDA comma-reversed format, even after title-casing.
+ */
+export function isUSDANameRaw(name: string): boolean {
+  return name.replace(/\([^)]*\)/g, '').includes(',')
+}
+
+const NORMALIZE_SYSTEM_PROMPT = `You are a food name normalizer. Convert raw USDA FoodData Central descriptions into clean, human-readable food names.
+
+Rules:
+- Output ONLY the normalized name — no explanation, no punctuation at the end
+- Use title case
+- NEVER use a comma outside of parentheses in the output — the result must pass a comma-free test outside parens
+- The first token(s) form the natural noun; put qualifying details in parentheses after
+- Reorder tokens so the name reads naturally in English (e.g. "JAM, FIG" → "Fig Jam", not "Jam (fig)")
+- Collapse all comma-separated USDA qualifiers into a single parenthetical suffix when they are true qualifiers rather than part of the noun (e.g. "CHICKEN, BREAST, BONELESS, SKINLESS, RAW" → "Chicken Breast (boneless, skinless, raw)")
+- Prenominal adjectives that are inseparable from the noun belong before it, not in parentheses (e.g. "JUICE, ORANGE" → "Orange Juice", "MILK, WHOLE" → "Whole Milk")
+- Keep it concise — omit redundant words like "NFS" (not further specified), "NS" (not specified)
+
+Examples:
+CHICKEN, BREAST, BONELESS, SKINLESS, RAW → Chicken Breast (boneless, skinless, raw)
+JAM, FIG → Fig Jam
+BEEF, GROUND, 80% LEAN → Ground Beef (80% lean)
+MILK, WHOLE → Whole Milk
+JUICE, ORANGE → Orange Juice
+BREAD, WHITE → White Bread
+OIL, OLIVE → Olive Oil
+NUTS, ALMONDS, RAW → Almonds (raw)
+CHEESE, CHEDDAR → Cheddar Cheese
+SALMON, ATLANTIC, FARMED, RAW → Atlantic Salmon (farmed, raw)`
+
+export async function normalizeUSDAFoodName(rawDescription: string): Promise<string> {
+  try {
+    const text = await complete({
+      systemPrompt: NORMALIZE_SYSTEM_PROMPT,
+      userMessage: `<usda_description>${rawDescription}</usda_description>`,
+      aiModel: Models.anthropicHaiku,
+    })
+    if (text) return text
+    console.error(`[usda-normalize] Empty response for: ${rawDescription}`)
+    return rawDescription
+  } catch (err) {
+    if (err instanceof AIBudgetExhaustedError) throw err
+    console.error(`[usda-normalize] Failed to normalize "${rawDescription}":`, err)
+    return rawDescription
+  }
+}
+
 /**
  * Maps a USDA Foundation/SR Legacy food item to a Food (generic, per 100g).
  * Foundation/SR Legacy nutrients are always expressed per 100g.
@@ -260,15 +316,19 @@ export function mapUSDAFoodToFood(item: USDAFoodItem): Omit<Food, 'id'> {
 
 /**
  * Async import: maps a USDA Foundation/SR Legacy food to a Food, enriched with
- * Measurements and Density derived from the food detail endpoint's foodPortions.
+ * a normalized name and Measurements and Density derived from foodPortions.
  */
 export async function importUSDAFood(item: USDAFoodItem): Promise<Omit<Food, 'id'>> {
-  const base = mapUSDAFoodToFood(item)
-  const detail = await fetchFoodDetail(item.fdcId)
-  if (!detail?.foodPortions?.length) return base
+  const [base, detail] = await Promise.all([
+    Promise.resolve(mapUSDAFoodToFood(item)),
+    fetchFoodDetail(item.fdcId),
+  ])
+  const name = await normalizeUSDAFoodName(item.description)
+  const withName = { ...base, name }
+  if (!detail?.foodPortions?.length) return withName
   const { measurements, density } = mapPortionsToData(detail.foodPortions)
   return {
-    ...base,
+    ...withName,
     measurements: [{ unit: 'g' }, ...measurements],
     density,
   }

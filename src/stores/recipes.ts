@@ -91,6 +91,7 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
                                   baseServingUnit,
                                   targetAmount: ingredient.quantity,
                                   targetUnit: newUnit,
+                                  density: food.density,
                                 })
 
                                 return {

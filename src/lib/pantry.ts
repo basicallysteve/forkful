@@ -244,7 +244,7 @@ export type UpdatePantryItemData = Partial<Omit<CreatePantryItemData, 'userId' |
   frozenDate?: Date | null
 }
 
-export async function updatePantryItem(id: number, userId: number, data: UpdatePantryItemData): Promise<PantryItem | null> {
+export async function updatePantryItem({ id, userId, data }: { id: number; userId: number; data: UpdatePantryItemData }): Promise<PantryItem | null> {
   const updates: Partial<typeof pantryItems.$inferInsert> = {}
   if (data.expirationDate !== undefined) updates.expirationDate = data.expirationDate ?? null
   if (data.originalSizeAmount !== undefined) updates.originalSizeAmount = String(data.originalSizeAmount)

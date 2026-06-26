@@ -96,7 +96,7 @@ describe('apiUpdatePreferences', () => {
   it('sends PATCH with preferences action', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
 
-    await apiUpdatePreferences(42, ['Italian'], ['Vegan'])
+    await apiUpdatePreferences({ userId: 42, cuisinePreferences: ['Italian'], dietaryRestrictions: ['Vegan'] })
 
     expect(fetch).toHaveBeenCalledWith(
       '/api/users/42',
@@ -113,7 +113,7 @@ describe('apiUpdatePreferences', () => {
       json: async () => ({ error: 'Invalid preferences data' }),
     } as Response)
 
-    await expect(apiUpdatePreferences(42, [], [])).rejects.toThrow('Invalid preferences data')
+    await expect(apiUpdatePreferences({ userId: 42, cuisinePreferences: [], dietaryRestrictions: [] })).rejects.toThrow('Invalid preferences data')
   })
 })
 
@@ -146,7 +146,7 @@ describe('apiUpdatePassword', () => {
   it('sends PATCH with password action', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
 
-    await apiUpdatePassword(42, 'OldPass1!', 'NewPass1!')
+    await apiUpdatePassword({ userId: 42, currentPassword: 'OldPass1!', newPassword: 'NewPass1!' })
 
     expect(fetch).toHaveBeenCalledWith(
       '/api/users/42',
@@ -163,7 +163,7 @@ describe('apiUpdatePassword', () => {
       json: async () => ({ error: 'Current password is incorrect' }),
     } as Response)
 
-    await expect(apiUpdatePassword(42, 'wrong', 'NewPass1!')).rejects.toThrow('Current password is incorrect')
+    await expect(apiUpdatePassword({ userId: 42, currentPassword: 'wrong', newPassword: 'NewPass1!' })).rejects.toThrow('Current password is incorrect')
   })
 
   it('throws generic message when error body cannot be parsed', async () => {
@@ -172,7 +172,7 @@ describe('apiUpdatePassword', () => {
       json: async () => { throw new Error('invalid json') },
     } as unknown as Response)
 
-    await expect(apiUpdatePassword(42, 'OldPass1!', 'NewPass1!')).rejects.toThrow('Update failed')
+    await expect(apiUpdatePassword({ userId: 42, currentPassword: 'OldPass1!', newPassword: 'NewPass1!' })).rejects.toThrow('Update failed')
   })
 })
 

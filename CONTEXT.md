@@ -133,6 +133,14 @@ The quantity of a Food (in its Serving Unit) that the nutrition values correspon
 ## Measurement
 A unit in which a Food can be expressed when added to a Recipe ingredient or tracked in the Pantry. Each Food has an explicit, author-curated list of Measurements stored in the DB. When a Food has a Density set, the full Measurement list presented to the user is expanded at runtime to include Standard Units from the opposite category (mass units for a volume Food, volume units for a mass Food); these cross-category units are derived, not stored. A Measurement is either a Standard Unit or a Calibrated Custom Unit. The Serving Unit is always included in a Food's Measurements. For Foods and Products imported from USDA, Measurements are auto-populated at import time from USDA Portion Data; manually created Foods receive no auto-populated Measurements beyond the Serving Unit.
 
+## AI Completion
+A single-turn text-generation call to an LLM: one system prompt (static instructions) plus one user message (dynamic input) in, one string out. All AI Completions go through `complete()` in `src/lib/ai.ts`; no feature imports an LLM SDK directly. The caller selects a named model configuration from `Models` in that module — provider and model name are co-located there, not scattered across features. User-supplied data embedded in the user message must be wrapped in XML tags to defend against prompt injection. Output validation is the caller's responsibility.
+_Avoid_: LLM call, Claude call, model call, inference
+
+## USDA Name Normalization
+The process of converting a raw USDA food description into a human-readable Food name. Applied at import time for Foundation/SR Legacy Foods (`source = 'usda'`) only — not for Branded Products. The normalized form is title case with comma-separated USDA qualifiers collapsed into a parenthetical suffix (e.g. `"CHICKEN, BREAST, BONELESS, SKINLESS, RAW"` → `"Chicken Breast (boneless, skinless, raw)"`). Performed via a Claude LLM call. If the LLM call fails, the raw USDA description is used as the food name and the failure is logged. The original USDA description is not stored after normalization; `externalId` preserves the link to the source record. A one-time migration script normalizes all existing `source = 'usda'` rows; new imports are normalized inline in `importUSDAFood`.
+_Avoid_: name cleaning, name formatting, name sanitization
+
 ## USDA Portion Data
 Portion descriptions attached to a USDA food record (e.g. "1 slice = 28g", "1 loaf = 567g"), available via the USDA full food detail endpoint (`/fdc/v1/food/{fdcId}`). Fetched during USDA import for both Foundation/SR Legacy Foods and Branded Products, and converted directly into Calibrated Custom Unit Measurements. If no portion data exists for a record, no extra Measurements are added. Not fetched for manually created Foods or Open Food Facts imports.
 _Avoid_: serving suggestions, portion sizes
@@ -173,6 +181,18 @@ _Avoid_: moderator, superuser
 ## Review Aggregate
 The average star rating and total Review count for a Recipe, computed at query time from the `reviews` table. Displayed on the recipe detail page as e.g. "★ 4.2 · 18 reviews". No denormalised column on the Recipe.
 _Avoid_: rating score, review summary
+
+## Markdown Recipe Import
+An alternative recipe creation mode on the New Recipe page. The user writes a single structured markdown document — title, metadata (meal, serves, prep/cook time), ingredient list, and numbered steps — which is parsed and converted into a Recipe in one step. Distinct from the Guided Recipe Form (the existing two-tab form). Both modes produce the same Recipe schema; Markdown Recipe Import is purely an authoring shortcut.
+_Avoid_: paste import, bulk create, template import
+
+## Recipe Import Preview
+The intermediate state between submitting a Markdown Recipe Import and committing the Recipe to the database. Shows the parsed Recipe with each Ingredient either resolved (matched to a Food), substitutable (up to 3 candidate Foods presented for the user to choose from), or skippable (omitted from the Recipe with a warning that Nutrition Complete status may be affected). Metadata fields not present in the markdown (meal, serves, etc.) are shown as editable fallbacks. The user must confirm the Preview before the Recipe is created.
+_Avoid_: parse result, import confirmation
+
+## Ingredient Resolution
+The process of matching a parsed ingredient string (from a Markdown Recipe Import) to a Food in the database. First tries a case-insensitive substring match; if no match is found, returns up to 3 candidate Foods ranked by relevance for the user to choose from in the Recipe Import Preview. An ingredient that cannot be matched may be skipped, in which case it is omitted from the Recipe and the Recipe may not be Nutrition Complete.
+_Avoid_: food lookup, ingredient matching
 
 ## Review Like
 An upvote cast by a User on another User's Review. One Like per User per Review, enforced by a unique constraint. Toggled — clicking again removes the Like. A User cannot Like their own Review. Displayed as a count on the Review ("Liked by X chefs"). On Account Deletion the liker is anonymised (userId set to null) — the count is preserved since only the count is displayed, not who liked it.

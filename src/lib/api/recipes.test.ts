@@ -191,14 +191,14 @@ describe('apiCreateRecipeStep', () => {
 describe('apiUpdateRecipeStep', () => {
   it('puts step data and returns updated step', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockStep } as Response)
-    const result = await apiUpdateRecipeStep('pasta', 1, { content: '<p>Updated</p>' })
+    const result = await apiUpdateRecipeStep({ shortId: 'pasta', stepId: 1, data: { content: '<p>Updated</p>' } })
     expect(result).toEqual(mockStep)
     expect(fetch).toHaveBeenCalledWith('/api/recipes/pasta/steps/1', expect.objectContaining({ method: 'PUT' }))
   })
 
   it('throws on non-ok response', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
-    await expect(apiUpdateRecipeStep('pasta', 1, {})).rejects.toThrow('Failed to update step')
+    await expect(apiUpdateRecipeStep({ shortId: 'pasta', stepId: 1, data: {} })).rejects.toThrow('Failed to update step')
   })
 })
 

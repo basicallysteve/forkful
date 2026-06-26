@@ -49,7 +49,7 @@ async function patchUser(userId: string | number, body: object): Promise<void> {
   }
 }
 
-export async function apiUpdatePreferences(userId: string | number, cuisinePreferences: string[], dietaryRestrictions: string[]): Promise<void> {
+export async function apiUpdatePreferences({ userId, cuisinePreferences, dietaryRestrictions }: { userId: string | number; cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
   return patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
 }
 
@@ -69,7 +69,7 @@ export async function apiUpdateEmail(userId: string | number, email: string): Pr
   return patchUser(userId, { action: 'email', email })
 }
 
-export async function apiUpdatePassword(userId: string | number, currentPassword: string, newPassword: string): Promise<void> {
+export async function apiUpdatePassword({ userId, currentPassword, newPassword }: { userId: string | number; currentPassword: string; newPassword: string }): Promise<void> {
   return patchUser(userId, { action: 'password', currentPassword, newPassword })
 }
 

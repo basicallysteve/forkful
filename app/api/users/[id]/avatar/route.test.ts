@@ -126,7 +126,7 @@ describe('POST /api/users/[id]/avatar — success', () => {
     ;(getUser as Mock).mockResolvedValue({ avatarUrl: 'https://old.url/a.png' })
     const { request, params } = makeFormRequest('1', makePngFile())
     await POST(request, { params })
-    expect(updateUserAvatar).toHaveBeenCalledWith(1, 'https://blob.vercel.app/avatars/1-123.png', 'https://old.url/a.png')
+    expect(updateUserAvatar).toHaveBeenCalledWith({ userId: 1, avatarUrl: 'https://blob.vercel.app/avatars/1-123.png', oldAvatarUrl: 'https://old.url/a.png' })
   })
 })
 

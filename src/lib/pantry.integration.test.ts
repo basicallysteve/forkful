@@ -123,7 +123,7 @@ describe('pantry data layer (integration)', () => {
     const food = await createTestFood()
 
     const item = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
-    const updated = await updatePantryItem(item.id, user.id, { currentSizeAmount: 1 })
+    const updated = await updatePantryItem({ id: item.id, userId: user.id, data: { currentSizeAmount: 1 } })
 
     expect(updated?.currentSize.size).toBe(1)
     expect(updated?.originalSize.size).toBe(2)
@@ -135,7 +135,7 @@ describe('pantry data layer (integration)', () => {
     const food = await createTestFood()
 
     const item = await createPantryItem({ userId: userA.id, foodId: food.id, originalSizeAmount: 2, currentSizeAmount: 2 })
-    const result = await updatePantryItem(item.id, userB.id, { currentSizeAmount: 0.5 })
+    const result = await updatePantryItem({ id: item.id, userId: userB.id, data: { currentSizeAmount: 0.5 } })
 
     expect(result).toBeNull()
 
@@ -150,10 +150,10 @@ describe('pantry data layer (integration)', () => {
     const item = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
     expect(item.frozenDate).toBeNull()
 
-    const frozen = await updatePantryItem(item.id, user.id, { frozenDate: new Date() })
+    const frozen = await updatePantryItem({ id: item.id, userId: user.id, data: { frozenDate: new Date() } })
     expect(frozen?.frozenDate).not.toBeNull()
 
-    const thawed = await updatePantryItem(item.id, user.id, { frozenDate: null })
+    const thawed = await updatePantryItem({ id: item.id, userId: user.id, data: { frozenDate: null } })
     expect(thawed?.frozenDate).toBeNull()
   })
 

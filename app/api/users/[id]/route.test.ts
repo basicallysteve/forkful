@@ -203,7 +203,7 @@ describe('PATCH /api/users/[id] — password', () => {
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ ok: true })
-    expect(updateUserPassword).toHaveBeenCalledWith(42, 'OldPass1!', 'NewPass1!')
+    expect(updateUserPassword).toHaveBeenCalledWith({ userId: 42, currentPassword: 'OldPass1!', newPassword: 'NewPass1!' })
   })
 
   it('returns 400 when newPassword is too short', async () => {

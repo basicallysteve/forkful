@@ -17,6 +17,8 @@ import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { RadioButton } from 'primereact/radiobutton'
 import { Editor } from 'primereact/editor'
+import MarkdownImport from './MarkdownImport'
+import './markdownImport.scss'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -81,6 +83,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       baseServingUnit: ingredient.food?.servingUnit || DEFAULT_SERVING_UNIT,
       targetAmount: 1,
       targetUnit: ingredient.servingUnit,
+      density: ingredient.food?.density,
     }) || 0
     setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
@@ -100,6 +103,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       baseServingUnit,
       targetAmount: ingredient.quantity,
       targetUnit: newUnit,
+      density: food.density,
     })
     
     // If conversion is possible, use calculated calories; otherwise keep current calories
@@ -243,7 +247,9 @@ function Store() {
   const router = useRouter()
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
-  
+
+  const [inputMode, setInputMode] = useState<'guided' | 'markdown'>('guided')
+
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
     meal: undefined,
@@ -461,13 +467,40 @@ function Store() {
         <section className="store-panel">
           <div className="panel-toolbar">
             <div className="toolbar-tabs">
-              <span className={`tab ${activeTab === "details" ? "is-active" : ""}`} onClick={() => setActiveTab("details")} role="button" aria-label="Details Tab" aria-selected={activeTab === "details"}>Details</span>
-              <span className={`tab ${activeTab === "ingredients" ? "is-active" : ""}`} onClick={() => setActiveTab("ingredients")} role="button" aria-label="Ingredients Tab" aria-selected={activeTab === "ingredients"}>Ingredients</span>
+              {inputMode === 'guided' && (
+                <>
+                  <span className={`tab ${activeTab === "details" ? "is-active" : ""}`} onClick={() => setActiveTab("details")} role="button" aria-label="Details Tab" aria-selected={activeTab === "details"}>Details</span>
+                  <span className={`tab ${activeTab === "ingredients" ? "is-active" : ""}`} onClick={() => setActiveTab("ingredients")} role="button" aria-label="Ingredients Tab" aria-selected={activeTab === "ingredients"}>Ingredients</span>
+                </>
+              )}
+            </div>
+            <div className="toolbar-mode-toggle">
+              <span
+                className={`tab ${inputMode === 'guided' ? 'is-active' : ''}`}
+                onClick={() => setInputMode('guided')}
+                role="button"
+                aria-label="Guided mode"
+                aria-selected={inputMode === 'guided'}
+              >
+                Guided
+              </span>
+              <span
+                className={`tab ${inputMode === 'markdown' ? 'is-active' : ''}`}
+                onClick={() => setInputMode('markdown')}
+                role="button"
+                aria-label="Advanced mode"
+                aria-selected={inputMode === 'markdown'}
+              >
+                Advanced
+              </span>
             </div>
           </div>
 
           <div className="panel-content">
-            {activeTab === "details" ? detailsTabContent : ingredientsTabContent}
+            {inputMode === 'markdown'
+              ? <MarkdownImport />
+              : (activeTab === "details" ? detailsTabContent : ingredientsTabContent)
+            }
           </div>
         </section>
       </div>

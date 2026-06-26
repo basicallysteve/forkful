@@ -1,4 +1,4 @@
-import { eq, isNull, and, ilike, asc, desc, sql } from 'drizzle-orm'
+import { eq, isNull, and, or, ilike, asc, desc, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods } from '@/db/schema'
 import type { Food, FoodSource, Measurement } from '@/types/Food'
@@ -36,32 +36,65 @@ function mapFood(row: typeof foods.$inferSelect): Food {
   }
 }
 
+// Builds a WHERE condition for a single search phrase: every word must appear (AND, order-independent)
+function buildWordAndCondition(search: string) {
+  const words = search.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return null
+  if (words.length === 1) return ilike(foods.name, `%${words[0]}%`)
+  return and(...words.map((w) => ilike(foods.name, `%${w}%`)))
+}
+
+// Builds ORDER BY for relevance ranking against a phrase:
+// tier 0 exact · 1 primary-name-starts · 2 name-starts · 3 contains-phrase · 4 scattered words
+// Within each tier: shorter names first, then alphabetical
+function buildRelevanceOrderBy(phrase: string) {
+  return [
+    sql`CASE
+      WHEN ${foods.name} ILIKE ${phrase}                           THEN 0
+      WHEN SPLIT_PART(${foods.name}, ',', 1) ILIKE ${phrase + '%'} THEN 1
+      WHEN ${foods.name} ILIKE ${phrase + '%'}                     THEN 2
+      WHEN ${foods.name} ILIKE ${'%' + phrase + '%'}               THEN 3
+      ELSE 4
+    END`,
+    sql`LENGTH(${foods.name})`,
+    asc(foods.name),
+  ]
+}
+
 export async function getFoods(options: FoodQueryOptions = {}): Promise<Food[]> {
   try {
-    const where = options.search
-      ? and(isNull(foods.dateDeleted), ilike(foods.name, `%${options.search}%`))
+    const phrase = options.search?.trim() ?? ''
+    const searchCond = buildWordAndCondition(phrase)
+
+    const where = searchCond
+      ? and(isNull(foods.dateDeleted), searchCond)
       : isNull(foods.dateDeleted)
 
-    const orderBy = (() => {
-      if (options.search) {
-        const term = options.search
-        // Exact match → starts-with → contains, then alphabetical within each tier
-        return [
-          sql`CASE
-            WHEN ${foods.name} ILIKE ${term}                          THEN 0
-            WHEN SPLIT_PART(${foods.name}, ',', 1) ILIKE ${term + '%'} THEN 1
-            WHEN ${foods.name} ILIKE ${term + '%'}                    THEN 2
-            ELSE 3
-          END`,
-          asc(foods.name),
-        ]
-      }
-      if (options.sortBy === 'calories') return [options.sortDir === 'desc' ? desc(foods.calories) : asc(foods.calories)]
-      if (options.sortBy === 'protein') return [options.sortDir === 'desc' ? desc(foods.protein) : asc(foods.protein)]
-      return [options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)]
-    })()
+    const orderBy = searchCond
+      ? buildRelevanceOrderBy(phrase)
+      : options.sortBy === 'calories'
+        ? [options.sortDir === 'desc' ? desc(foods.calories) : asc(foods.calories)]
+        : options.sortBy === 'protein'
+          ? [options.sortDir === 'desc' ? desc(foods.protein) : asc(foods.protein)]
+          : [options.sortDir === 'desc' ? desc(foods.name) : asc(foods.name)]
 
     const rows = await db.select().from(foods).where(where).orderBy(...orderBy)
+    return rows.map(mapFood)
+  } catch {
+    return []
+  }
+}
+
+export async function getFoodsByNames(names: string[]): Promise<Food[]> {
+  if (names.length === 0) return []
+  try {
+    const conditions = names.map(buildWordAndCondition).filter((c): c is NonNullable<typeof c> => c != null)
+    if (conditions.length === 0) return []
+    const rows = await db
+      .select()
+      .from(foods)
+      .where(and(isNull(foods.dateDeleted), or(...conditions)))
+      .orderBy(sql`LENGTH(${foods.name})`, asc(foods.name))
     return rows.map(mapFood)
   } catch {
     return []

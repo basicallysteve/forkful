@@ -1,0 +1,384 @@
+.markdown-import {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .mi-editor-wrap {
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    overflow: hidden;
+
+    // Override CodeMirror defaults to match app theme
+    .cm-editor {
+      background: var(--vscode-panel-deep);
+      font-size: 13px;
+      font-family: 'JetBrains Mono', 'Fira Mono', 'Cascadia Code', ui-monospace, monospace;
+    }
+
+    .cm-editor.cm-focused {
+      outline: none;
+    }
+
+    .cm-scroller {
+      padding: 4px 0;
+    }
+
+    .cm-content {
+      padding: 12px 16px;
+      caret-color: var(--vscode-accent);
+    }
+
+    .cm-activeLine {
+      background: rgba(52, 211, 153, 0.04);
+    }
+
+    .cm-selectionBackground {
+      background: rgba(52, 211, 153, 0.18) !important;
+    }
+  }
+
+  .mi-format-ref {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel-strong);
+  }
+
+  .mi-format-ref-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--vscode-muted);
+  }
+
+  .mi-format-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 16px;
+    margin: 0;
+
+    dt {
+      font-family: 'JetBrains Mono', 'Fira Mono', ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--vscode-accent);
+      white-space: nowrap;
+      padding: 1px 0;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 12px;
+      color: var(--vscode-muted);
+      padding: 1px 0;
+
+      code {
+        font-family: 'JetBrains Mono', 'Fira Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--vscode-text);
+        background: var(--vscode-panel);
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+
+      em {
+        font-style: normal;
+        color: var(--vscode-text);
+      }
+    }
+  }
+
+  .mi-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel-strong);
+  }
+
+  .mi-error {
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--vscode-danger);
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--vscode-danger);
+    font-size: 13px;
+  }
+
+  .mi-warning {
+    margin: 0 0 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--vscode-warning);
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--vscode-warning);
+    font-size: 13px;
+  }
+
+  .mi-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mi-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mi-section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--vscode-muted);
+  }
+
+  .mi-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .mi-ingredient-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mi-ingredient-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel);
+    flex-wrap: wrap;
+
+    &--matched {
+      border-color: var(--vscode-success);
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    &--candidates {
+      border-color: var(--vscode-warning);
+      background: rgba(245, 158, 11, 0.04);
+    }
+
+    &--unresolved {
+      border-color: var(--vscode-danger);
+      background: rgba(239, 68, 68, 0.04);
+    }
+
+    &--skipped {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+  }
+
+  .mi-ingredient-raw {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 160px;
+    font-size: 13px;
+    color: var(--vscode-text);
+  }
+
+  .mi-qty {
+    font-weight: 600;
+    color: var(--vscode-accent);
+  }
+
+  .mi-unit {
+    color: var(--vscode-muted);
+    font-size: 12px;
+  }
+
+  .mi-food-name {
+    color: var(--vscode-text);
+  }
+
+  .mi-ingredient-resolution {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .mi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+
+    &--matched {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: var(--vscode-success);
+      color: var(--vscode-success);
+    }
+
+    &--warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: var(--vscode-warning);
+      color: var(--vscode-warning);
+    }
+
+    &--error {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: var(--vscode-danger);
+      color: var(--vscode-danger);
+    }
+
+    &--skipped {
+      background: var(--vscode-panel-strong);
+      border-color: var(--vscode-border);
+      color: var(--vscode-muted);
+    }
+  }
+
+  .mi-candidates-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mi-candidates-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mi-candidates-carousel {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    min-width: 0;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mi-candidate-btn {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+    }
+  }
+
+  .mi-candidate-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 6px;
+    background: var(--vscode-panel-strong);
+    color: var(--vscode-text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+
+    &:hover {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+      color: var(--vscode-accent);
+    }
+  }
+
+  .mi-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .mi-skip-btn {
+    margin-left: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vscode-muted);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 120ms ease, color 120ms ease;
+
+    &:hover {
+      border-color: var(--vscode-danger);
+      color: var(--vscode-danger);
+    }
+
+    &--active {
+      border-color: var(--vscode-accent);
+      color: var(--vscode-accent);
+
+      &:hover {
+        border-color: var(--vscode-accent);
+        color: var(--vscode-accent);
+      }
+    }
+  }
+
+  .mi-steps {
+    margin: 0;
+    padding: 0 0 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .mi-step {
+    font-size: 14px;
+    color: var(--vscode-text);
+    line-height: 1.5;
+    padding: 8px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+  }
+
+  .mi-preview-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 10px;
+    background: var(--vscode-panel-strong);
+  }
+
+  @media (max-width: 720px) {
+    .mi-meta-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .mi-ingredient-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .mi-skip-btn {
+      margin-left: 0;
+    }
+  }
+}
