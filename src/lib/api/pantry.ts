@@ -1,5 +1,5 @@
 import type { PantryItem } from '@/types/PantryItem'
-import type { PantryQueryOptions } from '@/lib/pantry'
+import type { PantryQueryOptions, IngredientMatch, PreparedMealDeduction } from '@/lib/pantry'
 
 type RawPantryItem = Omit<PantryItem, 'expirationDate' | 'addedDate' | 'frozenDate'> & {
   expirationDate: string | null
@@ -88,4 +88,34 @@ export async function apiDeletePantryItems(ids: number[]): Promise<number[]> {
   if (!res.ok) throw new Error('Failed to delete pantry items')
   const result = await res.json()
   return result.deletedIds
+}
+
+export async function apiFetchIngredientPantryMatches(recipeShortId: string): Promise<IngredientMatch[]> {
+  const res = await fetch(`/api/pantry/prepare?recipeShortId=${encodeURIComponent(recipeShortId)}`)
+  if (!res.ok) throw new Error('Failed to fetch ingredient pantry matches')
+  return res.json()
+}
+
+export type PrepareMealData = {
+  recipeShortId: string
+  servings: number
+  expirationDate?: string | null
+  skipDeduction: boolean
+  deductions: PreparedMealDeduction[]
+}
+
+export async function apiPrepareMeal(data: PrepareMealData): Promise<PantryItem> {
+  const res = await fetch('/api/pantry/prepare', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to create prepared meal')
+  const raw = await res.json()
+  return {
+    ...raw,
+    expirationDate: raw.expirationDate ? new Date(raw.expirationDate) : null,
+    addedDate: new Date(raw.addedDate),
+    frozenDate: raw.frozenDate ? new Date(raw.frozenDate) : null,
+  }
 }
