@@ -19,7 +19,7 @@
  */
 
 import { parseArgs } from 'node:util'
-import { and, isNull, ilike, isNotNull, eq } from 'drizzle-orm'
+import { and, isNull, ilike, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { products, foods } from '@/db/schema'
 import { complete, Models, AIBudgetExhaustedError } from '@/lib/ai'
