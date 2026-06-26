@@ -40,17 +40,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid expirationDate' }, { status: 400 })
   }
 
-  const deductions: PreparedMealDeduction[] = body.skipDeduction ? [] : (body.deductions ?? [])
+  const deductions: PreparedMealDeduction[] = []
+  if (!body.skipDeduction && Array.isArray(body.deductions)) {
+    for (const d of body.deductions) {
+      if (!Number.isInteger(d?.pantryItemId) || d.pantryItemId <= 0) continue
+      if (typeof d.amount !== 'number' || isNaN(d.amount) || d.amount <= 0) continue
+      deductions.push({ pantryItemId: d.pantryItemId, amount: d.amount })
+    }
+  }
 
-  const item = await taskRunner.run(() =>
-    createPreparedMeal({
-      userId: user.userId,
-      recipeShortId: body.recipeShortId,
-      servings: body.servings,
-      expirationDate: body.expirationDate ? new Date(body.expirationDate) : null,
-      deductions,
-    })
-  )
-
-  return NextResponse.json(item, { status: 201 })
+  try {
+    const item = await taskRunner.run(() =>
+      createPreparedMeal({
+        userId: user.userId,
+        recipeShortId: body.recipeShortId,
+        servings: body.servings,
+        expirationDate: body.expirationDate ? new Date(body.expirationDate) : null,
+        deductions,
+      })
+    )
+    return NextResponse.json(item, { status: 201 })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Recipe not found') {
+      return NextResponse.json({ error: 'Recipe not found' }, { status: 404 })
+    }
+    throw err
+  }
 }

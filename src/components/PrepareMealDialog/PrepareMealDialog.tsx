@@ -29,7 +29,10 @@ const DEFAULT_EXPIRY_DAYS = 4
 function defaultExpiryDate(): string {
   const d = new Date()
   d.setDate(d.getDate() + DEFAULT_EXPIRY_DAYS)
-  return d.toISOString().split('T')[0]
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }: Props) {
@@ -149,9 +152,9 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
         type="button"
         className="primary-button"
         onClick={handleNext}
-        disabled={!servingsValid || submitting}
+        disabled={!servingsValid || submitting || loadingMatches}
       >
-        {deductFromPantry ? 'Next' : 'Save to Pantry'}
+        {loadingMatches ? 'Checking…' : deductFromPantry ? 'Next' : 'Save to Pantry'}
       </button>
     </div>
   ) : (
@@ -161,7 +164,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
         type="button"
         className="primary-button"
         onClick={handleConfirmDeductions}
-        disabled={submitting}
+        disabled={submitting || loadingMatches}
       >
         {submitting ? 'Saving…' : 'Save to Pantry'}
       </button>

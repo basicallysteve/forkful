@@ -228,7 +228,7 @@ export type CreatePantryItemData = {
 }
 
 export async function createPantryItem(data: CreatePantryItemData): Promise<PantryItem> {
-  const sourceType = data.sourceType ?? (data.foodId ? 'food' : 'product')
+  const sourceType = data.sourceType ?? (data.recipeId ? 'recipe' : data.foodId ? 'food' : 'product')
   const [row] = await db.insert(pantryItems).values({
     userId: data.userId,
     sourceType,
@@ -312,7 +312,11 @@ export async function getIngredientPantryMatches(
   const [recipe] = await db
     .select({ id: recipes.id })
     .from(recipes)
-    .where(and(eq(recipes.shortId, recipeShortId), isNull(recipes.dateDeleted)))
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
 
   if (!recipe) return []
 
@@ -487,7 +491,11 @@ export async function createPreparedMeal({
   const [recipe] = await db
     .select({ id: recipes.id, name: recipes.name })
     .from(recipes)
-    .where(and(eq(recipes.shortId, recipeShortId), isNull(recipes.dateDeleted)))
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
 
   if (!recipe) throw new Error('Recipe not found')
 
@@ -515,7 +523,7 @@ export async function createPreparedMeal({
     await db
       .update(pantryItems)
       .set({ currentSizeAmount: String(remaining) })
-      .where(and(eq(pantryItems.id, pantryItemId), eq(pantryItems.userId, userId)))
+      .where(and(eq(pantryItems.id, pantryItemId), eq(pantryItems.userId, userId), isNull(pantryItems.dateDeleted)))
   }
 
   return item

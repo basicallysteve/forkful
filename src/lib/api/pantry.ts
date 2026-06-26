@@ -1,5 +1,5 @@
 import type { PantryItem } from '@/types/PantryItem'
-import type { PantryQueryOptions, IngredientMatch, PreparedMealDeduction } from '@/lib/pantry'
+import type { PantryQueryOptions, IngredientMatch, PantryMatchOption, PreparedMealDeduction } from '@/lib/pantry'
 
 type RawPantryItem = Omit<PantryItem, 'expirationDate' | 'addedDate' | 'frozenDate'> & {
   expirationDate: string | null
@@ -93,7 +93,16 @@ export async function apiDeletePantryItems(ids: number[]): Promise<number[]> {
 export async function apiFetchIngredientPantryMatches(recipeShortId: string): Promise<IngredientMatch[]> {
   const res = await fetch(`/api/pantry/prepare?recipeShortId=${encodeURIComponent(recipeShortId)}`)
   if (!res.ok) throw new Error('Failed to fetch ingredient pantry matches')
-  return res.json()
+  const raw: (Omit<IngredientMatch, 'pantryMatches'> & {
+    pantryMatches: (Omit<PantryMatchOption, 'expirationDate'> & { expirationDate: string | null })[]
+  })[] = await res.json()
+  return raw.map(ing => ({
+    ...ing,
+    pantryMatches: ing.pantryMatches.map(m => ({
+      ...m,
+      expirationDate: m.expirationDate ? new Date(m.expirationDate) : null,
+    })),
+  }))
 }
 
 export type PrepareMealData = {
