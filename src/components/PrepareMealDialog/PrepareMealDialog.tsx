@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog } from 'primereact/dialog'
+import './prepare-meal-dialog.scss'
 import { Checkbox } from 'primereact/checkbox'
 import type { Recipe } from '@/types/Recipe'
 import type { IngredientMatch, PantryMatchOption } from '@/lib/pantry'
@@ -173,7 +174,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
       visible={visible}
       onHide={onHide}
       footer={footer}
-      className="prepare-meal-dialog"
+      className="app-modal prepare-meal-dialog"
       style={{ width: '520px' }}
     >
       {step === 'config' && (
