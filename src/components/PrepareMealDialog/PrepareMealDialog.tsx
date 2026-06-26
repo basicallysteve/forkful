@@ -128,7 +128,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
 
   async function handleConfirmDeductions() {
     const deductionList = Object.entries(deductions)
-      .map(([foodIdStr, state]) => {
+      .map(([, state]) => {
         if (!state.selectedPantryItemId) return null
         const amount = parseFloat(state.amount)
         if (isNaN(amount) || amount <= 0) return null

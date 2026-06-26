@@ -5,7 +5,7 @@ import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import { calculatePantryStatus } from '@/utils/pantryStatus'
-import { canConvert, convertUnit, getUnitCategory } from '@/utils/unitConversion'
+import { convertUnit, getUnitCategory } from '@/utils/unitConversion'
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
@@ -356,7 +356,6 @@ export async function getIngredientPantryMatches(
   return ingredientRows.map(({ ingredients: ing, foods: food }) => {
     const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
     const ingredientQty = Number(ing.quantity)
-    const foodDensity = food.density ? Number(food.density) : undefined
     const foodMeasurements: Measurement[] = Array.isArray(food.measurements)
       ? food.measurements.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
       : []
