@@ -5,8 +5,9 @@ import Modal from '@/components/Modal/Modal'
 import './prepare-meal-dialog.scss'
 import { Checkbox } from 'primereact/checkbox'
 import type { Recipe } from '@/types/Recipe'
-import type { IngredientMatch, PantryMatchOption } from '@/lib/pantry'
+import type { IngredientMatch, PantryMatchOption, UnlinkableProductOption } from '@/lib/pantry'
 import { apiFetchIngredientPantryMatches, apiPrepareMeal } from '@/lib/api/pantry'
+import { apiLinkProductToFood } from '@/lib/api/products'
 import type { PantryItem } from '@/types/PantryItem'
 
 interface Props {
@@ -41,6 +42,8 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
   const [expirationDate, setExpirationDate] = useState<string>(defaultExpiryDate())
   const [deductFromPantry, setDeductFromPantry] = useState(true)
   const [matches, setMatches] = useState<IngredientMatch[]>([])
+  const [unlinkableProducts, setUnlinkableProducts] = useState<UnlinkableProductOption[]>([])
+  const [expandedIngredientId, setExpandedIngredientId] = useState<number | null>(null)
   const [deductions, setDeductions] = useState<DeductionState>({})
   const [loadingMatches, setLoadingMatches] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -56,6 +59,8 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
       setExpirationDate(defaultExpiryDate())
       setDeductFromPantry(true)
       setMatches([])
+      setUnlinkableProducts([])
+      setExpandedIngredientId(null)
       setDeductions({})
       setError(null)
     }
@@ -65,11 +70,12 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
     setLoadingMatches(true)
     setError(null)
     try {
-      const result = await apiFetchIngredientPantryMatches(recipe.shortId)
-      setMatches(result)
+      const { ingredientMatches, unlinkableProducts: unlinked } = await apiFetchIngredientPantryMatches(recipe.shortId)
+      setMatches(ingredientMatches)
+      setUnlinkableProducts(unlinked)
       // Pre-select first match and pre-fill suggested amount for each ingredient
       const initial: DeductionState = {}
-      for (const ing of result) {
+      for (const ing of ingredientMatches) {
         const first = ing.pantryMatches[0] ?? null
         initial[ing.ingredientFoodId] = {
           selectedPantryItemId: first?.pantryItemId ?? null,
@@ -108,6 +114,24 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
         canAutoConvert: option.canAutoConvert,
       },
     }))
+  }
+
+  async function handleLinkProduct(product: UnlinkableProductOption, ingredientFoodId: number) {
+    try {
+      await apiLinkProductToFood(product.productSlug, ingredientFoodId)
+      const { ingredientMatches, unlinkableProducts: unlinked } = await apiFetchIngredientPantryMatches(recipe.shortId)
+      setMatches(ingredientMatches)
+      setUnlinkableProducts(unlinked)
+      setExpandedIngredientId(null)
+      // Auto-select the newly-linked product for this ingredient
+      const updatedIng = ingredientMatches.find(m => m.ingredientFoodId === ingredientFoodId)
+      const linkedMatch = updatedIng?.pantryMatches.find(m => m.pantryItemId === product.pantryItemId)
+      if (linkedMatch) {
+        handleSelectPantryItem(ingredientFoodId, linkedMatch)
+      }
+    } catch {
+      setError('Failed to link product. Please try again.')
+    }
   }
 
   async function submit(deductionList: { pantryItemId: number; amount: number }[]) {
@@ -247,9 +271,15 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
                 </span>
               </div>
 
-              {ing.pantryMatches.length === 0 ? (
+              {ing.pantryMatches.length === 0 && unlinkableProducts.length === 0 && (
                 <p className="deduction-no-stock">Not in pantry — no deduction</p>
-              ) : (
+              )}
+
+              {ing.pantryMatches.length === 0 && unlinkableProducts.length > 0 && (
+                <p className="deduction-no-stock">Not matched in pantry</p>
+              )}
+
+              {ing.pantryMatches.length > 0 && (
                 <div className="deduction-options">
                   {ing.pantryMatches.map(opt => {
                     const state = deductions[ing.ingredientFoodId]
@@ -309,6 +339,38 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
                       </div>
                     )
                   })()}
+                </div>
+              )}
+
+              {unlinkableProducts.length > 0 && (
+                <div className="deduction-link-section">
+                  <button
+                    type="button"
+                    className="deduction-link-toggle"
+                    onClick={() => setExpandedIngredientId(
+                      expandedIngredientId === ing.ingredientFoodId ? null : ing.ingredientFoodId
+                    )}
+                  >
+                    {expandedIngredientId === ing.ingredientFoodId ? 'Cancel' : 'Link a pantry product'}
+                  </button>
+
+                  {expandedIngredientId === ing.ingredientFoodId && (
+                    <div className="deduction-link-picker">
+                      {unlinkableProducts.map(product => (
+                        <button
+                          key={product.pantryItemId}
+                          type="button"
+                          className="deduction-link-option"
+                          onClick={() => handleLinkProduct(product, ing.ingredientFoodId)}
+                        >
+                          <span className="deduction-link-option-name">{product.productName}</span>
+                          <span className="deduction-link-option-size">
+                            {product.currentSize.size} {product.currentSize.unit}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

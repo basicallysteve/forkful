@@ -210,4 +210,61 @@
     color: var(--vscode-muted);
     margin: 0;
   }
+
+  // Deduction-Time Product Link
+  .deduction-link-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  .deduction-link-toggle {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--vscode-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover { opacity: 0.8; }
+  }
+
+  .deduction-link-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .deduction-link-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: border-color 120ms ease;
+
+    &:hover { border-color: var(--vscode-accent); }
+  }
+
+  .deduction-link-option-name {
+    font-size: 13px;
+    color: var(--vscode-text);
+  }
+
+  .deduction-link-option-size {
+    font-size: 12px;
+    color: var(--vscode-muted);
+    white-space: nowrap;
+  }
 }
