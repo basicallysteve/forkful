@@ -61,7 +61,8 @@ function mapProductRow(row: typeof products.$inferSelect): Product {
 function mapPantryItem(
   row: typeof pantryItems.$inferSelect,
   food?: Food,
-  product?: Product
+  product?: Product,
+  recipeShortId?: string | null
 ): PantryItem {
   const expirationDate = row.expirationDate ? new Date(row.expirationDate) : null
   const sourceType = (row.sourceType as 'food' | 'product' | 'recipe') ?? 'food'
@@ -72,6 +73,7 @@ function mapPantryItem(
     product,
     recipeId: row.recipeId ?? null,
     recipeNameSnapshot: row.recipeNameSnapshot ?? null,
+    recipeShortId: recipeShortId ?? null,
     expirationDate,
     originalSize: {
       size: Number(row.originalSizeAmount),
@@ -130,6 +132,7 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -147,7 +150,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
     return rows.map(row => mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     ))
   } catch (err) {
     console.error('getPantryItems failed:', err)
@@ -164,6 +168,7 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -178,7 +183,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
     return rows.map(row => mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     ))
   } catch {
     return []
@@ -192,6 +198,7 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.id, id),
@@ -205,7 +212,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
     return mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     )
   } catch (err) {
     console.error('getPantryItemById failed:', err)

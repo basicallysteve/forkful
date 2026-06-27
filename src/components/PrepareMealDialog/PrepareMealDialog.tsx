@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Dialog } from 'primereact/dialog'
+import Modal from '@/components/Modal/Modal'
 import './prepare-meal-dialog.scss'
 import { Checkbox } from 'primereact/checkbox'
 import type { Recipe } from '@/types/Recipe'
@@ -172,12 +172,12 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
   )
 
   return (
-    <Dialog
+    <Modal
       header={`Prepare: ${recipe.name}`}
       visible={visible}
       onHide={onHide}
       footer={footer}
-      className="app-modal prepare-meal-dialog"
+      className="prepare-meal-dialog"
       style={{ width: '520px' }}
     >
       {step === 'config' && (
@@ -317,6 +317,6 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
           {error && <p className="prepare-error">{error}</p>}
         </div>
       )}
-    </Dialog>
+    </Modal>
   )
 }

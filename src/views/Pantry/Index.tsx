@@ -303,7 +303,13 @@ export default function Pantry() {
                       <td>
                         {item.sourceType === 'recipe' ? (
                           <span className="pantry-item-name">
-                            {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            {item.recipeShortId ? (
+                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
+                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              </Link>
+                            ) : (
+                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                            )}
                             <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
                           </span>
                         ) : item.food ? (
@@ -381,7 +387,13 @@ export default function Pantry() {
                       <div className="card-header">
                         {item.sourceType === 'recipe' ? (
                           <span className="card-title">
-                            {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            {item.recipeShortId ? (
+                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
+                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              </Link>
+                            ) : (
+                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                            )}
                             <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
                           </span>
                         ) : item.food ? (
