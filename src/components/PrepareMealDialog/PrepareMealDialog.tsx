@@ -44,6 +44,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
   const [matches, setMatches] = useState<IngredientMatch[]>([])
   const [unlinkableProducts, setUnlinkableProducts] = useState<UnlinkableProductOption[]>([])
   const [expandedIngredientId, setExpandedIngredientId] = useState<number | null>(null)
+  const [linkSearch, setLinkSearch] = useState('')
   const [deductions, setDeductions] = useState<DeductionState>({})
   const [loadingMatches, setLoadingMatches] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -61,6 +62,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
       setMatches([])
       setUnlinkableProducts([])
       setExpandedIngredientId(null)
+      setLinkSearch('')
       setDeductions({})
       setError(null)
     }
@@ -123,6 +125,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
       setMatches(ingredientMatches)
       setUnlinkableProducts(unlinked)
       setExpandedIngredientId(null)
+      setLinkSearch('')
       // Auto-select the newly-linked product for this ingredient
       const updatedIng = ingredientMatches.find(m => m.ingredientFoodId === ingredientFoodId)
       const linkedMatch = updatedIng?.pantryMatches.find(m => m.pantryItemId === product.pantryItemId)
@@ -347,28 +350,47 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
                   <button
                     type="button"
                     className="deduction-link-toggle"
-                    onClick={() => setExpandedIngredientId(
-                      expandedIngredientId === ing.ingredientFoodId ? null : ing.ingredientFoodId
-                    )}
+                    onClick={() => {
+                      const next = expandedIngredientId === ing.ingredientFoodId ? null : ing.ingredientFoodId
+                      setExpandedIngredientId(next)
+                      if (!next) setLinkSearch('')
+                    }}
                   >
                     {expandedIngredientId === ing.ingredientFoodId ? 'Cancel' : 'Link a pantry product'}
                   </button>
 
                   {expandedIngredientId === ing.ingredientFoodId && (
                     <div className="deduction-link-picker">
-                      {unlinkableProducts.map(product => (
-                        <button
-                          key={product.pantryItemId}
-                          type="button"
-                          className="deduction-link-option"
-                          onClick={() => handleLinkProduct(product, ing.ingredientFoodId)}
-                        >
-                          <span className="deduction-link-option-name">{product.productName}</span>
-                          <span className="deduction-link-option-size">
-                            {product.currentSize.size} {product.currentSize.unit}
-                          </span>
-                        </button>
-                      ))}
+                      <input
+                        type="search"
+                        className="prepare-input deduction-link-search"
+                        placeholder="Search your pantry products…"
+                        value={linkSearch}
+                        onChange={e => setLinkSearch(e.target.value)}
+                        autoFocus
+                      />
+                      {(() => {
+                        const q = linkSearch.trim().toLowerCase()
+                        const filtered = q
+                          ? unlinkableProducts.filter(p => p.productName.toLowerCase().includes(q))
+                          : unlinkableProducts
+                        if (filtered.length === 0) {
+                          return <p className="deduction-link-empty">No products match &ldquo;{linkSearch}&rdquo;</p>
+                        }
+                        return filtered.map(product => (
+                          <button
+                            key={product.pantryItemId}
+                            type="button"
+                            className="deduction-link-option"
+                            onClick={() => handleLinkProduct(product, ing.ingredientFoodId)}
+                          >
+                            <span className="deduction-link-option-name">{product.productName}</span>
+                            <span className="deduction-link-option-size">
+                              {product.currentSize.size} {product.currentSize.unit}
+                            </span>
+                          </button>
+                        ))
+                      })()}
                     </div>
                   )}
                 </div>
