@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   if (!recipeShortId) return NextResponse.json({ error: 'recipeShortId is required' }, { status: 400 })
 
   const matches = await getIngredientPantryMatches(recipeShortId, user.userId)
+  if (matches === null) return NextResponse.json({ error: 'Recipe not found' }, { status: 404 })
   return NextResponse.json(matches)
 }
 

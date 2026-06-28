@@ -52,15 +52,7 @@ export default function PantrySearch({ onSelect, sourceType, excludeIds = [], pl
         const items = await apiFetchPantryItems({ search: query || undefined })
         if (latestQueryRef.current !== query) return
 
-        const filtered = items
-          .filter(item => {
-            if (excludeIds.includes(item.id)) return false
-            if (sourceType && item.sourceType !== sourceType) return false
-            return true
-          })
-          .slice(0, 20)
-
-        setSuggestions(filtered.length > 0 ? [{ label: 'Your pantry', items: filtered }] : [])
+        setSuggestions(filtered.length > 0 ? [{ label: 'Your pantry', items }] : [])
       } catch {
         setSuggestions([])
       }

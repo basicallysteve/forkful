@@ -294,8 +294,6 @@ export async function deletePantryItems(ids: number[], userId: number): Promise<
   return updated.map(item => item.id)
 }
 
-const EXPIRING_SOON_DAYS = 7
-
 export type PantryMatchOption = {
   pantryItemId: number
   itemName: string
@@ -317,7 +315,7 @@ export type IngredientMatch = {
 export async function getIngredientPantryMatches(
   recipeShortId: string,
   userId: number
-): Promise<IngredientMatch[]> {
+): Promise<IngredientMatch[] | null> {
   const [recipe] = await db
     .select({ id: recipes.id })
     .from(recipes)
@@ -327,7 +325,7 @@ export async function getIngredientPantryMatches(
       or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
     ))
 
-  if (!recipe) return []
+  if (!recipe) return null
 
   const ingredientRows = await db
     .select()
@@ -340,7 +338,7 @@ export async function getIngredientPantryMatches(
   const foodIds = ingredientRows.map(r => r.foods.id)
   const now = new Date()
   const soonCutoff = new Date(now)
-  soonCutoff.setDate(soonCutoff.getDate() + EXPIRING_SOON_DAYS)
+  soonCutoff.setDate(soonCutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
 
   // Fetch food-sourced pantry items matching any ingredient food
   const foodPantryRows = await db
