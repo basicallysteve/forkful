@@ -211,17 +211,13 @@
     margin: 0;
   }
 
-  // Deduction-Time Product Link
-  .deduction-link-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  // Substitute trigger + picker
+  .deduction-substitute-trigger {
     padding-top: 6px;
     border-top: 1px solid var(--vscode-border);
   }
 
   .deduction-link-toggle {
-    align-self: flex-start;
     background: none;
     border: none;
     padding: 0;
@@ -234,54 +230,73 @@
     &:hover { opacity: 0.8; }
   }
 
-  .deduction-link-picker {
+  .deduction-substitute-picker {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    max-height: 220px;
-    overflow-y: auto;
+    gap: 6px;
   }
 
-  .deduction-link-search {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--vscode-panel);
-    margin-bottom: 2px;
+  // Confirmed substitute row
+  .deduction-substitute {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px dashed var(--vscode-accent);
+    border-radius: 8px;
+    background: var(--accent-hover);
+
+    &--prompt {
+      border-style: solid;
+      border-color: var(--vscode-border);
+      background: var(--vscode-panel);
+    }
   }
 
-  .deduction-link-empty {
+  .deduction-substitute-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .deduction-substitute-label {
     font-size: 12px;
     color: var(--vscode-muted);
-    font-style: italic;
-    margin: 4px 0 0;
+    flex-shrink: 0;
   }
 
-  .deduction-link-option {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--vscode-border);
-    border-radius: 8px;
-    background: var(--vscode-panel-strong);
+  .deduction-substitute-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vscode-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .deduction-substitute-remove {
+    background: none;
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--vscode-muted);
     cursor: pointer;
-    text-align: left;
-    width: 100%;
-    transition: border-color 120ms ease;
+    padding: 0 2px;
+    flex-shrink: 0;
 
-    &:hover { border-color: var(--vscode-accent); }
+    &:hover { color: var(--vscode-text); }
   }
 
-  .deduction-link-option-name {
+  .deduction-substitute-prompt-text {
     font-size: 13px;
     color: var(--vscode-text);
+    margin: 0;
   }
 
-  .deduction-link-option-size {
-    font-size: 12px;
-    color: var(--vscode-muted);
-    white-space: nowrap;
+  .deduction-substitute-prompt-actions {
+    display: flex;
+    gap: 8px;
   }
 }

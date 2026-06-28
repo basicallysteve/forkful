@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   const recipeShortId = searchParams.get('recipeShortId')
   if (!recipeShortId) return NextResponse.json({ error: 'recipeShortId is required' }, { status: 400 })
 
-  const result = await getIngredientPantryMatches(recipeShortId, user.userId)
-  return NextResponse.json(result)
+  const matches = await getIngredientPantryMatches(recipeShortId, user.userId)
+  return NextResponse.json(matches)
 }
 
 type PrepareBody = {

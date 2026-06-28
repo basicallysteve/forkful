@@ -40,6 +40,7 @@ function mapProductRow(row: typeof products.$inferSelect): Product {
   return {
     id: row.id,
     name: row.name,
+    slug: row.slug ?? undefined,
     barcode: row.barcode ?? undefined,
     externalId: row.externalId ?? undefined,
     parentFoodId: row.parentFoodId ?? undefined,
@@ -313,19 +314,10 @@ export type IngredientMatch = {
   pantryMatches: PantryMatchOption[]
 }
 
-export type UnlinkableProductOption = {
-  pantryItemId: number
-  productId: number
-  productSlug: string
-  productName: string
-  currentSize: { size: number; unit: string }
-  expirationDate: Date | null
-}
-
 export async function getIngredientPantryMatches(
   recipeShortId: string,
   userId: number
-): Promise<{ ingredientMatches: IngredientMatch[]; unlinkableProducts: UnlinkableProductOption[] }> {
+): Promise<IngredientMatch[]> {
   const [recipe] = await db
     .select({ id: recipes.id })
     .from(recipes)
@@ -335,7 +327,7 @@ export async function getIngredientPantryMatches(
       or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
     ))
 
-  if (!recipe) return { ingredientMatches: [], unlinkableProducts: [] }
+  if (!recipe) return []
 
   const ingredientRows = await db
     .select()
@@ -343,7 +335,7 @@ export async function getIngredientPantryMatches(
     .innerJoin(foods, eq(ingredients.foodId, foods.id))
     .where(and(eq(ingredients.recipeId, recipe.id), isNull(ingredients.dateDeleted), isNull(foods.dateDeleted)))
 
-  if (ingredientRows.length === 0) return { ingredientMatches: [], unlinkableProducts: [] }
+  if (ingredientRows.length === 0) return []
 
   const foodIds = ingredientRows.map(r => r.foods.id)
   const now = new Date()
@@ -373,30 +365,6 @@ export async function getIngredientPantryMatches(
       isNull(products.dateDeleted),
       inArray(products.parentFoodId, foodIds),
     ))
-
-  // Fetch product pantry items where the product has no parentFoodId (unlinked products)
-  const unlinkableProductRows = await db
-    .select()
-    .from(pantryItems)
-    .innerJoin(products, eq(pantryItems.productId, products.id))
-    .where(and(
-      eq(pantryItems.userId, userId),
-      isNull(pantryItems.dateDeleted),
-      isNull(products.dateDeleted),
-      isNull(products.parentFoodId),
-    ))
-
-  const unlinkableProducts: UnlinkableProductOption[] = unlinkableProductRows.map(r => ({
-    pantryItemId: r.pantry_items.id,
-    productId: r.products.id,
-    productSlug: r.products.slug ?? '',
-    productName: r.products.name,
-    currentSize: {
-      size: Number(r.pantry_items.currentSizeAmount),
-      unit: r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
-    },
-    expirationDate: r.pantry_items.expirationDate ? new Date(r.pantry_items.expirationDate) : null,
-  }))
 
   const ingredientMatches = ingredientRows.map(({ ingredients: ing, foods: food }) => {
     const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
@@ -510,7 +478,7 @@ export async function getIngredientPantryMatches(
     }
   })
 
-  return { ingredientMatches, unlinkableProducts }
+  return ingredientMatches
 }
 
 export type PreparedMealDeduction = {
