@@ -490,7 +490,6 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
                     {pickerOpenForId === ing.ingredientFoodId ? (
                       <div className="deduction-substitute-picker">
                         <PantrySearch
-                          sourceType="product"
                           excludeIds={matchedIds}
                           onSelect={item => handleSubstituteSelected(item, ing.ingredientFoodId)}
                           placeholder="Search your pantry products…"
