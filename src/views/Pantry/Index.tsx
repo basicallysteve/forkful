@@ -17,6 +17,12 @@ type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
 
+function displayUnit(size: number, unit: string | undefined): string {
+  if (!unit) return ''
+  if (unit === 'serving') return size === 1 ? 'serving' : 'servings'
+  return unit
+}
+
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
   const setItems = usePantryStore((state) => state.setItems)
@@ -320,7 +326,7 @@ export default function Pantry() {
                           <Link href={`/pantry/${item.id}/edit`}>{item.product?.name}</Link>
                         )}
                       </td>
-                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
+                      <td>{item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}</td>
                       <td>
                         {item.frozenDate ? (
                           <span className="status-badge status-frozen">Frozen</span>
@@ -417,7 +423,7 @@ export default function Pantry() {
                         <div className="detail-row">
                           <span className="detail-label">Size:</span>
                           <span className="detail-value">
-                            {item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}
+                            {item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}
                           </span>
                         </div>
                         <div className="detail-row">

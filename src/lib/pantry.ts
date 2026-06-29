@@ -520,18 +520,12 @@ export async function createPreparedMeal({
     expirationDate: expirationDate ?? null,
   })
 
-  // Apply deductions — subtract from each pantry item's currentSizeAmount, floor at 0
+  // Apply deductions — atomically subtract from each pantry item's currentSizeAmount, floored at 0
   for (const { pantryItemId, amount } of deductions) {
     if (amount <= 0) continue
-    const [target] = await db
-      .select({ currentSizeAmount: pantryItems.currentSizeAmount })
-      .from(pantryItems)
-      .where(and(eq(pantryItems.id, pantryItemId), eq(pantryItems.userId, userId), isNull(pantryItems.dateDeleted)))
-    if (!target) continue
-    const remaining = Math.max(0, Number(target.currentSizeAmount) - amount)
     await db
       .update(pantryItems)
-      .set({ currentSizeAmount: String(remaining) })
+      .set({ currentSizeAmount: sql`GREATEST(0, ${pantryItems.currentSizeAmount} - ${String(amount)})` })
       .where(and(eq(pantryItems.id, pantryItemId), eq(pantryItems.userId, userId), isNull(pantryItems.dateDeleted)))
   }
 
