@@ -34,7 +34,7 @@ interface PantrySearchProps {
   placeholder?: string
 }
 
-export default function PantrySearch({ onSelect, sourceType, excludeIds = [], placeholder }: PantrySearchProps) {
+export default function PantrySearch({ onSelect, placeholder }: PantrySearchProps) {
   const [inputValue, setInputValue] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,7 +52,7 @@ export default function PantrySearch({ onSelect, sourceType, excludeIds = [], pl
         const items = await apiFetchPantryItems({ search: query || undefined })
         if (latestQueryRef.current !== query) return
 
-        setSuggestions(filtered.length > 0 ? [{ label: 'Your pantry', items }] : [])
+        setSuggestions(items.length > 0 ? [{ label: 'Your pantry', items }] : [])
       } catch {
         setSuggestions([])
       }
