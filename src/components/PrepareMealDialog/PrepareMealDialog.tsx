@@ -229,7 +229,7 @@ export default function PrepareMealDialog({ recipe, visible, onHide, onCreated }
 
   async function handleConfirmDeductions() {
     const deductionList = Object.entries(deductions)
-      .map(([foodId, state]) => {
+      .map(([, state]) => {
         // Substitute takes priority over a matched selection
         if (state.substitute && state.substitute.linkPromptDismissed) {
           const amount = parseFloat(state.amount)
