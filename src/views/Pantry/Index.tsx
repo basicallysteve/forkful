@@ -17,6 +17,12 @@ type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
 
+function displayUnit(size: number, unit: string | undefined): string {
+  if (!unit) return ''
+  if (unit === 'serving') return size === 1 ? 'serving' : 'servings'
+  return unit
+}
+
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
   const setItems = usePantryStore((state) => state.setItems)
@@ -297,11 +303,22 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                         />
                       </td>
                       <td>
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          <span className="pantry-item-name">
+                            {item.recipeShortId ? (
+                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
+                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              </Link>
+                            ) : (
+                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                            )}
+                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                          </span>
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`}>
                             {item.food.name}
                           </Link>
@@ -309,7 +326,7 @@ export default function Pantry() {
                           <Link href={`/pantry/${item.id}/edit`}>{item.product?.name}</Link>
                         )}
                       </td>
-                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
+                      <td>{item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}</td>
                       <td>
                         {item.frozenDate ? (
                           <span className="status-badge status-frozen">Frozen</span>
@@ -369,12 +386,23 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                       />
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          <span className="card-title">
+                            {item.recipeShortId ? (
+                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
+                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              </Link>
+                            ) : (
+                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                            )}
+                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                          </span>
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
                             {item.food.name}
                           </Link>
@@ -395,7 +423,7 @@ export default function Pantry() {
                         <div className="detail-row">
                           <span className="detail-label">Size:</span>
                           <span className="detail-value">
-                            {item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}
+                            {item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}
                           </span>
                         </div>
                         <div className="detail-row">
