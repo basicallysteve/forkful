@@ -24,13 +24,14 @@ export default function LinkFoodModal({ product, onLinked, onSkip, onHide }: Lin
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [foodsError, setFoodsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (foods.length > 0) return
     let cancelled = false
     apiFetchFoods()
       .then((fetched) => { if (!cancelled) setFoods(fetched) })
-      .catch(() => {})
+      .catch(() => { if (!cancelled) setFoodsError('Could not load foods. Please try again.') })
     return () => { cancelled = true }
   }, [foods.length, setFoods])
 
@@ -61,7 +62,7 @@ export default function LinkFoodModal({ product, onLinked, onSkip, onHide }: Lin
     >
       <div className="bcm-form">
         <p style={{ margin: 0, fontSize: '0.875rem' }}>
-          <strong>{product.name}</strong> isn&apos;t linked to a food type yet. Linking it lets this product be suggested when preparing meals.
+          <strong>{product.name}</strong> &nbsp;isn&apos;t linked to a food type yet. Linking it lets this product be suggested when preparing meals.
         </p>
 
         <div className="form-field">
@@ -69,6 +70,7 @@ export default function LinkFoodModal({ product, onLinked, onSkip, onHide }: Lin
             What type of food is this? <span className="required">*</span>
           </label>
           <small className="bcm-food-hint">Required for meal suggestions</small>
+          {foodsError && <p className="bcm-save-error">{foodsError}</p>}
           <FoodSearch
             value={foodName}
             localFoods={foods}

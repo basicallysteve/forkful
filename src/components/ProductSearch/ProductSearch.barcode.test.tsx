@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ProductSearch from './ProductSearch'
 import type { Product } from '@/types/Product'
+import type { Food } from '@/types/Food'
 
 vi.mock('@/lib/api/products', () => ({
   apiFetchProducts: vi.fn().mockResolvedValue([]),
@@ -26,7 +27,7 @@ vi.mock('@/lib/api/foods', () => ({
 }))
 
 vi.mock('@/stores/food', () => ({
-  useFoodStore: vi.fn((selector: (s: { foods: Product[]; setFoods: () => void }) => unknown) =>
+  useFoodStore: vi.fn((selector: (s: { foods: Food[]; setFoods: () => void }) => unknown) =>
     selector({ foods: [], setFoods: vi.fn() })
   ),
 }))
@@ -78,10 +79,9 @@ describe('ProductSearch — barcode flow branching', () => {
       vi.mocked(apiFetchProductByBarcode).mockResolvedValue(mockProductWithFood)
       const onChange = vi.fn()
       renderProductSearch(onChange)
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '012345678905')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
@@ -96,10 +96,9 @@ describe('ProductSearch — barcode flow branching', () => {
       vi.mocked(apiFetchProductByBarcode).mockResolvedValue(mockProductWithoutFood)
       const onChange = vi.fn()
       renderProductSearch(onChange)
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '012345678905')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
@@ -110,10 +109,9 @@ describe('ProductSearch — barcode flow branching', () => {
     it('shows the product name in the LinkFoodModal', async () => {
       vi.mocked(apiFetchProductByBarcode).mockResolvedValue(mockProductWithoutFood)
       renderProductSearch()
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '012345678905')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
@@ -126,10 +124,9 @@ describe('ProductSearch — barcode flow branching', () => {
       vi.mocked(apiFetchProductByBarcode).mockResolvedValue(null)
       const onChange = vi.fn()
       renderProductSearch(onChange)
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '000000000000')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
@@ -140,10 +137,9 @@ describe('ProductSearch — barcode flow branching', () => {
     it('shows the scanned barcode in the BarcodeCreationModal', async () => {
       vi.mocked(apiFetchProductByBarcode).mockResolvedValue(null)
       renderProductSearch()
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '000000000000')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
@@ -155,10 +151,9 @@ describe('ProductSearch — barcode flow branching', () => {
     it('shows an error message', async () => {
       vi.mocked(apiFetchProductByBarcode).mockRejectedValue(new Error('Network error'))
       renderProductSearch()
-      await switchToBarcodeTab()
+      const user = await switchToBarcodeTab()
 
       const input = screen.getByLabelText('Barcode number')
-      const user = userEvent.setup()
       await user.type(input, '000000000000')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 

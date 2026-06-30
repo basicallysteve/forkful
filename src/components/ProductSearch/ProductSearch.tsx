@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
 import { SelectButton } from 'primereact/selectbutton'
@@ -60,7 +60,8 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null)
-  const [unlinkProduct, setUnlinkProduct] = useState<Product | null>(null)
+  const [productPendingFoodLink, setUnlinkProduct] = useState<Product | null>(null)
+  const [detectingCode, setDetectingCode] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -148,8 +149,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
     }
   }
 
-  async function handleBarcodeDetected(code: string) {
+  const handleBarcodeDetected = useCallback(async (code: string) => {
     setBarcodeLoading(true)
+    setDetectingCode(code)
     setBarcodeError(null)
     try {
       // Single server call: checks local DB, falls back to OFF, auto-creates if needed
@@ -167,8 +169,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       setBarcodeError('Barcode lookup failed. Please try again.')
     } finally {
       setBarcodeLoading(false)
+      setDetectingCode(null)
     }
-  }
+  }, [onChange])
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     acRef.current?.search(e, inputValue)
@@ -250,16 +253,17 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       {activeTab === 'barcode' && (
         <div className="product-search-panel">
           {barcodeError && <p className="product-search-error">{barcodeError}</p>}
-          {barcodeLoading && <p className="product-search-status">Looking up barcode…</p>}
-          {!barcodeLoading && (
-            <BarcodeScanner onDetected={handleBarcodeDetected} />
-          )}
+          <BarcodeScanner
+            onDetected={handleBarcodeDetected}
+            loading={barcodeLoading}
+            detectedCode={detectingCode}
+          />
         </div>
       )}
 
-      {unlinkProduct && (
+      {productPendingFoodLink && (
         <LinkFoodModal
-          product={unlinkProduct}
+          product={productPendingFoodLink}
           onLinked={(product) => {
             setUnlinkProduct(null)
             onChange(product)

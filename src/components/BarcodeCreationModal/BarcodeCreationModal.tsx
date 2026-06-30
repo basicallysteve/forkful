@@ -53,16 +53,25 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
   const [nutrition, setNutrition] = useState<NutritionFields>(EMPTY_NUTRITION)
   const [scanning, setScanning] = useState(false)
   const [ocrError, setOcrError] = useState<string | null>(null)
+  const [foodsError, setFoodsError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const workerRef = useRef<Awaited<ReturnType<import('tesseract.js')['createWorker']>> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate()
+      workerRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (foods.length > 0) return
     let cancelled = false
     apiFetchFoods()
       .then((fetched) => { if (!cancelled) setFoods(fetched) })
-      .catch(() => {})
+      .catch(() => { if (!cancelled) setFoodsError('Could not load foods. Please try again.') })
     return () => { cancelled = true }
   }, [foods.length, setFoods])
 
@@ -81,15 +90,16 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     setScanning(true)
     setOcrError(null)
 
-    const { createWorker } = await import('tesseract.js')
-    const worker = await createWorker('eng')
     try {
-      const { data: { text } } = await worker.recognize(file)
+      if (!workerRef.current) {
+        const { createWorker } = await import('tesseract.js')
+        workerRef.current = await createWorker('eng')
+      }
+      const { data: { text } } = await workerRef.current.recognize(file)
       parseNutritionLabel(text)
     } catch {
       setOcrError('Could not read the label. Please enter values manually.')
     } finally {
-      await worker.terminate()
       setScanning(false)
       // Reset so the same file can be re-selected
       e.target.value = ''
@@ -118,7 +128,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
       calories: extract([/calories[:\s]+([\d.]+)/i, /energy[:\s]+([\d.]+)\s*kcal/i]),
       protein: extract([/protein[:\s]+([\d.]+)\s*g/i]),
       carbs: extract([/total carbohydrate[s]?[:\s]+([\d.]+)\s*g/i, /carbohydrate[s]?[:\s]+([\d.]+)\s*g/i, /carbs?[:\s]+([\d.]+)\s*g/i]),
-      fat: extract([/total fat[:\s]+([\d.]+)\s*g/i, /fat[:\s]+([\d.]+)\s*g/i]),
+      fat: extract([/total fat[:\s]+([\d.]+)\s*g/i, /(?<!saturated\s)fat[:\s]+([\d.]+)\s*g/i]),
       fiber: extract([/dietary fiber[:\s]+([\d.]+)\s*g/i, /fibre[:\s]+([\d.]+)\s*g/i, /fiber[:\s]+([\d.]+)\s*g/i]),
       saturatedFat: extract([/saturated fat[:\s]+([\d.]+)\s*g/i, /saturates[:\s]+([\d.]+)\s*g/i]),
       sugar: extract([/total sugars?[:\s]+([\d.]+)\s*g/i, /sugars?[:\s]+([\d.]+)\s*g/i]),
@@ -132,7 +142,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     if (!name.trim() || !selectedFood) return
 
     const resolvedServingUnit = nutrition.servingUnit.trim() || 'g'
-    const resolvedServingSize = Math.max(Number(nutrition.servingSize) || 1, 0.01)
+    const resolvedServingSize = Math.max(Number(nutrition.servingSize) || 0.01, 0.01)
 
     setSaving(true)
     setSaveError(null)
@@ -195,6 +205,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
             What type of food is this? <span className="required">*</span>
           </label>
           <small className="bcm-food-hint">Required for meal suggestions</small>
+          {foodsError && <p className="bcm-save-error">{foodsError}</p>}
           <FoodSearch
             value={foodName}
             localFoods={foods}
