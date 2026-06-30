@@ -10,20 +10,9 @@ import { useFoodStore } from '@/stores/food'
 import type { Worker as TesseractWorker } from 'tesseract.js'
 import type { Product } from '@/types/Product'
 import type { Food } from '@/types/Food'
+import type { NutritionFields } from './types'
+import { parseNutritionLabel } from './parseNutritionLabel'
 import './barcode-creation-modal.scss'
-
-interface NutritionFields {
-  calories: string
-  protein: string
-  carbs: string
-  fat: string
-  fiber: string
-  saturatedFat: string
-  sugar: string
-  sodium: string
-  servingSize: string
-  servingUnit: string
-}
 
 interface BarcodeCreationModalProps {
   barcode: string
@@ -42,6 +31,8 @@ const EMPTY_NUTRITION: NutritionFields = {
   sodium: '',
   servingSize: '',
   servingUnit: '',
+  density: '',
+  servingGramWeight: '',
 }
 
 export default function BarcodeCreationModal({ barcode, onCreated, onHide }: BarcodeCreationModalProps) {
@@ -97,7 +88,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
         workerRef.current = await createWorker('eng')
       }
       const { data: { text } } = await workerRef.current.recognize(file)
-      parseNutritionLabel(text)
+      setNutrition(parseNutritionLabel(text))
     } catch {
       setOcrError('Could not read the label. Please enter values manually.')
     } finally {
@@ -107,43 +98,16 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     }
   }
 
-  function parseNutritionLabel(text: string) {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-
-    function extract(patterns: RegExp[]): string {
-      for (const line of lines) {
-        for (const pat of patterns) {
-          const m = line.match(pat)
-          if (m) return m[1].trim()
-        }
-      }
-      return ''
-    }
-
-    const servingRaw = extract([/serving size[:\s]+(.+)/i])
-    const servingMatch = servingRaw.match(/^([\d.]+)\s*([a-zA-Z]+)/)
-    const parsedServingSize = servingMatch ? servingMatch[1] : ''
-    const parsedServingUnit = servingMatch ? servingMatch[2] : servingRaw
-
-    setNutrition({
-      calories: extract([/calories[:\s]+([\d.]+)/i, /energy[:\s]+([\d.]+)\s*kcal/i]),
-      protein: extract([/protein[:\s]+([\d.]+)\s*g/i]),
-      carbs: extract([/total carbohydrate[s]?[:\s]+([\d.]+)\s*g/i, /carbohydrate[s]?[:\s]+([\d.]+)\s*g/i, /carbs?[:\s]+([\d.]+)\s*g/i]),
-      fat: extract([/total fat[:\s]+([\d.]+)\s*g/i, /(?<!saturated\s)fat[:\s]+([\d.]+)\s*g/i]),
-      fiber: extract([/dietary fiber[:\s]+([\d.]+)\s*g/i, /fibre[:\s]+([\d.]+)\s*g/i, /fiber[:\s]+([\d.]+)\s*g/i]),
-      saturatedFat: extract([/saturated fat[:\s]+([\d.]+)\s*g/i, /saturates[:\s]+([\d.]+)\s*g/i]),
-      sugar: extract([/total sugars?[:\s]+([\d.]+)\s*g/i, /sugars?[:\s]+([\d.]+)\s*g/i]),
-      sodium: extract([/sodium[:\s]+([\d.]+)\s*mg/i]),
-      servingSize: parsedServingSize,
-      servingUnit: parsedServingUnit,
-    })
-  }
-
   async function handleSave() {
     if (!name.trim() || !selectedFood) return
 
     const resolvedServingUnit = nutrition.servingUnit.trim() || 'g'
     const resolvedServingSize = Math.max(Number(nutrition.servingSize) || 0.01, 0.01)
+    const resolvedDensity = nutrition.density ? Number(nutrition.density) : undefined
+    const gramWeightPerUnit = nutrition.servingGramWeight ? Number(nutrition.servingGramWeight) : undefined
+    const measurements = gramWeightPerUnit
+      ? [{ unit: resolvedServingUnit, gramsPerUnit: gramWeightPerUnit }]
+      : [{ unit: resolvedServingUnit }]
 
     setSaving(true)
     setSaveError(null)
@@ -162,7 +126,8 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
         sodium: nutrition.sodium ? Number(nutrition.sodium) : undefined,
         servingSize: resolvedServingSize,
         servingUnit: resolvedServingUnit,
-        measurements: [{ unit: resolvedServingUnit }],
+        measurements,
+        density: resolvedDensity,
         source: 'manual',
       })
       onCreated(created)
