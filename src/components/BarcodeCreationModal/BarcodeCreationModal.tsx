@@ -179,7 +179,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     <Modal
       visible
       onHide={onHide}
-      header="Add new product"
+      header="Add New Product"
       style={{ width: '480px', maxWidth: '95vw' }}
     >
       <div className="bcm-form">
