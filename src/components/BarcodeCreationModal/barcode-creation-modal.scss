@@ -1,0 +1,78 @@
+.bcm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bcm-barcode-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  background: var(--surface-100, #f4f4f5);
+  border: 1px solid var(--border-color, #e4e4e7);
+  border-radius: 4px;
+  padding: 4px 8px;
+  align-self: flex-start;
+
+  i {
+    font-size: 0.85rem;
+  }
+}
+
+.bcm-food-hint {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-muted, #888);
+}
+
+.bcm-nutrition-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--border-color, #e4e4e7);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.bcm-nutrition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.bcm-scan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.bcm-file-input {
+  display: none;
+}
+
+.bcm-nutrition-row {
+  display: flex;
+  gap: 10px;
+
+  .form-field {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.bcm-ocr-error {
+  color: var(--danger, #dc2626);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.bcm-save-error {
+  color: var(--danger, #dc2626);
+  font-size: 0.875rem;
+  margin: 0;
+}

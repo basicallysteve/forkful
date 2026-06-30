@@ -11,6 +11,8 @@ import type { Product } from '@/types/Product'
 import type { USDABrandedItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
+import BarcodeCreationModal from '@/components/BarcodeCreationModal/BarcodeCreationModal'
+import LinkFoodModal from '@/components/BarcodeCreationModal/LinkFoodModal'
 import './product-search.scss'
 
 type Tab = 'search' | 'barcode'
@@ -57,6 +59,8 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [importing, setImporting] = useState(false)
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null)
+  const [unlinkProduct, setUnlinkProduct] = useState<Product | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -151,7 +155,11 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       // Single server call: checks local DB, falls back to OFF, auto-creates if needed
       const product = await apiFetchProductByBarcode(code)
       if (!product) {
-        setBarcodeError(`No product found for barcode ${code}.`)
+        setPendingBarcode(code)
+        return
+      }
+      if (!product.parentFoodId) {
+        setUnlinkProduct(product)
         return
       }
       onChange(product)
@@ -247,6 +255,32 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             <BarcodeScanner onDetected={handleBarcodeDetected} />
           )}
         </div>
+      )}
+
+      {unlinkProduct && (
+        <LinkFoodModal
+          product={unlinkProduct}
+          onLinked={(product) => {
+            setUnlinkProduct(null)
+            onChange(product)
+          }}
+          onSkip={(product) => {
+            setUnlinkProduct(null)
+            onChange(product)
+          }}
+          onHide={() => setUnlinkProduct(null)}
+        />
+      )}
+
+      {pendingBarcode && (
+        <BarcodeCreationModal
+          barcode={pendingBarcode}
+          onCreated={(product) => {
+            setPendingBarcode(null)
+            onChange(product)
+          }}
+          onHide={() => setPendingBarcode(null)}
+        />
       )}
     </div>
   )
