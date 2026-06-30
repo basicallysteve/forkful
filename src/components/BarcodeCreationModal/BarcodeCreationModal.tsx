@@ -179,7 +179,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     <Modal
       visible
       onHide={onHide}
-      header="Add New Product"
+      header="Add new product"
       style={{ width: '480px', maxWidth: '95vw' }}
     >
       <div className="bcm-form">
@@ -244,7 +244,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
             onChange={handleFileChange}
           />
 
-          <div className="bcm-nutrition-row">
+          <div className="bcm-nutrition-grid">
             <label className="form-field">
               <span>Serving size</span>
               <input
@@ -265,21 +265,19 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
                 placeholder="e.g. g"
               />
             </label>
-          </div>
 
-          <label className="form-field">
-            <span>Calories</span>
-            <input
-              type="number"
-              min="0"
-              className="text-input"
-              value={nutrition.calories}
-              onChange={(e) => setField('calories', e.target.value)}
-              placeholder="0"
-            />
-          </label>
+            <label className="form-field bcm-span-2">
+              <span>Calories</span>
+              <input
+                type="number"
+                min="0"
+                className="text-input"
+                value={nutrition.calories}
+                onChange={(e) => setField('calories', e.target.value)}
+                placeholder="0"
+              />
+            </label>
 
-          <div className="bcm-nutrition-row">
             <label className="form-field">
               <span>Protein (g)</span>
               <input type="number" min="0" step="0.1" className="text-input"
@@ -295,9 +293,6 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
               <input type="number" min="0" step="0.1" className="text-input"
                 value={nutrition.fat} onChange={(e) => setField('fat', e.target.value)} placeholder="0" />
             </label>
-          </div>
-
-          <div className="bcm-nutrition-row">
             <label className="form-field">
               <span>Fiber (g)</span>
               <input type="number" min="0" step="0.1" className="text-input"
@@ -308,9 +303,6 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
               <input type="number" min="0" step="0.1" className="text-input"
                 value={nutrition.saturatedFat} onChange={(e) => setField('saturatedFat', e.target.value)} placeholder="0" />
             </label>
-          </div>
-
-          <div className="bcm-nutrition-row">
             <label className="form-field">
               <span>Sugar (g)</span>
               <input type="number" min="0" step="0.1" className="text-input"

@@ -130,7 +130,7 @@ describe('ProductSearch — barcode flow branching', () => {
       await user.type(input, '000000000000')
       await user.click(screen.getByRole('button', { name: /look up/i }))
 
-      await waitFor(() => expect(screen.getByText('Add New Product')).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByText('Add new product')).toBeInTheDocument())
       expect(onChange).not.toHaveBeenCalled()
     })
 

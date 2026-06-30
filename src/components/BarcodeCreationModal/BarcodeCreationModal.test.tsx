@@ -73,7 +73,7 @@ describe('BarcodeCreationModal', () => {
 
   it('renders the modal header', () => {
     renderModal()
-    expect(screen.getByText('Add New Product')).toBeInTheDocument()
+    expect(screen.getByText('Add new product')).toBeInTheDocument()
   })
 
   it('displays the scanned barcode', () => {
