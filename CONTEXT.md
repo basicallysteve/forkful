@@ -221,3 +221,11 @@ _Avoid_: helpful vote, upvote, reaction
 ## Most Helpful Review
 The Review on a Recipe with the highest Like count, pinned to the top of the Reviews tab with a "Most helpful" label. Ties broken by `dateAdded` (older Review wins). Only shown when at least one Like exists across the recipe's reviews.
 _Avoid_: top review, featured review
+
+## Status Legend
+A key, shown above a list of cards on narrow viewports, that maps each colour-coded Status Dot to its meaning. Scoped per page: the Recipes, Foods, and Pantry lists each present only the statuses that appear on that page (e.g. Pantry shows Good / Expiring Soon / Expired / Frozen / Prepared; Recipes shows Unpublished; Foods shows In Use). Exists only on small screens, where text status badges collapse into Status Dots to save horizontal room; on wide screens the cards show the full-text badges and no legend is needed. Remains pinned below the header while the card list scrolls, so the key stays available as the user moves through items.
+_Avoid_: key, status key, badge legend
+
+## Status Dot
+A small coloured circle standing in for a text status badge on a card when space is constrained (narrow viewports). Represents only categorical or binary statuses — Pantry expiration status, Frozen, Prepared, Unpublished, In Use — never a continuous value such as a calorie count or a free-form label such as a Meal type, which remain as text. Each dot carries an accessible label and reveals that label as a tooltip on tap or hover; the Status Legend provides the shared key. The dots on cards softly pulse to draw the eye (suppressed when the user prefers reduced motion); the reference dots in the legend stay still.
+_Avoid_: status pip, indicator, badge dot

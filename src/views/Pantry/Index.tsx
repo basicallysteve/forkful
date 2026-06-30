@@ -12,6 +12,8 @@ import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpda
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import StatusDot from '@/components/StatusLegend/StatusDot'
+import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
 type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
@@ -178,6 +180,16 @@ export default function Pantry() {
             <span className="stat-value">{expiredCount}</span>
           </div>
         </div>
+
+        <StatusLegend
+          items={[
+            { variant: 'good', label: 'Good' },
+            { variant: 'expiring-soon', label: 'Expiring Soon' },
+            { variant: 'expired', label: 'Expired' },
+            { variant: 'frozen', label: 'Frozen' },
+            { variant: 'prepared', label: 'Prepared' },
+          ]}
+        />
 
         <div className="pantry-panel">
           <div className="panel-toolbar">
@@ -392,16 +404,16 @@ export default function Pantry() {
                     <div className="card-content">
                       <div className="card-header">
                         {item.sourceType === 'recipe' ? (
-                          <span className="card-title">
-                            {item.recipeShortId ? (
-                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
-                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
-                              </Link>
-                            ) : (
-                              item.recipeNameSnapshot ?? 'Prepared Meal'
-                            )}
-                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
-                          </span>
+                          item.recipeShortId ? (
+                            <Link
+                              href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}
+                              className="card-title"
+                            >
+                              {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            </Link>
+                          ) : (
+                            <span className="card-title">{item.recipeNameSnapshot ?? 'Prepared Meal'}</span>
+                          )
                         ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
                             {item.food.name}
@@ -410,12 +422,9 @@ export default function Pantry() {
                           <Link href={`/pantry/${item.id}/edit`} className="card-title">{item.product?.name}</Link>
                         )}
                         <div className="card-badges">
-                          <span className={`status-badge ${getStatusClass(item.status)}`}>
-                            {getStatusLabel(item.status)}
-                          </span>
-                          {item.frozenDate && (
-                            <span className="status-badge status-frozen">Frozen</span>
-                          )}
+                          <StatusDot variant={item.status} label={getStatusLabel(item.status)} />
+                          {item.frozenDate && <StatusDot variant="frozen" label="Frozen" />}
+                          {item.sourceType === 'recipe' && <StatusDot variant="prepared" label="Prepared" />}
                         </div>
                       </div>
 
