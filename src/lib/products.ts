@@ -19,7 +19,7 @@ function parseMeasurements(raw: unknown): Measurement[] {
 function mapProduct(row: typeof products.$inferSelect): Product {
   return {
     id: row.id,
-    slug: row.slug,
+    slug: row.slug ?? undefined,
     name: row.name,
     barcode: row.barcode ?? undefined,
     externalId: row.externalId ?? undefined,
