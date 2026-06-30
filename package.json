@@ -48,6 +48,7 @@
     "react-dom": "^19.2.0",
     "resend": "^6.12.4",
     "sanitize-html": "^2.17.4",
+    "tesseract.js": "^7.0.0",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

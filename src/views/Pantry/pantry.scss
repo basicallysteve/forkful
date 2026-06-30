@@ -813,3 +813,13 @@
     }
   }
 }
+
+
+.bcm-form {
+  .form-actions{
+     display: flex;
+    justify-content: space-between;
+    flex-flow: row;
+  }
+ 
+}
