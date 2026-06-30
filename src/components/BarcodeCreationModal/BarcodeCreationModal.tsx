@@ -81,16 +81,15 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     setScanning(true)
     setOcrError(null)
 
-    let worker: { recognize: (f: File) => Promise<{ data: { text: string } }>; terminate: () => Promise<void> } | null = null
+    const { createWorker } = await import('tesseract.js')
+    const worker = await createWorker('eng')
     try {
-      const { createWorker } = await import('tesseract.js')
-      worker = await createWorker('eng')
       const { data: { text } } = await worker.recognize(file)
       parseNutritionLabel(text)
     } catch {
       setOcrError('Could not read the label. Please enter values manually.')
     } finally {
-      await worker?.terminate()
+      await worker.terminate()
       setScanning(false)
       // Reset so the same file can be re-selected
       e.target.value = ''
