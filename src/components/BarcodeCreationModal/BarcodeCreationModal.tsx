@@ -7,6 +7,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { apiCreateProduct } from '@/lib/api/products'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { useFoodStore } from '@/stores/food'
+import type { Worker as TesseractWorker } from 'tesseract.js'
 import type { Product } from '@/types/Product'
 import type { Food } from '@/types/Food'
 import './barcode-creation-modal.scss'
@@ -57,7 +58,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const workerRef = useRef<Awaited<ReturnType<import('tesseract.js')['createWorker']>> | null>(null)
+  const workerRef = useRef<TesseractWorker | null>(null)
 
   useEffect(() => {
     return () => {
