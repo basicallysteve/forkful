@@ -103,6 +103,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
 
     const resolvedServingUnit = nutrition.servingUnit.trim() || 'g'
     const resolvedServingSize = Math.max(Number(nutrition.servingSize) || 0.01, 0.01)
+    // density/servingGramWeight have no manual input — only ever set by OCR (parseNutritionLabel)
     const resolvedDensity = nutrition.density ? Number(nutrition.density) : undefined
     const gramWeightPerUnit = nutrition.servingGramWeight ? Number(nutrition.servingGramWeight) : undefined
     const measurements = gramWeightPerUnit
