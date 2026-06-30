@@ -10,6 +10,7 @@ import { Checkbox } from 'primereact/checkbox'
 import { Toast } from 'primereact/toast'
 import { Skeleton } from 'primereact/skeleton'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
+import StatusLegend from '@/components/StatusLegend/StatusLegend'
 import Link from 'next/link'
 
 type SortOption = 'name' | 'date_added' | 'meal' | 'date_published'
@@ -215,6 +216,8 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
             )}
           </div>
         </header>
+
+        <StatusLegend items={[{ variant: 'unpublished', label: 'Unpublished' }]} />
 
         {forYouRecipes.length > 0 && (
           <section className="for-you-section">

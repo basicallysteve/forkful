@@ -6,6 +6,7 @@ import { Checkbox } from 'primereact/checkbox'
 import DOMPurify from 'dompurify'
 import { toRecipeUrl } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
+import StatusDot from '@/components/StatusLegend/StatusDot'
 import './recipe-card.scss'
 
 interface RecipeCardProps {
@@ -41,7 +42,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           <h3 className="card-title">{recipe.name}</h3>
           <div className="card-badges">
             {recipe.meal && <span className="pill pill-ghost">{recipe.meal}</span>}
-            {recipe.date_published === null && <span className="pill pill-warning">Unpublished</span>}
+            {recipe.date_published === null && <StatusDot variant="unpublished" label="Unpublished" />}
           </div>
         </div>
         <div

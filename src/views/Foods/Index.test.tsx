@@ -269,7 +269,9 @@ describe('Foods List Page', () => {
       const isFoodUsedInRecipe = vi.fn().mockImplementation((id) => id === 1)
       renderWithProviders(<Foods />, { isFoodUsedInRecipe })
 
-      expect(screen.getByText('In use')).toBeInTheDocument()
+      // The status dot (role=img) only renders for an in-use food; the legend
+      // also contains "In use" text, so target the dot specifically.
+      expect(screen.getByRole('img', { name: 'In use' })).toBeInTheDocument()
     })
   })
 

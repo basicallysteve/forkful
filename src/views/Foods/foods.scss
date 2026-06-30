@@ -326,7 +326,7 @@
 
   .card-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
     flex-wrap: nowrap;
@@ -339,9 +339,11 @@
     color: var(--vscode-text);
     flex: 1;
     min-width: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-wrap: auto;
   }
 
   .card-badges {
