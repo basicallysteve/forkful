@@ -184,7 +184,7 @@ export default function Pantry() {
         <StatusLegend
           items={[
             { variant: 'good', label: 'Good' },
-            { variant: 'expiring-soon', label: 'Expiring soon' },
+            { variant: 'expiring-soon', label: 'Expiring Soon' },
             { variant: 'expired', label: 'Expired' },
             { variant: 'frozen', label: 'Frozen' },
             { variant: 'prepared', label: 'Prepared' },
