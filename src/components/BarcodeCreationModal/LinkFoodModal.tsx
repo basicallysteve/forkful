@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '@/components/Modal/Modal'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { apiLinkProductToFood } from '@/lib/api/products'
@@ -25,12 +25,21 @@ export default function LinkFoodModal({ product, onLinked, onSkip, onHide }: Lin
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  if (foods.length === 0) {
-    apiFetchFoods().then(setFoods)
-  }
+  useEffect(() => {
+    if (foods.length > 0) return
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => { if (!cancelled) setFoods(fetched) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [foods.length, setFoods])
 
   async function handleConfirm() {
-    if (!selectedFood || !product.slug) return
+    if (!selectedFood) return
+    if (!product.slug) {
+      setSaveError('Cannot link: product is missing a slug. Please try again.')
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -82,7 +91,7 @@ export default function LinkFoodModal({ product, onLinked, onSkip, onHide }: Lin
             type="button"
             className="primary-button"
             onClick={handleConfirm}
-            disabled={saving || !selectedFood}
+            disabled={saving || !selectedFood || !product.slug}
           >
             {saving ? 'Saving…' : 'Confirm'}
           </button>

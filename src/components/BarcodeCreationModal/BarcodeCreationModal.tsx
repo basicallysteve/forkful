@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
@@ -57,16 +57,20 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
   const [saveError, setSaveError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Lazily load foods for FoodSearch if not already loaded
-  if (foods.length === 0) {
-    apiFetchFoods().then(setFoods)
-  }
+  useEffect(() => {
+    if (foods.length > 0) return
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => { if (!cancelled) setFoods(fetched) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [foods.length, setFoods])
 
   function setField(field: keyof NutritionFields, value: string) {
     setNutrition((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function handleScanLabel() {
+  function handleScanLabel() {
     fileInputRef.current?.click()
   }
 
@@ -77,17 +81,18 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
     setScanning(true)
     setOcrError(null)
 
+    let worker: { recognize: (f: File) => Promise<{ data: { text: string } }>; terminate: () => Promise<void> } | null = null
     try {
       const { createWorker } = await import('tesseract.js')
-      const worker = await createWorker('eng')
+      worker = await createWorker('eng')
       const { data: { text } } = await worker.recognize(file)
-      await worker.terminate()
       parseNutritionLabel(text)
     } catch {
       setOcrError('Could not read the label. Please enter values manually.')
     } finally {
+      await worker?.terminate()
       setScanning(false)
-      // Reset input so the same file can be re-selected if needed
+      // Reset so the same file can be re-selected
       e.target.value = ''
     }
   }
@@ -105,11 +110,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
       return ''
     }
 
-    // Serving size: "Serving Size 1 cup (240ml)" or "Serving Size 28g"
-    const servingRaw = extract([
-      /serving size[:\s]+(.+)/i,
-    ])
-    // Try to split amount and unit from serving size string
+    const servingRaw = extract([/serving size[:\s]+(.+)/i])
     const servingMatch = servingRaw.match(/^([\d.]+)\s*([a-zA-Z]+)/)
     const parsedServingSize = servingMatch ? servingMatch[1] : ''
     const parsedServingUnit = servingMatch ? servingMatch[2] : servingRaw
@@ -131,6 +132,9 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
   async function handleSave() {
     if (!name.trim() || !selectedFood) return
 
+    const resolvedServingUnit = nutrition.servingUnit.trim() || 'g'
+    const resolvedServingSize = Math.max(Number(nutrition.servingSize) || 1, 0.01)
+
     setSaving(true)
     setSaveError(null)
     try {
@@ -146,9 +150,9 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
         saturatedFat: nutrition.saturatedFat ? Number(nutrition.saturatedFat) : undefined,
         sugar: nutrition.sugar ? Number(nutrition.sugar) : undefined,
         sodium: nutrition.sodium ? Number(nutrition.sodium) : undefined,
-        servingSize: Number(nutrition.servingSize) || 1,
-        servingUnit: nutrition.servingUnit || 'g',
-        measurements: nutrition.servingUnit ? [{ unit: nutrition.servingUnit }] : [],
+        servingSize: resolvedServingSize,
+        servingUnit: resolvedServingUnit,
+        measurements: [{ unit: resolvedServingUnit }],
         source: 'manual',
       })
       onCreated(created)
@@ -234,7 +238,7 @@ export default function BarcodeCreationModal({ barcode, onCreated, onHide }: Bar
               <span>Serving size</span>
               <input
                 type="number"
-                min="0"
+                min="0.01"
                 step="0.1"
                 className="text-input"
                 value={nutrition.servingSize}
