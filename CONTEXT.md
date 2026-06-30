@@ -117,8 +117,12 @@ A generic, canonical nutritional item (e.g. "Chicken Breast"). Has a name, macro
 _Avoid_: generic food, base food, parent food
 
 ## Product
-A specific branded, purchasable food item (e.g. "Tyson Boneless Skinless Chicken Breast"). Has a barcode, an optional Density, and a Measurements list. Sourced from Open Food Facts or USDA Branded Foods, or created manually. Optionally linked to a parent Food — the link is not required (a Product with no Food parent can still be tracked in the Pantry). A Product is never used directly as a Recipe Ingredient; only its linked Food (if any) participates in recipes.
+A specific branded, purchasable food item (e.g. "Tyson Boneless Skinless Chicken Breast"). Has a barcode, an optional Density, and a Measurements list. Sourced from Open Food Facts or USDA Branded Foods, or created manually. Optionally linked to a parent Food — the link is not required at the schema level, but the Barcode Creation Modal requires it so the product participates in Meal Preparation Deduction matching. A Product is never used directly as a Recipe Ingredient; only its linked Food (if any) participates in recipes.
 _Avoid_: branded food, food product
+
+## Barcode Creation Modal
+A modal dialog shown when a barcode scan returns no matching Product. Lets the user create a new Product inline without leaving the pantry item form. The scanned barcode is pre-attached to the new product silently. Contains a single form with: product name, a Food link field (required — labelled "What type of food is this?", gates saving), a "Scan nutrition label" button that invokes Tesseract.js OCR to populate all nutrition fields (calories, protein, carbs, fat, fiber, saturatedFat, sugar, sodium, servingSize, servingUnit) from a photo of the nutrition facts label, and editable nutrition fields the user reviews and corrects before saving. On save, the new product is auto-selected in the ProductSearch and the pantry item form continues normally. The OCR step is optional — the user may enter nutrition fields manually.
+_Avoid_: product creation dialog, new product form
 
 ## Density
 An optional property on a Food or Product expressing how many grams one millilitre of the item weighs (g/ml). When set, enables cross-category unit conversion between mass and volume Measurements. For USDA-imported Foods and Products, auto-derived at import time from USDA Portion Data: if any portion entry has a volume unit and a gram weight (e.g. "1 cup = 128g"), density is calculated from that pair. If no volume portion exists, density is left null. Users may always override the auto-derived value in the editor. Stored as a nullable numeric column on both the `foods` and `products` tables.
