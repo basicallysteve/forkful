@@ -22,6 +22,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
+import PrepareMealDialog from '@/components/PrepareMealDialog/PrepareMealDialog'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -43,6 +44,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [saved, setSaved] = useState(initialSaved)
   const [savePending, setSavePending] = useState(false)
+  const [prepareMealVisible, setPrepareMealVisible] = useState(false)
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>({ ...recipe })
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
@@ -580,6 +582,16 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                       {saved ? '★ Saved' : '☆ Save'}
                     </button>
                   )}
+                  {isLoggedIn && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => setPrepareMealVisible(true)}
+                      aria-label="Prepare this meal and save to pantry"
+                    >
+                      Prepare Meal
+                    </button>
+                  )}
                   {visibilityButton}
                   {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
@@ -744,6 +756,16 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         </section>
       </div>
 
+      {isLoggedIn && (
+        <PrepareMealDialog
+          recipe={currentRecipe}
+          visible={prepareMealVisible}
+          onHide={() => setPrepareMealVisible(false)}
+          onCreated={() => {
+            toast.current?.show({ severity: 'success', summary: 'Saved to pantry', detail: 'Prepared meal added to your pantry.', life: 3000 })
+          }}
+        />
+      )}
     </div>
   )
 }

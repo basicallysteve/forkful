@@ -5,6 +5,7 @@ export type ProductSource = 'manual' | 'open_food_facts' | 'usda_branded'
 export type Product = {
   id: number
   name: string
+  slug?: string
   barcode?: string
   externalId?: string
   parentFoodId?: number

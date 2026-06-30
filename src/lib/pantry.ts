@@ -1,10 +1,11 @@
 import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, sql, ilike } from 'drizzle-orm'
 import { db } from '@/db'
-import { pantryItems, foods, products } from '@/db/schema'
+import { pantryItems, foods, products, recipes, ingredients } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import { calculatePantryStatus } from '@/utils/pantryStatus'
+import { convertUnit, getUnitCategory } from '@/utils/unitConversion'
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
@@ -39,6 +40,7 @@ function mapProductRow(row: typeof products.$inferSelect): Product {
   return {
     id: row.id,
     name: row.name,
+    slug: row.slug ?? undefined,
     barcode: row.barcode ?? undefined,
     externalId: row.externalId ?? undefined,
     parentFoodId: row.parentFoodId ?? undefined,
@@ -60,15 +62,19 @@ function mapProductRow(row: typeof products.$inferSelect): Product {
 function mapPantryItem(
   row: typeof pantryItems.$inferSelect,
   food?: Food,
-  product?: Product
+  product?: Product,
+  recipeShortId?: string | null
 ): PantryItem {
   const expirationDate = row.expirationDate ? new Date(row.expirationDate) : null
-  const sourceType = (row.sourceType as 'food' | 'product') ?? 'food'
+  const sourceType = (row.sourceType as 'food' | 'product' | 'recipe') ?? 'food'
   return {
     id: row.id,
     sourceType,
     food,
     product,
+    recipeId: row.recipeId ?? null,
+    recipeNameSnapshot: row.recipeNameSnapshot ?? null,
+    recipeShortId: recipeShortId ?? null,
     expirationDate,
     originalSize: {
       size: Number(row.originalSizeAmount),
@@ -127,6 +133,7 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -144,7 +151,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
     return rows.map(row => mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     ))
   } catch (err) {
     console.error('getPantryItems failed:', err)
@@ -161,6 +169,7 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -175,7 +184,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
     return rows.map(row => mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     ))
   } catch {
     return []
@@ -189,6 +199,7 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       .from(pantryItems)
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
+      .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
       .where(
         and(
           eq(pantryItems.id, id),
@@ -202,7 +213,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
     return mapPantryItem(
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
-      row.products ? mapProductRow(row.products) : undefined
+      row.products ? mapProductRow(row.products) : undefined,
+      row.recipes?.shortId ?? null
     )
   } catch (err) {
     console.error('getPantryItemById failed:', err)
@@ -212,9 +224,11 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
 
 export type CreatePantryItemData = {
   userId: number
-  sourceType?: 'food' | 'product'
+  sourceType?: 'food' | 'product' | 'recipe'
   foodId?: number
   productId?: number
+  recipeId?: number
+  recipeNameSnapshot?: string
   expirationDate?: Date | null
   originalSizeAmount: number
   originalSizeUnit?: string
@@ -223,12 +237,14 @@ export type CreatePantryItemData = {
 }
 
 export async function createPantryItem(data: CreatePantryItemData): Promise<PantryItem> {
-  const sourceType = data.sourceType ?? (data.foodId ? 'food' : 'product')
+  const sourceType = data.sourceType ?? (data.recipeId ? 'recipe' : data.foodId ? 'food' : 'product')
   const [row] = await db.insert(pantryItems).values({
     userId: data.userId,
     sourceType,
     foodId: data.foodId ?? null,
     productId: data.productId ?? null,
+    recipeId: data.recipeId ?? null,
+    recipeNameSnapshot: data.recipeNameSnapshot ?? null,
     expirationDate: data.expirationDate ?? null,
     originalSizeAmount: String(data.originalSizeAmount),
     originalSizeUnit: data.originalSizeUnit,
@@ -276,4 +292,242 @@ export async function deletePantryItems(ids: number[], userId: number): Promise<
     .where(and(inArray(pantryItems.id, ids), eq(pantryItems.userId, userId)))
     .returning()
   return updated.map(item => item.id)
+}
+
+export type PantryMatchOption = {
+  pantryItemId: number
+  itemName: string
+  currentSize: { size: number; unit: string }
+  expirationDate: Date | null
+  isExpiringSoon: boolean
+  canAutoConvert: boolean
+  suggestedDeductAmount: number | null
+}
+
+export type IngredientMatch = {
+  ingredientFoodId: number
+  ingredientFoodName: string
+  ingredientQuantity: number
+  ingredientUnit: string
+  pantryMatches: PantryMatchOption[]
+}
+
+export async function getIngredientPantryMatches(
+  recipeShortId: string,
+  userId: number
+): Promise<IngredientMatch[] | null> {
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
+
+  if (!recipe) return null
+
+  const ingredientRows = await db
+    .select()
+    .from(ingredients)
+    .innerJoin(foods, eq(ingredients.foodId, foods.id))
+    .where(and(eq(ingredients.recipeId, recipe.id), isNull(ingredients.dateDeleted), isNull(foods.dateDeleted)))
+
+  if (ingredientRows.length === 0) return []
+
+  const foodIds = ingredientRows.map(r => r.foods.id)
+  const now = new Date()
+  const soonCutoff = new Date(now)
+  soonCutoff.setDate(soonCutoff.getDate() + EXPIRING_SOON_THRESHOLD_DAYS)
+
+  // Fetch food-sourced pantry items matching any ingredient food
+  const foodPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(foods.dateDeleted),
+      inArray(pantryItems.foodId, foodIds),
+    ))
+
+  // Fetch product-sourced pantry items where parentFoodId matches any ingredient food
+  const productPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(products, eq(pantryItems.productId, products.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(products.dateDeleted),
+      inArray(products.parentFoodId, foodIds),
+    ))
+
+  const ingredientMatches = ingredientRows.map(({ ingredients: ing, foods: food }) => {
+    const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
+    const ingredientQty = Number(ing.quantity)
+    const foodMeasurements: Measurement[] = Array.isArray(food.measurements)
+      ? food.measurements.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
+      : []
+
+    const matchingFood = foodPantryRows.filter(r => r.foods.id === food.id)
+    const matchingProduct = productPantryRows.filter(r => r.products.parentFoodId === food.id)
+
+    const buildMatch = (
+      row: typeof pantryItems.$inferSelect,
+      itemName: string,
+      pantryUnit: string,
+      density?: number,
+      measurements?: Measurement[]
+    ): PantryMatchOption => {
+      const currentSizeAmount = Number(row.currentSizeAmount)
+      const exp = row.expirationDate ? new Date(row.expirationDate) : null
+      const isExpiringSoon = exp ? exp > now && exp <= soonCutoff : false
+
+      // Try standard unit conversion first
+      let suggestedDeductAmount: number | null = null
+      let canAutoConvert = false
+
+      const pantryUnitCat = getUnitCategory(pantryUnit)
+      const ingUnitCat = getUnitCategory(ingredientUnit)
+
+      if (pantryUnitCat !== 'custom' && ingUnitCat !== 'custom') {
+        const converted = convertUnit({ value: ingredientQty, fromUnit: ingredientUnit, toUnit: pantryUnit, density })
+        if (converted !== null) {
+          canAutoConvert = true
+          suggestedDeductAmount = Math.min(converted, currentSizeAmount)
+        }
+      } else if (ingUnitCat !== 'custom' && pantryUnitCat === 'custom') {
+        // Ingredient in standard unit, pantry in custom — need gramsPerUnit on pantry food
+        const pantryMeasurement = (measurements ?? []).find(m => m.unit === pantryUnit)
+        if (pantryMeasurement?.gramsPerUnit) {
+          // Convert ingredient to grams, then divide by gramsPerUnit
+          const gramsConverted = convertUnit({ value: ingredientQty, fromUnit: ingredientUnit, toUnit: 'g', density })
+          if (gramsConverted !== null) {
+            canAutoConvert = true
+            const customUnits = gramsConverted / pantryMeasurement.gramsPerUnit
+            suggestedDeductAmount = Math.min(customUnits, currentSizeAmount)
+          }
+        }
+      } else if (ingUnitCat === 'custom' && pantryUnitCat !== 'custom') {
+        // Ingredient in custom unit, pantry in standard — need gramsPerUnit on ingredient food
+        const ingMeasurement = foodMeasurements.find(m => m.unit === ingredientUnit)
+        if (ingMeasurement?.gramsPerUnit) {
+          const grams = ingredientQty * ingMeasurement.gramsPerUnit
+          const converted = convertUnit({ value: grams, fromUnit: 'g', toUnit: pantryUnit, density })
+          if (converted !== null) {
+            canAutoConvert = true
+            suggestedDeductAmount = Math.min(converted, currentSizeAmount)
+          }
+        }
+      }
+
+      return {
+        pantryItemId: row.id,
+        itemName,
+        currentSize: { size: currentSizeAmount, unit: pantryUnit },
+        expirationDate: exp,
+        isExpiringSoon,
+        canAutoConvert,
+        suggestedDeductAmount,
+      }
+    }
+
+    const pantryMatches: PantryMatchOption[] = [
+      ...matchingFood.map(r =>
+        buildMatch(
+          r.pantry_items,
+          r.foods.name,
+          r.pantry_items.currentSizeUnit ?? r.foods.servingUnit ?? 'g',
+          r.foods.density ? Number(r.foods.density) : undefined,
+          Array.isArray(r.foods.measurements)
+            ? (r.foods.measurements as Measurement[])
+            : []
+        )
+      ),
+      ...matchingProduct.map(r =>
+        buildMatch(
+          r.pantry_items,
+          r.products.name,
+          r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
+          r.products.density ? Number(r.products.density) : undefined,
+          Array.isArray(r.products.measurements)
+            ? (r.products.measurements as Measurement[])
+            : []
+        )
+      ),
+    ]
+
+    // Surface soonest-expiring first; items with no expiry go last
+    pantryMatches.sort((a, b) => {
+      if (!a.expirationDate && !b.expirationDate) return 0
+      if (!a.expirationDate) return 1
+      if (!b.expirationDate) return -1
+      return a.expirationDate.getTime() - b.expirationDate.getTime()
+    })
+
+    return {
+      ingredientFoodId: food.id,
+      ingredientFoodName: food.name,
+      ingredientQuantity: ingredientQty,
+      ingredientUnit,
+      pantryMatches,
+    }
+  })
+
+  return ingredientMatches
+}
+
+export type PreparedMealDeduction = {
+  pantryItemId: number
+  amount: number
+}
+
+export async function createPreparedMeal({
+  userId,
+  recipeShortId,
+  servings,
+  expirationDate,
+  deductions,
+}: {
+  userId: number
+  recipeShortId: string
+  servings: number
+  expirationDate?: Date | null
+  deductions: PreparedMealDeduction[]
+}): Promise<PantryItem> {
+  const [recipe] = await db
+    .select({ id: recipes.id, name: recipes.name })
+    .from(recipes)
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
+
+  if (!recipe) throw new Error('Recipe not found')
+
+  const item = await createPantryItem({
+    userId,
+    sourceType: 'recipe',
+    recipeId: recipe.id,
+    recipeNameSnapshot: recipe.name,
+    originalSizeAmount: servings,
+    originalSizeUnit: 'serving',
+    currentSizeAmount: servings,
+    currentSizeUnit: 'serving',
+    expirationDate: expirationDate ?? null,
+  })
+
+  // Apply deductions — atomically subtract from each pantry item's currentSizeAmount, floored at 0
+  for (const { pantryItemId, amount } of deductions) {
+    if (amount <= 0) continue
+    await db
+      .update(pantryItems)
+      .set({ currentSizeAmount: sql`GREATEST(0, ${pantryItems.currentSizeAmount} - ${String(amount)})` })
+      .where(and(eq(pantryItems.id, pantryItemId), eq(pantryItems.userId, userId), isNull(pantryItems.dateDeleted)))
+  }
+
+  return item
 }
