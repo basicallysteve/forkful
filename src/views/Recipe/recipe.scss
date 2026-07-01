@@ -1215,3 +1215,50 @@
     }
   }
 }
+
+/* Signup Wall — shown in place of Ingredients + Steps once an Anonymous
+   Visitor reaches the Recipe View Limit (ADR-0020). */
+.signup-wall {
+  margin-top: 24px;
+  border: 1px solid var(--vscode-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.signup-wall-inner {
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.signup-wall-heading {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--vscode-text);
+}
+
+.signup-wall-tease {
+  margin: 0;
+  color: var(--vscode-muted);
+  line-height: 1.5;
+}
+
+.signup-wall-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.signup-wall-note {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--vscode-muted);
+  opacity: 0.8;
+}
