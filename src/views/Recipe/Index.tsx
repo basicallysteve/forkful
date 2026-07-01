@@ -398,6 +398,11 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             <span className="pill pill-ghost">
               {displayRecipe.ingredients.length} ingredients
             </span>
+            {displayRecipe.isPublic && (displayRecipe.viewCount ?? 0) > 0 && (
+              <span className="pill pill-ghost">
+                {displayRecipe.viewCount} {displayRecipe.viewCount === 1 ? 'view' : 'views'}
+              </span>
+            )}
           </div>
         </header>
 

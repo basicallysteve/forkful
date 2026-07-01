@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import type { SQL } from 'drizzle-orm'
 import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
@@ -120,6 +120,7 @@ function mapRecipeRow(
     serves: row.serves ?? null,
     isPublic: row.isPublic === 1,
     nutritionComplete: row.nutritionComplete ?? true,
+    viewCount: row.viewCount ?? 0,
   }
 }
 
@@ -212,6 +213,27 @@ export async function getRecipeByShortId(shortId: string, viewerId?: number): Pr
     and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
   )
   return row ? buildRecipe(row) : null
+}
+
+/**
+ * Increment a public Recipe's view count (Recipe View Count). No-op unless the
+ * Recipe is public and undeleted. When `viewerId` is provided, the Recipe's own
+ * author is excluded (`IS DISTINCT FROM` handles anonymised/null authors). See
+ * ADR-0020: this is intentionally decoupled from the metering middleware.
+ */
+export async function incrementRecipeView(shortId: string, viewerId?: number): Promise<void> {
+  const authorFilter = viewerId !== undefined
+    ? sql`${recipes.userId} IS DISTINCT FROM ${viewerId}`
+    : undefined
+  await db
+    .update(recipes)
+    .set({ viewCount: sql`${recipes.viewCount} + 1` })
+    .where(and(
+      eq(recipes.shortId, shortId),
+      eq(recipes.isPublic, 1),
+      isNull(recipes.dateDeleted),
+      authorFilter,
+    ))
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {

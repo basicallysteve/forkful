@@ -23,4 +23,5 @@ export type Recipe = {
   serves?: number | null
   isPublic: boolean
   nutritionComplete: boolean
+  viewCount?: number
 }
