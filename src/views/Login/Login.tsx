@@ -7,6 +7,7 @@ import { signIn } from "next-auth/react"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { apiReactivateAccount } from '@/lib/api/users'
+import { getCallbackUrl } from '@/utils/callbackUrl'
 
 function Login() {
   const router = useRouter()
@@ -36,7 +37,7 @@ function Login() {
       } else if (result?.error) {
         setError('Invalid username or password')
       } else {
-        router.push("/")
+        router.push(getCallbackUrl())
         router.refresh()
       }
     } catch {
@@ -60,7 +61,7 @@ function Login() {
         setError('Reactivation succeeded but sign-in failed. Please try logging in again.')
         setShowReactivate(false)
       } else {
-        router.push("/")
+        router.push(getCallbackUrl())
         router.refresh()
       }
     } catch (err) {
@@ -72,7 +73,7 @@ function Login() {
 
   async function handleOAuth(provider: 'google') {
     setError(null)
-    await signIn(provider, { callbackUrl: '/' })
+    await signIn(provider, { callbackUrl: getCallbackUrl() })
   }
 
   if (showReactivate) {

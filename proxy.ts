@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { isbot } from 'isbot'
+import { hasUnlimitedRecipeAccess } from '@/lib/entitlements'
+import { decideMeter } from '@/lib/recipeMeter'
+import { readMeter, signMeter, RECIPE_METER_COOKIE } from '@/lib/recipeMeterCookie'
+
+/** Matches a Recipe detail page: /recipes/<shortId>/<slug> (not /recipes/new). */
+const RECIPE_DETAIL_RE = /^\/recipes\/([^/]+)\/([^/]+)\/?$/
 
 // Routes that require a logged-in session.
 // Public browsing (/recipes, /foods, /foods/[slug]) stays accessible to all.
@@ -79,6 +86,48 @@ function checkProtectedRoute(
   return null
 }
 
+/**
+ * Recipe View Limit metering (Signup Wall).
+ *
+ * Runs only on GET requests to a Recipe detail page. Exempt viewers — those with
+ * Unlimited Recipe Access (logged-in) and known crawlers — pass through untouched.
+ * For an Anonymous Visitor, evaluates the signed meter cookie, writes the updated
+ * cookie, and forwards the gate decision to the Server Component via the
+ * `x-recipe-gated` request header (always set authoritatively, overriding any
+ * client-supplied value). Returns null when metering does not apply.
+ */
+async function meterRecipeView(
+  request: NextRequest,
+  pathname: string,
+  hasSessionCookie: boolean,
+): Promise<NextResponse | null> {
+  if (request.method !== 'GET') return null
+
+  const match = pathname.match(RECIPE_DETAIL_RE)
+  if (!match) return null
+  const shortId = match[1]
+
+  if (hasUnlimitedRecipeAccess({ isAuthenticated: hasSessionCookie })) return null
+  if (isbot(request.headers.get('user-agent') ?? '')) return null
+
+  const secret = process.env.AUTH_SECRET ?? ''
+  const payload = await readMeter(request.cookies.get(RECIPE_METER_COOKIE)?.value, secret)
+  const { gated, nextPayload } = decideMeter(payload, shortId, Date.now())
+
+  const forwardedHeaders = new Headers(request.headers)
+  forwardedHeaders.set('x-recipe-gated', gated ? '1' : '0')
+
+  const response = NextResponse.next({ request: { headers: forwardedHeaders } })
+  response.cookies.set(RECIPE_METER_COOKIE, await signMeter(nextPayload, secret), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 40, // 40 days — comfortably longer than the 30-day window
+  })
+  return response
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSessionCookie = detectSessionCookie(request)
@@ -93,6 +142,9 @@ export async function proxy(request: NextRequest) {
 
   const protectedRedirect = checkProtectedRoute(request, pathname, hasSessionCookie)
   if (protectedRedirect) return protectedRedirect
+
+  const meteredResponse = await meterRecipeView(request, pathname, hasSessionCookie)
+  if (meteredResponse) return meteredResponse
 
   return NextResponse.next()
 }

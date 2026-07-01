@@ -12,6 +12,7 @@ export type Recipe = {
   ingredients: Ingredient[]
   ingredientCount?: number
   steps?: RecipeStep[]
+  stepCount?: number
   prepTime?: number | null
   cookTime?: number | null
   totalTime?: number | null
