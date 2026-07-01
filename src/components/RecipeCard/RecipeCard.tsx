@@ -53,6 +53,11 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           <span className="card-meta">
             {recipe.ingredientCount ?? recipe.ingredients.length} {(recipe.ingredientCount ?? recipe.ingredients.length) === 1 ? 'ingredient' : 'ingredients'}
           </span>
+          {recipe.isPublic && (recipe.viewCount ?? 0) > 0 && (
+            <span className="card-meta">
+              {recipe.viewCount} {recipe.viewCount === 1 ? 'view' : 'views'}
+            </span>
+          )}
           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
         </div>
       </Link>
