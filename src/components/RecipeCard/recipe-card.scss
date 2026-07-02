@@ -12,7 +12,9 @@
   border: 1px solid var(--vscode-border);
   background: var(--vscode-panel);
   transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
-
+   height: 100%;                    // fill the grid cell / wrapper
+  .p-card-body { height: 100%; }
+  .p-card-content { height: 100%; } // so .card
   &:hover {
     border-color: var(--vscode-accent);
     background: var(--accent-hover);
