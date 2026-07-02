@@ -107,10 +107,21 @@ async function meterRecipeView(
   if (!match) return null
   const shortId = match[1]
 
-  if (hasUnlimitedRecipeAccess({ isAuthenticated: hasSessionCookie })) return null
+  // Entitlement is decided against a *verified* session, not mere cookie
+  // presence — a stale or forged session cookie must not grant Unlimited
+  // Recipe Access and silently bypass the meter.
+  const isAuthenticated = hasSessionCookie
+    ? (await getToken({ req: request, secret: process.env.AUTH_SECRET })) !== null
+    : false
+  if (hasUnlimitedRecipeAccess({ isAuthenticated })) return null
   if (isbot(request.headers.get('user-agent') ?? '')) return null
 
-  const secret = process.env.AUTH_SECRET ?? ''
+  // Without a real secret the HMAC key would be guessable and meter cookies
+  // forgeable. Rather than sign with an empty key, skip metering entirely — a
+  // misconfigured environment fails open (no wall) instead of insecurely.
+  const secret = process.env.AUTH_SECRET
+  if (!secret) return null
+
   const payload = await readMeter(request.cookies.get(RECIPE_METER_COOKIE)?.value, secret)
   const { gated, nextPayload } = decideMeter(payload, shortId, Date.now())
 

@@ -554,7 +554,7 @@ describe('Recipe View Page', () => {
 
   describe('Signup Wall (gated)', () => {
     // A summary-only Recipe as produced by getRecipeSummaryByShortId: ingredients
-    // and steps withheld (empty), but their counts preserved for the tease.
+    // and steps withheld (empty), with ingredientCount kept for the summary header.
     const gatedRecipe: RecipeType = {
       id: 3,
       shortId: 'ccc33333',
@@ -564,7 +564,6 @@ describe('Recipe View Page', () => {
       ingredients: [],
       ingredientCount: 8,
       steps: [],
-      stepCount: 5,
       isPublic: true,
       nutritionComplete: true,
     }
@@ -577,9 +576,11 @@ describe('Recipe View Page', () => {
       expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
     })
 
-    it('teases the withheld ingredient and step counts', () => {
+    it('teases the withheld content without leaking exact counts', () => {
       renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
-      expect(screen.getByText(/8 ingredients and 5 steps/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/full ingredient list, step-by-step instructions, and nutrition/i),
+      ).toBeInTheDocument()
     })
 
     it('does not render the Steps section when gated', () => {

@@ -99,7 +99,6 @@ function mapRecipeRow(
   ingredientList: Ingredient[],
   stepList: RecipeStep[],
   ingredientCount?: number,
-  stepCount?: number,
 ): Recipe {
   return {
     id: row.id,
@@ -110,7 +109,6 @@ function mapRecipeRow(
     ingredients: ingredientList,
     ingredientCount: ingredientCount ?? ingredientList.length,
     steps: stepList,
-    stepCount: stepCount ?? stepList.length,
     prepTime: row.prepTime ?? null,
     cookTime: row.cookTime ?? null,
     totalTime: row.totalTime ?? null,
@@ -219,9 +217,9 @@ export async function getRecipeByShortId(shortId: string, viewerId?: number): Pr
 /**
  * Summary-only fetch for the Signup Wall: returns the Recipe with its Ingredient
  * list and Recipe Steps deliberately withheld (empty arrays), but with
- * `ingredientCount` and `stepCount` populated so the wall can tease them. The
- * heavy ingredient/step sub-queries are skipped entirely — the withheld content
- * never enters the payload. See ADR-0020.
+ * `ingredientCount` populated for the summary header. The heavy ingredient/step
+ * sub-queries are skipped entirely — the withheld content never enters the
+ * payload. See ADR-0020.
  */
 export async function getRecipeSummaryByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
   const visibilityFilter = viewerId !== undefined
@@ -232,14 +230,10 @@ export async function getRecipeSummaryByShortId(shortId: string, viewerId?: numb
   )
   if (!row) return null
 
-  const [ingredientRows, stepRows] = await Promise.all([
-    db.select({ total: count() }).from(ingredients)
-      .where(and(eq(ingredients.recipeId, row.id), isNull(ingredients.dateDeleted))),
-    db.select({ total: count() }).from(recipeSteps)
-      .where(and(eq(recipeSteps.recipeId, row.id), isNull(recipeSteps.dateDeleted))),
-  ])
+  const [ingredientRows] = await db.select({ total: count() }).from(ingredients)
+    .where(and(eq(ingredients.recipeId, row.id), isNull(ingredients.dateDeleted)))
 
-  return mapRecipeRow(row, [], [], Number(ingredientRows[0]?.total ?? 0), Number(stepRows[0]?.total ?? 0))
+  return mapRecipeRow(row, [], [], Number(ingredientRows?.total ?? 0))
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {
