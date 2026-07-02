@@ -70,6 +70,7 @@ export const recipes = pgTable('recipes', {
   isPublic: integer('is_public').notNull().default(0),
   serves: integer('serves'),
   nutritionComplete: boolean('nutrition_complete').notNull().default(true),
+  viewCount: integer('view_count').notNull().default(0),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),

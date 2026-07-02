@@ -5,6 +5,7 @@ import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
 import { toSlug } from '@/utils/slug'
 import RecipeIndex from '@/views/Recipe/Index'
+import RecipeViewBeacon from '@/components/RecipeViewBeacon/RecipeViewBeacon'
 
 type Props = { params: Promise<{ id: string; slug: string }> }
 
@@ -34,14 +35,17 @@ export default async function RecipePage({ params }: Props) {
   const initialSaved = canSave ? await isSaved(session!.userId, recipe.id) : false
 
   return (
-    <RecipeIndex
-      recipe={recipe}
-      foods={foods}
-      canEdit={isOwner}
-      canSave={canSave}
-      initialSaved={initialSaved}
-      isLoggedIn={session !== null}
-      gated={gated}
-    />
+    <>
+      <RecipeViewBeacon shortId={recipe.shortId} />
+      <RecipeIndex
+        recipe={recipe}
+        foods={foods}
+        canEdit={isOwner}
+        canSave={canSave}
+        initialSaved={initialSaved}
+        isLoggedIn={session !== null}
+        gated={gated}
+      />
+    </>
   )
 }
