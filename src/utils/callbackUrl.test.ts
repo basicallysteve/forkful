@@ -23,6 +23,11 @@ describe('getCallbackUrl', () => {
     expect(getCallbackUrl()).toBe('/')
   })
 
+  it('rejects backslash protocol-relative bypass (browser normalises \\ to /)', () => {
+    setSearch('/login?callbackUrl=%2F%5Cevil.com')
+    expect(getCallbackUrl()).toBe('/')
+  })
+
   it('defaults to / when the param is absent', () => {
     setSearch('/login')
     expect(getCallbackUrl()).toBe('/')

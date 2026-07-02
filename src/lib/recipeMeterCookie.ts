@@ -54,15 +54,15 @@ export async function readMeter(raw: string | undefined, secret: string): Promis
   const [body, signature] = raw.split('.')
   if (!body || !signature) return null
 
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    await hmacKey(secret),
-    b64urlDecode(signature) as BufferSource,
-    encoder.encode(body),
-  )
-  if (!valid) return null
-
   try {
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      await hmacKey(secret),
+      b64urlDecode(signature) as BufferSource,
+      encoder.encode(body),
+    )
+    if (!valid) return null
+
     const parsed = JSON.parse(decoder.decode(b64urlDecode(body))) as unknown
     if (
       typeof parsed !== 'object' ||

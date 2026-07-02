@@ -394,7 +394,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
           <div
             className="recipe-description"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
           />
 
           {hasMeta && (
@@ -411,7 +411,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             </section>
           )}
 
-          <SignupWall ingredientCount={recipe.ingredientCount ?? 0} stepCount={recipe.stepCount ?? 0} />
+          <SignupWall />
         </div>
       </div>
     )

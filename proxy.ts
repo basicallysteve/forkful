@@ -107,7 +107,13 @@ async function meterRecipeView(
   if (!match) return null
   const shortId = match[1]
 
-  if (hasUnlimitedRecipeAccess({ isAuthenticated: hasSessionCookie })) return null
+  // Entitlement is decided against a *verified* session, not mere cookie
+  // presence — a stale or forged session cookie must not grant Unlimited
+  // Recipe Access and silently bypass the meter.
+  const isAuthenticated = hasSessionCookie
+    ? (await getToken({ req: request, secret: process.env.AUTH_SECRET })) !== null
+    : false
+  if (hasUnlimitedRecipeAccess({ isAuthenticated })) return null
   if (isbot(request.headers.get('user-agent') ?? '')) return null
 
   const secret = process.env.AUTH_SECRET ?? ''

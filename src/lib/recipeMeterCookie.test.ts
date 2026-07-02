@@ -32,4 +32,10 @@ describe('recipe meter cookie codec', () => {
     expect(await readMeter('', SECRET)).toBeNull()
     expect(await readMeter('no-dot-separator', SECRET)).toBeNull()
   })
+
+  it('returns null (does not throw) on a non-base64 signature', async () => {
+    // A tampered cookie whose signature isn't valid base64 must be rejected
+    // gracefully — this runs in middleware, so a throw would 500 the page.
+    await expect(readMeter('aGVsbG8.!!!not-base64!!!', SECRET)).resolves.toBeNull()
+  })
 })
