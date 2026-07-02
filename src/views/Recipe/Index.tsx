@@ -411,7 +411,9 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             </section>
           )}
 
-          <SignupWall />
+          <div className="recipe-paywalled">
+            <SignupWall />
+          </div>
         </div>
       </div>
     )
@@ -553,7 +555,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           </section>
         )}
 
-        <section className="recipe-steps">
+        <section className="recipe-steps recipe-paywalled">
           <h3 className="steps-heading">Steps</h3>
           {steps.length === 0 && !editMode && (
             <p className="steps-empty">No steps added yet.</p>
@@ -578,7 +580,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           )}
         </section>
 
-        <section className="recipe-panel">
+        <section className="recipe-panel recipe-paywalled">
           <div className="panel-toolbar">
             <div className="toolbar-tabs">
               {editMode ? (

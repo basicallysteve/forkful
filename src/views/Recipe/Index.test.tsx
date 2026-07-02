@@ -593,5 +593,10 @@ describe('Recipe View Page', () => {
       const signup = screen.getByRole('link', { name: 'Sign up free' })
       expect(signup).toHaveAttribute('href', expect.stringContaining('callbackUrl='))
     })
+
+    it('wraps the wall in the paywall marker the JSON-LD hasPart selector targets', () => {
+      const { container } = renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(container.querySelector('.recipe-paywalled')).not.toBeNull()
+    })
   })
 })
