@@ -4,7 +4,7 @@ import { getRecipeByShortId, getRecipeSummaryByShortId, isSaved } from '@/lib/re
 import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
 import { toSlug } from '@/utils/slug'
-import { buildRecipeJsonLd } from '@/utils/recipeJsonLd'
+import { serializeRecipeJsonLd } from '@/utils/recipeJsonLd'
 import RecipeIndex from '@/views/Recipe/Index'
 
 type Props = { params: Promise<{ id: string; slug: string }> }
@@ -41,7 +41,7 @@ export default async function RecipePage({ params }: Props) {
           type="application/ld+json"
           // Declared metered content so the Crawler Exemption reads as flexible
           // sampling, not cloaking. See ADR-0020.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildRecipeJsonLd(recipe)) }}
+          dangerouslySetInnerHTML={{ __html: serializeRecipeJsonLd(recipe) }}
         />
       )}
       <RecipeIndex

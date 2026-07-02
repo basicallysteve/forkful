@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildRecipeJsonLd, PAYWALLED_SELECTOR } from '@/utils/recipeJsonLd'
+import { buildRecipeJsonLd, serializeRecipeJsonLd, PAYWALLED_SELECTOR } from '@/utils/recipeJsonLd'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 
@@ -76,5 +76,23 @@ describe('buildRecipeJsonLd', () => {
     expect(ld.recipeInstructions).toBeUndefined()
     // still declared metered
     expect(ld.isAccessibleForFree).toBe(false)
+  })
+})
+
+describe('serializeRecipeJsonLd', () => {
+  it('escapes `<` so a `</script>` in user content cannot break out of the tag', () => {
+    const malicious: Recipe = {
+      ...fullRecipe,
+      name: '</script><svg/onload=alert(1)>',
+      description: 'Breakout via entity: &lt;/script&gt;',
+    }
+    const serialized = serializeRecipeJsonLd(malicious)
+    expect(serialized).not.toContain('</script>')
+    expect(serialized).not.toContain('<svg')
+    expect(serialized).toContain('\\u003c')
+  })
+
+  it('parses back to the same object the builder produced', () => {
+    expect(JSON.parse(serializeRecipeJsonLd(fullRecipe))).toEqual(buildRecipeJsonLd(fullRecipe))
   })
 })

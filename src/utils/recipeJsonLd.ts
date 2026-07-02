@@ -12,11 +12,14 @@ function stripHtml(html: string): string {
   return html
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    // `&amp;` decoded last so `&amp;lt;` collapses to the literal `&lt;`, not `<`.
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -80,4 +83,16 @@ export function buildRecipeJsonLd(recipe: Recipe): Record<string, unknown> {
   }
 
   return jsonLd
+}
+
+/**
+ * Serialize a recipe's JSON-LD for embedding in a `<script type="application/ld+json">`
+ * tag. `JSON.stringify` does not escape `<` or `/`, so a value containing
+ * `</script>` (e.g. a user-supplied recipe name) would close the script element
+ * and inject markup — a stored-XSS vector. Replacing each `<` with its unicode
+ * escape neutralises `</script>`, `<!--`, and `<script` while parsing back to
+ * the identical object.
+ */
+export function serializeRecipeJsonLd(recipe: Recipe): string {
+  return JSON.stringify(buildRecipeJsonLd(recipe)).replace(/</g, '\\u003c')
 }
