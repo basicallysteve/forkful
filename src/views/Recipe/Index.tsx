@@ -4,7 +4,6 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
 import { Dropdown } from 'primereact/dropdown'
-import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
 import { type Recipe } from '@/types/Recipe'
@@ -20,9 +19,11 @@ import {
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
+import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
 import PrepareMealDialog from '@/components/PrepareMealDialog/PrepareMealDialog'
+import SignupWall from '@/components/SignupWall/SignupWall'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -35,9 +36,10 @@ interface RecipeProps {
   canSave?: boolean
   initialSaved?: boolean
   isLoggedIn?: boolean
+  gated?: boolean
 }
 
-export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false, gated = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
@@ -372,6 +374,49 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     </button>
   )
 
+  if (gated) {
+    const hasMeta =
+      recipe.prepTime != null || recipe.cookTime != null || recipe.totalTime != null ||
+      !!recipe.cuisineType || (recipe.dietaryTags ?? []).length > 0
+    return (
+      <div className="recipe-view">
+        <div className="recipe-content">
+          <header className="recipe-header">
+            <div className="recipe-header-container">
+              <Link href="/recipes" className="back-link">← All Recipes</Link>
+              <p className="recipe-label">Recipe</p>
+              <h2 className="recipe-name">{recipe.name}</h2>
+            </div>
+            <div className="recipe-meta">
+              <span className="pill pill-ghost">{recipe.ingredientCount ?? 0} ingredients</span>
+            </div>
+          </header>
+
+          <div
+            className="recipe-description"
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
+          />
+
+          {hasMeta && (
+            <section className="recipe-meta-display">
+              <div className="meta-pills">
+                {recipe.cuisineType && <span className="pill pill-ghost">{recipe.cuisineType}</span>}
+                {recipe.prepTime != null && <span className="pill pill-ghost">Prep: {recipe.prepTime}m</span>}
+                {recipe.cookTime != null && <span className="pill pill-ghost">Cook: {recipe.cookTime}m</span>}
+                {recipe.totalTime != null && <span className="pill pill-ghost">Total: {recipe.totalTime}m</span>}
+                {(recipe.dietaryTags ?? []).map((tag) => (
+                  <span key={tag} className="pill pill-primary">{tag}</span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <SignupWall />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="recipe-view">
       <Toast ref={toast} position="bottom-right" />
@@ -417,7 +462,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         ) : (
           <div
             className="recipe-description"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(displayRecipe.description) }}
           />
         )}
 

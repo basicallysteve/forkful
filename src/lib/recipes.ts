@@ -236,6 +236,28 @@ export async function incrementRecipeView(shortId: string, viewerId?: number): P
     ))
 }
 
+/**
+ * Summary-only fetch for the Signup Wall: returns the Recipe with its Ingredient
+ * list and Recipe Steps deliberately withheld (empty arrays), but with
+ * `ingredientCount` populated for the summary header. The heavy ingredient/step
+ * sub-queries are skipped entirely — the withheld content never enters the
+ * payload. See ADR-0020.
+ */
+export async function getRecipeSummaryByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
+  const visibilityFilter = viewerId !== undefined
+    ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
+    : eq(recipes.isPublic, 1)
+  const [row] = await db.select().from(recipes).where(
+    and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
+  )
+  if (!row) return null
+
+  const [ingredientRows] = await db.select({ total: count() }).from(ingredients)
+    .where(and(eq(ingredients.recipeId, row.id), isNull(ingredients.dateDeleted)))
+
+  return mapRecipeRow(row, [], [], Number(ingredientRows?.total ?? 0))
+}
+
 export async function getRecipeById(id: number): Promise<Recipe | null> {
   const [row] = await db.select().from(recipes).where(and(eq(recipes.id, id), isNull(recipes.dateDeleted)))
   return row ? buildRecipe(row) : null

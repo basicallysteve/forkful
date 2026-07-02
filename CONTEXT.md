@@ -62,6 +62,30 @@ A list of dietary constraints a User has (e.g. vegan, gluten-free). Optional. Se
 ## Session
 An authenticated context identifying the current User. Managed by Auth.js. Replaces the previous hand-rolled JWT cookie system.
 
+## Anonymous Visitor
+A person browsing Forkful without a Session — not logged in. Can view public Recipes, subject to the Recipe View Limit. Contrast with User.
+_Avoid_: guest, anonymous user
+
+## Unlimited Recipe Access
+An entitlement to view Recipes without being subject to the Recipe View Limit. Currently held by every registered User and denied to every Anonymous Visitor. Designed as the extension point for a future free/paid tier split: when tiers ship, only paid Users retain this entitlement and free Users fall under the limit.
+_Avoid_: premium access, unlimited views
+
+## Recipe View Limit
+The maximum number of distinct public Recipes an Anonymous Visitor may fully view within a rolling 30-day window before the Signup Wall appears. Currently 5. Re-viewing an already-seen Recipe does not consume the allowance again. Holders of Unlimited Recipe Access are exempt.
+_Avoid_: view quota, metering, paywall count
+
+## Signup Wall
+The gated state of a Recipe detail page shown to an Anonymous Visitor who has reached the Recipe View Limit. The Recipe's summary (name, Description, times, Cuisine Type, Dietary Tags, ingredient count, Review Aggregate) remains visible, but its Ingredient list and Recipe Steps are withheld and replaced by a prompt to create a free account. Known web crawlers are exempt (see Crawler Exemption).
+_Avoid_: paywall, registration wall, content gate
+
+## Crawler Exemption
+A carve-out whereby requests from recognised search-engine crawlers bypass the Recipe View Limit and always receive the full Recipe, so public Recipes remain indexable despite the Signup Wall.
+_Avoid_: bot allowlist, SEO bypass
+
+## Recipe View Count
+A running tally of how many times a public Recipe's detail page has been viewed, stored as a single denormalised integer on the Recipe and surfaced as a popularity signal. Counts both Anonymous Visitor and User views — including views that land on the Signup Wall — but excludes views by the Recipe's own author. Distinct from the Recipe View Limit: Recipe View Count measures a *Recipe's* popularity (per-recipe), whereas the Recipe View Limit meters an *Anonymous Visitor's* own consumption (per-visitor).
+_Avoid_: view metering, hit count, impressions
+
 ## Password Reset Token
 A cryptographically random, single-use token issued to a Credential User who has forgotten their password. Stored as a hash in the DB (never the raw value), valid for 1 hour, and marked used on redemption rather than deleted. Sent to the user's email as a link to the Reset Password Page.
 _Avoid_: reset link, reset code
