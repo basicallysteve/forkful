@@ -116,7 +116,12 @@ async function meterRecipeView(
   if (hasUnlimitedRecipeAccess({ isAuthenticated })) return null
   if (isbot(request.headers.get('user-agent') ?? '')) return null
 
-  const secret = process.env.AUTH_SECRET ?? ''
+  // Without a real secret the HMAC key would be guessable and meter cookies
+  // forgeable. Rather than sign with an empty key, skip metering entirely — a
+  // misconfigured environment fails open (no wall) instead of insecurely.
+  const secret = process.env.AUTH_SECRET
+  if (!secret) return null
+
   const payload = await readMeter(request.cookies.get(RECIPE_METER_COOKIE)?.value, secret)
   const { gated, nextPayload } = decideMeter(payload, shortId, Date.now())
 

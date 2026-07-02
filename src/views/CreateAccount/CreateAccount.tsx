@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { apiSignUp } from "@/lib/api/users"
 import { getCallbackUrl } from "@/utils/callbackUrl"
 import { InputText } from 'primereact/inputtext'
@@ -52,6 +53,7 @@ function isPasswordValid(validation: PasswordValidation): boolean {
 }
 
 function CreateAccount() {
+  const router = useRouter()
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -113,9 +115,9 @@ function CreateAccount() {
       // Forward the return target through the login step so the new user lands
       // back on the recipe they were viewing after signing in.
       const callbackUrl = getCallbackUrl()
-      window.location.href = callbackUrl !== '/'
+      router.push(callbackUrl !== '/'
         ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-        : '/login'
+        : '/login')
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Registration failed')
     } finally {
