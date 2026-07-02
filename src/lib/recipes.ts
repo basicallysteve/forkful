@@ -217,9 +217,12 @@ export async function getRecipeByShortId(shortId: string, viewerId?: number): Pr
 
 /**
  * Increment a public Recipe's view count (Recipe View Count). No-op unless the
- * Recipe is public and undeleted. When `viewerId` is provided, the Recipe's own
- * author is excluded (`IS DISTINCT FROM` handles anonymised/null authors). See
- * ADR-0020: this is intentionally decoupled from the metering middleware.
+ * Recipe is public, published, and undeleted. When `viewerId` is provided, the
+ * Recipe's own author is excluded (`IS DISTINCT FROM` handles anonymised/null
+ * authors). The published guard matches `getTopRecipes`: an unpublished draft
+ * that is still public (Unpublish and privacy are independent toggles) must not
+ * accrue public views. See ADR-0020: this is intentionally decoupled from the
+ * metering middleware.
  */
 export async function incrementRecipeView(shortId: string, viewerId?: number): Promise<void> {
   const authorFilter = viewerId !== undefined
@@ -231,6 +234,7 @@ export async function incrementRecipeView(shortId: string, viewerId?: number): P
     .where(and(
       eq(recipes.shortId, shortId),
       eq(recipes.isPublic, 1),
+      isNotNull(recipes.datePublished),
       isNull(recipes.dateDeleted),
       authorFilter,
     ))

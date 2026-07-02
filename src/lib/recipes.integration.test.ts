@@ -319,6 +319,14 @@ describe('recipes data layer (integration)', () => {
       expect(await readViewCount(recipe.id)).toBe(0)
     })
 
+    it('is a no-op for a public but unpublished (draft) recipe', async () => {
+      const recipe = await createRecipe({ name: 'Test ViewPublicDraft', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+
+      await incrementRecipeView(recipe.shortId)
+
+      expect(await readViewCount(recipe.id)).toBe(0)
+    })
+
     it('is a no-op for a soft-deleted recipe', async () => {
       const recipe = await createRecipe({ name: 'Test ViewDeleted', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
       await deleteRecipe(recipe.id)
