@@ -551,4 +551,47 @@ describe('Recipe View Page', () => {
       })
     })
   })
+
+  describe('Signup Wall (gated)', () => {
+    // A summary-only Recipe as produced by getRecipeSummaryByShortId: ingredients
+    // and steps withheld (empty), with ingredientCount kept for the summary header.
+    const gatedRecipe: RecipeType = {
+      id: 3,
+      shortId: 'ccc33333',
+      name: 'Korean Beef Bowls',
+      meal: 'Dinner',
+      description: 'A savoury weeknight favourite.',
+      ingredients: [],
+      ingredientCount: 8,
+      steps: [],
+      isPublic: true,
+      nutritionComplete: true,
+    }
+
+    it('renders the summary and the Signup Wall CTAs', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(screen.getByText('Korean Beef Bowls')).toBeInTheDocument()
+      expect(screen.getByText('Create a free account to see the full recipe')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Sign up free' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
+    })
+
+    it('teases the withheld content without leaking exact counts', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(
+        screen.getByText(/full ingredient list, step-by-step instructions, and nutrition/i),
+      ).toBeInTheDocument()
+    })
+
+    it('does not render the Steps section when gated', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(screen.queryByRole('heading', { name: 'Steps' })).not.toBeInTheDocument()
+    })
+
+    it('points the CTAs back to the current recipe via callbackUrl', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      const signup = screen.getByRole('link', { name: 'Sign up free' })
+      expect(signup).toHaveAttribute('href', expect.stringContaining('callbackUrl='))
+    })
+  })
 })

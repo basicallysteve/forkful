@@ -1,16 +1,27 @@
 import { notFound, permanentRedirect } from 'next/navigation'
-import { getRecipeByShortId, isSaved } from '@/lib/recipes'
+import { headers } from 'next/headers'
+import { getRecipeByShortId, getRecipeSummaryByShortId, isSaved } from '@/lib/recipes'
 import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
 import { toSlug } from '@/utils/slug'
 import RecipeIndex from '@/views/Recipe/Index'
+import RecipeViewBeacon from '@/components/RecipeViewBeacon/RecipeViewBeacon'
 
 type Props = { params: Promise<{ id: string; slug: string }> }
 
 export default async function RecipePage({ params }: Props) {
   const { id, slug } = await params
-  const [foods, session] = await Promise.all([getFoods(), getSessionUser()])
-  const recipe = await getRecipeByShortId(id, session?.userId)
+  const [foods, session, requestHeaders] = await Promise.all([getFoods(), getSessionUser(), headers()])
+
+  // The Signup Wall applies only to Anonymous Visitors; the meter decision is set
+  // authoritatively by middleware. Gating a logged-in user is impossible here even
+  // if the header were forged, since `gated` also requires no session.
+  const gated = requestHeaders.get('x-recipe-gated') === '1' && session === null
+  const viewerId = session?.userId
+
+  const recipe = gated
+    ? await getRecipeSummaryByShortId(id, viewerId)
+    : await getRecipeByShortId(id, viewerId)
 
   if (!recipe) notFound()
 
@@ -24,13 +35,17 @@ export default async function RecipePage({ params }: Props) {
   const initialSaved = canSave ? await isSaved(session!.userId, recipe.id) : false
 
   return (
-    <RecipeIndex
-      recipe={recipe}
-      foods={foods}
-      canEdit={isOwner}
-      canSave={canSave}
-      initialSaved={initialSaved}
-      isLoggedIn={session !== null}
-    />
+    <>
+      <RecipeViewBeacon shortId={recipe.shortId} />
+      <RecipeIndex
+        recipe={recipe}
+        foods={foods}
+        canEdit={isOwner}
+        canSave={canSave}
+        initialSaved={initialSaved}
+        isLoggedIn={session !== null}
+        gated={gated}
+      />
+    </>
   )
 }

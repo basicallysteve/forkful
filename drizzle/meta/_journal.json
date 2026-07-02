@@ -169,6 +169,13 @@
       "when": 1782505498097,
       "tag": "0023_harsh_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782910316586,
+      "tag": "0024_lonely_pride",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import type { SQL } from 'drizzle-orm'
 import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
@@ -120,6 +120,7 @@ function mapRecipeRow(
     serves: row.serves ?? null,
     isPublic: row.isPublic === 1,
     nutritionComplete: row.nutritionComplete ?? true,
+    viewCount: row.viewCount ?? 0,
   }
 }
 
@@ -212,6 +213,53 @@ export async function getRecipeByShortId(shortId: string, viewerId?: number): Pr
     and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
   )
   return row ? buildRecipe(row) : null
+}
+
+/**
+ * Increment a public Recipe's view count (Recipe View Count). No-op unless the
+ * Recipe is public, published, and undeleted. When `viewerId` is provided, the
+ * Recipe's own author is excluded (`IS DISTINCT FROM` handles anonymised/null
+ * authors). The published guard matches `getTopRecipes`: an unpublished draft
+ * that is still public (Unpublish and privacy are independent toggles) must not
+ * accrue public views. See ADR-0020: this is intentionally decoupled from the
+ * metering middleware.
+ */
+export async function incrementRecipeView(shortId: string, viewerId?: number): Promise<void> {
+  const authorFilter = viewerId !== undefined
+    ? sql`${recipes.userId} IS DISTINCT FROM ${viewerId}`
+    : undefined
+  await db
+    .update(recipes)
+    .set({ viewCount: sql`${recipes.viewCount} + 1` })
+    .where(and(
+      eq(recipes.shortId, shortId),
+      eq(recipes.isPublic, 1),
+      isNotNull(recipes.datePublished),
+      isNull(recipes.dateDeleted),
+      authorFilter,
+    ))
+}
+
+/**
+ * Summary-only fetch for the Signup Wall: returns the Recipe with its Ingredient
+ * list and Recipe Steps deliberately withheld (empty arrays), but with
+ * `ingredientCount` populated for the summary header. The heavy ingredient/step
+ * sub-queries are skipped entirely — the withheld content never enters the
+ * payload. See ADR-0020.
+ */
+export async function getRecipeSummaryByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
+  const visibilityFilter = viewerId !== undefined
+    ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
+    : eq(recipes.isPublic, 1)
+  const [row] = await db.select().from(recipes).where(
+    and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
+  )
+  if (!row) return null
+
+  const [ingredientRows] = await db.select({ total: count() }).from(ingredients)
+    .where(and(eq(ingredients.recipeId, row.id), isNull(ingredients.dateDeleted)))
+
+  return mapRecipeRow(row, [], [], Number(ingredientRows?.total ?? 0))
 }
 
 export async function getRecipeById(id: number): Promise<Recipe | null> {
