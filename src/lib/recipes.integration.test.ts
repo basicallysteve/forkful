@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getRecipes, getRecipeByShortId, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved, getTopRecipes } from './recipes'
+import { getRecipes, getRecipeByShortId, createRecipe, updateRecipe, deleteRecipe, saveRecipe, unsaveRecipe, getSavedRecipes, isSaved, getTopRecipes, incrementRecipeView } from './recipes'
 import { createFood, deleteFood } from './foods'
 import { signUp } from './users'
 import type { Food } from '@/types/Food'
@@ -275,6 +275,57 @@ describe('recipes data layer (integration)', () => {
       expect(saved.some(r => r.id === r3.id)).toBe(true)
       expect(saved.some(r => r.id === r2.id)).toBe(true)
       expect(saved.some(r => r.id === r1.id)).toBe(false)
+    })
+  })
+
+  describe('incrementRecipeView', () => {
+    async function readViewCount(recipeId: number): Promise<number> {
+      const { rows } = await pool.query(`SELECT "view_count" FROM "recipes" WHERE id = $1`, [recipeId])
+      return Number(rows[0].view_count)
+    }
+
+    it('increments an anonymous view on a public recipe', async () => {
+      const recipe = await createRecipe({ name: 'Test ViewAnon', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+      expect(await readViewCount(recipe.id)).toBe(0)
+
+      await incrementRecipeView(recipe.shortId)
+
+      expect(await readViewCount(recipe.id)).toBe(1)
+    })
+
+    it('increments a view from a non-author viewer', async () => {
+      const authorId = Number(testUser.id)
+      const recipe = await createRecipe({ name: 'Test ViewNonAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
+
+      await incrementRecipeView(recipe.shortId, authorId + 1)
+
+      expect(await readViewCount(recipe.id)).toBe(1)
+    })
+
+    it("excludes the author's own view", async () => {
+      const authorId = Number(testUser.id)
+      const recipe = await createRecipe({ name: 'Test ViewAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
+
+      await incrementRecipeView(recipe.shortId, authorId)
+
+      expect(await readViewCount(recipe.id)).toBe(0)
+    })
+
+    it('is a no-op for a private recipe', async () => {
+      const recipe = await createRecipe({ name: 'Test ViewPrivate', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false })
+
+      await incrementRecipeView(recipe.shortId)
+
+      expect(await readViewCount(recipe.id)).toBe(0)
+    })
+
+    it('is a no-op for a soft-deleted recipe', async () => {
+      const recipe = await createRecipe({ name: 'Test ViewDeleted', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+      await deleteRecipe(recipe.id)
+
+      await incrementRecipeView(recipe.shortId)
+
+      expect(await readViewCount(recipe.id)).toBe(0)
     })
   })
 })

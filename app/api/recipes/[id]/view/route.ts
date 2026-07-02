@@ -9,10 +9,17 @@ type Params = { params: Promise<{ id: string }> }
  * Records a Recipe View Count increment. Fired as a best-effort beacon from the
  * recipe detail page on mount. Counts anonymous and logged-in views (including
  * gated ones) but excludes the Recipe author's own views. See ADR-0020.
+ *
+ * Errors are deliberately swallowed: a popularity counter must never surface a
+ * 500 to the client or spawn beacon retries, so the endpoint always answers 204.
  */
 export async function POST(_request: Request, { params }: Params) {
-  const { id } = await params
-  const session = await getSessionUser()
-  await taskRunner.run(() => incrementRecipeView(id, session?.userId))
+  try {
+    const { id } = await params
+    const session = await getSessionUser()
+    await taskRunner.run(() => incrementRecipeView(id, session?.userId))
+  } catch (error) {
+    console.error('Failed to record recipe view', error)
+  }
   return new NextResponse(null, { status: 204 })
 }
