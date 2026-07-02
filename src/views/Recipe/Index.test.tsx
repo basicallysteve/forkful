@@ -554,7 +554,7 @@ describe('Recipe View Page', () => {
 
   describe('Signup Wall (gated)', () => {
     // A summary-only Recipe as produced by getRecipeSummaryByShortId: ingredients
-    // and steps withheld (empty), but their counts preserved for the tease.
+    // and steps withheld (empty), with ingredientCount kept for the summary header.
     const gatedRecipe: RecipeType = {
       id: 3,
       shortId: 'ccc33333',
@@ -564,7 +564,6 @@ describe('Recipe View Page', () => {
       ingredients: [],
       ingredientCount: 8,
       steps: [],
-      stepCount: 5,
       isPublic: true,
       nutritionComplete: true,
     }
