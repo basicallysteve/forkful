@@ -4,7 +4,6 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
 import { Dropdown } from 'primereact/dropdown'
-import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
 import { type Recipe } from '@/types/Recipe'
@@ -20,6 +19,7 @@ import {
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
+import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
 import PrepareMealDialog from '@/components/PrepareMealDialog/PrepareMealDialog'
@@ -457,7 +457,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         ) : (
           <div
             className="recipe-description"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(displayRecipe.description) }}
           />
         )}
 
