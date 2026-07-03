@@ -6,7 +6,6 @@ effectiveDate: 2026-07-02
 
 # Forkful Terms and Conditions
 
-<!-- Effective Date: July 2, 2026 -->
 
 Please read these Terms and Conditions ("Terms") carefully before using Forkful. By creating an account or using the service, you agree to be bound by these Terms. If you do not agree, do not use Forkful.
 
