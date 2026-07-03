@@ -5,6 +5,8 @@ import { getFoodById } from '@/lib/foods'
 import type { Food, Measurement } from '@/types/Food'
 import type { ShoppingList, ShoppingListItem } from '@/types/ShoppingList'
 
+const POSTGRES_UNIQUE_VIOLATION = '23505'
+
 function parseMeasurements(raw: unknown): Measurement[] {
   if (!Array.isArray(raw)) return []
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
@@ -100,7 +102,7 @@ export async function getOrCreateActiveShoppingList(userId: number): Promise<Sho
 
     return mapShoppingList(created)
   } catch (error) {
-    if ((error as { code?: string }).code === '23505') {
+    if ((error as { code?: string }).code === POSTGRES_UNIQUE_VIOLATION) {
       const createdByAnotherRequest = await getActiveShoppingList(userId)
       if (createdByAnotherRequest) return createdByAnotherRequest
     }
