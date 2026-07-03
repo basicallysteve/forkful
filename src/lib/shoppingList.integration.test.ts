@@ -95,4 +95,30 @@ describe('shopping list data layer (integration)', () => {
     expect(items[0].sourceType).toBe('food')
     expect(items[0].status).toBe('to_buy')
   })
+
+  it('merges a duplicate food + unit line into the existing open line', async () => {
+    const user = await createTestUser('d')
+    const food = await createTestFood('TestShopping Merge')
+
+    const first = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    const second = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+
+    expect(second.id).toBe(first.id)
+    expect(second.amount).toBe(5)
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(5)
+  })
+
+  it('keeps the same food as separate lines when the unit differs', async () => {
+    const user = await createTestUser('e')
+    const food = await createTestFood('TestShopping Units')
+
+    await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'oz' })
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(2)
+  })
 })

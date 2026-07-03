@@ -5,6 +5,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import { apiCreateShoppingListFoodItem } from '@/lib/api/shoppingList'
+import { preferredShoppingUnit, sortUnitsCustomFirst } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
@@ -27,7 +28,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const setFoods = useFoodStore((state) => state.setFoods)
   const items = useShoppingListStore((state) => state.items)
   const setItems = useShoppingListStore((state) => state.setItems)
-  const addItem = useShoppingListStore((state) => state.addItem)
+  const upsertItem = useShoppingListStore((state) => state.upsertItem)
 
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
   const [foodName, setFoodName] = useState('')
@@ -42,7 +43,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   }, [initialFoods, initialItems, setFoods, setItems])
 
   const unitOptions = useMemo(
-    () => getFoodUnits(selectedFood).map((foodUnit) => ({ label: foodUnit, value: foodUnit })),
+    () => sortUnitsCustomFirst(getFoodUnits(selectedFood)).map((foodUnit) => ({ label: foodUnit, value: foodUnit })),
     [selectedFood]
   )
 
@@ -50,7 +51,17 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     const nextUnits = getFoodUnits(food)
     setSelectedFood(food)
     setFoodName(food.name)
-    setUnit(nextUnits[0] ?? '')
+    setUnit(preferredShoppingUnit(nextUnits, food.servingUnit))
+  }
+
+  function handleFoodInputChange(text: string) {
+    setFoodName(text)
+    // Editing or clearing the search text invalidates a previously selected food,
+    // so the item can no longer be added until a food is re-selected.
+    if (selectedFood && text !== selectedFood.name) {
+      setSelectedFood(null)
+      setUnit('')
+    }
   }
 
   async function handleAddItem() {
@@ -64,7 +75,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
         amount,
         unit,
       })
-      addItem(created)
+      upsertItem(created)
       setSelectedFood(null)
       setFoodName('')
       setAmount(1)
@@ -79,29 +90,27 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const isAddDisabled = saving || !selectedFood || amount <= 0 || !unit
 
   return (
-    <div className="pantry-list">
-      <div className="pantry-content">
-        <div className="pantry-header">
-          <div>
-            <p className="pantry-label">Meal Planning</p>
-            <h1 className="pantry-name">Shopping List</h1>
-          </div>
-        </div>
+    <div className="shopping-list">
+      <div className="shopping-list-content">
+        <header className="shopping-list-header">
+          <h1>Shopping List</h1>
+        </header>
 
-        <div className="pantry-panel">
-          <div className="panel-toolbar" style={{ alignItems: 'flex-end' }}>
-            <div className="filter-group" style={{ minWidth: 280, flex: 1 }}>
+        <div className="shopping-list-panel">
+          <div className="add-item-form">
+            <div className="field field-food">
               <label htmlFor="shopping-list-food">Food</label>
               <FoodSearch
                 value={foodName}
                 localFoods={foods}
                 onChange={handleFoodSelected}
+                onInputChange={handleFoodInputChange}
                 placeholder="Search foods"
                 inputAriaLabel="Shopping list food"
               />
             </div>
 
-            <div className="filter-group">
+            <div className="field field-amount">
               <label htmlFor="shopping-list-amount">Amount</label>
               <InputNumber
                 inputId="shopping-list-amount"
@@ -113,7 +122,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               />
             </div>
 
-            <div className="filter-group">
+            <div className="field field-unit">
               <label htmlFor="shopping-list-unit">Unit</label>
               <Dropdown
                 inputId="shopping-list-unit"
@@ -121,13 +130,13 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
                 value={unit}
                 onChange={(e) => setUnit(e.value)}
                 options={unitOptions}
-                placeholder="Select unit"
+                placeholder="Select"
               />
             </div>
 
             <button
               type="button"
-              className="pill pill-primary"
+              className="add-item-button"
               onClick={handleAddItem}
               disabled={isAddDisabled}
             >
@@ -136,30 +145,23 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
           </div>
 
           {saveError && (
-            <div className="bulk-actions-bar" role="alert">
+            <div className="add-item-error" role="alert">
               {saveError}
             </div>
           )}
 
           {items.length === 0 ? (
-            <div className="empty-state">No items yet. Add a food to start your shopping list.</div>
+            <p className="shopping-list-empty">No items yet. Add a food to start your shopping list.</p>
           ) : (
-            <div className="pantry-grid">
+            <ul className="shopping-list-items" aria-label="Shopping list items">
               {items.map((item) => (
-                <article key={item.id} className="pantry-item-card">
-                  <div className="item-header">
-                    <div>
-                      <h2>{item.food.name}</h2>
-                      <p>{item.amount} {item.unit}</p>
-                    </div>
-                  </div>
-                  <div className="item-meta">
-                    <span>Source: {item.sourceType}</span>
-                    <span>Status: {item.status}</span>
-                  </div>
-                </article>
+                <li key={item.id} className="shopping-list-item">
+                  <span className="check-circle" aria-hidden="true" />
+                  <span className="item-name">{item.food.name}</span>
+                  <span className="item-qty">{item.amount} {item.unit}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>

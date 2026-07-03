@@ -148,19 +148,42 @@ export async function createShoppingListFoodItem(data: CreateShoppingListFoodIte
     throw new Error('Unit is not valid for this food')
   }
 
-  const [row] = await db
-    .insert(shoppingListItems)
-    .values({
-      shoppingListId: shoppingList.id,
-      sourceType: 'food',
-      foodId: food.id,
-      amount: String(data.amount),
-      unit: data.unit,
-      status: 'to_buy',
-    })
-    .returning()
+  // Merge into an existing open (to_buy) line for the same Food + unit rather than
+  // creating a duplicate. A different unit, or an already-bought line, stays separate.
+  const [existing] = await db
+    .select()
+    .from(shoppingListItems)
+    .where(and(
+      eq(shoppingListItems.shoppingListId, shoppingList.id),
+      eq(shoppingListItems.foodId, food.id),
+      eq(shoppingListItems.unit, data.unit),
+      eq(shoppingListItems.status, 'to_buy'),
+    ))
 
-  const item = await getShoppingListItemById(row.id, data.userId)
+  let itemId: number
+  if (existing) {
+    const [updated] = await db
+      .update(shoppingListItems)
+      .set({ amount: String(Number(existing.amount) + data.amount) })
+      .where(eq(shoppingListItems.id, existing.id))
+      .returning()
+    itemId = updated.id
+  } else {
+    const [row] = await db
+      .insert(shoppingListItems)
+      .values({
+        shoppingListId: shoppingList.id,
+        sourceType: 'food',
+        foodId: food.id,
+        amount: String(data.amount),
+        unit: data.unit,
+        status: 'to_buy',
+      })
+      .returning()
+    itemId = row.id
+  }
+
+  const item = await getShoppingListItemById(itemId, data.userId)
   if (!item) throw new Error('Failed to create shopping list item')
   return item
 }

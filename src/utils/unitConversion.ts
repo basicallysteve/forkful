@@ -75,6 +75,31 @@ export function getAllowedUnits(baseUnit: string, density?: number): string[] {
   return [baseUnit, ...CUSTOM_UNITS.filter(u => u !== baseUnit)]
 }
 
+/** True when a unit is neither a standard mass nor volume unit — i.e. a natural "purchase" unit (piece, can, fruit, bunch, …). */
+export function isCustomUnit(unit: string): boolean {
+  return getUnitCategory(unit) === 'custom'
+}
+
+/** Order units so Custom Units come first (the natural purchase units), preserving each group's original order. */
+export function sortUnitsCustomFirst(units: string[]): string[] {
+  return [
+    ...units.filter(isCustomUnit),
+    ...units.filter((unit) => !isCustomUnit(unit)),
+  ]
+}
+
+/**
+ * The unit a shopping line should default to when a Food is selected: the first Custom Unit if the
+ * Food has one (so you buy "5 limes", not "100 g of limes"), otherwise the serving unit, otherwise
+ * the first available unit.
+ */
+export function preferredShoppingUnit(units: string[], servingUnit?: string): string {
+  const firstCustom = units.find(isCustomUnit)
+  if (firstCustom) return firstCustom
+  if (servingUnit && units.includes(servingUnit)) return servingUnit
+  return units[0] ?? servingUnit ?? ''
+}
+
 export interface CalculateCaloriesParams {
   baseCalories: number
   baseServingSize: number

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ShoppingListView from './Index'
-import { useFoodStore, resetFoodStore } from '@/stores/food'
+import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
 import type { ShoppingListItem } from '@/types/ShoppingList'
@@ -12,13 +12,18 @@ vi.mock('@/lib/api/shoppingList', () => ({
 }))
 
 vi.mock('@/components/FoodSearch/FoodSearch', () => ({
-  default: ({ onChange, value, localFoods }: {
+  default: ({ onChange, onInputChange, value, localFoods }: {
     onChange: (food: Food) => void
+    onInputChange?: (value: string) => void
     value: string
     localFoods: Food[]
   }) => (
     <div>
-      <input aria-label="Shopping list food" value={value} readOnly />
+      <input
+        aria-label="Shopping list food"
+        value={value}
+        onChange={(e) => onInputChange?.(e.target.value)}
+      />
       {localFoods.map((food) => (
         <button key={food.id} type="button" role="option" aria-label={food.name} onClick={() => onChange(food)}>
           {food.name}
@@ -55,6 +60,18 @@ const mockFoods: Food[] = [
     servingUnit: 'cup',
     measurements: [{ unit: 'cup' }],
   },
+  {
+    id: 3,
+    name: 'Lime',
+    calories: 20,
+    protein: 0.5,
+    carbs: 7,
+    fat: 0.1,
+    fiber: 1.9,
+    servingSize: 100,
+    servingUnit: 'g',
+    measurements: [{ unit: 'g' }, { unit: 'piece' }],
+  },
 ]
 
 function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
@@ -80,12 +97,13 @@ describe('ShoppingListView', () => {
   it('hydrates the initial items', async () => {
     render(<ShoppingListView initialFoods={mockFoods} initialItems={[makeItem()]} />)
 
-    expect(await screen.findByRole('heading', { name: 'Chicken Breast' })).toBeInTheDocument()
-    expect(screen.getByText('Source: food')).toBeInTheDocument()
-    expect(screen.getByText('Status: to_buy')).toBeInTheDocument()
+    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
+    expect(within(list).getByText('2 oz')).toBeInTheDocument()
+    expect(screen.queryByText(/Source:/)).not.toBeInTheDocument()
   })
 
-  it('defaults the unit from the selected food measurements', async () => {
+  it('defaults the unit to the serving unit when the food has no custom unit', async () => {
     const user = userEvent.setup()
     vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
       id: 2,
@@ -103,6 +121,27 @@ describe('ShoppingListView', () => {
       foodId: 2,
       amount: 1,
       unit: 'cup',
+    })
+  })
+
+  it('defaults the unit to the food’s custom unit when it has one', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
+      id: 3,
+      food: mockFoods[2],
+      amount: 1,
+      unit: 'piece',
+    }))
+
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('option', { name: /lime/i }))
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+      foodId: 3,
+      amount: 1,
+      unit: 'piece',
     })
   })
 
@@ -126,5 +165,36 @@ describe('ShoppingListView', () => {
 
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
     expect(useShoppingListStore.getState().items[0].status).toBe('to_buy')
+  })
+
+  it('replaces the line in place when the server merges a duplicate', async () => {
+    const user = userEvent.setup()
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    // First add → a new line (id 1, amount 2).
+    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 2, unit: 'g' }))
+    await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
+
+    // Second add of the same food → server merges and returns the SAME id with a summed amount.
+    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 5, unit: 'g' }))
+    await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].amount).toBe(5))
+    expect(useShoppingListStore.getState().items).toHaveLength(1)
+  })
+
+  it('disables Add Item when the selected food is cleared from the search', async () => {
+    const user = userEvent.setup()
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+    expect(screen.getByRole('button', { name: /add item/i })).toBeEnabled()
+
+    await user.clear(screen.getByLabelText('Shopping list food'))
+
+    expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
   })
 })
