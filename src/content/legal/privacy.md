@@ -4,10 +4,6 @@ description: How Forkful collects, uses, and protects your personal data.
 effectiveDate: 2026-07-02
 ---
 
-# Forkful Privacy Policy
-
-**Effective Date: July 2, 2026**
-
 Thank you for using Forkful. This Privacy Policy explains what personal data we collect, why we collect it, how we use and protect it, and what rights you have. By using Forkful, you agree to the practices described here.
 
 If you have questions or concerns, contact us at privacy@forkful.app.

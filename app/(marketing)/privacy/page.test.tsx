@@ -12,7 +12,7 @@ describe('PrivacyPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument()
     expect(screen.getByRole('time')).toHaveAttribute('dateTime', '2026-07-02')
-    expect(screen.getByTestId('mdx-content')).toHaveTextContent('Forkful Privacy Policy')
+    expect(screen.getByTestId('mdx-content')).toHaveTextContent('Thank you for using Forkful.')
   })
 
   it('sets metadata from legal content frontmatter', async () => {
