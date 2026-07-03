@@ -1,0 +1,70 @@
+.article {
+  max-width: 760px;
+}
+
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.body {
+  h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 0 0 1.25rem;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2rem 0 0.75rem;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  p,
+  li {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-color-secondary);
+  }
+
+  ul {
+    padding-left: 1.25rem;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  strong {
+    color: var(--text-color);
+  }
+
+  a {
+    color: var(--vscode-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--vscode-border);
+    margin: 2rem 0;
+  }
+}
