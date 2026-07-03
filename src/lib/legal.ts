@@ -36,9 +36,13 @@ export function getLegalDocument(slug: string): LegalDocument | null {
   const raw = fs.readFileSync(filePath, 'utf8')
   const { data, content } = matter(raw)
 
-  const effectiveDate = data.effectiveDate
-    ? String(data.effectiveDate)
-    : undefined
+  const effectiveDate = (() => {
+    if (!data.effectiveDate) return undefined
+    if (data.effectiveDate instanceof Date) {
+      return data.effectiveDate.toISOString().slice(0, 10)
+    }
+    return String(data.effectiveDate)
+  })()
 
   return {
     slug,

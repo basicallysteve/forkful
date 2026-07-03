@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import { getLegalDocument } from '@/lib/legal'
-import styles from './page.module.scss'
+import LegalPageView from '@/views/Legal/LegalPageView'
 
 export async function generateMetadata(): Promise<Metadata> {
   const privacyPolicy = getLegalDocument('privacy')
@@ -29,13 +29,8 @@ export default function PrivacyPage() {
   if (!privacyPolicy) notFound()
 
   return (
-    <article className={styles.article}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{privacyPolicy.title}</h1>
-      </header>
-      <div className={styles.body}>
-        <MDXRemote source={privacyPolicy.content} />
-      </div>
-    </article>
+    <LegalPageView title={privacyPolicy.title} effectiveDate={privacyPolicy.effectiveDate}>
+      <MDXRemote source={privacyPolicy.content} />
+    </LegalPageView>
   )
 }
