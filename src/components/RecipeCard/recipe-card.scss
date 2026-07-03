@@ -5,6 +5,7 @@
 }
 
 .recipe-card {
+  position: relative; // positioning context for the .card-meal-tag corner pill
   display: flex;
   gap: 12px;
   padding: clamp(.8rem, 1.5vw, 1rem);
@@ -12,9 +13,14 @@
   border: 1px solid var(--vscode-border);
   background: var(--vscode-panel);
   transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
-   height: 100%;                    // fill the grid cell / wrapper
+
+  // Fill the grid cell / wrapper so every card in a row matches the tallest,
+  // and pass that height down through PrimeReact's wrappers so .card-content
+  // fills and .card-footer (margin-top: auto) pins to the bottom.
+  height: 100%;
   .p-card-body { height: 100%; }
-  .p-card-content { height: 100%; } // so .card
+  .p-card-content { height: 100%; }
+
   &:hover {
     border-color: var(--vscode-accent);
     background: var(--accent-hover);
@@ -47,9 +53,18 @@
 .card-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 8px;
   flex-wrap: nowrap;
+  // reserve room on the right so a wrapped title clears the corner meal pill
+  padding-right: 3.5rem;
+}
+
+// meal category pinned to the card's top-right corner, aligned to the card padding
+.card-meal-tag {
+  position: absolute;
+  top: clamp(.8rem, 1.5vw, 1rem);
+  right: clamp(.8rem, 1.5vw, 1rem);
+  z-index: 1;
 }
 
 .card-title {
@@ -88,6 +103,7 @@
 .card-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   margin-top: auto;
 }

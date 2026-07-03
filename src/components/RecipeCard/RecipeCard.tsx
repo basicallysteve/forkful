@@ -37,13 +37,15 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           />
         </div>
       )}
+      {recipe.meal && <span className="pill pill-ghost card-meal-tag">{recipe.meal}</span>}
       <Link href={toRecipeUrl(recipe.shortId, recipe.name)} className="card-content">
         <div className="card-header">
           <h3 className="card-title">{recipe.name}</h3>
-          <div className="card-badges">
-            {recipe.meal && <span className="pill pill-ghost">{recipe.meal}</span>}
-            {recipe.date_published === null && <StatusDot variant="unpublished" label="Unpublished" />}
-          </div>
+          {recipe.date_published === null && (
+            <div className="card-badges">
+              <StatusDot variant="unpublished" label="Unpublished" />
+            </div>
+          )}
         </div>
         <div
           className="card-description"
