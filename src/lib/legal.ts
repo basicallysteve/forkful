@@ -14,9 +14,14 @@ export interface LegalPage {
 }
 
 export function getLegalPage(slug: string): LegalPage | null {
+  if (!/^[a-z0-9-]+$/i.test(slug)) return null
+
   const filePath = path.join(LEGAL_DIR, `${slug}.md`)
-  if (!fs.existsSync(filePath)) return null
-  const raw = fs.readFileSync(filePath, 'utf8')
+  const resolved = path.resolve(filePath)
+  if (!resolved.startsWith(path.resolve(LEGAL_DIR) + path.sep)) return null
+  if (!fs.existsSync(resolved)) return null
+
+  const raw = fs.readFileSync(resolved, 'utf8')
   const { data, content } = matter(raw)
   return {
     slug,
