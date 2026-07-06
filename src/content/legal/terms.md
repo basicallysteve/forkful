@@ -9,7 +9,7 @@ effectiveDate: 2026-07-02
 
 Please read these Terms and Conditions ("Terms") carefully before using Forkful. By creating an account or using the service, you agree to be bound by these Terms. If you do not agree, do not use Forkful.
 
-Questions? Contact us at legal@forkful.app.
+Questions? Contact us at legal@eatforkful.com.
 
 ## 1. Acceptance of Terms
 
@@ -31,7 +31,7 @@ You must create an account to use most features of Forkful. You agree to provide
 
 ### 3.2 Account Security
 
-You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account. Notify us immediately at legal@forkful.app if you suspect unauthorized access.
+You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account. Notify us immediately at legal@eatforkful.com if you suspect unauthorized access.
 
 ### 3.3 One Account Per Person
 
@@ -189,7 +189,7 @@ These Terms are governed by the laws of the State of New York, United States, wi
 
 For users in the EU/EEA: Nothing in these Terms limits your rights under applicable consumer protection or data protection laws in your country of residence.
 
-We encourage you to contact us at legal@forkful.app to resolve any dispute informally before pursuing formal legal action. Most concerns can be resolved quickly this way.
+We encourage you to contact us at legal@eatforkful.com to resolve any dispute informally before pursuing formal legal action. Most concerns can be resolved quickly this way.
 
 ## 14. General Provisions
 
@@ -205,7 +205,7 @@ We encourage you to contact us at legal@forkful.app to resolve any dispute infor
 
 ## 15. Contact Us
 
-**Email:** legal@forkful.app
+**Email:** legal@eatforkful.com
 
 **Response time:** We aim to respond to all legal inquiries within 5 business days.
 
