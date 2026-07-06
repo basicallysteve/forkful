@@ -12,6 +12,7 @@ export default function MarketingFooter() {
           <Link href="/about" className={styles.link}>About</Link>
           <Link href="/blog" className={styles.link}>Blog</Link>
           <Link href="/privacy" className={styles.link}>Privacy Policy</Link>
+          <Link href="/terms" className={styles.link}>Terms</Link>
           <Link href="/login" className={styles.link}>Log in</Link>
           <Link href="/create-account" className={styles.link}>Sign up</Link>
         </nav>

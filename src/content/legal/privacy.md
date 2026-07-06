@@ -6,7 +6,7 @@ effectiveDate: 2026-07-02
 
 Thank you for using Forkful. This Privacy Policy explains what personal data we collect, why we collect it, how we use and protect it, and what rights you have. By using Forkful, you agree to the practices described here.
 
-If you have questions or concerns, contact us at privacy@forkful.app.
+If you have questions or concerns, contact us at privacy@eatforkful.com
 
 ## 1. Who We Are
 
@@ -126,7 +126,7 @@ California residents have the right to know what personal information is collect
 
 ### 7.4 How to Exercise Your Rights
 
-Email privacy@forkful.app. We will respond within 30 days and may verify your identity before fulfilling your request.
+Email privacy@eatforkful.com We will respond within 30 days and may verify your identity before fulfilling your request.
 
 ## 8. Security
 
@@ -135,7 +135,7 @@ Email privacy@forkful.app. We will respond within 30 days and may verify your id
 - Access controls limiting which team members can access user data
 - Regular security reviews of infrastructure and third-party integrations
 
-No system is perfectly secure. If you believe your account has been compromised, contact us immediately at privacy@forkful.app.
+No system is perfectly secure. If you believe your account has been compromised, contact us immediately at privacy@eatforkful.com
 
 ## 9. Children's Privacy
 

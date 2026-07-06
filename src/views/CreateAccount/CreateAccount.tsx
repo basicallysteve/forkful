@@ -317,6 +317,10 @@ function CreateAccount() {
               <p>
                 Already have an account? <Link href="/login">Login</Link>
               </p>
+              <p>
+                By creating an account you agree to our{' '}
+                <Link href="/terms">Terms &amp; Conditions</Link>.
+              </p>
             </div>
           </div>
         </section>

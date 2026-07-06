@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -107,6 +108,10 @@ export default function Welcome() {
 
           <div className="welcome-footer">
             {error && <p className="welcome-error" role="alert">{error}</p>}
+            <p className="welcome-terms">
+              By continuing you agree to our{' '}
+              <Link href="/terms">Terms &amp; Conditions</Link>.
+            </p>
             <button
               type="button"
               className="skip-button"

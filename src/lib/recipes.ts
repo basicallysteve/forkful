@@ -1,7 +1,7 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not, sql } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not, sql, avg } from 'drizzle-orm'
 import { db } from '@/db'
 import type { SQL } from 'drizzle-orm'
-import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
+import { recipes, reviews, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
@@ -392,9 +392,10 @@ export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
       .select({ recipe: recipes, saveCount: count(savedRecipes.id) })
       .from(recipes)
       .leftJoin(savedRecipes, and(eq(savedRecipes.recipeId, recipes.id), isNull(savedRecipes.dateDeleted)))
+      .leftJoin(reviews, and(eq(reviews.recipeId, recipes.id)))
       .where(and(isNull(recipes.dateDeleted), eq(recipes.isPublic, 1), isNotNull(recipes.datePublished)))
       .groupBy(recipes.id)
-      .orderBy(desc(count(savedRecipes.id)), desc(recipes.datePublished))
+      .orderBy(desc(recipes.viewCount), desc(avg(reviews.rating)), desc(count(savedRecipes.id)), desc(recipes.datePublished))
       .limit(limit)
     return buildRecipesBatch(rows.map((r) => r.recipe))
   } catch {
