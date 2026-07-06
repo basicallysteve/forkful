@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
+import { EACH_UNIT } from '@/utils/unitConversion'
 import type { Food, Measurement } from '@/types/Food'
 import type { ShoppingList, ShoppingListItem } from '@/types/ShoppingList'
 
@@ -59,8 +60,10 @@ function mapShoppingListItem(
 
 function getAllowedFoodUnits(food: Food): string[] {
   const units = food.measurements.map((measurement) => measurement.unit)
-  if (units.length > 0) return units
-  return food.servingUnit ? [food.servingUnit] : []
+  const foodUnits = units.length > 0 ? units : food.servingUnit ? [food.servingUnit] : []
+  // The synthetic Each Count Unit is always a valid shopping unit even though it is never part of a
+  // Food's Measurements (see ADR-0022).
+  return [...foodUnits, EACH_UNIT]
 }
 
 async function getActiveShoppingList(userId: number): Promise<ShoppingList | null> {

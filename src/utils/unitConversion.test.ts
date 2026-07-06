@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatUnitForAmount } from './unitConversion'
+import { EACH_UNIT, formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from './unitConversion'
 
 describe('formatUnitForAmount', () => {
   it('leaves standard mass and volume symbols unchanged regardless of amount', () => {
@@ -34,5 +34,35 @@ describe('formatUnitForAmount', () => {
 
   it('returns an empty string unchanged', () => {
     expect(formatUnitForAmount(2, '')).toBe('')
+  })
+
+  it('leaves the Each Count Unit invariant in the plural', () => {
+    expect(formatUnitForAmount(1, EACH_UNIT)).toBe('each')
+    expect(formatUnitForAmount(6, EACH_UNIT)).toBe('each')
+    expect(formatUnitForAmount(0.5, EACH_UNIT)).toBe('each')
+  })
+})
+
+describe('preferredShoppingUnit', () => {
+  it('prefers the food’s first custom unit', () => {
+    expect(preferredShoppingUnit(['g', 'piece'])).toBe('piece')
+    expect(preferredShoppingUnit(['oz', 'slice', 'g'])).toBe('slice')
+  })
+
+  it('falls back to "each" when the food has only mass/volume units', () => {
+    expect(preferredShoppingUnit(['g'])).toBe('each')
+    expect(preferredShoppingUnit(['cup'])).toBe('each')
+    expect(preferredShoppingUnit([])).toBe('each')
+  })
+})
+
+describe('shoppingUnitOptions', () => {
+  it('appends the Each Count Unit and lists custom units first', () => {
+    expect(shoppingUnitOptions(['g', 'oz'])).toEqual(['each', 'g', 'oz'])
+    expect(shoppingUnitOptions(['g', 'piece'])).toEqual(['piece', 'each', 'g'])
+  })
+
+  it('does not duplicate "each" when the food already lists it', () => {
+    expect(shoppingUnitOptions(['each', 'g'])).toEqual(['each', 'g'])
   })
 })

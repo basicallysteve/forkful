@@ -1,6 +1,15 @@
 import convert from 'convert-units'
 import pluralize from 'pluralize'
 
+/**
+ * The synthetic, app-wide count unit meaning "one item / one package" (see ADR-0022). It is an
+ * Uncalibrated Custom Unit that is never stored in a Food's Measurements; the shopping unit picker
+ * offers it in addition to a Food's own units, and it is the default when a Food has no Custom Unit.
+ * "each" is invariant in the plural, so register it as uncountable to stop "6 eaches".
+ */
+export const EACH_UNIT = 'each'
+pluralize.addUncountableRule(EACH_UNIT)
+
 export type UnitCategory = 'mass' | 'volume' | 'custom'
 
 export const MASS_UNITS = ['g', 'kg', 'oz', 'lb', 'mg'] as const
@@ -100,15 +109,21 @@ export function sortUnitsCustomFirst(units: string[]): string[] {
 }
 
 /**
- * The unit a shopping line should default to when a Food is selected: the first Custom Unit if the
- * Food has one (so you buy "5 limes", not "100 g of limes"), otherwise the serving unit, otherwise
- * the first available unit.
+ * The unit a shopping line defaults to when a Food is selected: the Food's first Custom Unit if it
+ * has one (so you buy "5 limes", not "100 g of limes"), otherwise the Each Count Unit. The Serving
+ * Unit is never used as a shopping default — a bare mass/volume anchor ("6 g") reads unnaturally on
+ * a grocery list, so grams-only Foods fall back to a count ("6 each"). See ADR-0022.
  */
-export function preferredShoppingUnit(units: string[], servingUnit?: string): string {
-  const firstCustom = units.find(isCustomUnit)
-  if (firstCustom) return firstCustom
-  if (servingUnit && units.includes(servingUnit)) return servingUnit
-  return units[0] ?? servingUnit ?? ''
+export function preferredShoppingUnit(units: string[]): string {
+  return units.find(isCustomUnit) ?? EACH_UNIT
+}
+
+/**
+ * The unit options offered by the shopping list's Advanced picker for a Food: the Food's own
+ * Measurements plus the always-available Each Count Unit, Custom Units first.
+ */
+export function shoppingUnitOptions(foodUnits: string[]): string[] {
+  return sortUnitsCustomFirst([...new Set([...foodUnits, EACH_UNIT])])
 }
 
 export interface CalculateCaloriesParams {
@@ -169,6 +184,7 @@ export function getUnitLabel(unit: string): string {
     can: 'cans',
     bottle: 'bottles',
     package: 'packages',
+    each: 'each',
   }
   return labels[unit] || unit
 }

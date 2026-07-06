@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ShoppingListView from './Index'
 import { resetFoodStore } from '@/stores/food'
@@ -122,10 +122,31 @@ describe('ShoppingListView', () => {
     expect(within(list).getByText('6 g')).toBeInTheDocument()
   })
 
-  it('defaults the unit to the serving unit when the food has no custom unit', async () => {
+  it('defaults the unit to "each" when the food has no custom unit', async () => {
     const user = userEvent.setup()
     vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
       id: 2,
+      food: mockFoods[1],
+      amount: 1,
+      unit: 'each',
+    }))
+
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('option', { name: /brown rice/i }))
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+      foodId: 2,
+      amount: 1,
+      unit: 'each',
+    })
+  })
+
+  it('hides the unit picker by default and reveals it via Advanced to override the unit', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
+      id: 4,
       food: mockFoods[1],
       amount: 1,
       unit: 'cup',
@@ -134,6 +155,18 @@ describe('ShoppingListView', () => {
     render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
 
     await user.click(screen.getByRole('option', { name: /brown rice/i }))
+    // The unit dropdown is not shown until Advanced is opened.
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^advanced$/i }))
+    // The dropdown shows the auto-derived default ("each") for a food with no custom unit.
+    const unitDropdown = await screen.findByRole('combobox')
+    expect(unitDropdown).toHaveTextContent('each')
+
+    // Override it with the food's own unit. (PrimeReact's combobox has pointer-events:none
+    // in jsdom, so it must be opened via fireEvent rather than user-event.)
+    fireEvent.click(unitDropdown)
+    fireEvent.click(await screen.findByRole('option', { name: 'cup', hidden: true }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
     expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
@@ -179,7 +212,7 @@ describe('ShoppingListView', () => {
     expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
       foodId: 1,
       amount: 2,
-      unit: 'g',
+      unit: 'each',
     })
 
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))

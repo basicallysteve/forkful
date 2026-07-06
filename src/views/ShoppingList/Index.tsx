@@ -5,7 +5,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import { apiCreateShoppingListFoodItem } from '@/lib/api/shoppingList'
-import { formatUnitForAmount, preferredShoppingUnit, sortUnitsCustomFirst } from '@/utils/unitConversion'
+import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
@@ -34,6 +34,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [foodName, setFoodName] = useState('')
   const [amount, setAmount] = useState(1)
   const [unit, setUnit] = useState('')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -43,15 +44,15 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   }, [initialFoods, initialItems, setFoods, setItems])
 
   const unitOptions = useMemo(
-    () => sortUnitsCustomFirst(getFoodUnits(selectedFood)).map((foodUnit) => ({ label: foodUnit, value: foodUnit })),
+    () => shoppingUnitOptions(getFoodUnits(selectedFood)).map((foodUnit) => ({ label: foodUnit, value: foodUnit })),
     [selectedFood]
   )
 
   function handleFoodSelected(food: Food) {
-    const nextUnits = getFoodUnits(food)
     setSelectedFood(food)
     setFoodName(food.name)
-    setUnit(preferredShoppingUnit(nextUnits, food.servingUnit))
+    // The unit is auto-derived and hidden; the user only sees it via "Advanced".
+    setUnit(preferredShoppingUnit(getFoodUnits(food)))
   }
 
   function handleFoodInputChange(text: string) {
@@ -122,17 +123,19 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               />
             </div>
 
-            <div className="field field-unit">
-              <label htmlFor="shopping-list-unit">Unit</label>
-              <Dropdown
-                inputId="shopping-list-unit"
-                ariaLabel="Shopping list unit"
-                value={unit}
-                onChange={(e) => setUnit(e.value)}
-                options={unitOptions}
-                placeholder="Select"
-              />
-            </div>
+            {showAdvanced && (
+              <div className="field field-unit">
+                <label htmlFor="shopping-list-unit">Unit</label>
+                <Dropdown
+                  inputId="shopping-list-unit"
+                  ariaLabel="Shopping list unit"
+                  value={unit}
+                  onChange={(e) => setUnit(e.value)}
+                  options={unitOptions}
+                  placeholder="Select"
+                />
+              </div>
+            )}
 
             <button
               type="button"
@@ -143,6 +146,15 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               {saving ? 'Adding…' : 'Add Item'}
             </button>
           </div>
+
+          <button
+            type="button"
+            className="advanced-toggle"
+            aria-expanded={showAdvanced}
+            onClick={() => setShowAdvanced((shown) => !shown)}
+          >
+            {showAdvanced ? 'Hide advanced' : 'Advanced'}
+          </button>
 
           {saveError && (
             <div className="add-item-error" role="alert">

@@ -106,6 +106,24 @@
     }
   }
 
+  // Understated link-style control that reveals the unit override. The unit is auto-derived and
+  // hidden by default; most users never open this.
+  .advanced-toggle {
+    align-self: flex-start;
+    margin-top: -6px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+  }
+
   .add-item-error {
     padding: 10px 12px;
     border-radius: 8px;
