@@ -5,7 +5,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import { apiCreateShoppingListFoodItem } from '@/lib/api/shoppingList'
-import { preferredShoppingUnit, sortUnitsCustomFirst } from '@/utils/unitConversion'
+import { formatUnitForAmount, preferredShoppingUnit, sortUnitsCustomFirst } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
@@ -158,7 +158,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
                 <li key={item.id} className="shopping-list-item">
                   <span className="check-circle" aria-hidden="true" />
                   <span className="item-name">{item.food.name}</span>
-                  <span className="item-qty">{item.amount} {item.unit}</span>
+                  <span className="item-qty">{item.amount} {formatUnitForAmount(item.amount, item.unit)}</span>
                 </li>
               ))}
             </ul>

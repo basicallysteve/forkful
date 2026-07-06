@@ -163,4 +163,25 @@
     font-size: 14px;
     font-variant-numeric: tabular-nums;
   }
+
+  // On narrow screens the row can't hold four controls, so stack them: the food
+  // search, Amount, Unit, and the button each take their own full-width row.
+  @media (max-width: 720px) {
+    .add-item-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .field-food,
+    .field-amount,
+    .field-unit {
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .add-item-button {
+      width: 100%;
+    }
+  }
 }

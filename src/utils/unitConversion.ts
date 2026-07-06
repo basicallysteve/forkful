@@ -1,4 +1,5 @@
 import convert from 'convert-units'
+import pluralize from 'pluralize'
 
 export type UnitCategory = 'mass' | 'volume' | 'custom'
 
@@ -78,6 +79,16 @@ export function getAllowedUnits(baseUnit: string, density?: number): string[] {
 /** True when a unit is neither a standard mass nor volume unit — i.e. a natural "purchase" unit (piece, can, fruit, bunch, …). */
 export function isCustomUnit(unit: string): boolean {
   return getUnitCategory(unit) === 'custom'
+}
+
+/**
+ * The display form of a unit for a given amount. Custom Units are pluralised to read naturally
+ * (e.g. "6 fruits", "2 loaves", "1 slice"); standard mass/volume symbols are always left unchanged
+ * (e.g. "6 g", never "6 gs"). Pluralisation follows English count rules — singular only at exactly 1.
+ */
+export function formatUnitForAmount(amount: number, unit: string): string {
+  if (!unit || !isCustomUnit(unit)) return unit
+  return pluralize(unit, amount)
 }
 
 /** Order units so Custom Units come first (the natural purchase units), preserving each group's original order. */

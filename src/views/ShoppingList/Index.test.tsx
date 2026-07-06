@@ -103,6 +103,25 @@ describe('ShoppingListView', () => {
     expect(screen.queryByText(/Source:/)).not.toBeInTheDocument()
   })
 
+  it('pluralises custom units by amount but leaves standard units unchanged', async () => {
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[2], amount: 6, unit: 'piece' }),
+          makeItem({ id: 2, food: mockFoods[2], amount: 1, unit: 'piece' }),
+          makeItem({ id: 3, food: mockFoods[2], amount: 6, unit: 'g' }),
+        ]}
+      />,
+    )
+
+    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    expect(within(list).getByText('6 pieces')).toBeInTheDocument()
+    expect(within(list).getByText('1 piece')).toBeInTheDocument()
+    // Standard mass symbols never pluralise.
+    expect(within(list).getByText('6 g')).toBeInTheDocument()
+  })
+
   it('defaults the unit to the serving unit when the food has no custom unit', async () => {
     const user = userEvent.setup()
     vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
