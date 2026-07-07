@@ -77,23 +77,33 @@ function ShoppingListItemRow({
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
 
-  const swipe = useSwipeable({
-    onSwipedLeft: () => setOpen(true),
-    onSwipedRight: () => setOpen(false),
-    // Only react to a deliberate drag, and only to touch — on desktop the hover reveal handles it.
-    delta: 40,
-    trackMouse: false,
-  })
-
-  async function handleRemoveClick(event: MouseEvent) {
-    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
-    event.stopPropagation()
+  async function remove() {
+    if (removing) return
     setRemoving(true)
     try {
       await onRemove(item.id)
     } finally {
       setRemoving(false)
     }
+  }
+
+  const swipe = useSwipeable({
+    // First left swipe opens the row to reveal Remove; a second left swipe on an already-open row
+    // commits the delete outright, so a decisive double-swipe removes without reaching for the button.
+    onSwipedLeft: () => {
+      if (open) remove()
+      else setOpen(true)
+    },
+    onSwipedRight: () => setOpen(false),
+    // Only react to a deliberate drag, and only to touch — on desktop the hover reveal handles it.
+    delta: 40,
+    trackMouse: false,
+  })
+
+  function handleRemoveClick(event: MouseEvent) {
+    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
+    event.stopPropagation()
+    remove()
   }
 
   const quantity = itemQuantityLabel(item)

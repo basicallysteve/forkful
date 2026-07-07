@@ -131,6 +131,15 @@ function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
   return { ...base, name: derivedName }
 }
 
+// Drive react-swipeable with a deliberate left drag (well past its 40px delta). It listens via native
+// touch listeners, so fireEvent's real DOM events reach it.
+function swipeLeft(el: HTMLElement) {
+  fireEvent.touchStart(el, { touches: [{ clientX: 220, clientY: 10 }] })
+  fireEvent.touchMove(el, { touches: [{ clientX: 140, clientY: 10 }] })
+  fireEvent.touchMove(el, { touches: [{ clientX: 40, clientY: 10 }] })
+  fireEvent.touchEnd(el, { changedTouches: [{ clientX: 40, clientY: 10 }] })
+}
+
 describe('ShoppingListView', () => {
   beforeEach(() => {
     resetFoodStore()
@@ -468,6 +477,30 @@ describe('ShoppingListView', () => {
 
     // The Remove click is stopped from bubbling, so no phantom selection is left behind.
     expect(list.querySelector('.shopping-list-item.is-selected')).toBeNull()
+  })
+
+  it('opens the row on a left swipe, then removes it on a second left swipe', async () => {
+    vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    const row = list.querySelector('.shopping-list-row') as HTMLElement
+
+    // First swipe reveals Remove but does not delete.
+    swipeLeft(row)
+    await waitFor(() => expect(row.className).toContain('is-open'))
+    expect(apiDeleteShoppingListItem).not.toHaveBeenCalled()
+
+    // Second swipe on the open row commits the delete.
+    swipeLeft(row)
+    expect(apiDeleteShoppingListItem).toHaveBeenCalledWith(1)
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(0))
   })
 
   it('keeps the item and shows an error when the remove request fails', async () => {
