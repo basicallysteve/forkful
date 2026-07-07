@@ -112,18 +112,23 @@ const mockFoods: Food[] = [
 ]
 
 function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
-  const food = overrides.food ?? mockFoods[0]
-  return {
+  // A food line defaults to the first mock food; product/freeform callers pass their own overrides.
+  const base: ShoppingListItem = {
     id: 1,
     sourceType: 'food',
     status: 'to_buy',
-    name: food?.name ?? '',
-    food,
+    name: '',
+    food: mockFoods[0],
     amount: 2,
     unit: 'oz',
     addedDate: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
   }
+  // Derive the display name from the actual source on the merged item so it can never drift from
+  // `food`/`product`/`sourceType`; an explicit `name` override still wins.
+  if (overrides.name !== undefined) return base
+  const derivedName = base.product?.name ?? base.food?.name ?? ''
+  return { ...base, name: derivedName }
 }
 
 describe('ShoppingListView', () => {

@@ -10,6 +10,11 @@ import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType } from 
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
+// Freeform text is user-supplied, so cap it to the shopping_list_items column limits and surface a
+// clean validation error rather than letting an over-length value hit the DB as a 500.
+const FREEFORM_NAME_MAX_LENGTH = 255
+const FREEFORM_UNIT_MAX_LENGTH = 50
+
 function parseMeasurements(raw: unknown): Measurement[] {
   if (!Array.isArray(raw)) return []
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
@@ -75,13 +80,14 @@ function mapShoppingListItem(
   product?: Product
 ): ShoppingListItem {
   const sourceType = row.sourceType as ShoppingListItemSourceType
-  // The display name is derived from the linked entity for food/product lines and from the stored
-  // free text for freeform lines, falling back to the stored name so a soft-deleted link still reads.
+  // The display name comes from the linked entity for food/product lines and from the stored free
+  // text for freeform lines. The `?? ''` is only a type guard: callers exclude soft-deleted links and
+  // food/product rows always have their entity joined, so the fallbacks aren't reached in practice.
   const name = sourceType === 'product'
-    ? product?.name ?? row.name ?? ''
+    ? product?.name ?? ''
     : sourceType === 'freeform'
       ? row.name ?? ''
-      : food?.name ?? row.name ?? ''
+      : food?.name ?? ''
 
   return {
     id: row.id,
@@ -331,8 +337,10 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
 
   const name = data.name.trim()
   if (!name) throw new Error('Name is required')
+  if (name.length > FREEFORM_NAME_MAX_LENGTH) throw new Error('Name is too long')
 
   const rawUnit = data.unit?.trim() ?? ''
+  if (rawUnit.length > FREEFORM_UNIT_MAX_LENGTH) throw new Error('Unit is too long')
   const unit = rawUnit.length > 0 ? rawUnit : null
 
   return insertOrMergeItem(data.userId, {

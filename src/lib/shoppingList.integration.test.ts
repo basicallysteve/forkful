@@ -201,6 +201,18 @@ describe('shopping list data layer (integration)', () => {
     expect(items.map((item) => item.name).sort()).toEqual(['TestShopping Napkins', 'TestShopping Trash bags'])
   })
 
+  it('rejects freeform name/unit that exceed the column limits before hitting the DB', async () => {
+    const user = await createTestUser('j')
+
+    await expect(
+      createShoppingListFreeformItem({ userId: user.id, name: 'x'.repeat(256), amount: 1 })
+    ).rejects.toThrow('Name is too long')
+
+    await expect(
+      createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Long Unit', amount: 1, unit: 'x'.repeat(51) })
+    ).rejects.toThrow('Unit is too long')
+  })
+
   it('merges a duplicate freeform name + unit line', async () => {
     const user = await createTestUser('h')
 

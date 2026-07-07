@@ -104,7 +104,9 @@ export async function POST(request: Request) {
         error.message === 'Unit is not valid for this food' ||
         error.message === 'Unit is not valid for this product' ||
         error.message === 'Amount must be greater than zero' ||
-        error.message === 'Name is required'
+        error.message === 'Name is required' ||
+        error.message === 'Name is too long' ||
+        error.message === 'Unit is too long'
       ) {
         return NextResponse.json({ error: error.message }, { status: 400 })
       }
