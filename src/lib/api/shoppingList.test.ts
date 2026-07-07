@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   apiCreateShoppingListItem,
+  apiDeleteShoppingListItem,
   apiFetchShoppingListItems,
 } from './shoppingList'
 import type { ShoppingListItem } from '@/types/ShoppingList'
@@ -96,5 +97,27 @@ describe('apiCreateShoppingListItem', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
 
     await expect(apiCreateShoppingListItem({ sourceType: 'food', foodId: 1, amount: 1, unit: 'g' })).rejects.toThrow('Failed to create shopping list item')
+  })
+})
+
+describe('apiDeleteShoppingListItem', () => {
+  it('sends a DELETE to the item endpoint', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
+
+    await apiDeleteShoppingListItem(3)
+
+    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/3', { method: 'DELETE' })
+  })
+
+  it('resolves on a 204 No Content response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 204 } as Response)
+
+    await expect(apiDeleteShoppingListItem(3)).resolves.toBeUndefined()
+  })
+
+  it('throws on a non-ok, non-204 response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
+
+    await expect(apiDeleteShoppingListItem(3)).rejects.toThrow('Failed to delete shopping list item')
   })
 })

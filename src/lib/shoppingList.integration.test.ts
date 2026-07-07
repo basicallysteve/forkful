@@ -7,6 +7,7 @@ import {
   createShoppingListFoodItem,
   createShoppingListFreeformItem,
   createShoppingListProductItem,
+  deleteShoppingListItem,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
 } from './shoppingList'
@@ -260,5 +261,44 @@ describe('shopping list data layer (integration)', () => {
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(3)
     expect(items.map((item) => item.sourceType).sort()).toEqual(['food', 'freeform', 'product'])
+  })
+
+  it('hard-deletes a line off the active list and reports success', async () => {
+    const user = await createTestUser('j')
+    const food = await createTestFood('TestShopping Deletable')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+
+    const deleted = await deleteShoppingListItem(created.id, user.id)
+    expect(deleted).toBe(true)
+
+    // The row is gone outright — no soft-delete, so it no longer lists.
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(0)
+
+    const rows = await pool.query('SELECT id FROM shopping_list_items WHERE id = $1', [created.id])
+    expect(rows.rowCount).toBe(0)
+  })
+
+  it('returns false and leaves the line intact when another user tries to delete it', async () => {
+    const owner = await createTestUser('k')
+    const intruder = await createTestUser('l')
+    const food = await createTestFood('TestShopping Owned')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
+
+    const deleted = await deleteShoppingListItem(created.id, intruder.id)
+    expect(deleted).toBe(false)
+
+    // The owner's line is untouched.
+    const items = await getShoppingListItems(owner.id)
+    expect(items).toHaveLength(1)
+  })
+
+  it('returns false for an unknown line id', async () => {
+    const user = await createTestUser('m')
+
+    const deleted = await deleteShoppingListItem(999_999_999, user.id)
+    expect(deleted).toBe(false)
   })
 })

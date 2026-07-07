@@ -36,3 +36,8 @@ export async function apiCreateShoppingListItem(input: CreateShoppingListItemInp
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
 }
+
+export async function apiDeleteShoppingListItem(id: number): Promise<void> {
+  const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
+}

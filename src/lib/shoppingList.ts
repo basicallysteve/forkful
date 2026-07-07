@@ -338,6 +338,26 @@ export async function createShoppingListProductItem(data: CreateShoppingListProd
   })
 }
 
+// Hard-delete a single line off the user's active list (a Remove Item — see CONTEXT.md). The row is
+// removed outright: shopping_list_items has no dateDeleted, so there is no soft-delete here. Scoped to
+// the caller's active list so a user can neither remove another user's line nor mutate an archived
+// list. Returns false when no such line exists (already gone, wrong owner, or archived) so the route
+// can answer 404.
+export async function deleteShoppingListItem(id: number, userId: number): Promise<boolean> {
+  const activeList = await getActiveShoppingList(userId)
+  if (!activeList) return false
+
+  const deleted = await db
+    .delete(shoppingListItems)
+    .where(and(
+      eq(shoppingListItems.id, id),
+      eq(shoppingListItems.shoppingListId, activeList.id),
+    ))
+    .returning({ id: shoppingListItems.id })
+
+  return deleted.length > 0
+}
+
 export type CreateShoppingListFreeformItemData = {
   userId: number
   name: string

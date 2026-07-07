@@ -5,6 +5,7 @@ type ShoppingListStore = {
   items: ShoppingListItem[]
   setItems: (items: ShoppingListItem[]) => void
   upsertItem: (item: ShoppingListItem) => void
+  removeItem: (id: number) => void
 }
 
 export const useShoppingListStore = create<ShoppingListStore>((set) => ({
@@ -18,6 +19,8 @@ export const useShoppingListStore = create<ShoppingListStore>((set) => ({
     items[index] = item
     return { items }
   }),
+  // Drop a removed line from the list. The server has already hard-deleted it (see deleteShoppingListItem).
+  removeItem: (id: number) => set((state) => ({ items: state.items.filter((existing) => existing.id !== id) })),
 }))
 
 export const resetShoppingListStore = () => {

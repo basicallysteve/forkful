@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ShoppingListView from './Index'
+import ShoppingListView, { buildShoppingListText } from './Index'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
@@ -10,6 +10,7 @@ import type { ShoppingListItem } from '@/types/ShoppingList'
 
 vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListItem: vi.fn(),
+  apiDeleteShoppingListItem: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -55,7 +56,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
@@ -425,6 +426,98 @@ describe('ShoppingListView', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
+  it('removes an item: calls the API with its id and drops it from the store', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
+          makeItem({ id: 2, food: mockFoods[1], amount: 1, unit: 'cup' }),
+        ]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
+
+    expect(apiDeleteShoppingListItem).toHaveBeenCalledWith(1)
+    await waitFor(() => expect(useShoppingListStore.getState().items).toEqual([
+      expect.objectContaining({ id: 2 }),
+    ]))
+    // The other line is untouched.
+    expect(within(list).getByText('Brown Rice')).toBeInTheDocument()
+    expect(within(list).queryByText('Chicken Breast')).not.toBeInTheDocument()
+  })
+
+  it('removing does not toggle row selection', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
+
+    // The Remove click is stopped from bubbling, so no phantom selection is left behind.
+    expect(list.querySelector('.shopping-list-item.is-selected')).toBeNull()
+  })
+
+  it('keeps the item and shows an error when the remove request fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiDeleteShoppingListItem).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to remove/i)
+    // The line is still on the list — nothing was optimistically dropped.
+    expect(useShoppingListStore.getState().items).toHaveLength(1)
+    expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
+  })
+
+  it('copies the list to the clipboard and confirms with “Copied!”', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
+          makeItem({ id: 2, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null }),
+        ]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /share/i }))
+
+    expect(await navigator.clipboard.readText()).toBe(
+      ['Shopping List', '', '- Chicken Breast — 2 oz', '- Trash bags'].join('\n'),
+    )
+    // The button flips to a confirmation after a successful copy.
+    expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument()
+  })
+
+  it('disables Share when the list is empty', async () => {
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    expect(screen.getByRole('button', { name: /share/i })).toBeDisabled()
+  })
+
   it('renders all three source variants together', async () => {
     render(
       <ShoppingListView
@@ -441,5 +534,25 @@ describe('ShoppingListView', () => {
     expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
     expect(within(list).getByText('Cereal Box')).toBeInTheDocument()
     expect(within(list).getByText('Trash bags')).toBeInTheDocument()
+  })
+})
+
+describe('buildShoppingListText', () => {
+  it('renders a titled, bulleted list mirroring the on-screen quantities', () => {
+    const text = buildShoppingListText([
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
+      makeItem({ id: 2, food: mockFoods[2], amount: 6, unit: 'piece' }),
+      makeItem({ id: 3, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null }),
+    ])
+
+    expect(text).toBe(
+      [
+        'Shopping List',
+        '',
+        '- Chicken Breast — 2 oz',
+        '- Lime — 6 pieces', // custom units pluralise by amount
+        '- Trash bags', // a bare "1" with no unit carries no quantity
+      ].join('\n'),
+    )
   })
 })

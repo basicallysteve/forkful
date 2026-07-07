@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { MouseEvent } from 'react'
+import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import { apiCreateShoppingListItem } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
@@ -45,12 +47,83 @@ function itemQuantityLabel(item: ShoppingListItem): string {
   return item.amount === 1 ? '' : `${item.amount}`
 }
 
+// Plain-text rendering of the list for the clipboard, mirroring what's on screen: a title, then one
+// line per item as "- Name — qty" (the quantity is dropped when it carries no meaning, e.g. a bare 1).
+// Exported so the exact format is unit-testable independently of the clipboard.
+export function buildShoppingListText(items: ShoppingListItem[]): string {
+  const lines = items.map((item) => {
+    const quantity = itemQuantityLabel(item)
+    return quantity ? `- ${item.name} — ${quantity}` : `- ${item.name}`
+  })
+  return ['Shopping List', '', ...lines].join('\n')
+}
+
+// A single list row with its Remove affordance. One button serves both breakpoints (styled by CSS at
+// the 720px seam): revealed on hover ≥721px, revealed by a left swipe below it. Extracted to a real
+// component because useSwipeable is a hook and cannot live inside the ListBox itemTemplate callback.
+function ShoppingListItemRow({
+  item,
+  selected,
+  onRemove,
+}: {
+  item: ShoppingListItem
+  selected: boolean
+  onRemove: (id: number) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  const swipe = useSwipeable({
+    onSwipedLeft: () => setOpen(true),
+    onSwipedRight: () => setOpen(false),
+    // Only react to a deliberate drag, and only to touch — on desktop the hover reveal handles it.
+    delta: 40,
+    trackMouse: false,
+  })
+
+  async function handleRemoveClick(event: MouseEvent) {
+    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
+    event.stopPropagation()
+    setRemoving(true)
+    try {
+      await onRemove(item.id)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
+  const quantity = itemQuantityLabel(item)
+  return (
+    <div className={`shopping-list-row${open ? ' is-open' : ''}`} {...swipe}>
+      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
+        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
+        <div className="item-body">
+          <span className="item-name">{item.name}</span>
+          {quantity && <span className="item-qty">{quantity}</span>}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="item-remove"
+        aria-label={`Remove ${item.name}`}
+        onClick={handleRemoveClick}
+        // mousedown also bubbles to the ListBox item; keep it from starting a selection.
+        onMouseDown={(event) => event.stopPropagation()}
+        disabled={removing}
+      >
+        <i className="pi pi-trash" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 export default function ShoppingListView({ initialFoods, initialItems }: ShoppingListViewProps) {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
   const items = useShoppingListStore((state) => state.items)
   const setItems = useShoppingListStore((state) => state.setItems)
   const upsertItem = useShoppingListStore((state) => state.upsertItem)
+  const removeItem = useShoppingListStore((state) => state.removeItem)
 
   const [variant, setVariant] = useState<AddVariant>('food')
 
@@ -69,6 +142,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [selectedItems, setSelectedItems] = useState<ShoppingListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setItems(initialItems)
@@ -174,18 +248,29 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   // Food/Product lines have an auto-derived unit revealed via "Advanced"; freeform takes a free-text unit inline.
   const showAdvancedToggle = variant !== 'freeform'
 
-  function renderItemRow(item: ShoppingListItem) {
-    const selected = selectedItems.some((entry) => entry.id === item.id)
-    const quantity = itemQuantityLabel(item)
-    return (
-      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
-        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
-        <div className="item-body">
-          <span className="item-name">{item.name}</span>
-          {quantity && <span className="item-qty">{quantity}</span>}
-        </div>
-      </div>
-    )
+  // Copy the whole list to the clipboard as plain text, with a brief "Copied!" confirmation. Reuses
+  // the shared error banner if the browser blocks clipboard access (e.g. an insecure context).
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(buildShoppingListText(items))
+      setSaveError(null)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setSaveError('Failed to copy the list. Please try again.')
+    }
+  }
+
+  // Remove Item (see CONTEXT.md): await the hard delete, then drop the line from the store. Mirrors
+  // Pantry's handleDelete — the row only disappears once the server confirms.
+  async function handleRemove(id: number) {
+    setSaveError(null)
+    try {
+      await apiDeleteShoppingListItem(id)
+      removeItem(id)
+    } catch {
+      setSaveError('Failed to remove item. Please try again.')
+    }
   }
 
   return (
@@ -193,6 +278,15 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       <div className="shopping-list-content">
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
+          <button
+            type="button"
+            className="share-button"
+            onClick={handleShare}
+            disabled={items.length === 0}
+          >
+            <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
+            {copied ? 'Copied!' : 'Share'}
+          </button>
         </header>
 
         <div className="shopping-list-panel">
@@ -330,7 +424,13 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               onChange={(e) => setSelectedItems(e.value)}
               options={items}
               optionLabel="name"
-              itemTemplate={renderItemRow}
+              itemTemplate={(item: ShoppingListItem) => (
+                <ShoppingListItemRow
+                  item={item}
+                  selected={selectedItems.some((entry) => entry.id === item.id)}
+                  onRemove={handleRemove}
+                />
+              )}
               className="shopping-list-items"
               pt={{ list: { 'aria-label': 'Shopping list items' } }}
             />
