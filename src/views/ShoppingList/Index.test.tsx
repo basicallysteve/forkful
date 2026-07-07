@@ -14,6 +14,10 @@ vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListFreeformItem: vi.fn(),
 }))
 
+vi.mock('@/lib/api/foods', () => ({
+  apiFetchFoods: vi.fn(),
+}))
+
 vi.mock('@/components/FoodSearch/FoodSearch', () => ({
   default: ({ onChange, onInputChange, value, localFoods }: {
     onChange: (food: Food) => void
@@ -58,6 +62,7 @@ import {
   apiCreateShoppingListFreeformItem,
   apiCreateShoppingListProductItem,
 } from '@/lib/api/shoppingList'
+import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
   id: 42,
@@ -145,6 +150,21 @@ describe('ShoppingListView', () => {
     expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
     expect(within(list).getByText('2 oz')).toBeInTheDocument()
     expect(screen.queryByText(/Source:/)).not.toBeInTheDocument()
+  })
+
+  it('does not fetch the food catalog when the server provides it', () => {
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+    expect(apiFetchFoods).not.toHaveBeenCalled()
+  })
+
+  it('lazily loads the food catalog in the background when none is provided', async () => {
+    vi.mocked(apiFetchFoods).mockResolvedValue(mockFoods)
+
+    render(<ShoppingListView initialItems={[]} />)
+
+    // The catalog is fetched off the render path and populates FoodSearch's instant suggestions.
+    await waitFor(() => expect(apiFetchFoods).toHaveBeenCalledTimes(1))
+    expect(await screen.findByRole('option', { name: /chicken breast/i })).toBeInTheDocument()
   })
 
   it('pluralises custom units by amount but leaves standard units unchanged', async () => {

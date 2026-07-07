@@ -10,6 +10,7 @@ import {
   apiCreateShoppingListFreeformItem,
   apiCreateShoppingListProductItem,
 } from '@/lib/api/shoppingList'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
@@ -22,7 +23,8 @@ import { ListBox } from 'primereact/listbox'
 import { Checkbox } from 'primereact/checkbox'
 
 type ShoppingListViewProps = {
-  initialFoods: Food[]
+  // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
+  initialFoods?: Food[]
   initialItems: ShoppingListItem[]
 }
 
@@ -73,9 +75,23 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    setFoods(initialFoods)
     setItems(initialItems)
-  }, [initialFoods, initialItems, setFoods, setItems])
+  }, [initialItems, setItems])
+
+  // Populate the food catalog that backs FoodSearch's instant local suggestions. Prefer a
+  // server-provided list; otherwise fetch it in the background. Either way FoodSearch queries the
+  // server per keystroke, so this only speeds up pre-debounce matches and must never block the page.
+  useEffect(() => {
+    if (initialFoods) {
+      setFoods(initialFoods)
+      return
+    }
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => { if (!cancelled && fetched.length > 0) setFoods(fetched) })
+      .catch(() => { /* instant suggestions are best-effort; server search still works */ })
+    return () => { cancelled = true }
+  }, [initialFoods, setFoods])
 
   // Food and Product both constrain the Advanced unit picker to their own Measurements.
   const selectedSource = variant === 'product' ? selectedProduct : selectedFood
