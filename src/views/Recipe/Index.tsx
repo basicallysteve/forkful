@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
 import { Dropdown } from 'primereact/dropdown'
@@ -16,6 +16,7 @@ import {
   apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep,
   apiReorderRecipeSteps, apiUploadImage,
 } from '@/lib/api/recipes'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
@@ -54,6 +55,18 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [perServing, setPerServing] = useState(true)
   const [activePanel, setActivePanel] = useState<'ingredients' | 'reviews'>('ingredients')
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  // The food catalog only powers ingredient editing, so fetch it lazily the first time the user is in
+  // edit mode rather than shipping it with every (read-only, often anonymous) recipe view. Skipped
+  // when a caller already provided foods. FoodSearch queries the server per keystroke regardless.
+  useEffect(() => {
+    if (!editMode || localFoods.length > 0) return
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => { if (!cancelled && fetched.length > 0) setLocalFoods(fetched) })
+      .catch(() => { /* instant suggestions are best-effort; server search still works */ })
+    return () => { cancelled = true }
+  }, [editMode, localFoods.length])
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -190,29 +203,27 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       return // Don't add another empty ingredient if one already exists
     }
 
-    // Create a placeholder ingredient with the first food
-    if (localFoods.length > 0) {
-      // default to empty values
-      const defaultFood = {
-        id: 0,
-        name: '',
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        servingSize: 1,
-        servingUnit: DEFAULT_SERVING_UNIT,
-        measurements: [],
-      }
-      const newIngredient: Ingredient = {
-        food: defaultFood,
-        quantity: defaultFood.servingSize || 1,
-        calories: defaultFood.calories || 0,
-        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
-      }
-      setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
+    // Add an empty placeholder row; its Food is chosen via FoodSearch (server-backed), so this does
+    // not depend on the local catalog being loaded yet.
+    const defaultFood = {
+      id: 0,
+      name: '',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      servingSize: 1,
+      servingUnit: DEFAULT_SERVING_UNIT,
+      measurements: [],
     }
+    const newIngredient: Ingredient = {
+      food: defaultFood,
+      quantity: defaultFood.servingSize || 1,
+      calories: defaultFood.calories || 0,
+      servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
+    }
+    setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
   }
 
   function handleIngredientFoodChange(index: number, food: Food) {

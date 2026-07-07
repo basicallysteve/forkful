@@ -401,17 +401,16 @@ describe('Recipe View Page', () => {
       })
     })
 
-    it('does not add ingredient when foods list is empty', async () => {
+    it('adds an ingredient row even when the local food catalog is empty', async () => {
       const user = userEvent.setup()
+      // The catalog now loads lazily, so edit mode can begin before any local foods are present.
+      // FoodSearch is server-backed, so the row can still be added and populated.
       renderWithStores(<Recipe recipe={mockRecipe} />, { foods: [] })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      // Should still only have 2 ingredients since no foods available
-      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Ingredient 3 name')).not.toBeInTheDocument()
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
     })
   })
 
