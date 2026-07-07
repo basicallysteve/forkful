@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
@@ -142,10 +142,17 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // Holds the pending "Copied!" reset so a rapid re-copy restarts the 2s window instead of stacking
+  // timers, and so it can be cancelled on unmount.
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setItems(initialItems)
   }, [initialItems, setItems])
+
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current)
+  }, [])
 
   // Populate the food catalog that backs FoodSearch's instant local suggestions. Prefer a
   // server-provided list; otherwise fetch it in the background. Either way FoodSearch queries the
@@ -254,7 +261,9 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       await navigator.clipboard.writeText(buildShoppingListText(items))
       setSaveError(null)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      // Restart the window on each copy so the confirmation always lingers 2s past the latest one.
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       setSaveError('Failed to copy the list. Please try again.')
     }
