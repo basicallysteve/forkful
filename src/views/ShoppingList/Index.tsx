@@ -47,15 +47,19 @@ function itemQuantityLabel(item: ShoppingListItem): string {
   return item.amount === 1 ? '' : `${item.amount}`
 }
 
-// Plain-text rendering of the list for the clipboard, mirroring what's on screen: a title, then one
-// line per item as "- Name — qty" (the quantity is dropped when it carries no meaning, e.g. a bare 1).
-// Exported so the exact format is unit-testable independently of the clipboard.
+// Plain-text rendering of the list for the clipboard. Wrapped in a friendly, marketable message so a
+// pasted list also invites the recipient to try Forkful. One line per item as "- Name — qty" (the
+// quantity is dropped when it carries no meaning, e.g. a bare 1). Exported so the exact format is
+// unit-testable independently of the clipboard.
+const SHARE_INTRO = "Hey! I'm sending you my shopping list from Forkful — you should check it out!"
+const SHARE_OUTRO = 'Build your own shopping list at eatforkful.com'
+
 export function buildShoppingListText(items: ShoppingListItem[]): string {
   const lines = items.map((item) => {
     const quantity = itemQuantityLabel(item)
     return quantity ? `- ${item.name} — ${quantity}` : `- ${item.name}`
   })
-  return ['Shopping List', '', ...lines].join('\n')
+  return [SHARE_INTRO, '', ...lines, '', SHARE_OUTRO].join('\n')
 }
 
 // A single list row with its Remove affordance. One button serves both breakpoints (styled by CSS at

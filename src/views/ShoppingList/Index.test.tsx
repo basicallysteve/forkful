@@ -506,7 +506,14 @@ describe('ShoppingListView', () => {
     await user.click(screen.getByRole('button', { name: /share/i }))
 
     expect(await navigator.clipboard.readText()).toBe(
-      ['Shopping List', '', '- Chicken Breast — 2 oz', '- Trash bags'].join('\n'),
+      [
+        "Hey! I'm sending you my shopping list from Forkful — you should check it out!",
+        '',
+        '- Chicken Breast — 2 oz',
+        '- Trash bags',
+        '',
+        'Build your own shopping list at eatforkful.com',
+      ].join('\n'),
     )
     // The button flips to a confirmation after a successful copy.
     expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument()
@@ -538,7 +545,7 @@ describe('ShoppingListView', () => {
 })
 
 describe('buildShoppingListText', () => {
-  it('renders a titled, bulleted list mirroring the on-screen quantities', () => {
+  it('wraps a bulleted list in the marketable intro and CTA, mirroring on-screen quantities', () => {
     const text = buildShoppingListText([
       makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
       makeItem({ id: 2, food: mockFoods[2], amount: 6, unit: 'piece' }),
@@ -547,11 +554,13 @@ describe('buildShoppingListText', () => {
 
     expect(text).toBe(
       [
-        'Shopping List',
+        "Hey! I'm sending you my shopping list from Forkful — you should check it out!",
         '',
         '- Chicken Breast — 2 oz',
         '- Lime — 6 pieces', // custom units pluralise by amount
         '- Trash bags', // a bare "1" with no unit carries no quantity
+        '',
+        'Build your own shopping list at eatforkful.com',
       ].join('\n'),
     )
   })
