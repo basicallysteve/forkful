@@ -15,13 +15,17 @@ async function cleanup() {
 }
 
 async function createTestUser(suffix: string) {
-  return signUp({
+  const user = await signUp({
     username: `testpantry${suffix}`,
     email: `testpantry${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
   })
+  // signUp returns User whose id is typed string | number | undefined; the
+  // pantry helpers require a numeric userId. Coerce once here so every call
+  // site downstream gets a plain number.
+  return { ...user, id: Number(user.id) }
 }
 
 async function createTestFood() {
@@ -56,7 +60,7 @@ describe('pantry data layer (integration)', () => {
     })
 
     expect(created.id).toBeDefined()
-    expect(created.food.name).toBe('TestPantry Chicken')
+    expect(created.food!.name).toBe('TestPantry Chicken')
     expect(created.originalSize.size).toBe(2)
     expect(created.currentSize.size).toBe(1.5)
     expect(created.status).toBe('good')

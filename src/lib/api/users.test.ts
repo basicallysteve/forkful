@@ -22,6 +22,8 @@ describe('apiSignUp', () => {
       username: 'testuser',
       email: 'test@example.com',
       password: 'StrongPass1!',
+      cuisinePreferences: [],
+      dietaryRestrictions: [],
     })
 
     expect(result).toEqual(mockUser)
@@ -38,7 +40,7 @@ describe('apiSignUp', () => {
     } as Response)
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'taken@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'taken@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Email already in use')
   })
 
@@ -49,7 +51,7 @@ describe('apiSignUp', () => {
     } as unknown as Response)
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Registration failed')
   })
 
@@ -57,7 +59,7 @@ describe('apiSignUp', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Network error')
   })
 
@@ -67,7 +69,7 @@ describe('apiSignUp', () => {
       json: async () => mockUser,
     } as Response)
 
-    await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+    await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
 
     expect(fetch).toHaveBeenCalledWith(
       '/api/users',

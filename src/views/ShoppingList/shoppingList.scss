@@ -140,12 +140,37 @@
     color: var(--vscode-muted);
   }
 
-  .shopping-list-items {
-    list-style: none;
-    margin: 0;
+  // The item list is a PrimeReact Listbox (multiple + checkbox); strip its card chrome so it reads
+  // as a plain checklist inside the panel.
+  .shopping-list-items.p-listbox {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .shopping-list-items .p-listbox-list {
     padding: 0;
-    display: flex;
-    flex-direction: column;
+  }
+
+  .shopping-list-items .p-listbox-item {
+    padding: 0;
+    border-radius: 0;
+    color: var(--vscode-text);
+
+    // Neutralise the theme's default selection fill — selection is conveyed by the checkbox and the
+    // strikethrough, not a highlighted row.
+    &.p-highlight {
+      background: transparent;
+      color: inherit;
+    }
+
+    &:hover {
+      background: var(--accent-hover);
+    }
+
+    &:focus {
+      box-shadow: inset 0 0 0 2px var(--vscode-accent);
+    }
   }
 
   .shopping-list-item {
@@ -154,26 +179,44 @@
     gap: 12px;
     padding: 12px 4px;
     border-bottom: 1px solid var(--vscode-border);
-
-    &:last-child {
-      border-bottom: none;
-    }
   }
 
-  // Non-interactive checklist bullet — pre-shapes the future check-off affordance.
-  .check-circle {
+  .p-listbox-item:last-child .shopping-list-item {
+    border-bottom: none;
+  }
+
+  .p-checkbox.p-highlight .p-checkbox-box {
+    background: var(--vscode-accent);
+    border-color: var(--vscode-accent);
+  }
+
+  .item-check {
     flex: 0 0 auto;
-    width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    border: 2px solid var(--vscode-border);
-    box-sizing: border-box;
+    // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
+    pointer-events: none;
+  }
+  
+
+  .item-body{
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .item-name {
     flex: 1;
     color: var(--vscode-text);
     font-weight: 500;
+  }
+  .shopping-list-item.is-selected{
+    ::before{
+      content: " ";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      border-bottom: 2px solid var(--vscode-muted);
+      width: 100%;
+    }
   }
 
   .item-qty {

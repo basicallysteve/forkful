@@ -16,13 +16,17 @@ async function cleanup() {
 }
 
 async function createTestUser(suffix: string) {
-  return signUp({
+  const user = await signUp({
     username: `testshopping${suffix}`,
     email: `testshopping${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
   })
+  // signUp returns User whose id is typed string | number | undefined; the
+  // shopping-list helpers require a numeric userId. Coerce once here so every
+  // call site downstream gets a plain number.
+  return { ...user, id: Number(user.id) }
 }
 
 async function createTestFood(name = 'TestShopping Chicken') {

@@ -11,6 +11,8 @@ import type { ShoppingListItem } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
+import { ListBox } from 'primereact/listbox'
+import { Checkbox } from 'primereact/checkbox'
 
 type ShoppingListViewProps = {
   initialFoods: Food[]
@@ -35,6 +37,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [amount, setAmount] = useState(1)
   const [unit, setUnit] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<ShoppingListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -89,6 +92,19 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   }
 
   const isAddDisabled = saving || !selectedFood || amount <= 0 || !unit
+
+  function renderItemRow(item: ShoppingListItem) {
+    const selected = selectedItems.some((entry) => entry.id === item.id)
+    return (
+      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
+        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
+        <div className="item-body">
+          <span className="item-name">{item.food.name}</span>
+          <span className="item-qty">{item.amount} {formatUnitForAmount(item.amount, item.unit)}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="shopping-list">
@@ -165,15 +181,18 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
           {items.length === 0 ? (
             <p className="shopping-list-empty">No items yet. Add a food to start your shopping list.</p>
           ) : (
-            <ul className="shopping-list-items" aria-label="Shopping list items">
-              {items.map((item) => (
-                <li key={item.id} className="shopping-list-item">
-                  <span className="check-circle" aria-hidden="true" />
-                  <span className="item-name">{item.food.name}</span>
-                  <span className="item-qty">{item.amount} {formatUnitForAmount(item.amount, item.unit)}</span>
-                </li>
-              ))}
-            </ul>
+            <ListBox
+              multiple
+              metaKeySelection={false}
+              dataKey="id"
+              value={selectedItems}
+              onChange={(e) => setSelectedItems(e.value)}
+              options={items}
+              optionLabel="food.name"
+              itemTemplate={renderItemRow}
+              className="shopping-list-items"
+              pt={{ list: { 'aria-label': 'Shopping list items' } }}
+            />
           )}
         </div>
       </div>
