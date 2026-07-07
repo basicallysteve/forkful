@@ -46,7 +46,6 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-
     &.is-active {
       background: var(--vscode-accent);
       color: #ffffff;
@@ -286,6 +285,13 @@
   // On narrow screens the row can't hold four controls, so stack them: the food
   // search, Amount, Unit, and the button each take their own full-width row.
   @media (max-width: 720px) {
+    .variant-tabs {
+      width: 100%;
+    }
+    .variant-tab {
+      width: 33%;
+    }
+
     .add-item-form {
       flex-direction: column;
       align-items: stretch;
