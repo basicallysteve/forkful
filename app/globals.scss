@@ -12,6 +12,7 @@
 @use '../src/views/Food/food';
 @use '../src/views/Food/store' as food-store;
 @use '../src/views/Pantry/pantry';
+@use '../src/views/ShoppingList/shoppingList';
 @use '../src/components/OpenFoodFactsImport/off-import';
 
 // ── Global element resets ─────────────────────────────────────────────────────

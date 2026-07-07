@@ -50,11 +50,13 @@ interface FoodSearchProps {
   value: string
   localFoods: Food[]
   onChange: (food: Food) => void
+  /** Fired when the user edits the search text directly (not via selecting a suggestion). Lets a parent invalidate a previously selected food. */
+  onInputChange?: (value: string) => void
   placeholder?: string
   inputAriaLabel?: string
 }
 
-export default function FoodSearch({ value, localFoods, onChange, placeholder, inputAriaLabel }: FoodSearchProps) {
+export default function FoodSearch({ value, localFoods, onChange, onInputChange, placeholder, inputAriaLabel }: FoodSearchProps) {
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [importing, setImporting] = useState(false)
@@ -215,6 +217,7 @@ export default function FoodSearch({ value, localFoods, onChange, placeholder, i
     if (typeof val === 'string') {
       setInputValue(val)
       if (!val.trim()) setSuggestions([])
+      onInputChange?.(val)
     }
   }
 

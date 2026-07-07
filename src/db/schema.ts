@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Measurement } from '@/types/Food'
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts', 'usda']);
@@ -6,6 +7,9 @@ export const productSourceEnum = pgEnum('product_source', ['manual', 'open_food_
 export const recipeSuggestionFrequencyEnum = pgEnum('recipe_suggestion_frequency', ['never', 'weekly', 'monthly']);
 export const pantryExpirationFrequencyEnum = pgEnum('pantry_expiration_frequency', ['never', 'daily', 'weekly']);
 export const accountClosureActionEnum = pgEnum('account_closure_action', ['deactivated', 'deleted']);
+export const shoppingListStatusEnum = pgEnum('shopping_list_status', ['active', 'archived']);
+export const shoppingListItemSourceTypeEnum = pgEnum('shopping_list_item_source_type', ['food', 'product', 'freeform']);
+export const shoppingListItemStatusEnum = pgEnum('shopping_list_item_status', ['to_buy', 'in_cart', 'purchased']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -132,6 +136,34 @@ export const pantryItems = pgTable('pantry_items', {
   frozenDate: timestamp('frozen_date'),
   dateDeleted: timestamp('date_deleted'),
 });
+
+export const shoppingLists = pgTable('shopping_lists', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  status: shoppingListStatusEnum('status').notNull().default('active'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  activeListPerUserUnique: uniqueIndex('shopping_lists_user_active_unique').on(t.userId).where(sql`${t.status} = 'active'`),
+}));
+
+export const shoppingListItems = pgTable('shopping_list_items', {
+  id: serial('id').primaryKey(),
+  shoppingListId: integer('shopping_list_id')
+    .notNull()
+    .references(() => shoppingLists.id, { onDelete: 'cascade' }),
+  sourceType: shoppingListItemSourceTypeEnum('source_type').notNull().default('food'),
+  foodId: integer('food_id')
+    .notNull()
+    .references(() => foods.id, { onDelete: 'cascade' }),
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  unit: varchar('unit', { length: 50 }).notNull(),
+  status: shoppingListItemStatusEnum('status').notNull().default('to_buy'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  shoppingListIdIdx: index('shopping_list_items_shopping_list_id_idx').on(t.shoppingListId),
+}));
 
 export const oauthAccounts = pgTable('oauth_accounts', {
   id: serial('id').primaryKey(),
