@@ -4,7 +4,7 @@ import { foods, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { EACH_UNIT } from '@/utils/unitConversion'
 import type { Food, Measurement } from '@/types/Food'
-import type { ShoppingList, ShoppingListItem } from '@/types/ShoppingList'
+import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -49,7 +49,7 @@ function mapShoppingListItem(
 ): ShoppingListItem {
   return {
     id: row.id,
-    sourceType: 'food',
+    sourceType: row.sourceType as ShoppingListItemSourceType,
     status: row.status,
     food,
     amount: Number(row.amount),
@@ -151,40 +151,51 @@ export async function createShoppingListFoodItem(data: CreateShoppingListFoodIte
     throw new Error('Unit is not valid for this food')
   }
 
-  // Merge into an existing open (to_buy) line for the same Food + unit rather than
-  // creating a duplicate. A different unit, or an already-bought line, stays separate.
-  const [existing] = await db
-    .select()
-    .from(shoppingListItems)
-    .where(and(
-      eq(shoppingListItems.shoppingListId, shoppingList.id),
-      eq(shoppingListItems.foodId, food.id),
-      eq(shoppingListItems.unit, data.unit),
-      eq(shoppingListItems.status, 'to_buy'),
-    ))
+  // Merge into an existing open (to_buy) line for the same Food + unit rather than creating a
+  // duplicate. A different unit, or an already-bought line, stays separate. The whole read-then-write
+  // runs in a transaction that locks the parent list row, so two concurrent adds of the same
+  // Food + unit cannot both miss the existing line and insert duplicates.
+  const itemId = await db.transaction(async (tx) => {
+    await tx
+      .select({ id: shoppingLists.id })
+      .from(shoppingLists)
+      .where(eq(shoppingLists.id, shoppingList.id))
+      .for('update')
 
-  let itemId: number
-  if (existing) {
-    const [updated] = await db
-      .update(shoppingListItems)
-      .set({ amount: String(Number(existing.amount) + data.amount) })
-      .where(eq(shoppingListItems.id, existing.id))
-      .returning()
-    itemId = updated.id
-  } else {
-    const [row] = await db
+    const [existing] = await tx
+      .select()
+      .from(shoppingListItems)
+      .where(and(
+        eq(shoppingListItems.shoppingListId, shoppingList.id),
+        eq(shoppingListItems.foodId, food.id),
+        eq(shoppingListItems.unit, data.unit),
+        eq(shoppingListItems.status, 'to_buy'),
+      ))
+
+    if (existing) {
+      const [updated] = await tx
+        .update(shoppingListItems)
+        // numeric(10,2): round the merged total to 2 decimals so we never persist a
+        // floating-point artifact like "0.30000000000000004".
+        .set({ amount: (Number(existing.amount) + data.amount).toFixed(2) })
+        .where(eq(shoppingListItems.id, existing.id))
+        .returning()
+      return updated.id
+    }
+
+    const [row] = await tx
       .insert(shoppingListItems)
       .values({
         shoppingListId: shoppingList.id,
         sourceType: 'food',
         foodId: food.id,
-        amount: String(data.amount),
+        amount: data.amount.toFixed(2),
         unit: data.unit,
         status: 'to_buy',
       })
       .returning()
-    itemId = row.id
-  }
+    return row.id
+  })
 
   const item = await getShoppingListItemById(itemId, data.userId)
   if (!item) throw new Error('Failed to create shopping list item')

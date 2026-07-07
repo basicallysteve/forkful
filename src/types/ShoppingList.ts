@@ -13,7 +13,7 @@ export type ShoppingList = {
 
 export type ShoppingListItem = {
   id: number
-  sourceType: 'food'
+  sourceType: ShoppingListItemSourceType
   status: ShoppingListItemStatus
   food: Food
   amount: number

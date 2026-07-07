@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm';
 import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Measurement } from '@/types/Food'
 

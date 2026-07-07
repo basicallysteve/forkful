@@ -22,7 +22,12 @@ export async function POST(request: Request) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body: CreateBody = await request.json()
+  let body: CreateBody
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
 
   if (!Number.isInteger(body.foodId) || body.foodId <= 0) {
     return NextResponse.json({ error: 'foodId must be a positive integer' }, { status: 400 })
@@ -36,12 +41,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unit is required' }, { status: 400 })
   }
 
+  const unit = body.unit.trim()
+
   try {
     const item = await taskRunner.run(() => createShoppingListFoodItem({
       userId: user.userId,
       foodId: body.foodId,
       amount: body.amount,
-      unit: body.unit,
+      unit,
     }))
 
     return NextResponse.json(item, { status: 201 })

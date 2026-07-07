@@ -9,12 +9,13 @@ export default async function ShoppingListPage() {
   const sessionUser = await getSessionUser()
   if (!sessionUser) redirect('/login')
 
-  const [initialFoods] = await Promise.all([
-    getFoods(),
-    taskRunner.run(() => getOrCreateActiveShoppingList(sessionUser.userId)),
-  ])
+  // Ensure the user has an active shopping list before its items are read.
+  await taskRunner.run(() => getOrCreateActiveShoppingList(sessionUser.userId))
 
-  const initialItems = await getShoppingListItems(sessionUser.userId)
+  const [initialFoods, initialItems] = await Promise.all([
+    getFoods(),
+    getShoppingListItems(sessionUser.userId),
+  ])
 
   return <ShoppingListView initialFoods={initialFoods} initialItems={initialItems} />
 }

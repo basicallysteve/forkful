@@ -116,7 +116,9 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
         <div className="shopping-list-panel">
           <div className="add-item-form">
             <div className="field field-food">
-              <label htmlFor="shopping-list-food">Food</label>
+              {/* FoodSearch renders its own aria-labelled input and exposes no matching control id,
+                  so this stays a bare caption rather than an htmlFor label pointing at nothing. */}
+              <label>Food</label>
               <FoodSearch
                 value={foodName}
                 localFoods={foods}

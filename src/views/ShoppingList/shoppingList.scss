@@ -86,9 +86,6 @@
 
   .add-item-button {
     flex: 0 0 auto;
-  }
-
-  .add-item-button {
     border-radius: 999px;
     padding: 0.5rem 1.25rem;
     font-size: 0.85rem;
@@ -185,7 +182,10 @@
     border-bottom: none;
   }
 
-  .p-checkbox.p-highlight .p-checkbox-box {
+  // Checked checkbox in the app's accent green. p-highlight can land on the root or the box across
+  // PrimeReact builds, so match both.
+  .item-check.p-highlight .p-checkbox-box,
+  .item-check .p-checkbox-box.p-highlight {
     background: var(--vscode-accent);
     border-color: var(--vscode-accent);
   }
@@ -195,11 +195,12 @@
     // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
     pointer-events: none;
   }
-  
 
-  .item-body{
+  .item-body {
     display: flex;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
     width: 100%;
   }
 
@@ -208,21 +209,35 @@
     color: var(--vscode-text);
     font-weight: 500;
   }
-  .shopping-list-item.is-selected{
-    ::before{
-      content: " ";
-      position: absolute;
-      top: 50%;
-      left: 0;
-      border-bottom: 2px solid var(--vscode-muted);
-      width: 100%;
-    }
-  }
 
   .item-qty {
     color: var(--vscode-muted);
     font-size: 14px;
     font-variant-numeric: tabular-nums;
+  }
+
+  // A selected item is struck through across the entire row (not just the name), drawn as a single
+  // continuous line rather than per-text-run decoration.
+  .shopping-list-item {
+    position: relative;
+  }
+
+  .shopping-list-item.is-selected {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      top: 50%;
+      height: 2px;
+      background: var(--vscode-muted);
+      pointer-events: none;
+    }
+
+    .item-name,
+    .item-qty {
+      color: var(--vscode-muted);
+    }
   }
 
   // On narrow screens the row can't hold four controls, so stack them: the food
