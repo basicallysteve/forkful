@@ -401,17 +401,29 @@ describe('Recipe View Page', () => {
       })
     })
 
-    it('does not add ingredient when foods list is empty', async () => {
+    it('adds an ingredient row even when the local food catalog is empty', async () => {
       const user = userEvent.setup()
+      // The catalog now loads lazily, so edit mode can begin before any local foods are present.
+      // FoodSearch is server-backed, so the row can still be added and populated.
       renderWithStores(<Recipe recipe={mockRecipe} />, { foods: [] })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      // Should still only have 2 ingredients since no foods available
-      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Ingredient 3 name')).not.toBeInTheDocument()
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
+    })
+
+    it('does not stack a second empty row while an unpicked placeholder exists', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
+
+      // The row is still an unpicked placeholder (food id 0), so a second add is a no-op.
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(screen.queryByLabelText('Ingredient 4 name')).not.toBeInTheDocument()
     })
   })
 

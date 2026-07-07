@@ -1,7 +1,6 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { getRecipeByShortId, getRecipeSummaryByShortId, isSaved } from '@/lib/recipes'
-import { getFoods } from '@/lib/foods'
 import { getSessionUser } from '@/lib/auth'
 import { toSlug } from '@/utils/slug'
 import RecipeIndex from '@/views/Recipe/Index'
@@ -11,7 +10,9 @@ type Props = { params: Promise<{ id: string; slug: string }> }
 
 export default async function RecipePage({ params }: Props) {
   const { id, slug } = await params
-  const [foods, session, requestHeaders] = await Promise.all([getFoods(), getSessionUser(), headers()])
+  // The food catalog only powers ingredient editing, so it's loaded lazily on the client (see
+  // RecipeIndex) rather than shipped with every — mostly read-only, often anonymous — recipe view.
+  const [session, requestHeaders] = await Promise.all([getSessionUser(), headers()])
 
   // The Signup Wall applies only to Anonymous Visitors; the meter decision is set
   // authoritatively by middleware. Gating a logged-in user is impossible here even
@@ -39,7 +40,6 @@ export default async function RecipePage({ params }: Props) {
       <RecipeViewBeacon shortId={recipe.shortId} />
       <RecipeIndex
         recipe={recipe}
-        foods={foods}
         canEdit={isOwner}
         canSave={canSave}
         initialSaved={initialSaved}
