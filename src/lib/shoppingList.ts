@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, or, type SQL } from 'drizzle-orm'
+import { and, asc, eq, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -220,13 +220,14 @@ type ResolvedNewItem = {
 async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
   const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-  // A line's identity is its source: the Food, the Product, or the freeform name. Two freeform
-  // "Trash bags" lines with the same unit merge; a Food and Product that happen to share a name do
-  // not, because sourceType (and thus the matched column) differs.
+  // A line's identity is its source: the Food, the Product, or the freeform name. Freeform names
+  // match case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its
+  // original casing). A Food and Product that share a name never merge, because sourceType — and thus
+  // the matched column — differs.
   const identityMatch: SQL =
     values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
       : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
-        : eq(shoppingListItems.name, values.name as string)
+        : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
 
   const itemId = await db.transaction(async (tx) => {
     await tx

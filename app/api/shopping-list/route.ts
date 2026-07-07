@@ -23,6 +23,18 @@ function isPositiveInteger(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) > 0
 }
 
+// Data-layer error messages the route surfaces as client errors; anything else is a real 500.
+const NOT_FOUND_ERRORS = ['Food not found', 'Product not found']
+const VALIDATION_ERRORS = [
+  'Unit is not valid for this food',
+  'Unit is not valid for this product',
+  'Amount must be greater than zero',
+  'Amount is too large',
+  'Name is required',
+  'Name is too long',
+  'Unit is too long',
+]
+
 export async function GET() {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -97,18 +109,10 @@ export async function POST(request: Request) {
     return NextResponse.json(item, { status: 201 })
   } catch (error) {
     if (error instanceof Error) {
-      if (error.message === 'Food not found' || error.message === 'Product not found') {
+      if (NOT_FOUND_ERRORS.includes(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 404 })
       }
-      if (
-        error.message === 'Unit is not valid for this food' ||
-        error.message === 'Unit is not valid for this product' ||
-        error.message === 'Amount must be greater than zero' ||
-        error.message === 'Amount is too large' ||
-        error.message === 'Name is required' ||
-        error.message === 'Name is too long' ||
-        error.message === 'Unit is too long'
-      ) {
+      if (VALIDATION_ERRORS.includes(error.message)) {
         return NextResponse.json({ error: error.message }, { status: 400 })
       }
     }

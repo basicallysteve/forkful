@@ -233,14 +233,16 @@ describe('shopping list data layer (integration)', () => {
     expect(items[0].amount).toBe(99_999_999)
   })
 
-  it('merges a duplicate freeform name + unit line', async () => {
+  it('merges a duplicate freeform name + unit line, case-insensitively', async () => {
     const user = await createTestUser('h')
 
     const first = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Foil', amount: 1, unit: 'roll' })
-    const second = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Foil', amount: 2, unit: 'roll' })
+    // Different casing still merges; the existing line keeps its original casing.
+    const second = await createShoppingListFreeformItem({ userId: user.id, name: 'testshopping foil', amount: 2, unit: 'roll' })
 
     expect(second.id).toBe(first.id)
     expect(second.amount).toBe(3)
+    expect(second.name).toBe('TestShopping Foil')
 
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(1)
