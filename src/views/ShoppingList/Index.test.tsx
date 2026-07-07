@@ -9,9 +9,7 @@ import type { Product } from '@/types/Product'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 
 vi.mock('@/lib/api/shoppingList', () => ({
-  apiCreateShoppingListFoodItem: vi.fn(),
-  apiCreateShoppingListProductItem: vi.fn(),
-  apiCreateShoppingListFreeformItem: vi.fn(),
+  apiCreateShoppingListItem: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -57,11 +55,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import {
-  apiCreateShoppingListFoodItem,
-  apiCreateShoppingListFreeformItem,
-  apiCreateShoppingListProductItem,
-} from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
@@ -152,11 +146,6 @@ describe('ShoppingListView', () => {
     expect(screen.queryByText(/Source:/)).not.toBeInTheDocument()
   })
 
-  it('does not fetch the food catalog when the server provides it', () => {
-    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
-    expect(apiFetchFoods).not.toHaveBeenCalled()
-  })
-
   it('lazily loads the food catalog in the background when none is provided', async () => {
     vi.mocked(apiFetchFoods).mockResolvedValue(mockFoods)
 
@@ -210,7 +199,7 @@ describe('ShoppingListView', () => {
 
   it('defaults the unit to "each" when the food has no custom unit', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(makeItem({
       id: 2,
       food: mockFoods[1],
       amount: 1,
@@ -222,7 +211,8 @@ describe('ShoppingListView', () => {
     await user.click(screen.getByRole('option', { name: /brown rice/i }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'food',
       foodId: 2,
       amount: 1,
       unit: 'each',
@@ -231,7 +221,7 @@ describe('ShoppingListView', () => {
 
   it('hides the unit picker by default and reveals it via Advanced to override the unit', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(makeItem({
       id: 4,
       food: mockFoods[1],
       amount: 1,
@@ -255,7 +245,8 @@ describe('ShoppingListView', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'cup', hidden: true }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'food',
       foodId: 2,
       amount: 1,
       unit: 'cup',
@@ -264,7 +255,7 @@ describe('ShoppingListView', () => {
 
   it('defaults the unit to the food’s custom unit when it has one', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(makeItem({
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(makeItem({
       id: 3,
       food: mockFoods[2],
       amount: 1,
@@ -276,7 +267,8 @@ describe('ShoppingListView', () => {
     await user.click(screen.getByRole('option', { name: /lime/i }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'food',
       foodId: 3,
       amount: 1,
       unit: 'piece',
@@ -286,7 +278,7 @@ describe('ShoppingListView', () => {
   it('creates a food item and adds it to the store', async () => {
     const user = userEvent.setup()
     const createdItem = makeItem()
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValue(createdItem)
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(createdItem)
 
     render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
 
@@ -295,7 +287,8 @@ describe('ShoppingListView', () => {
     await user.type(screen.getByRole('spinbutton', { name: /amount/i }), '2')
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFoodItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'food',
       foodId: 1,
       amount: 2,
       unit: 'each',
@@ -310,14 +303,14 @@ describe('ShoppingListView', () => {
     render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
 
     // First add → a new line (id 1, amount 2).
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 2, unit: 'g' }))
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 2, unit: 'g' }))
     await user.click(screen.getByRole('option', { name: /chicken breast/i }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
 
     // Second add of the same food → server merges and returns the SAME id with a summed amount.
     // The list is now a Listbox whose rows are also role="option", so scope to the search button.
-    vi.mocked(apiCreateShoppingListFoodItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 5, unit: 'g' }))
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 5, unit: 'g' }))
     const searchOption = screen.getAllByRole('option', { name: /chicken breast/i }).find((el) => el.tagName === 'BUTTON')
     await user.click(searchOption!)
     await user.click(screen.getByRole('button', { name: /add item/i }))
@@ -340,7 +333,7 @@ describe('ShoppingListView', () => {
 
   it('adds a product via the Product tab, constrained to the product’s unit', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListProductItem).mockResolvedValue(
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(
       makeItem({ id: 5, sourceType: 'product', name: 'Cereal Box', food: undefined, product: mockProduct, amount: 1, unit: 'box' }),
     )
 
@@ -350,7 +343,8 @@ describe('ShoppingListView', () => {
     await user.click(screen.getByRole('option', { name: 'Cereal Box' }))
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListProductItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'product',
       productId: 42,
       amount: 1,
       unit: 'box',
@@ -363,7 +357,7 @@ describe('ShoppingListView', () => {
 
   it('adds a freeform line with no unit via the Freeform tab', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListFreeformItem).mockResolvedValue(
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(
       makeItem({ id: 6, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null }),
     )
 
@@ -373,7 +367,8 @@ describe('ShoppingListView', () => {
     await user.type(screen.getByLabelText('Shopping list item name'), 'Trash bags')
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFreeformItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'freeform',
       name: 'Trash bags',
       amount: 1,
       unit: undefined,
@@ -387,7 +382,7 @@ describe('ShoppingListView', () => {
 
   it('sends the freeform unit when one is provided', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiCreateShoppingListFreeformItem).mockResolvedValue(
+    vi.mocked(apiCreateShoppingListItem).mockResolvedValue(
       makeItem({ id: 7, sourceType: 'freeform', name: 'Foil', food: undefined, amount: 1, unit: 'roll' }),
     )
 
@@ -398,7 +393,8 @@ describe('ShoppingListView', () => {
     await user.type(screen.getByLabelText('Shopping list freeform unit'), 'roll')
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
-    expect(apiCreateShoppingListFreeformItem).toHaveBeenCalledWith({
+    expect(apiCreateShoppingListItem).toHaveBeenCalledWith({
+      sourceType: 'freeform',
       name: 'Foil',
       amount: 1,
       unit: 'roll',

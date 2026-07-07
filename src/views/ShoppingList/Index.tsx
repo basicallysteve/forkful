@@ -5,11 +5,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import {
-  apiCreateShoppingListFoodItem,
-  apiCreateShoppingListFreeformItem,
-  apiCreateShoppingListProductItem,
-} from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
@@ -152,14 +148,14 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       let created: ShoppingListItem
       if (variant === 'food') {
         if (!selectedFood || !unit) return
-        created = await apiCreateShoppingListFoodItem({ foodId: selectedFood.id, amount, unit })
+        created = await apiCreateShoppingListItem({ sourceType: 'food', foodId: selectedFood.id, amount, unit })
       } else if (variant === 'product') {
         if (!selectedProduct || !unit) return
-        created = await apiCreateShoppingListProductItem({ productId: selectedProduct.id, amount, unit })
+        created = await apiCreateShoppingListItem({ sourceType: 'product', productId: selectedProduct.id, amount, unit })
       } else {
         const name = freeformName.trim()
         if (!name) return
-        created = await apiCreateShoppingListFreeformItem({ name, amount, unit: freeformUnit.trim() || undefined })
+        created = await apiCreateShoppingListItem({ sourceType: 'freeform', name, amount, unit: freeformUnit.trim() || undefined })
       }
       upsertItem(created)
       resetForm()

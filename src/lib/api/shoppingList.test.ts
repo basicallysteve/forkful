@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  apiCreateShoppingListFoodItem,
-  apiCreateShoppingListFreeformItem,
-  apiCreateShoppingListProductItem,
+  apiCreateShoppingListItem,
   apiFetchShoppingListItems,
 } from './shoppingList'
 import type { ShoppingListItem } from '@/types/ShoppingList'
@@ -62,49 +60,41 @@ function postedBody(): Record<string, unknown> {
   return JSON.parse((call[1] as RequestInit).body as string)
 }
 
-describe('apiCreateShoppingListFoodItem', () => {
-  it('posts food item data with sourceType food and parses the created item', async () => {
+describe('apiCreateShoppingListItem', () => {
+  it('posts a food item and parses the created item', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
 
-    const result = await apiCreateShoppingListFoodItem({
-      foodId: 1,
-      amount: 2,
-      unit: 'oz',
-    })
+    const result = await apiCreateShoppingListItem({ sourceType: 'food', foodId: 1, amount: 2, unit: 'oz' })
 
     expect(result).toEqual(mockParsedItem)
     expect(fetch).toHaveBeenCalledWith('/api/shopping-list', expect.objectContaining({ method: 'POST' }))
     expect(postedBody()).toEqual({ sourceType: 'food', foodId: 1, amount: 2, unit: 'oz' })
   })
 
-  it('throws on non-ok response', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
-
-    await expect(apiCreateShoppingListFoodItem({ foodId: 1, amount: 1, unit: 'g' })).rejects.toThrow('Failed to create shopping list item')
-  })
-})
-
-describe('apiCreateShoppingListProductItem', () => {
-  it('posts product item data with sourceType product', async () => {
+  it('posts a product item', async () => {
     const rawProductItem = { ...mockRawItem, sourceType: 'product' as const, food: undefined, product: { ...mockFood } }
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => rawProductItem } as Response)
 
-    const result = await apiCreateShoppingListProductItem({ productId: 7, amount: 3, unit: 'oz' })
+    const result = await apiCreateShoppingListItem({ sourceType: 'product', productId: 7, amount: 3, unit: 'oz' })
 
     expect(result.sourceType).toBe('product')
     expect(postedBody()).toEqual({ sourceType: 'product', productId: 7, amount: 3, unit: 'oz' })
   })
-})
 
-describe('apiCreateShoppingListFreeformItem', () => {
-  it('posts freeform item data with sourceType freeform and an optional unit', async () => {
+  it('posts a freeform item with an optional unit', async () => {
     const rawFreeform = { id: 9, sourceType: 'freeform' as const, status: 'to_buy' as const, name: 'Trash bags', amount: 1, unit: null, addedDate: '2026-01-01T00:00:00.000Z' }
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => rawFreeform } as Response)
 
-    const result = await apiCreateShoppingListFreeformItem({ name: 'Trash bags', amount: 1 })
+    const result = await apiCreateShoppingListItem({ sourceType: 'freeform', name: 'Trash bags', amount: 1 })
 
     expect(result.name).toBe('Trash bags')
     expect(result.unit).toBeNull()
     expect(postedBody()).toEqual({ sourceType: 'freeform', name: 'Trash bags', amount: 1 })
+  })
+
+  it('throws on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
+
+    await expect(apiCreateShoppingListItem({ sourceType: 'food', foodId: 1, amount: 1, unit: 'g' })).rejects.toThrow('Failed to create shopping list item')
   })
 })

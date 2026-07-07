@@ -11,23 +11,12 @@ function parseShoppingListItem(raw: RawShoppingListItem): ShoppingListItem {
   }
 }
 
-export type CreateShoppingListFoodItemData = {
-  foodId: number
-  amount: number
-  unit: string
-}
-
-export type CreateShoppingListProductItemData = {
-  productId: number
-  amount: number
-  unit: string
-}
-
-export type CreateShoppingListFreeformItemData = {
-  name: string
-  amount: number
-  unit?: string | null
-}
+// One create payload, discriminated by sourceType — mirrors the single POST /api/shopping-list
+// endpoint, which branches on the same field.
+export type CreateShoppingListItemInput =
+  | { sourceType: 'food'; foodId: number; amount: number; unit: string }
+  | { sourceType: 'product'; productId: number; amount: number; unit: string }
+  | { sourceType: 'freeform'; name: string; amount: number; unit?: string | null }
 
 export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   const res = await fetch('/api/shopping-list')
@@ -36,26 +25,14 @@ export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   return raw.map(parseShoppingListItem)
 }
 
-async function postShoppingListItem(body: Record<string, unknown>): Promise<ShoppingListItem> {
+export async function apiCreateShoppingListItem(input: CreateShoppingListItemInput): Promise<ShoppingListItem> {
   const res = await fetch('/api/shopping-list', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(input),
   })
 
   if (!res.ok) throw new Error('Failed to create shopping list item')
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
-}
-
-export async function apiCreateShoppingListFoodItem(data: CreateShoppingListFoodItemData): Promise<ShoppingListItem> {
-  return postShoppingListItem({ sourceType: 'food', ...data })
-}
-
-export async function apiCreateShoppingListProductItem(data: CreateShoppingListProductItemData): Promise<ShoppingListItem> {
-  return postShoppingListItem({ sourceType: 'product', ...data })
-}
-
-export async function apiCreateShoppingListFreeformItem(data: CreateShoppingListFreeformItemData): Promise<ShoppingListItem> {
-  return postShoppingListItem({ sourceType: 'freeform', ...data })
 }
