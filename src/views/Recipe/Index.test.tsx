@@ -412,6 +412,19 @@ describe('Recipe View Page', () => {
 
       expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
     })
+
+    it('does not stack a second empty row while an unpicked placeholder exists', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
+
+      // The row is still an unpicked placeholder (food id 0), so a second add is a no-op.
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(screen.queryByLabelText('Ingredient 4 name')).not.toBeInTheDocument()
+    })
   })
 
   describe('Copy Recipe Functionality', () => {
