@@ -5,10 +5,13 @@ import ShoppingListView from './Index'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
+import type { Product } from '@/types/Product'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 
 vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListFoodItem: vi.fn(),
+  apiCreateShoppingListProductItem: vi.fn(),
+  apiCreateShoppingListFreeformItem: vi.fn(),
 }))
 
 vi.mock('@/components/FoodSearch/FoodSearch', () => ({
@@ -33,7 +36,41 @@ vi.mock('@/components/FoodSearch/FoodSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListFoodItem } from '@/lib/api/shoppingList'
+// A minimal ProductSearch stand-in: an input plus one selectable product option.
+vi.mock('@/components/ProductSearch/ProductSearch', () => ({
+  default: ({ onChange }: { onChange: (product: Product) => void }) => (
+    <div>
+      <input aria-label="Shopping list product" readOnly value="" />
+      <button
+        type="button"
+        role="option"
+        aria-label="Cereal Box"
+        onClick={() => onChange(mockProduct)}
+      >
+        Cereal Box
+      </button>
+    </div>
+  ),
+}))
+
+import {
+  apiCreateShoppingListFoodItem,
+  apiCreateShoppingListFreeformItem,
+  apiCreateShoppingListProductItem,
+} from '@/lib/api/shoppingList'
+
+const mockProduct: Product = {
+  id: 42,
+  name: 'Cereal Box',
+  calories: 120,
+  protein: 3,
+  carbs: 25,
+  fat: 1,
+  fiber: 2,
+  servingSize: 1,
+  servingUnit: 'box',
+  measurements: [{ unit: 'box' }],
+}
 
 const mockFoods: Food[] = [
   {
@@ -75,11 +112,13 @@ const mockFoods: Food[] = [
 ]
 
 function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
+  const food = overrides.food ?? mockFoods[0]
   return {
     id: 1,
     sourceType: 'food',
     status: 'to_buy',
-    food: mockFoods[0],
+    name: food?.name ?? '',
+    food,
     amount: 2,
     unit: 'oz',
     addedDate: new Date('2026-01-01T00:00:00.000Z'),
@@ -272,5 +311,101 @@ describe('ShoppingListView', () => {
     await user.clear(screen.getByLabelText('Shopping list food'))
 
     expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
+  })
+
+  it('adds a product via the Product tab, constrained to the product’s unit', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCreateShoppingListProductItem).mockResolvedValue(
+      makeItem({ id: 5, sourceType: 'product', name: 'Cereal Box', food: undefined, product: mockProduct, amount: 1, unit: 'box' }),
+    )
+
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('tab', { name: 'Product' }))
+    await user.click(screen.getByRole('option', { name: 'Cereal Box' }))
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    expect(apiCreateShoppingListProductItem).toHaveBeenCalledWith({
+      productId: 42,
+      amount: 1,
+      unit: 'box',
+    })
+
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    expect(within(list).getByText('Cereal Box')).toBeInTheDocument()
+  })
+
+  it('adds a freeform line with no unit via the Freeform tab', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCreateShoppingListFreeformItem).mockResolvedValue(
+      makeItem({ id: 6, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null }),
+    )
+
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('tab', { name: 'Freeform' }))
+    await user.type(screen.getByLabelText('Shopping list item name'), 'Trash bags')
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    expect(apiCreateShoppingListFreeformItem).toHaveBeenCalledWith({
+      name: 'Trash bags',
+      amount: 1,
+      unit: undefined,
+    })
+
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
+    // A freeform line with no unit and amount 1 shows just its name.
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    expect(within(list).getByText('Trash bags')).toBeInTheDocument()
+  })
+
+  it('sends the freeform unit when one is provided', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCreateShoppingListFreeformItem).mockResolvedValue(
+      makeItem({ id: 7, sourceType: 'freeform', name: 'Foil', food: undefined, amount: 1, unit: 'roll' }),
+    )
+
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('tab', { name: 'Freeform' }))
+    await user.type(screen.getByLabelText('Shopping list item name'), 'Foil')
+    await user.type(screen.getByLabelText('Shopping list freeform unit'), 'roll')
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+
+    expect(apiCreateShoppingListFreeformItem).toHaveBeenCalledWith({
+      name: 'Foil',
+      amount: 1,
+      unit: 'roll',
+    })
+  })
+
+  it('disables Add Item on the Freeform tab until a name is entered', async () => {
+    const user = userEvent.setup()
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('tab', { name: 'Freeform' }))
+    expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
+
+    await user.type(screen.getByLabelText('Shopping list item name'), 'Napkins')
+    expect(screen.getByRole('button', { name: /add item/i })).toBeEnabled()
+  })
+
+  it('renders all three source variants together', async () => {
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
+          makeItem({ id: 2, sourceType: 'product', name: 'Cereal Box', food: undefined, product: mockProduct, amount: 1, unit: 'box' }),
+          makeItem({ id: 3, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null }),
+        ]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
+    expect(within(list).getByText('Cereal Box')).toBeInTheDocument()
+    expect(within(list).getByText('Trash bags')).toBeInTheDocument()
   })
 })

@@ -26,6 +26,37 @@
     gap: 16px;
   }
 
+  // Segmented control that switches the add form between Food / Product / Freeform lines.
+  .variant-tabs {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+  }
+
+  .variant-tab {
+    border: none;
+    background: none;
+    padding: 6px 16px;
+    border-radius: 999px;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.is-active {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:not(.is-active):hover {
+      color: var(--vscode-text);
+    }
+  }
+
   .add-item-form {
     display: flex;
     flex-wrap: wrap;
@@ -67,9 +98,21 @@
     }
   }
 
-  .field-food {
+  .field-food,
+  .field-product,
+  .field-freeform {
     flex: 1 1 auto;
     min-width: 200px;
+  }
+
+  .field {
+    // Freeform's plain text inputs match the other controls' height.
+    .p-inputtext {
+      width: 100%;
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
   }
 
   // Fixed widths keep Amount/Unit from dominating the row and stop the Unit
@@ -249,6 +292,8 @@
     }
 
     .field-food,
+    .field-product,
+    .field-freeform,
     .field-amount,
     .field-unit {
       width: 100%;
