@@ -396,6 +396,19 @@ describe('ShoppingListView', () => {
     expect(screen.getByRole('button', { name: /add item/i })).toBeEnabled()
   })
 
+  it('collapses the Advanced unit picker when switching variants', async () => {
+    const user = userEvent.setup()
+    render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+    await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+    await user.click(screen.getByRole('button', { name: /^advanced$/i }))
+    expect(await screen.findByRole('combobox')).toBeInTheDocument()
+
+    // Switching to Product starts from a clean state — the override is collapsed again.
+    await user.click(screen.getByRole('tab', { name: 'Product' }))
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
   it('renders all three source variants together', async () => {
     render(
       <ShoppingListView

@@ -15,6 +15,16 @@ const POSTGRES_UNIQUE_VIOLATION = '23505'
 const FREEFORM_NAME_MAX_LENGTH = 255
 const FREEFORM_UNIT_MAX_LENGTH = 50
 
+// amount is numeric(10, 2): its largest representable value is 99,999,999.99. Reject anything above
+// it — including a merge total that would tip an otherwise-valid line over — with a clean validation
+// error instead of letting the write overflow the column as a 500.
+const AMOUNT_MAX = 99_999_999.99
+
+function assertAmountInRange(amount: number): void {
+  if (amount <= 0) throw new Error('Amount must be greater than zero')
+  if (amount > AMOUNT_MAX) throw new Error('Amount is too large')
+}
+
 function parseMeasurements(raw: unknown): Measurement[] {
   if (!Array.isArray(raw)) return []
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
@@ -237,11 +247,14 @@ async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promi
       ))
 
     if (existing) {
+      const mergedAmount = Number(existing.amount) + values.amount
+      // Each add is individually in range, but their sum can still exceed the column ceiling.
+      assertAmountInRange(mergedAmount)
       const [updated] = await tx
         .update(shoppingListItems)
         // numeric(10,2): round the merged total to 2 decimals so we never persist a
         // floating-point artifact like "0.30000000000000004".
-        .set({ amount: (Number(existing.amount) + values.amount).toFixed(2) })
+        .set({ amount: mergedAmount.toFixed(2) })
         .where(eq(shoppingListItems.id, existing.id))
         .returning()
       return updated.id
@@ -276,7 +289,7 @@ export type CreateShoppingListFoodItemData = {
 }
 
 export async function createShoppingListFoodItem(data: CreateShoppingListFoodItemData): Promise<ShoppingListItem> {
-  if (data.amount <= 0) throw new Error('Amount must be greater than zero')
+  assertAmountInRange(data.amount)
 
   const food = await getFoodById(data.foodId)
   if (!food) throw new Error('Food not found')
@@ -304,7 +317,7 @@ export type CreateShoppingListProductItemData = {
 }
 
 export async function createShoppingListProductItem(data: CreateShoppingListProductItemData): Promise<ShoppingListItem> {
-  if (data.amount <= 0) throw new Error('Amount must be greater than zero')
+  assertAmountInRange(data.amount)
 
   const product = await getProductById(data.productId)
   if (!product) throw new Error('Product not found')
@@ -333,7 +346,7 @@ export type CreateShoppingListFreeformItemData = {
 }
 
 export async function createShoppingListFreeformItem(data: CreateShoppingListFreeformItemData): Promise<ShoppingListItem> {
-  if (data.amount <= 0) throw new Error('Amount must be greater than zero')
+  assertAmountInRange(data.amount)
 
   const name = data.name.trim()
   if (!name) throw new Error('Name is required')

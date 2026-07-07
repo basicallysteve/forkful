@@ -99,6 +99,8 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     if (next === variant) return
     setVariant(next)
     setSaveError(null)
+    // Collapse the unit override so each variant starts from its own clean default.
+    setShowAdvanced(false)
     resetForm()
   }
 

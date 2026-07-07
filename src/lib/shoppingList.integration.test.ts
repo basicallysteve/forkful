@@ -213,6 +213,26 @@ describe('shopping list data layer (integration)', () => {
     ).rejects.toThrow('Unit is too long')
   })
 
+  it('rejects an amount above the numeric(10,2) ceiling, including via a merge', async () => {
+    const user = await createTestUser('k')
+    const food = await createTestFood('TestShopping Overflow')
+
+    await expect(
+      createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 100_000_000, unit: 'g' })
+    ).rejects.toThrow('Amount is too large')
+
+    // Two individually-valid adds whose sum overflows the column must fail cleanly, not 500.
+    await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 99_999_999, unit: 'g' })
+    await expect(
+      createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 10, unit: 'g' })
+    ).rejects.toThrow('Amount is too large')
+
+    // The failed merge left the original line untouched.
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(99_999_999)
+  })
+
   it('merges a duplicate freeform name + unit line', async () => {
     const user = await createTestUser('h')
 
