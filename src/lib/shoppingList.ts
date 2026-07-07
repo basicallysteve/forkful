@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -339,19 +339,22 @@ export async function createShoppingListProductItem(data: CreateShoppingListProd
 }
 
 // Hard-delete a single line off the user's active list (a Remove Item — see CONTEXT.md). The row is
-// removed outright: shopping_list_items has no dateDeleted, so there is no soft-delete here. Scoped to
-// the caller's active list so a user can neither remove another user's line nor mutate an archived
-// list. Returns false when no such line exists (already gone, wrong owner, or archived) so the route
-// can answer 404.
+// removed outright: shopping_list_items has no dateDeleted, so there is no soft-delete here. Ownership
+// is enforced in one round-trip: the line is deleted only if its list is the caller's active list, via
+// a subquery, so a user can neither remove another user's line nor mutate an archived list. Returns
+// false when no such line exists (already gone, wrong owner, or archived) so the route can answer 404.
 export async function deleteShoppingListItem(id: number, userId: number): Promise<boolean> {
-  const activeList = await getActiveShoppingList(userId)
-  if (!activeList) return false
-
   const deleted = await db
     .delete(shoppingListItems)
     .where(and(
       eq(shoppingListItems.id, id),
-      eq(shoppingListItems.shoppingListId, activeList.id),
+      inArray(
+        shoppingListItems.shoppingListId,
+        db
+          .select({ id: shoppingLists.id })
+          .from(shoppingLists)
+          .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active'))),
+      ),
     ))
     .returning({ id: shoppingListItems.id })
 

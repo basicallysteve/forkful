@@ -212,63 +212,32 @@
     color: var(--vscode-muted);
   }
 
-  // The item list is a PrimeReact Listbox (multiple + checkbox); strip its card chrome so it reads
-  // as a plain checklist inside the panel.
-  .shopping-list-items.p-listbox {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
-
-  .shopping-list-items .p-listbox-list {
+  // The item list is a plain semantic <ul>; each <li> holds a row with its own Remove affordance.
+  .shopping-list-items {
+    list-style: none;
+    margin: 0;
     padding: 0;
   }
 
-  .shopping-list-items .p-listbox-item {
-    padding: 0;
-    border-radius: 0;
+  .shopping-list-row-wrap {
     color: var(--vscode-text);
+  }
 
-    // Neutralise the theme's default selection fill — selection is conveyed by the checkbox and the
-    // strikethrough, not a highlighted row.
-    &.p-highlight {
-      background: transparent;
-      color: inherit;
-    }
+  .shopping-list-row-wrap:last-child .shopping-list-item {
+    border-bottom: none;
+  }
 
-    &:hover {
-      background: var(--accent-hover);
-    }
-
-    &:focus {
-      box-shadow: inset 0 0 0 2px var(--vscode-accent);
-    }
+  .shopping-list-row:hover .shopping-list-item {
+    background: var(--accent-hover);
   }
 
   .shopping-list-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 4px;
     border-bottom: 1px solid var(--vscode-border);
-  }
-
-  .p-listbox-item:last-child .shopping-list-item {
-    border-bottom: none;
-  }
-
-  // Checked checkbox in the app's accent green. p-highlight can land on the root or the box across
-  // PrimeReact builds, so match both.
-  .item-check.p-highlight .p-checkbox-box,
-  .item-check .p-checkbox-box.p-highlight {
-    background: var(--vscode-accent);
-    border-color: var(--vscode-accent);
-  }
-
-  .item-check {
-    flex: 0 0 auto;
-    // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
-    pointer-events: none;
   }
 
   .item-body {
@@ -289,30 +258,6 @@
     color: var(--vscode-muted);
     font-size: 14px;
     font-variant-numeric: tabular-nums;
-  }
-
-  // A selected item is struck through across the entire row (not just the name), drawn as a single
-  // continuous line rather than per-text-run decoration.
-  .shopping-list-item {
-    position: relative;
-  }
-
-  .shopping-list-item.is-selected {
-    &::after {
-      content: '';
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      top: 50%;
-      height: 2px;
-      background: var(--vscode-muted);
-      pointer-events: none;
-    }
-
-    .item-name,
-    .item-qty {
-      color: var(--vscode-muted);
-    }
   }
 
   // Each row wraps its content plus a single Remove button. The button is styled two ways across the
