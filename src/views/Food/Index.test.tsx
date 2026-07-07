@@ -48,8 +48,8 @@ function renderWithProviders(
   }: {
     foods?: Food[]
     recipes?: Recipe[]
-    deleteFood?: ReturnType<typeof vi.fn>
-    isFoodUsedInRecipe?: ReturnType<typeof vi.fn>
+    deleteFood?: (id: number) => void
+    isFoodUsedInRecipe?: (foodId: number, recipes: Recipe[]) => boolean
   } = {}
 ) {
   resetFoodStore()

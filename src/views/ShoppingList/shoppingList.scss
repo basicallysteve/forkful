@@ -1,0 +1,263 @@
+.shopping-list {
+  color: var(--vscode-text);
+  width: 100%;
+  box-sizing: border-box;
+
+  .shopping-list-content {
+    padding: 22px 22px 18px;
+    background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
+  }
+
+  .shopping-list-header {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-border);
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--vscode-text);
+    }
+  }
+
+  .shopping-list-panel {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .add-item-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 12px;
+      color: var(--vscode-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    // Make the PrimeReact controls fill their field so widths are driven by the
+    // field, not each control's intrinsic size.
+    .p-autocomplete,
+    .p-inputnumber,
+    .p-dropdown {
+      width: 100%;
+    }
+
+    .p-inputnumber-input {
+      width: 100%;
+    }
+
+    // Normalize control heights: PrimeReact's InputNumber/Dropdown default to a
+    // larger font and padding than the food autocomplete input, so match them to it.
+    .p-inputnumber-input,
+    .p-dropdown .p-dropdown-label {
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
+  }
+
+  .field-food {
+    flex: 1 1 auto;
+    min-width: 200px;
+  }
+
+  // Fixed widths keep Amount/Unit from dominating the row and stop the Unit
+  // dropdown from reflowing when it swaps its placeholder for a short unit label.
+  .field-amount {
+    flex: 0 0 auto;
+    width: 110px;
+  }
+
+  .field-unit {
+    flex: 0 0 auto;
+    width: 140px;
+  }
+
+  .add-item-button {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  // Understated link-style control that reveals the unit override. The unit is auto-derived and
+  // hidden by default; most users never open this.
+  .advanced-toggle {
+    align-self: flex-start;
+    margin-top: -6px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  .add-item-error {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  .shopping-list-empty {
+    margin: 0;
+    padding: 28px 0;
+    text-align: center;
+    color: var(--vscode-muted);
+  }
+
+  // The item list is a PrimeReact Listbox (multiple + checkbox); strip its card chrome so it reads
+  // as a plain checklist inside the panel.
+  .shopping-list-items.p-listbox {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .shopping-list-items .p-listbox-list {
+    padding: 0;
+  }
+
+  .shopping-list-items .p-listbox-item {
+    padding: 0;
+    border-radius: 0;
+    color: var(--vscode-text);
+
+    // Neutralise the theme's default selection fill — selection is conveyed by the checkbox and the
+    // strikethrough, not a highlighted row.
+    &.p-highlight {
+      background: transparent;
+      color: inherit;
+    }
+
+    &:hover {
+      background: var(--accent-hover);
+    }
+
+    &:focus {
+      box-shadow: inset 0 0 0 2px var(--vscode-accent);
+    }
+  }
+
+  .shopping-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--vscode-border);
+  }
+
+  .p-listbox-item:last-child .shopping-list-item {
+    border-bottom: none;
+  }
+
+  // Checked checkbox in the app's accent green. p-highlight can land on the root or the box across
+  // PrimeReact builds, so match both.
+  .item-check.p-highlight .p-checkbox-box,
+  .item-check .p-checkbox-box.p-highlight {
+    background: var(--vscode-accent);
+    border-color: var(--vscode-accent);
+  }
+
+  .item-check {
+    flex: 0 0 auto;
+    // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
+    pointer-events: none;
+  }
+
+  .item-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .item-name {
+    flex: 1;
+    color: var(--vscode-text);
+    font-weight: 500;
+  }
+
+  .item-qty {
+    color: var(--vscode-muted);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // A selected item is struck through across the entire row (not just the name), drawn as a single
+  // continuous line rather than per-text-run decoration.
+  .shopping-list-item {
+    position: relative;
+  }
+
+  .shopping-list-item.is-selected {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      top: 50%;
+      height: 2px;
+      background: var(--vscode-muted);
+      pointer-events: none;
+    }
+
+    .item-name,
+    .item-qty {
+      color: var(--vscode-muted);
+    }
+  }
+
+  // On narrow screens the row can't hold four controls, so stack them: the food
+  // search, Amount, Unit, and the button each take their own full-width row.
+  @media (max-width: 720px) {
+    .add-item-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .field-food,
+    .field-amount,
+    .field-unit {
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .add-item-button {
+      width: 100%;
+    }
+  }
+}

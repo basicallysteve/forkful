@@ -187,7 +187,7 @@ describe('Login Page', () => {
 
   describe('Navigation', () => {
     beforeEach(() => {
-      vi.mocked(signIn).mockResolvedValue({ error: null, code: undefined, ok: true, url: '/' })
+      vi.mocked(signIn).mockResolvedValue({ error: undefined, code: undefined, status: 200, ok: true, url: '/' })
     })
 
     it('renders cancel button linking to home', () => {
@@ -216,8 +216,8 @@ describe('Login Page', () => {
   })
 
   describe('Account Deactivation', () => {
-    const deactivatedResult = { code: 'ACCOUNT_DEACTIVATED', error: 'CredentialsSignin', ok: false, url: null }
-    const successResult = { error: null, code: undefined, ok: true, url: '/' }
+    const deactivatedResult = { code: 'ACCOUNT_DEACTIVATED', error: 'CredentialsSignin', status: 401, ok: false, url: null }
+    const successResult = { error: undefined, code: undefined, status: 200, ok: true, url: '/' }
 
     beforeEach(() => {
       vi.mocked(signIn).mockResolvedValue(successResult)
