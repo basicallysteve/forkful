@@ -1,16 +1,24 @@
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { Pool } from 'pg'
 import { createFood } from './foods'
+import { createProduct } from './products'
 import { signUp } from './users'
-import { createShoppingListFoodItem, getOrCreateActiveShoppingList, getShoppingListItems } from './shoppingList'
+import {
+  createShoppingListFoodItem,
+  createShoppingListFreeformItem,
+  createShoppingListProductItem,
+  getOrCreateActiveShoppingList,
+  getShoppingListItems,
+} from './shoppingList'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
 const pool = new Pool({ connectionString })
 
 async function cleanup() {
-  await pool.query(`DELETE FROM shopping_list_items WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'TestShopping%')`)
+  await pool.query(`DELETE FROM shopping_list_items WHERE shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%'))`)
   await pool.query(`DELETE FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%')`)
+  await pool.query(`DELETE FROM products WHERE name LIKE 'TestShopping%'`)
   await pool.query(`DELETE FROM foods WHERE name LIKE 'TestShopping%'`)
   await pool.query(`DELETE FROM users WHERE username LIKE 'testshopping%'`)
 }
@@ -40,6 +48,20 @@ async function createTestFood(name = 'TestShopping Chicken') {
     servingSize: 100,
     servingUnit: 'g',
     measurements: [{ unit: 'g' }, { unit: 'oz' }],
+  })
+}
+
+async function createTestProduct(name = 'TestShopping Cereal') {
+  return createProduct({
+    name,
+    calories: 120,
+    protein: 3,
+    carbs: 25,
+    fat: 1,
+    fiber: 2,
+    servingSize: 1,
+    servingUnit: 'box',
+    measurements: [{ unit: 'box' }],
   })
 }
 
@@ -74,7 +96,7 @@ describe('shopping list data layer (integration)', () => {
       unit: 'oz',
     })
 
-    expect(created.food.name).toBe('TestShopping Chicken')
+    expect(created.food?.name).toBe('TestShopping Chicken')
     expect(created.sourceType).toBe('food')
     expect(created.status).toBe('to_buy')
     expect(created.amount).toBe(2)
@@ -95,7 +117,7 @@ describe('shopping list data layer (integration)', () => {
     const items = await getShoppingListItems(user.id)
 
     expect(items).toHaveLength(1)
-    expect(items[0].food.name).toBe('TestShopping Rice')
+    expect(items[0].food?.name).toBe('TestShopping Rice')
     expect(items[0].sourceType).toBe('food')
     expect(items[0].status).toBe('to_buy')
   })
@@ -124,5 +146,119 @@ describe('shopping list data layer (integration)', () => {
 
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(2)
+  })
+
+  it('adds a product item with sourceType product, constrained to the product’s units', async () => {
+    const user = await createTestUser('f')
+    const product = await createTestProduct('TestShopping Cereal')
+
+    const created = await createShoppingListProductItem({
+      userId: user.id,
+      productId: product.id,
+      amount: 2,
+      unit: 'box',
+    })
+
+    expect(created.sourceType).toBe('product')
+    expect(created.status).toBe('to_buy')
+    expect(created.name).toBe('TestShopping Cereal')
+    expect(created.product?.id).toBe(product.id)
+    expect(created.food).toBeUndefined()
+    expect(created.amount).toBe(2)
+    expect(created.unit).toBe('box')
+
+    await expect(
+      createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'gallon' })
+    ).rejects.toThrow('Unit is not valid for this product')
+  })
+
+  it('adds a freeform item with sourceType freeform and an optional unit', async () => {
+    const user = await createTestUser('g')
+
+    const withUnit = await createShoppingListFreeformItem({
+      userId: user.id,
+      name: 'TestShopping Trash bags',
+      amount: 2,
+      unit: 'box',
+    })
+
+    expect(withUnit.sourceType).toBe('freeform')
+    expect(withUnit.name).toBe('TestShopping Trash bags')
+    expect(withUnit.food).toBeUndefined()
+    expect(withUnit.product).toBeUndefined()
+    expect(withUnit.unit).toBe('box')
+
+    const withoutUnit = await createShoppingListFreeformItem({
+      userId: user.id,
+      name: 'TestShopping Napkins',
+      amount: 1,
+    })
+
+    expect(withoutUnit.unit).toBeNull()
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(2)
+    expect(items.map((item) => item.name).sort()).toEqual(['TestShopping Napkins', 'TestShopping Trash bags'])
+  })
+
+  it('rejects freeform name/unit that exceed the column limits before hitting the DB', async () => {
+    const user = await createTestUser('j')
+
+    await expect(
+      createShoppingListFreeformItem({ userId: user.id, name: 'x'.repeat(256), amount: 1 })
+    ).rejects.toThrow('Name is too long')
+
+    await expect(
+      createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Long Unit', amount: 1, unit: 'x'.repeat(51) })
+    ).rejects.toThrow('Unit is too long')
+  })
+
+  it('rejects an amount above the numeric(10,2) ceiling, including via a merge', async () => {
+    const user = await createTestUser('k')
+    const food = await createTestFood('TestShopping Overflow')
+
+    await expect(
+      createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 100_000_000, unit: 'g' })
+    ).rejects.toThrow('Amount is too large')
+
+    // Two individually-valid adds whose sum overflows the column must fail cleanly, not 500.
+    await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 99_999_999, unit: 'g' })
+    await expect(
+      createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 10, unit: 'g' })
+    ).rejects.toThrow('Amount is too large')
+
+    // The failed merge left the original line untouched.
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(99_999_999)
+  })
+
+  it('merges a duplicate freeform name + unit line, case-insensitively', async () => {
+    const user = await createTestUser('h')
+
+    const first = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Foil', amount: 1, unit: 'roll' })
+    // Different casing still merges; the existing line keeps its original casing.
+    const second = await createShoppingListFreeformItem({ userId: user.id, name: 'testshopping foil', amount: 2, unit: 'roll' })
+
+    expect(second.id).toBe(first.id)
+    expect(second.amount).toBe(3)
+    expect(second.name).toBe('TestShopping Foil')
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+  })
+
+  it('lists all three variants together on the active list', async () => {
+    const user = await createTestUser('i')
+    const food = await createTestFood('TestShopping Mixed Food')
+    const product = await createTestProduct('TestShopping Mixed Product')
+
+    await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+    await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
+    await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Mixed Freeform', amount: 1 })
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(3)
+    expect(items.map((item) => item.sourceType).sort()).toEqual(['food', 'freeform', 'product'])
   })
 })
