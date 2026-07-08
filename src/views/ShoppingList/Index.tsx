@@ -531,6 +531,11 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     upsertItem({ ...item, status: next })
     try {
       await apiUpdateShoppingListItemStatus(item.id, next)
+      // Checking a line off is the moment to record what it cost and when it expires, so surface the
+      // details dialog automatically — but only once the check-off has actually persisted, so a failed
+      // toggle never pops a dialog. Only the to-bought transition prompts; unchecking or marking a line
+      // unavailable never does.
+      if (next === 'bought') handleEditDetails({ ...item, status: next })
     } catch {
       const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
       // Only roll back if nothing else has changed the line since this request started.

@@ -735,6 +735,68 @@ describe('ShoppingListView — price & expiration', () => {
     return screen.findByRole('dialog')
   }
 
+  it('opens the details dialog automatically once a line is checked off as bought', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // No dialog until a line is actually checked off.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(within(list).getByRole('option'))
+
+    // The check-off persists first, then the Price & expiration dialog surfaces for that line.
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('does not open the dialog when a line is marked unavailable or unchecked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', status: 'bought' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Unchecking a bought line (→ to_buy) never prompts.
+    fireEvent.click(within(list).getByRole('option'))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // Marking a line unavailable via the kebab never prompts either.
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /mark unavailable/i, hidden: true }))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('unavailable'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('does not open the dialog when the check-off fails to persist', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    fireEvent.click(within(list).getByRole('option'))
+
+    // The failed toggle rolls back to to_buy and surfaces the banner — no dialog.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to update/i)
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('records a total Line Price at check-off and shows it on the row', async () => {
     const user = userEvent.setup()
     vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
