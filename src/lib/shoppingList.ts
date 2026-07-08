@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -336,6 +336,29 @@ export async function createShoppingListProductItem(data: CreateShoppingListProd
     amount: data.amount,
     unit: data.unit,
   })
+}
+
+// Hard-delete a single line off the user's active list (a Remove Item — see CONTEXT.md). The row is
+// removed outright: shopping_list_items has no dateDeleted, so there is no soft-delete here. Ownership
+// is enforced in one round-trip: the line is deleted only if its list is the caller's active list, via
+// a subquery, so a user can neither remove another user's line nor mutate an archived list. Returns
+// false when no such line exists (already gone, wrong owner, or archived) so the route can answer 404.
+export async function deleteShoppingListItem(id: number, userId: number): Promise<boolean> {
+  const deleted = await db
+    .delete(shoppingListItems)
+    .where(and(
+      eq(shoppingListItems.id, id),
+      inArray(
+        shoppingListItems.shoppingListId,
+        db
+          .select({ id: shoppingLists.id })
+          .from(shoppingLists)
+          .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active'))),
+      ),
+    ))
+    .returning({ id: shoppingListItems.id })
+
+  return deleted.length > 0
 }
 
 export type CreateShoppingListFreeformItemData = {
