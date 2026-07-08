@@ -466,12 +466,10 @@
 
 // The Price & expiration dialog also portals to <body>, so it is styled here at the top level.
 .item-details-dialog {
-  width: min(420px, 92vw);
-
   .item-details-form {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
   }
 
   .field {
@@ -593,10 +591,10 @@
   .price-mode-tab {
     border: none;
     background: none;
-    padding: 6px 16px;
+    padding: 5px 14px;
     border-radius: 999px;
     color: var(--vscode-muted);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
 
@@ -626,13 +624,35 @@
     font-size: 13px;
   }
 
-  .item-details-actions {
+  // Footer actions live in the Modal's footer slot. Styled locally (the app's .primary-button /
+  // .ghost-button classes are declared ad-hoc across view stylesheets), mirroring their ghost + accent
+  // look so this dialog matches the other Modals.
+  .dialog-footer {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .details-cancel {
+  .primary-button {
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  .ghost-button {
     padding: 0.5rem 1rem;
     background: none;
     border: none;

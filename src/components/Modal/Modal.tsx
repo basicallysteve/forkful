@@ -11,15 +11,18 @@ interface ModalProps {
   style?: React.CSSProperties
   children: React.ReactNode
   className?: string
+  // Modals are focused overlays, so they are non-draggable by default; a consumer can opt back in.
+  draggable?: boolean
 }
 
-export default function Modal({ children, className, ...props }: ModalProps) {
+export default function Modal({ children, className, draggable = false, ...props }: ModalProps) {
   return (
     <Dialog
       {...props}
       className={`app-modal${className ? ` ${className}` : ''}`}
       closeIcon="pi pi-times"
       dismissableMask
+      draggable={draggable}
       modal
     >
       {children}

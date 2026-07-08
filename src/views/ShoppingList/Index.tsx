@@ -30,7 +30,7 @@ import { Checkbox } from 'primereact/checkbox'
 import { Calendar } from 'primereact/calendar'
 // PrimeReact's Calendar emits a FormEvent; there is no dedicated CalendarChangeEvent export in v10.
 import type { FormEvent as CalendarChangeEvent } from 'primereact/ts-helpers'
-import { Dialog } from 'primereact/dialog'
+import Modal from '@/components/Modal/Modal'
 import { Menu } from 'primereact/menu'
 import type { MenuItem } from 'primereact/menuitem'
 
@@ -254,13 +254,13 @@ function ItemDetailsForm({
   item,
   saving,
   error,
-  onCancel,
+  onHide,
   onSave,
 }: {
   item: ShoppingListItem
   saving: boolean
   error: string | null
-  onCancel: () => void
+  onHide: () => void
   onSave: (submit: ItemDetailsSubmit) => void
 }) {
   const [mode, setMode] = useState<LinePriceMode>('total')
@@ -333,134 +333,146 @@ function ItemDetailsForm({
     })
   }
 
-  return (
-    <div className="item-details-form">
-      <div className="field">
-        <span className="field-label" id="line-price-mode-label">Line Price</span>
-        <div className="price-mode" role="group" aria-labelledby="line-price-mode-label">
-          {(['total', 'per_unit'] as LinePriceMode[]).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`price-mode-tab${mode === option ? ' is-active' : ''}`}
-              aria-pressed={mode === option}
-              onClick={() => handleModeChange(option)}
-            >
-              {option === 'total' ? 'Total' : 'Per unit'}
-            </button>
-          ))}
-        </div>
-        <InputNumber
-          inputId="line-price"
-          value={priceValue}
-          onValueChange={(e: InputNumberValueChangeEvent) => setPriceValue(e.value ?? null)}
-          mode="decimal"
-          min={0}
-          minFractionDigits={2}
-          maxFractionDigits={2}
-          prefix="$"
-          placeholder="0.00"
-          aria-label={mode === 'per_unit' ? 'Per-unit price' : 'Line price total'}
-        />
-        {mode === 'per_unit' && resolvedTotal !== null && (
-          <small className="price-hint">Total: {formatPrice(resolvedTotal)}</small>
-        )}
-      </div>
+  const footer = (
+    <div className="dialog-footer">
+      <button type="button" className="ghost-button" onClick={onHide} disabled={saving}>
+        Cancel
+      </button>
+      <button type="button" className="primary-button" onClick={handleSave} disabled={saving || !canSave}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    </div>
+  )
 
-      <div className="field">
-        <span className="field-label" id="expiration-mode-label">Expiration date</span>
-        {canSplit && (
-          <div className="expiration-mode" role="group" aria-labelledby="expiration-mode-label">
-            {(['whole', 'per_item'] as ExpirationMode[]).map((option) => (
+  return (
+    <Modal
+      header="Price & expiration"
+      visible
+      onHide={onHide}
+      footer={footer}
+      className="item-details-dialog"
+      style={{ width: 'min(440px, 92vw)' }}
+    >
+      <div className="item-details-form">
+        <div className="field">
+          <span className="field-label" id="line-price-mode-label">Line Price</span>
+          <div className="price-mode" role="group" aria-labelledby="line-price-mode-label">
+            {(['total', 'per_unit'] as LinePriceMode[]).map((option) => (
               <button
                 key={option}
                 type="button"
-                className={`price-mode-tab${expirationMode === option ? ' is-active' : ''}`}
-                aria-pressed={expirationMode === option}
-                onClick={() => setExpirationMode(option)}
+                className={`price-mode-tab${mode === option ? ' is-active' : ''}`}
+                aria-pressed={mode === option}
+                onClick={() => handleModeChange(option)}
               >
-                {option === 'whole' ? 'Whole line' : 'Per item'}
+                {option === 'total' ? 'Total' : 'Per unit'}
               </button>
             ))}
           </div>
-        )}
-
-        {expirationMode === 'whole' || !canSplit ? (
-          <Calendar
-            inputId="line-expiration"
-            value={wholeDate}
-            onChange={(e: CalendarChangeEvent<Date>) => setWholeDate(e.value ?? null)}
-            minDate={minDate}
-            dateFormat="yy-mm-dd"
-            placeholder="Select a date"
-            showButtonBar
-            ariaLabel="Expiration date"
+          <InputNumber
+            inputId="line-price"
+            value={priceValue}
+            onValueChange={(e: InputNumberValueChangeEvent) => setPriceValue(e.value ?? null)}
+            mode="decimal"
+            min={0}
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            prefix="$"
+            placeholder="0.00"
+            aria-label={mode === 'per_unit' ? 'Per-unit price' : 'Line price total'}
           />
-        ) : (
-          <div className="expiration-portions">
-            {portions.map((portion, index) => (
-              <div className="expiration-portion" key={portion.key}>
-                <InputNumber
-                  inputId={`portion-amount-${index}`}
-                  value={portion.amount}
-                  onValueChange={(e: InputNumberValueChangeEvent) => updatePortion(portion.key, { amount: e.value ?? null })}
-                  min={0}
-                  minFractionDigits={0}
-                  maxFractionDigits={2}
-                  placeholder="Qty"
-                  aria-label={`Item ${index + 1} quantity`}
-                />
-                <Calendar
-                  inputId={`portion-date-${index}`}
-                  value={portion.date}
-                  onChange={(e: CalendarChangeEvent<Date>) => updatePortion(portion.key, { date: e.value ?? null })}
-                  minDate={minDate}
-                  dateFormat="yy-mm-dd"
-                  placeholder="Select a date"
-                  showButtonBar
-                  ariaLabel={`Item ${index + 1} expiration date`}
-                />
-                {portions.length > 1 && (
-                  <button
-                    type="button"
-                    className="portion-remove"
-                    aria-label={`Remove date ${index + 1}`}
-                    onClick={() => removePortion(portion.key)}
-                  >
-                    <i className="pi pi-times" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="expiration-portions-footer">
-              <button type="button" className="portion-add" onClick={addPortion}>
-                <i className="pi pi-plus" aria-hidden="true" /> Add date
-              </button>
-              <small className={portionsCoverLine ? 'portion-tally' : 'portion-tally is-off'}>
-                {assigned} of {quantity} {item.unit ? formatUnitForAmount(quantity, item.unit) : 'items'}
-              </small>
+          {mode === 'per_unit' && resolvedTotal !== null && (
+            <small className="price-hint">Total: {formatPrice(resolvedTotal)}</small>
+          )}
+        </div>
+
+        <div className="field">
+          <span className="field-label" id="expiration-mode-label">Expiration date</span>
+          {canSplit && (
+            <div className="expiration-mode" role="group" aria-labelledby="expiration-mode-label">
+              {(['whole', 'per_item'] as ExpirationMode[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`price-mode-tab${expirationMode === option ? ' is-active' : ''}`}
+                  aria-pressed={expirationMode === option}
+                  onClick={() => setExpirationMode(option)}
+                >
+                  {option === 'whole' ? 'Whole line' : 'Per item'}
+                </button>
+              ))}
             </div>
-          </div>
-        )}
-        <small>Optional — carries to the pantry when you finish shopping.</small>
-      </div>
+          )}
 
-      {error && <p className="item-details-error" role="alert">{error}</p>}
+          {expirationMode === 'whole' || !canSplit ? (
+            <Calendar
+              inputId="line-expiration"
+              value={wholeDate}
+              onChange={(e: CalendarChangeEvent<Date>) => setWholeDate(e.value ?? null)}
+              minDate={minDate}
+              dateFormat="yy-mm-dd"
+              placeholder="Select a date"
+              showButtonBar
+              ariaLabel="Expiration date"
+            />
+          ) : (
+            <div className="expiration-portions">
+              {portions.map((portion, index) => (
+                <div className="expiration-portion" key={portion.key}>
+                  <InputNumber
+                    inputId={`portion-amount-${index}`}
+                    value={portion.amount}
+                    onValueChange={(e: InputNumberValueChangeEvent) => updatePortion(portion.key, { amount: e.value ?? null })}
+                    min={0}
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    placeholder="Qty"
+                    aria-label={`Item ${index + 1} quantity`}
+                  />
+                  <Calendar
+                    inputId={`portion-date-${index}`}
+                    value={portion.date}
+                    onChange={(e: CalendarChangeEvent<Date>) => updatePortion(portion.key, { date: e.value ?? null })}
+                    minDate={minDate}
+                    dateFormat="yy-mm-dd"
+                    placeholder="Select a date"
+                    showButtonBar
+                    ariaLabel={`Item ${index + 1} expiration date`}
+                  />
+                  {portions.length > 1 && (
+                    <button
+                      type="button"
+                      className="portion-remove"
+                      aria-label={`Remove date ${index + 1}`}
+                      onClick={() => removePortion(portion.key)}
+                    >
+                      <i className="pi pi-times" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="expiration-portions-footer">
+                <button type="button" className="portion-add" onClick={addPortion}>
+                  <i className="pi pi-plus" aria-hidden="true" /> Add date
+                </button>
+                <small className={portionsCoverLine ? 'portion-tally' : 'portion-tally is-off'}>
+                  {assigned} of {quantity} {item.unit ? formatUnitForAmount(quantity, item.unit) : 'items'}
+                </small>
+              </div>
+            </div>
+          )}
+          <small>Optional — carries to the pantry when you finish shopping.</small>
+        </div>
 
-      <div className="item-details-actions">
-        <button type="button" className="add-item-button" onClick={handleSave} disabled={saving || !canSave}>
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button type="button" className="details-cancel" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
+        {error && <p className="item-details-error" role="alert">{error}</p>}
       </div>
-    </div>
+    </Modal>
   )
 }
 
 // Available while the list is active, so it doubles as the "edit later" path as well as the
-// at-check-off capture. The keyed body remounts per line so its inputs always seed from that line.
+// at-check-off capture. Keyed on the line id and mounted only while a line is being edited, so the
+// form's inputs seed fresh from that line on open (no reset effect needed).
 function ItemDetailsDialog({
   item,
   saving,
@@ -474,26 +486,16 @@ function ItemDetailsDialog({
   onHide: () => void
   onSave: (submit: ItemDetailsSubmit) => void
 }) {
+  if (!item) return null
   return (
-    <Dialog
-      header="Price & expiration"
-      visible={item !== null}
+    <ItemDetailsForm
+      key={item.id}
+      item={item}
+      saving={saving}
+      error={error}
       onHide={onHide}
-      className="item-details-dialog"
-      dismissableMask
-      draggable={false}
-    >
-      {item && (
-        <ItemDetailsForm
-          key={item.id}
-          item={item}
-          saving={saving}
-          error={error}
-          onCancel={onHide}
-          onSave={onSave}
-        />
-      )}
-    </Dialog>
+      onSave={onSave}
+    />
   )
 }
 
