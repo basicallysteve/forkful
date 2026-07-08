@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/auth'
 
 vi.mock('@/lib/shoppingList', () => ({
   splitShoppingListItem: vi.fn(),
+  MAX_SPLIT_PORTIONS: 100,
 }))
 
 vi.mock('@/lib/auth', () => ({
@@ -58,6 +59,16 @@ describe('POST /api/shopping-list/[id]/split', () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
 
     const res = await POST(postRequest({ portions: [{ amount: 0, expirationDate: null }] }), makeParams('1'))
+
+    expect(res.status).toBe(400)
+    expect(splitShoppingListItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when there are more portions than the allowed maximum', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    const portions = Array.from({ length: 101 }, () => ({ amount: 1, expirationDate: null }))
+    const res = await POST(postRequest({ portions }), makeParams('1'))
 
     expect(res.status).toBe(400)
     expect(splitShoppingListItem).not.toHaveBeenCalled()

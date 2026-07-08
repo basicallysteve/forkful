@@ -478,15 +478,20 @@ export type ShoppingListItemPortion = {
 // a half-cent of slack when checking the split covers exactly the line.
 const AMOUNT_EPSILON = 0.005
 
+// A split yields at most one line per distinct expiration date; cap it well above any realistic number
+// of dates so an oversized request can't become an unbounded batch of inserts.
+export const MAX_SPLIT_PORTIONS = 100
+
 // Split one line into several, each carrying a share of the amount and its own expiration date — the
 // persistence behind "different expiration dates per item" (see CONTEXT.md). The portions must sum to
 // the line's current amount. The original row is rewritten as the first portion and the rest are
 // inserted as sibling lines that copy its source (foodId/productId/name), unit, and status — so a split
 // never changes what is being bought, only how the quantity and dates are partitioned. A Line Price, if
 // set, is distributed across the portions in proportion to amount (any rounding remainder lands on the
-// first), so the parts still sum to the original total. Ownership is enforced by resolving the line
-// through the caller's active list first; returns null when no such line exists (already gone, wrong
-// owner, or archived) so the route can answer 404. Returns every resulting line, first portion first.
+// first), so the parts still sum to the original total. The line is resolved and locked inside the
+// transaction (like insertOrMergeItem) so two concurrent splits can't both read the pre-split amount and
+// each insert siblings. Returns null when no such line exists (already gone, wrong owner, or archived)
+// so the route can answer 404. Returns every resulting line, first portion first.
 export async function splitShoppingListItem(
   id: number,
   userId: number,
@@ -494,61 +499,75 @@ export async function splitShoppingListItem(
   options: { linePrice?: number | null } = {},
 ): Promise<ShoppingListItem[] | null> {
   if (portions.length === 0) throw new Error('At least one portion is required')
-  for (const portion of portions) assertAmountInRange(portion.amount)
+  if (portions.length > MAX_SPLIT_PORTIONS) throw new Error('Too many portions')
+
+  // Round each share to the column scale up front so validation and persistence agree — a sub-cent
+  // share that would round to 0.00 is rejected as non-positive rather than silently stored as a
+  // zero-amount line.
+  const rounded = portions.map((portion) => ({
+    amount: round2(portion.amount),
+    expirationDate: portion.expirationDate,
+  }))
+  for (const portion of rounded) assertAmountInRange(portion.amount)
   if (options.linePrice != null) assertPriceInRange(options.linePrice)
 
-  // Resolve the line through the caller's active list so the split is ownership-scoped.
-  const [row] = await db
-    .select()
-    .from(shoppingListItems)
-    .innerJoin(shoppingLists, eq(shoppingListItems.shoppingListId, shoppingLists.id))
-    .where(and(
-      eq(shoppingListItems.id, id),
-      eq(shoppingLists.userId, userId),
-      eq(shoppingLists.status, 'active'),
-    ))
-
-  if (!row) return null
-  const line = row.shopping_list_items
-
-  const lineAmount = Number(line.amount)
-  const portionsTotal = portions.reduce((sum, portion) => sum + portion.amount, 0)
-  if (Math.abs(portionsTotal - lineAmount) > AMOUNT_EPSILON) {
-    throw new Error('Portions must sum to the line amount')
-  }
-
-  // Distribute the Line Price total across portions by amount; the first portion absorbs the rounding
-  // remainder so the parts still sum to exactly the line total. A price passed with the split (the
-  // dialog may edit price and dates together) overrides the stored one; otherwise the current total is
-  // distributed. `undefined` means "leave as stored"; an explicit `null` clears it.
-  const linePrice = 'linePrice' in options
-    ? options.linePrice ?? null
-    : line.linePrice != null ? Number(line.linePrice) : null
-  const prices: (number | null)[] = portions.map(() => null)
-  if (linePrice != null) {
-    for (let i = 0; i < portions.length; i++) {
-      prices[i] = round2((linePrice * portions[i].amount) / lineAmount)
-    }
-    const remainder = round2(linePrice - prices.reduce<number>((sum, price) => sum + (price ?? 0), 0))
-    prices[0] = round2((prices[0] ?? 0) + remainder)
-  }
-
   const ids = await db.transaction(async (tx) => {
+    // Resolve and lock the line through the caller's active list, inside the transaction, so the split
+    // is ownership-scoped and serialised against concurrent splits of the same line.
+    const [row] = await tx
+      .select()
+      .from(shoppingListItems)
+      .innerJoin(shoppingLists, eq(shoppingListItems.shoppingListId, shoppingLists.id))
+      .where(and(
+        eq(shoppingListItems.id, id),
+        eq(shoppingLists.userId, userId),
+        eq(shoppingLists.status, 'active'),
+      ))
+      .for('update')
+
+    if (!row) return null
+    const line = row.shopping_list_items
+
+    const lineAmount = Number(line.amount)
+    const portionsTotal = rounded.reduce((sum, portion) => sum + portion.amount, 0)
+    if (Math.abs(portionsTotal - lineAmount) > AMOUNT_EPSILON) {
+      throw new Error('Portions must sum to the line amount')
+    }
+
+    // Distribute the Line Price total across portions by amount; the first portion absorbs the rounding
+    // remainder so the parts still sum to exactly the line total. A price passed with the split (the
+    // dialog may edit price and dates together) overrides the stored one; otherwise the current total is
+    // distributed. `undefined` means "leave as stored"; an explicit `null` clears it.
+    const linePrice = 'linePrice' in options
+      ? options.linePrice ?? null
+      : line.linePrice != null ? Number(line.linePrice) : null
+    const prices: (number | null)[] = rounded.map(() => null)
+    if (linePrice != null) {
+      for (let i = 0; i < rounded.length; i++) {
+        prices[i] = round2((linePrice * rounded[i].amount) / lineAmount)
+      }
+      const remainder = round2(linePrice - prices.reduce<number>((sum, price) => sum + (price ?? 0), 0))
+      prices[0] = round2((prices[0] ?? 0) + remainder)
+      // The shares derive from a validated total, but guard against a rounding artifact pushing one out
+      // of range before it reaches the column.
+      for (const price of prices) if (price != null) assertPriceInRange(price)
+    }
+
     // Rewrite the original row as the first portion.
     await tx
       .update(shoppingListItems)
       .set({
-        amount: portions[0].amount.toFixed(2),
-        expirationDate: portions[0].expirationDate ?? null,
+        amount: rounded[0].amount.toFixed(2),
+        expirationDate: rounded[0].expirationDate ?? null,
         linePrice: prices[0] != null ? prices[0].toFixed(2) : null,
       })
       .where(eq(shoppingListItems.id, id))
 
     const insertedIds: number[] = []
-    if (portions.length > 1) {
+    if (rounded.length > 1) {
       const inserted = await tx
         .insert(shoppingListItems)
-        .values(portions.slice(1).map((portion, index) => ({
+        .values(rounded.slice(1).map((portion, index) => ({
           shoppingListId: line.shoppingListId,
           sourceType: line.sourceType,
           foodId: line.foodId,
@@ -566,6 +585,8 @@ export async function splitShoppingListItem(
 
     return [id, ...insertedIds]
   })
+
+  if (ids === null) return null
 
   const items = await Promise.all(ids.map((itemId) => getShoppingListItemById(itemId, userId)))
   return items.filter((item): item is ShoppingListItem => item !== null)

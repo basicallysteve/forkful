@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
-import { splitShoppingListItem, type ShoppingListItemPortion } from '@/lib/shoppingList'
+import { MAX_SPLIT_PORTIONS, splitShoppingListItem, type ShoppingListItemPortion } from '@/lib/shoppingList'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -13,6 +13,7 @@ function parseId(raw: string): number | null {
 // Data-layer validation errors the route surfaces as 400s rather than 500s.
 const VALIDATION_ERRORS = [
   'At least one portion is required',
+  'Too many portions',
   'Portions must sum to the line amount',
   'Amount must be greater than zero',
   'Amount is too large',
@@ -70,6 +71,9 @@ export async function POST(request: Request, { params }: Params) {
 
   if (!Array.isArray(body.portions) || body.portions.length === 0) {
     return NextResponse.json({ error: 'portions must be a non-empty array' }, { status: 400 })
+  }
+  if (body.portions.length > MAX_SPLIT_PORTIONS) {
+    return NextResponse.json({ error: `portions must not exceed ${MAX_SPLIT_PORTIONS}` }, { status: 400 })
   }
 
   const portions: ShoppingListItemPortion[] = []

@@ -441,6 +441,26 @@ describe('shopping list data layer (integration)', () => {
     expect(items[0].amount).toBe(6)
   })
 
+  it('rejects a split whose portion rounds to a zero amount', async () => {
+    const user = await createTestUser('y')
+    const food = await createTestFood('TestShopping SubCent')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+
+    // A sub-cent share rounds to 0.00 at the column scale, so it is rejected rather than stored as a
+    // zero-amount line.
+    await expect(
+      splitShoppingListItem(created.id, user.id, [
+        { amount: 1.999, expirationDate: null },
+        { amount: 0.001, expirationDate: null },
+      ])
+    ).rejects.toThrow('Amount must be greater than zero')
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(2)
+  })
+
   it('returns null when another user tries to split a line', async () => {
     const owner = await createTestUser('w')
     const intruder = await createTestUser('x')
