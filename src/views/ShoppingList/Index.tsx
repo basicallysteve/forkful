@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
@@ -16,6 +17,8 @@ import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
+import { ListBox } from 'primereact/listbox'
+import { Checkbox } from 'primereact/checkbox'
 
 type ShoppingListViewProps = {
   // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
@@ -60,13 +63,15 @@ export function buildShoppingListText(items: ShoppingListItem[]): string {
 }
 
 // A single list row with its Remove affordance. One button serves both breakpoints (styled by CSS at
-// the 720px seam): revealed on hover ≥721px, revealed by a left swipe below it. A real component
-// because useSwipeable is a hook and cannot be called inside the list's map callback conditionally.
+// the 720px seam): revealed on hover ≥721px, revealed by a left swipe below it. Extracted to a real
+// component because useSwipeable is a hook and cannot live inside the ListBox itemTemplate callback.
 function ShoppingListItemRow({
   item,
+  selected,
   onRemove,
 }: {
   item: ShoppingListItem
+  selected: boolean
   onRemove: (id: number) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
@@ -95,10 +100,17 @@ function ShoppingListItemRow({
     trackMouse: false,
   })
 
+  function handleRemoveClick(event: MouseEvent) {
+    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
+    event.stopPropagation()
+    remove()
+  }
+
   const quantity = itemQuantityLabel(item)
   return (
     <div className={`shopping-list-row${open ? ' is-open' : ''}`} {...swipe}>
-      <div className="shopping-list-item">
+      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
+        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
         <div className="item-body">
           <span className="item-name">{item.name}</span>
           {quantity && <span className="item-qty">{quantity}</span>}
@@ -108,7 +120,9 @@ function ShoppingListItemRow({
         type="button"
         className="item-remove"
         aria-label={`Remove ${item.name}`}
-        onClick={() => remove()}
+        onClick={handleRemoveClick}
+        // mousedown also bubbles to the ListBox item; keep it from starting a selection.
+        onMouseDown={(event) => event.stopPropagation()}
         disabled={removing}
       >
         <i className="pi pi-trash" aria-hidden="true" />
@@ -139,6 +153,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [amount, setAmount] = useState(1)
   const [unit, setUnit] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<ShoppingListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -276,6 +291,8 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     try {
       await apiDeleteShoppingListItem(id)
       removeItem(id)
+      // Drop the removed line from the ListBox selection so no stale id lingers in `value`.
+      setSelectedItems((current) => current.filter((entry) => entry.id !== id))
     } catch {
       setSaveError('Failed to remove item. Please try again.')
     }
@@ -424,13 +441,24 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
           {items.length === 0 ? (
             <p className="shopping-list-empty">No items yet. Add a food to start your shopping list.</p>
           ) : (
-            <ul className="shopping-list-items" aria-label="Shopping list items">
-              {items.map((item) => (
-                <li key={item.id} className="shopping-list-row-wrap">
-                  <ShoppingListItemRow item={item} onRemove={handleRemove} />
-                </li>
-              ))}
-            </ul>
+            <ListBox
+              multiple
+              metaKeySelection={false}
+              dataKey="id"
+              value={selectedItems}
+              onChange={(e) => setSelectedItems(e.value)}
+              options={items}
+              optionLabel="name"
+              itemTemplate={(item: ShoppingListItem) => (
+                <ShoppingListItemRow
+                  item={item}
+                  selected={selectedItems.some((entry) => entry.id === item.id)}
+                  onRemove={handleRemove}
+                />
+              )}
+              className="shopping-list-items"
+              pt={{ list: { 'aria-label': 'Shopping list items' } }}
+            />
           )}
         </div>
       </div>

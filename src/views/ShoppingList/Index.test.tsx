@@ -150,7 +150,7 @@ describe('ShoppingListView', () => {
   it('hydrates the initial items', async () => {
     render(<ShoppingListView initialFoods={mockFoods} initialItems={[makeItem()]} />)
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
     expect(within(list).getByText('2 oz')).toBeInTheDocument()
     expect(screen.queryByText(/Source:/)).not.toBeInTheDocument()
@@ -178,11 +178,33 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     expect(within(list).getByText('6 pieces')).toBeInTheDocument()
     expect(within(list).getByText('1 piece')).toBeInTheDocument()
     // Standard mass symbols never pluralise.
     expect(within(list).getByText('6 g')).toBeInTheDocument()
+  })
+
+  it('lets the user select items, striking them through, and toggles selection off', async () => {
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const listbox = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    const option = within(listbox).getByRole('option')
+
+    // Nothing selected yet.
+    expect(listbox.querySelector('.shopping-list-item.is-selected')).toBeNull()
+
+    fireEvent.click(option)
+    expect(listbox.querySelector('.shopping-list-item.is-selected')).not.toBeNull()
+
+    // Clicking again clears the selection (metaKeySelection is off, so a plain click toggles).
+    fireEvent.click(option)
+    expect(listbox.querySelector('.shopping-list-item.is-selected')).toBeNull()
   })
 
   it('defaults the unit to "each" when the food has no custom unit', async () => {
@@ -297,8 +319,10 @@ describe('ShoppingListView', () => {
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
 
     // Second add of the same food → server merges and returns the SAME id with a summed amount.
+    // The list is now a Listbox whose rows are also role="option", so scope to the search button.
     vi.mocked(apiCreateShoppingListItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 5, unit: 'g' }))
-    await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+    const searchOption = screen.getAllByRole('option', { name: /chicken breast/i }).find((el) => el.tagName === 'BUTTON')
+    await user.click(searchOption!)
     await user.click(screen.getByRole('button', { name: /add item/i }))
 
     await waitFor(() => expect(useShoppingListStore.getState().items[0].amount).toBe(5))
@@ -337,7 +361,7 @@ describe('ShoppingListView', () => {
     })
 
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     expect(within(list).getByText('Cereal Box')).toBeInTheDocument()
   })
 
@@ -362,7 +386,7 @@ describe('ShoppingListView', () => {
 
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
     // A freeform line with no unit and amount 1 shows just its name.
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     expect(within(list).getByText('Trash bags')).toBeInTheDocument()
   })
 
@@ -425,7 +449,7 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
 
     expect(apiDeleteShoppingListItem).toHaveBeenCalledWith(1)
@@ -435,6 +459,24 @@ describe('ShoppingListView', () => {
     // The other line is untouched.
     expect(within(list).getByText('Brown Rice')).toBeInTheDocument()
     expect(within(list).queryByText('Chicken Breast')).not.toBeInTheDocument()
+  })
+
+  it('removing does not toggle row selection', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
+
+    // The Remove click is stopped from bubbling, so no phantom selection is left behind.
+    expect(list.querySelector('.shopping-list-item.is-selected')).toBeNull()
   })
 
   it('opens the row on a left swipe, then removes it on a second left swipe', async () => {
@@ -447,7 +489,7 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     const row = list.querySelector('.shopping-list-row') as HTMLElement
 
     // First swipe reveals Remove but does not delete.
@@ -472,7 +514,7 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/failed to remove/i)
@@ -528,7 +570,7 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const list = await screen.findByRole('list', { name: 'Shopping list items' })
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     expect(within(list).getByText('Chicken Breast')).toBeInTheDocument()
     expect(within(list).getByText('Cereal Box')).toBeInTheDocument()
     expect(within(list).getByText('Trash bags')).toBeInTheDocument()
