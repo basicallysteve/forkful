@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ShoppingListView, { buildShoppingListText, formatPrice, resolveLinePriceTotal } from './Index'
-import { formatDateForInput } from '@/utils/dateHelpers'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
@@ -873,8 +872,8 @@ describe('ShoppingListView — price & expiration', () => {
       expirationDate: new Date('2026-08-01'),
     })
     await waitFor(() => expect(useShoppingListStore.getState().items[0].expirationDate).toEqual(new Date('2026-08-01')))
-    // The row shows the stored date formatted the same way the Pantry does (local-tz YYYY-MM-DD).
-    expect(await screen.findByText(`Exp ${formatDateForInput(new Date('2026-08-01'))}`)).toBeInTheDocument()
+    // The row shows the UTC calendar day, stable regardless of the runner's timezone.
+    expect(await screen.findByText('Exp 2026-08-01')).toBeInTheDocument()
   })
 
   it('seeds the dialog from an existing price and shows an error when the save fails', async () => {

@@ -88,6 +88,17 @@ describe('PATCH /api/shopping-list/[id]', () => {
     expect(updateShoppingListItemStatus).not.toHaveBeenCalled()
   })
 
+  it('returns 400 (not 500) when the JSON body is a primitive rather than an object', async () => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+
+    // A bare JSON number would make the `in` key checks throw if it weren't guarded.
+    const res = await PATCH(patchRequest(5), makeParams('1'))
+
+    expect(res.status).toBe(400)
+    expect(updateShoppingListItemStatus).not.toHaveBeenCalled()
+    expect(updateShoppingListItemDetails).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for a status outside the allowed set', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
 

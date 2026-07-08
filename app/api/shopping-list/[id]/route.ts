@@ -78,12 +78,19 @@ export async function PATCH(request: Request, { params }: Params) {
   const id = parseId(rawId)
   if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
-  let body: { status?: unknown; linePrice?: unknown; expirationDate?: unknown }
+  let raw: unknown
   try {
-    body = await request.json()
+    raw = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
+
+  // A primitive/array/null body would make the `in` key checks below throw (→ 500). Require a plain
+  // object so a malformed body is a clean 400 instead.
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const body = raw as { status?: unknown; linePrice?: unknown; expirationDate?: unknown }
 
   // A status flip and a details (price/expiration) edit are distinct requests. A `status` key routes to
   // the minimal status update (returns { id, status }); otherwise the body is a details patch, which

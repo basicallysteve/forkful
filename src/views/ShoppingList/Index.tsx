@@ -16,7 +16,7 @@ import {
 import type { UpdateShoppingListItemDetailsInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
-import { formatDateForInput, getTodayDateString } from '@/utils/dateHelpers'
+import { formatUtcDateForInput, getTodayDateString, parseInputDateAsUtc } from '@/utils/dateHelpers'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
@@ -167,7 +167,7 @@ function ShoppingListItemRow({
           <span className="item-name">{item.name}</span>
           {unavailable && <span className="item-status-pill">Unavailable</span>}
           {item.expirationDate && (
-            <span className="item-expiration">Exp {formatDateForInput(item.expirationDate)}</span>
+            <span className="item-expiration">Exp {formatUtcDateForInput(item.expirationDate)}</span>
           )}
           {item.linePrice != null && <span className="item-price">{formatPrice(item.linePrice)}</span>}
           {quantity && <span className="item-qty">{quantity}</span>}
@@ -225,7 +225,7 @@ function ItemDetailsForm({
   const [mode, setMode] = useState<LinePriceMode>('total')
   const [priceValue, setPriceValue] = useState<number | null>(item.linePrice)
   const [expirationInput, setExpirationInput] = useState(
-    item.expirationDate ? formatDateForInput(item.expirationDate) : ''
+    item.expirationDate ? formatUtcDateForInput(item.expirationDate) : ''
   )
 
   const quantity = item.amount
@@ -243,8 +243,9 @@ function ItemDetailsForm({
 
   function handleSave() {
     onSave({
+      // A date-only input is anchored at UTC midnight so the stored day is timezone-stable.
       linePrice: resolveLinePriceTotal(mode, priceValue, quantity),
-      expirationDate: expirationInput ? new Date(expirationInput) : null,
+      expirationDate: expirationInput ? parseInputDateAsUtc(expirationInput) : null,
     })
   }
 
