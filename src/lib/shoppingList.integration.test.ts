@@ -310,13 +310,13 @@ describe('shopping list data layer (integration)', () => {
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
     expect(created.status).toBe('to_buy')
 
-    // to_buy → bought → unavailable → to_buy, all reversible; the foodId reference never changes.
+    // to_buy → bought → unavailable → to_buy, all reversible.
     for (const status of ['bought', 'unavailable', 'to_buy'] as const) {
       const updated = await updateShoppingListItemStatus(created.id, user.id, status)
-      expect(updated?.status).toBe(status)
-      expect(updated?.food?.id).toBe(food.id)
+      expect(updated).toEqual({ id: created.id, status })
     }
 
+    // The foodId reference is never touched by a status change.
     const [row] = (await pool.query('SELECT status, food_id FROM shopping_list_items WHERE id = $1', [created.id])).rows
     expect(row.status).toBe('to_buy')
     expect(row.food_id).toBe(food.id)

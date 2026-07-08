@@ -106,9 +106,9 @@ describe('PATCH /api/shopping-list/[id]', () => {
     expect(updateShoppingListItemStatus).toHaveBeenCalledWith(1, 42, 'bought')
   })
 
-  it('returns 200 with the updated line, scoped to the session user', async () => {
+  it('returns 200 with the updated id and status, scoped to the session user', async () => {
     (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
-    const updated = { id: 1, sourceType: 'food', status: 'unavailable', name: 'Milk', amount: 1, unit: 'each' };
+    const updated = { id: 1, status: 'unavailable' };
     (updateShoppingListItemStatus as Mock).mockResolvedValue(updated)
 
     const res = await PATCH(patchRequest({ status: 'unavailable' }), makeParams('1'))

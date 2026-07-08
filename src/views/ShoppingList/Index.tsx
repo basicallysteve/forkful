@@ -334,9 +334,9 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   }
 
   // Manual check-off (see CONTEXT.md): flip the status in the store immediately so the aisle-side tap
-  // feels instant, then persist. On failure roll the line back to its prior status and surface the
-  // shared error banner. Reconcile with the server's returned line on success (the source reference is
-  // never touched by a status change, so an optimistic clone stays valid).
+  // feels instant, then persist. Only `status` changes server-side and the source reference is never
+  // touched, so the optimistic clone stays correct on success — no reconcile needed. On failure roll
+  // the line back to its prior status and surface the shared error banner.
   async function handleSetStatus(item: ShoppingListItem, status: ShoppingListItemStatus) {
     if (item.status === status) return
     const previous = item.status
@@ -344,10 +344,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     setSaveError(null)
     upsertItem({ ...item, status: next })
     try {
-      const updated = await apiUpdateShoppingListItemStatus(item.id, next)
-      const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
-      // Only reconcile if the line is still in the optimistic state for this request.
-      if (current?.status === next) upsertItem(updated)
+      await apiUpdateShoppingListItemStatus(item.id, next)
     } catch {
       const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
       // Only roll back if nothing else has changed the line since this request started.

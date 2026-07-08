@@ -42,10 +42,12 @@ export async function apiDeleteShoppingListItem(id: number): Promise<void> {
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
 }
 
+// Persists a status change. Resolves on success and throws on failure — the caller keeps its own
+// (optimistic) copy of the line, since only `status` changes server-side, so no response body is read.
 export async function apiUpdateShoppingListItemStatus(
   id: number,
   status: ShoppingListItemStatus,
-): Promise<ShoppingListItem> {
+): Promise<void> {
   const res = await fetch(`/api/shopping-list/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -53,6 +55,4 @@ export async function apiUpdateShoppingListItemStatus(
   })
 
   if (!res.ok) throw new Error('Failed to update shopping list item status')
-  const raw: RawShoppingListItem = await res.json()
-  return parseShoppingListItem(raw)
 }

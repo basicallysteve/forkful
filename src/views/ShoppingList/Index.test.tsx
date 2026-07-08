@@ -187,9 +187,7 @@ describe('ShoppingListView', () => {
   })
 
   it('checks a line off as bought by selecting the row, striking it through, and back to to_buy', async () => {
-    vi.mocked(apiUpdateShoppingListItemStatus).mockImplementation(async (id, status) =>
-      makeItem({ id, food: mockFoods[0], amount: 2, unit: 'oz', status }),
-    )
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
 
     render(
       <ShoppingListView
@@ -216,9 +214,7 @@ describe('ShoppingListView', () => {
 
   it('marks a line unavailable via the kebab menu, shows the pill, and reverts to to_buy', async () => {
     const user = userEvent.setup()
-    vi.mocked(apiUpdateShoppingListItemStatus).mockImplementation(async (id, status) =>
-      makeItem({ id, food: mockFoods[0], amount: 2, unit: 'oz', status }),
-    )
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
 
     render(
       <ShoppingListView
@@ -249,9 +245,7 @@ describe('ShoppingListView', () => {
   })
 
   it('selecting an unavailable line marks it bought (any not-bought → bought)', async () => {
-    vi.mocked(apiUpdateShoppingListItemStatus).mockImplementation(async (id, status) =>
-      makeItem({ id, food: mockFoods[0], amount: 2, unit: 'oz', status }),
-    )
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
 
     render(
       <ShoppingListView

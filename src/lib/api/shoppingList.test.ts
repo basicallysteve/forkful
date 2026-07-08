@@ -124,13 +124,11 @@ describe('apiDeleteShoppingListItem', () => {
 })
 
 describe('apiUpdateShoppingListItemStatus', () => {
-  it('PATCHes the status and parses the returned item', async () => {
-    const rawBought = { ...mockRawItem, status: 'bought' as const }
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => rawBought } as Response)
+  it('PATCHes the status and resolves without reading a body', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true } as Response)
 
-    const result = await apiUpdateShoppingListItemStatus(1, 'bought')
+    await expect(apiUpdateShoppingListItemStatus(1, 'bought')).resolves.toBeUndefined()
 
-    expect(result).toEqual({ ...mockParsedItem, status: 'bought' })
     expect(fetch).toHaveBeenCalledWith('/api/shopping-list/1', expect.objectContaining({ method: 'PATCH' }))
     expect(postedBody()).toEqual({ status: 'bought' })
   })
