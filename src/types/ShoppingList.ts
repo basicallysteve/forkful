@@ -24,5 +24,10 @@ export type ShoppingListItem = {
   amount: number
   // Null for freeform lines that omit a unit.
   unit: string | null
+  // Total paid for the whole line (not per-unit), in the app's single currency. Null until recorded.
+  // Per-unit cost is derived as linePrice / amount when needed.
+  linePrice: number | null
+  // Optionally recorded at check-off; transfers to the Pantry Item on Trip Completion. Null when absent.
+  expirationDate: Date | null
   addedDate: Date
 }

@@ -3,6 +3,7 @@ import {
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
   apiFetchShoppingListItems,
+  apiUpdateShoppingListItemDetails,
   apiUpdateShoppingListItemStatus,
 } from './shoppingList'
 import type { ShoppingListItem } from '@/types/ShoppingList'
@@ -28,11 +29,14 @@ const mockRawItem = {
   food: mockFood,
   amount: 2,
   unit: 'oz',
+  linePrice: null,
+  expirationDate: null,
   addedDate: '2026-01-01T00:00:00.000Z',
 }
 
 const mockParsedItem: ShoppingListItem = {
   ...mockRawItem,
+  expirationDate: null,
   addedDate: new Date('2026-01-01T00:00:00.000Z'),
 }
 
@@ -137,5 +141,44 @@ describe('apiUpdateShoppingListItemStatus', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
 
     await expect(apiUpdateShoppingListItemStatus(1, 'unavailable')).rejects.toThrow('Failed to update shopping list item status')
+  })
+})
+
+describe('apiUpdateShoppingListItemDetails', () => {
+  it('PATCHes the total price and serialises the expiration to ISO, parsing the returned line', async () => {
+    const rawUpdated = { ...mockRawItem, linePrice: 4.5, expirationDate: '2026-02-01T00:00:00.000Z' }
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => rawUpdated } as Response)
+
+    const result = await apiUpdateShoppingListItemDetails(1, {
+      linePrice: 4.5,
+      expirationDate: new Date('2026-02-01T00:00:00.000Z'),
+    })
+
+    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/1', expect.objectContaining({ method: 'PATCH' }))
+    expect(postedBody()).toEqual({ linePrice: 4.5, expirationDate: '2026-02-01T00:00:00.000Z' })
+    expect(result.linePrice).toBe(4.5)
+    expect(result.expirationDate).toEqual(new Date('2026-02-01T00:00:00.000Z'))
+  })
+
+  it('sends explicit nulls to clear the price and expiration', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
+
+    await apiUpdateShoppingListItemDetails(1, { linePrice: null, expirationDate: null })
+
+    expect(postedBody()).toEqual({ linePrice: null, expirationDate: null })
+  })
+
+  it('omits keys that are not provided so unspecified fields stay unchanged', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockRawItem } as Response)
+
+    await apiUpdateShoppingListItemDetails(1, { linePrice: 3 })
+
+    expect(postedBody()).toEqual({ linePrice: 3 })
+  })
+
+  it('throws on a non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
+
+    await expect(apiUpdateShoppingListItemDetails(1, { linePrice: 1 })).rejects.toThrow('Failed to update shopping list item details')
   })
 })

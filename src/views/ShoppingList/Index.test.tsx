@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ShoppingListView, { buildShoppingListText } from './Index'
+import ShoppingListView, { buildShoppingListText, formatPrice, resolveLinePriceTotal } from './Index'
+import { formatDateForInput } from '@/utils/dateHelpers'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
@@ -12,6 +13,7 @@ vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListItem: vi.fn(),
   apiDeleteShoppingListItem: vi.fn(),
   apiUpdateShoppingListItemStatus: vi.fn(),
+  apiUpdateShoppingListItemDetails: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -57,7 +59,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
@@ -122,6 +124,8 @@ function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
     food: mockFoods[0],
     amount: 2,
     unit: 'oz',
+    linePrice: null,
+    expirationDate: null,
     addedDate: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
   }
@@ -695,5 +699,143 @@ describe('buildShoppingListText', () => {
         'Build your own shopping list at eatforkful.com',
       ].join('\n'),
     )
+  })
+})
+
+describe('resolveLinePriceTotal', () => {
+  it('carries a total straight through, rounded to 2 decimals', () => {
+    expect(resolveLinePriceTotal('total', 4.5, 3)).toBe(4.5)
+    expect(resolveLinePriceTotal('total', 4.005, 3)).toBe(4.01)
+  })
+
+  it('multiplies a per-unit price by the quantity', () => {
+    expect(resolveLinePriceTotal('per_unit', 1.5, 4)).toBe(6)
+    // 0.1 × 3 would drift to 0.30000000000000004 without rounding.
+    expect(resolveLinePriceTotal('per_unit', 0.1, 3)).toBe(0.3)
+  })
+
+  it('returns null for an empty value in either mode', () => {
+    expect(resolveLinePriceTotal('total', null, 2)).toBeNull()
+    expect(resolveLinePriceTotal('per_unit', null, 2)).toBeNull()
+  })
+})
+
+describe('formatPrice', () => {
+  it('formats a total with a currency symbol and two decimals', () => {
+    expect(formatPrice(4.5)).toBe('$4.50')
+    expect(formatPrice(12)).toBe('$12.00')
+  })
+})
+
+describe('ShoppingListView — price & expiration', () => {
+  async function openDetailsDialog(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    // The kebab menu portals and stays aria-hidden in jsdom, mirroring the status-menu tests.
+    fireEvent.click(await screen.findByRole('menuitem', { name: /price & expiration/i, hidden: true }))
+    return screen.findByRole('dialog')
+  }
+
+  it('records a total Line Price at check-off and shows it on the row', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: details.linePrice ?? null }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    await user.type(within(dialog).getByRole('spinbutton'), '4.50')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: 4.5, expirationDate: null })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].linePrice).toBe(4.5))
+    expect(await screen.findByText('$4.50')).toBeInTheDocument()
+  })
+
+  it('records a per-unit price multiplied by the quantity, persisting only the total', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: details.linePrice ?? null }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // Switch to per-unit entry, then a $3 unit price on a 2-unit line persists a $6 total.
+    await user.click(within(dialog).getByRole('button', { name: /per unit/i }))
+    await user.type(within(dialog).getByRole('spinbutton'), '3')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: 6, expirationDate: null })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].linePrice).toBe(6))
+  })
+
+  it('records an expiration date and shows it on the row', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({
+        id: 1,
+        food: mockFoods[0],
+        amount: 2,
+        unit: 'oz',
+        expirationDate: details.expirationDate ?? null,
+      }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    fireEvent.change(within(dialog).getByLabelText(/expiration date/i), { target: { value: '2026-08-01' } })
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, {
+      linePrice: null,
+      expirationDate: new Date('2026-08-01'),
+    })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].expirationDate).toEqual(new Date('2026-08-01')))
+    // The row shows the stored date formatted the same way the Pantry does (local-tz YYYY-MM-DD).
+    expect(await screen.findByText(`Exp ${formatDateForInput(new Date('2026-08-01'))}`)).toBeInTheDocument()
+  })
+
+  it('seeds the dialog from an existing price and shows an error when the save fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: 5 })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+    // The persisted price is already visible on the row.
+    expect(screen.getByText('$5.00')).toBeInTheDocument()
+
+    const dialog = await openDetailsDialog(user)
+    // The dialog re-seeds from the stored total.
+    expect(within(dialog).getByRole('spinbutton')).toHaveValue('$5.00')
+
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/failed to save/i)
+    // The failed save left the stored price untouched.
+    expect(useShoppingListStore.getState().items[0].linePrice).toBe(5)
   })
 })

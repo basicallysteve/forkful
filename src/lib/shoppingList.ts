@@ -25,6 +25,13 @@ function assertAmountInRange(amount: number): void {
   if (amount > AMOUNT_MAX) throw new Error('Amount is too large')
 }
 
+// Line Price shares the amount column's numeric(10, 2) shape, so it has the same ceiling. Unlike an
+// amount a price of exactly 0 is allowed (a free / comped line); only negatives and NaN are rejected.
+function assertPriceInRange(price: number): void {
+  if (!Number.isFinite(price) || price < 0) throw new Error('Price must be zero or greater')
+  if (price > AMOUNT_MAX) throw new Error('Price is too large')
+}
+
 function parseMeasurements(raw: unknown): Measurement[] {
   if (!Array.isArray(raw)) return []
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
@@ -108,6 +115,9 @@ function mapShoppingListItem(
     product,
     amount: Number(row.amount),
     unit: row.unit,
+    // numeric column maps to a string in Postgres; coerce to a number, keeping null when unpriced.
+    linePrice: row.linePrice != null ? Number(row.linePrice) : null,
+    expirationDate: row.expirationDate ?? null,
     addedDate: row.dateAdded ?? new Date(),
   }
 }
@@ -390,6 +400,68 @@ export async function updateShoppingListItemStatus(
     .returning({ id: shoppingListItems.id, status: shoppingListItems.status })
 
   return updated ?? null
+}
+
+// Optional check-off details: the Line Price total and the expiration date. Each field is independent
+// — omit a key to leave it unchanged, or pass null to clear it. The Line Price stored here is always
+// the whole-line total; the per-unit ↔ total conversion happens at entry (client-side), so this layer
+// only ever persists the total. Only the total is kept — per-unit cost is derived on read.
+export type UpdateShoppingListItemDetails = {
+  linePrice?: number | null
+  expirationDate?: Date | null
+}
+
+// Record or edit a line's Line Price / expiration on the user's active list. Ownership is enforced in
+// the same one-round-trip way as the status/delete paths (via the active-list subquery), so a user can
+// neither touch another user's line nor a line on an archived list. Unlike the status update this
+// re-joins and returns the whole line, since callers surface the persisted (rounded) price and the
+// derived per-unit cost. Returns null when no such line exists (already gone, wrong owner, or archived)
+// so the route can answer 404.
+export async function updateShoppingListItemDetails(
+  id: number,
+  userId: number,
+  details: UpdateShoppingListItemDetails,
+): Promise<ShoppingListItem | null> {
+  const set: Partial<typeof shoppingListItems.$inferInsert> = {}
+
+  if ('linePrice' in details) {
+    if (details.linePrice === null) {
+      set.linePrice = null
+    } else {
+      assertPriceInRange(details.linePrice as number)
+      // numeric(10, 2): round to 2 decimals so a per-unit × quantity total can't persist a
+      // floating-point artifact like "4.500000000000001".
+      set.linePrice = (details.linePrice as number).toFixed(2)
+    }
+  }
+
+  if ('expirationDate' in details) {
+    set.expirationDate = details.expirationDate ?? null
+  }
+
+  // Nothing to change: report whether the line exists/belongs to the caller without a write.
+  if (Object.keys(set).length === 0) {
+    return getShoppingListItemById(id, userId)
+  }
+
+  const [updated] = await db
+    .update(shoppingListItems)
+    .set(set)
+    .where(and(
+      eq(shoppingListItems.id, id),
+      inArray(
+        shoppingListItems.shoppingListId,
+        db
+          .select({ id: shoppingLists.id })
+          .from(shoppingLists)
+          .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active'))),
+      ),
+    ))
+    .returning({ id: shoppingListItems.id })
+
+  if (!updated) return null
+
+  return getShoppingListItemById(updated.id, userId)
 }
 
 export type CreateShoppingListFreeformItemData = {

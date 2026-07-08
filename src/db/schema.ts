@@ -165,6 +165,12 @@ export const shoppingListItems = pgTable('shopping_list_items', {
   // Null for freeform lines that omit a unit; always set for food/product lines.
   unit: varchar('unit', { length: 50 }),
   status: shoppingListItemStatusEnum('status').notNull().default('to_buy'),
+  // Total paid for the whole line (not per-unit), in the app's single currency. Optionally recorded
+  // at check-off; per-unit cost is derived as line_price / amount when needed. Null until entered.
+  linePrice: numeric('line_price', { precision: 10, scale: 2 }),
+  // Optionally recorded at check-off; transfers to the resulting Pantry Item's expirationDate on Trip
+  // Completion. Null when the user leaves it blank.
+  expirationDate: timestamp('expiration_date'),
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 }, (t) => ({
   shoppingListIdIdx: index('shopping_list_items_shopping_list_id_idx').on(t.shoppingListId),

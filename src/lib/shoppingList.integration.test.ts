@@ -10,6 +10,7 @@ import {
   deleteShoppingListItem,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
+  updateShoppingListItemDetails,
   updateShoppingListItemStatus,
 } from './shoppingList'
 
@@ -335,5 +336,56 @@ describe('shopping list data layer (integration)', () => {
     // The owner's line is unchanged.
     const items = await getShoppingListItems(owner.id)
     expect(items[0].status).toBe('to_buy')
+  })
+
+  it('records and clears a Line Price and expiration without touching the status or reference', async () => {
+    const user = await createTestUser('q')
+    const food = await createTestFood('TestShopping Priced')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    expect(created.linePrice).toBeNull()
+    expect(created.expirationDate).toBeNull()
+
+    const expiration = new Date('2026-02-01T00:00:00.000Z')
+    const priced = await updateShoppingListItemDetails(created.id, user.id, { linePrice: 4.5, expirationDate: expiration })
+    expect(priced?.linePrice).toBe(4.5)
+    expect(priced?.expirationDate?.getTime()).toBe(expiration.getTime())
+    // Only price/expiration change — the status and Food reference are left as they were.
+    expect(priced?.status).toBe('to_buy')
+    expect(priced?.food?.id).toBe(food.id)
+
+    // Each field clears independently: null the price, leave the expiration untouched by omitting it.
+    const cleared = await updateShoppingListItemDetails(created.id, user.id, { linePrice: null })
+    expect(cleared?.linePrice).toBeNull()
+    expect(cleared?.expirationDate?.getTime()).toBe(expiration.getTime())
+  })
+
+  it('rounds the persisted Line Price to the numeric(10,2) column and rejects a negative price', async () => {
+    const user = await createTestUser('r')
+    const food = await createTestFood('TestShopping Rounding')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+
+    // A per-unit × quantity total computed upstream can arrive with float drift; it persists rounded.
+    const priced = await updateShoppingListItemDetails(created.id, user.id, { linePrice: 0.1 + 0.2 })
+    expect(priced?.linePrice).toBe(0.3)
+
+    await expect(
+      updateShoppingListItemDetails(created.id, user.id, { linePrice: -1 })
+    ).rejects.toThrow('Price must be zero or greater')
+  })
+
+  it('returns null when another user tries to set a line’s price', async () => {
+    const owner = await createTestUser('s')
+    const intruder = await createTestUser('t')
+    const food = await createTestFood('TestShopping PriceGuarded')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
+
+    const updated = await updateShoppingListItemDetails(created.id, intruder.id, { linePrice: 9.99 })
+    expect(updated).toBeNull()
+
+    const items = await getShoppingListItems(owner.id)
+    expect(items[0].linePrice).toBeNull()
   })
 })

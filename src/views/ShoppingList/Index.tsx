@@ -7,9 +7,16 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import {
+  apiCreateShoppingListItem,
+  apiDeleteShoppingListItem,
+  apiUpdateShoppingListItemDetails,
+  apiUpdateShoppingListItemStatus,
+} from '@/lib/api/shoppingList'
+import type { UpdateShoppingListItemDetailsInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
+import { formatDateForInput, getTodayDateString } from '@/utils/dateHelpers'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
@@ -19,6 +26,7 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { ListBox } from 'primereact/listbox'
 import { Checkbox } from 'primereact/checkbox'
+import { Dialog } from 'primereact/dialog'
 import { Menu } from 'primereact/menu'
 import type { MenuItem } from 'primereact/menuitem'
 
@@ -49,6 +57,26 @@ function itemQuantityLabel(item: ShoppingListItem): string {
   return item.amount === 1 ? '' : `${item.amount}`
 }
 
+// The Line Price can be entered as the whole-line total or as a per-unit price. `total` is the mode
+// carried straight through; `per_unit` is multiplied by the line's quantity. Either way only the total
+// is persisted, so this collapses both modes to a single rounded total (2 decimals, matching the
+// numeric(10,2) column). An empty (null) value clears the price.
+export type LinePriceMode = 'total' | 'per_unit'
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+export function resolveLinePriceTotal(mode: LinePriceMode, value: number | null, quantity: number): number | null {
+  if (value === null || !Number.isFinite(value)) return null
+  return round2(mode === 'per_unit' ? value * quantity : value)
+}
+
+// The app is single-currency and stores no currency code; the leading symbol is display-only.
+export function formatPrice(total: number): string {
+  return `$${total.toFixed(2)}`
+}
+
 // Plain-text rendering of the list for the clipboard. Wrapped in a friendly, marketable message so a
 // pasted list also invites the recipient to try EatForkful. One line per item as "- Name — qty" (the
 // quantity is dropped when it carries no meaning, e.g. a bare 1). Exported so the exact format is
@@ -76,11 +104,13 @@ function ShoppingListItemRow({
   selected,
   onRemove,
   onSetStatus,
+  onEditDetails,
 }: {
   item: ShoppingListItem
   selected: boolean
   onRemove: (id: number) => Promise<void>
   onSetStatus: (item: ShoppingListItem, status: ShoppingListItemStatus) => Promise<void>
+  onEditDetails: (item: ShoppingListItem) => void
 }) {
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -120,6 +150,7 @@ function ShoppingListItemRow({
   // The status action flips `unavailable` (or back to `to_buy`); Remove follows after a separator and
   // is the desktop delete path (the swipe button is hidden there). On mobile both coexist.
   const menuItems: MenuItem[] = [
+    { label: 'Price & expiration', icon: 'pi pi-dollar', command: () => onEditDetails(item) },
     unavailable
       ? { label: 'Mark to buy', icon: 'pi pi-shopping-cart', command: () => onSetStatus(item, 'to_buy') }
       : { label: 'Mark unavailable', icon: 'pi pi-ban', command: () => onSetStatus(item, 'unavailable') },
@@ -135,6 +166,10 @@ function ShoppingListItemRow({
         <div className="item-body">
           <span className="item-name">{item.name}</span>
           {unavailable && <span className="item-status-pill">Unavailable</span>}
+          {item.expirationDate && (
+            <span className="item-expiration">Exp {formatDateForInput(item.expirationDate)}</span>
+          )}
+          {item.linePrice != null && <span className="item-price">{formatPrice(item.linePrice)}</span>}
           {quantity && <span className="item-qty">{quantity}</span>}
         </div>
         <Menu model={menuItems} popup ref={menu} id={`shopping-list-menu-${item.id}`} />
@@ -169,6 +204,151 @@ function ShoppingListItemRow({
   )
 }
 
+// The optional check-off details editor's body: Line Price (total or per-unit) and an expiration date.
+// Both are optional — clearing the price persists a null price, and a blank date a null expiration.
+// Only the whole-line total is ever persisted; entering a per-unit price just multiplies by the line's
+// quantity here. Mounted with `key={item.id}` by the dialog so its useState seeds fresh from each line
+// (the persisted total in 'total' mode, the stored expiration in the date input) without an effect.
+function ItemDetailsForm({
+  item,
+  saving,
+  error,
+  onCancel,
+  onSave,
+}: {
+  item: ShoppingListItem
+  saving: boolean
+  error: string | null
+  onCancel: () => void
+  onSave: (details: UpdateShoppingListItemDetailsInput) => void
+}) {
+  const [mode, setMode] = useState<LinePriceMode>('total')
+  const [priceValue, setPriceValue] = useState<number | null>(item.linePrice)
+  const [expirationInput, setExpirationInput] = useState(
+    item.expirationDate ? formatDateForInput(item.expirationDate) : ''
+  )
+
+  const quantity = item.amount
+
+  // Flipping the mode converts the current value so the resulting total is preserved: total → per-unit
+  // divides by the quantity, per-unit → total multiplies. A cleared value stays cleared.
+  function handleModeChange(next: LinePriceMode) {
+    if (next === mode) return
+    setPriceValue((value) => {
+      if (value === null) return value
+      return next === 'per_unit' ? round2(value / quantity) : round2(value * quantity)
+    })
+    setMode(next)
+  }
+
+  function handleSave() {
+    onSave({
+      linePrice: resolveLinePriceTotal(mode, priceValue, quantity),
+      expirationDate: expirationInput ? new Date(expirationInput) : null,
+    })
+  }
+
+  // The persisted total, previewed live so a per-unit entry shows what will actually be saved.
+  const resolvedTotal = resolveLinePriceTotal(mode, priceValue, quantity)
+
+  return (
+    <div className="item-details-form">
+      <div className="field">
+        <span className="field-label" id="line-price-mode-label">Line Price</span>
+        <div className="price-mode" role="group" aria-labelledby="line-price-mode-label">
+          {(['total', 'per_unit'] as LinePriceMode[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`price-mode-tab${mode === option ? ' is-active' : ''}`}
+              aria-pressed={mode === option}
+              onClick={() => handleModeChange(option)}
+            >
+              {option === 'total' ? 'Total' : 'Per unit'}
+            </button>
+          ))}
+        </div>
+        <InputNumber
+          inputId="line-price"
+          value={priceValue}
+          onValueChange={(e: InputNumberValueChangeEvent) => setPriceValue(e.value ?? null)}
+          mode="decimal"
+          min={0}
+          minFractionDigits={2}
+          maxFractionDigits={2}
+          prefix="$"
+          placeholder="0.00"
+          aria-label={mode === 'per_unit' ? 'Per-unit price' : 'Line price total'}
+        />
+        {mode === 'per_unit' && resolvedTotal !== null && (
+          <small className="price-hint">Total: {formatPrice(resolvedTotal)}</small>
+        )}
+      </div>
+
+      <div className="field">
+        <label htmlFor="line-expiration" className="field-label">Expiration date</label>
+        <input
+          id="line-expiration"
+          type="date"
+          value={expirationInput}
+          min={getTodayDateString()}
+          onChange={(e) => setExpirationInput(e.target.value)}
+        />
+        <small>Optional — carries to the pantry when you finish shopping.</small>
+      </div>
+
+      {error && <p className="item-details-error" role="alert">{error}</p>}
+
+      <div className="item-details-actions">
+        <button type="button" className="add-item-button" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" className="details-cancel" onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Available while the list is active, so it doubles as the "edit later" path as well as the
+// at-check-off capture. The keyed body remounts per line so its inputs always seed from that line.
+function ItemDetailsDialog({
+  item,
+  saving,
+  error,
+  onHide,
+  onSave,
+}: {
+  item: ShoppingListItem | null
+  saving: boolean
+  error: string | null
+  onHide: () => void
+  onSave: (details: UpdateShoppingListItemDetailsInput) => void
+}) {
+  return (
+    <Dialog
+      header="Price & expiration"
+      visible={item !== null}
+      onHide={onHide}
+      className="item-details-dialog"
+      dismissableMask
+      draggable={false}
+    >
+      {item && (
+        <ItemDetailsForm
+          key={item.id}
+          item={item}
+          saving={saving}
+          error={error}
+          onCancel={onHide}
+          onSave={onSave}
+        />
+      )}
+    </Dialog>
+  )
+}
+
 export default function ShoppingListView({ initialFoods, initialItems }: ShoppingListViewProps) {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
@@ -197,6 +377,12 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   // Holds the pending "Copied!" reset so a rapid re-copy restarts the 2s window instead of stacking
   // timers, and so it can be cancelled on unmount.
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The line whose Price & expiration dialog is open (null = closed), plus its own save/error state so
+  // a details save never touches the add-item form's banner.
+  const [detailsItem, setDetailsItem] = useState<ShoppingListItem | null>(null)
+  const [detailsSaving, setDetailsSaving] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
 
   useEffect(() => {
     setItems(initialItems)
@@ -350,6 +536,36 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       // Only roll back if nothing else has changed the line since this request started.
       if (current?.status === next) upsertItem({ ...item, status: previous })
       setSaveError('Failed to update item. Please try again.')
+    }
+  }
+
+  function handleEditDetails(item: ShoppingListItem) {
+    setDetailsError(null)
+    setDetailsItem(item)
+  }
+
+  function handleCloseDetails() {
+    if (detailsSaving) return
+    setDetailsItem(null)
+    setDetailsError(null)
+  }
+
+  // Persist a line's Line Price / expiration, then replace the store copy with the re-joined line the
+  // server returns (it carries the persisted, rounded price). Unlike the status flip this isn't
+  // optimistic: the dialog stays open with a spinner until the write confirms, so an edit is never
+  // shown as saved before it lands. On failure the dialog keeps its inputs and shows an inline error.
+  async function handleSaveDetails(details: UpdateShoppingListItemDetailsInput) {
+    if (!detailsItem) return
+    setDetailsSaving(true)
+    setDetailsError(null)
+    try {
+      const updated = await apiUpdateShoppingListItemDetails(detailsItem.id, details)
+      upsertItem(updated)
+      setDetailsItem(null)
+    } catch {
+      setDetailsError('Failed to save. Please try again.')
+    } finally {
+      setDetailsSaving(false)
     }
   }
 
@@ -527,6 +743,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
                   selected={item.status === 'bought'}
                   onRemove={handleRemove}
                   onSetStatus={handleSetStatus}
+                  onEditDetails={handleEditDetails}
                 />
               )}
               className="shopping-list-items"
@@ -535,6 +752,14 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
           )}
         </div>
       </div>
+
+      <ItemDetailsDialog
+        item={detailsItem}
+        saving={detailsSaving}
+        error={detailsError}
+        onHide={handleCloseDetails}
+        onSave={handleSaveDetails}
+      />
     </div>
   )
 }
