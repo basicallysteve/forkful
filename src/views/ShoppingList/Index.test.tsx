@@ -11,6 +11,7 @@ import type { ShoppingListItem } from '@/types/ShoppingList'
 vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListItem: vi.fn(),
   apiDeleteShoppingListItem: vi.fn(),
+  apiUpdateShoppingListItemStatus: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -56,7 +57,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
@@ -185,7 +186,9 @@ describe('ShoppingListView', () => {
     expect(within(list).getByText('6 g')).toBeInTheDocument()
   })
 
-  it('lets the user select items, striking them through, and toggles selection off', async () => {
+  it('checks a line off as bought by selecting the row, striking it through, and back to to_buy', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
     render(
       <ShoppingListView
         initialFoods={mockFoods}
@@ -193,18 +196,88 @@ describe('ShoppingListView', () => {
       />,
     )
 
-    const listbox = await screen.findByRole('listbox', { name: 'Shopping list items' })
-    const option = within(listbox).getByRole('option')
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    const row = within(list).getByRole('option')
 
-    // Nothing selected yet.
-    expect(listbox.querySelector('.shopping-list-item.is-selected')).toBeNull()
+    // Selecting the row marks the line bought and strikes it through.
+    fireEvent.click(row)
+    expect(apiUpdateShoppingListItemStatus).toHaveBeenCalledWith(1, 'bought')
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+    expect(list.querySelector('.shopping-list-item.status-bought')).not.toBeNull()
 
-    fireEvent.click(option)
-    expect(listbox.querySelector('.shopping-list-item.is-selected')).not.toBeNull()
+    // Deselecting returns it to to_buy (never unavailable).
+    fireEvent.click(within(list).getByRole('option'))
+    expect(apiUpdateShoppingListItemStatus).toHaveBeenLastCalledWith(1, 'to_buy')
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(list.querySelector('.shopping-list-item.status-bought')).toBeNull()
+  })
 
-    // Clicking again clears the selection (metaKeySelection is off, so a plain click toggles).
-    fireEvent.click(option)
-    expect(listbox.querySelector('.shopping-list-item.is-selected')).toBeNull()
+  it('marks a line unavailable via the kebab menu, shows the pill, and reverts to to_buy', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    // PrimeReact's overlay stays aria-hidden in jsdom (its transition never completes), so query the
+    // menu item with { hidden: true }, mirroring the Advanced dropdown test.
+    fireEvent.click(await screen.findByRole('menuitem', { name: /mark unavailable/i, hidden: true }))
+
+    expect(apiUpdateShoppingListItemStatus).toHaveBeenCalledWith(1, 'unavailable')
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('unavailable'))
+    expect(within(list).getByText('Unavailable')).toBeInTheDocument()
+    // Opening the menu did not toggle the row's selection into `bought`.
+    expect(list.querySelector('.shopping-list-item.status-bought')).toBeNull()
+
+    // The menu now offers the way back to to_buy.
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /mark to buy/i, hidden: true }))
+    expect(apiUpdateShoppingListItemStatus).toHaveBeenLastCalledWith(1, 'to_buy')
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(within(list).queryByText('Unavailable')).not.toBeInTheDocument()
+  })
+
+  it('selecting an unavailable line marks it bought (any not-bought → bought)', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', status: 'unavailable' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    fireEvent.click(within(list).getByRole('option'))
+
+    expect(apiUpdateShoppingListItemStatus).toHaveBeenCalledWith(1, 'bought')
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+  })
+
+  it('rolls the status back and shows an error when the update fails', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    fireEvent.click(within(list).getByRole('option'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to update/i)
+    // The optimistic flip is reverted — the line is back to to_buy.
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(list.querySelector('.shopping-list-item.status-bought')).toBeNull()
   })
 
   it('defaults the unit to "each" when the food has no custom unit', async () => {
@@ -319,7 +392,7 @@ describe('ShoppingListView', () => {
     await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(1))
 
     // Second add of the same food → server merges and returns the SAME id with a summed amount.
-    // The list is now a Listbox whose rows are also role="option", so scope to the search button.
+    // The list is a Listbox whose rows are also role="option", so scope to the search button.
     vi.mocked(apiCreateShoppingListItem).mockResolvedValueOnce(makeItem({ id: 1, amount: 5, unit: 'g' }))
     const searchOption = screen.getAllByRole('option', { name: /chicken breast/i }).find((el) => el.tagName === 'BUTTON')
     await user.click(searchOption!)
@@ -461,7 +534,33 @@ describe('ShoppingListView', () => {
     expect(within(list).queryByText('Chicken Breast')).not.toBeInTheDocument()
   })
 
-  it('removing does not toggle row selection', async () => {
+  it('removes an item via the kebab menu (the desktop delete path)', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
+          makeItem({ id: 2, food: mockFoods[1], amount: 1, unit: 'cup' }),
+        ]}
+      />,
+    )
+
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    // PrimeReact's overlay stays aria-hidden in jsdom, so query the menu item with { hidden: true }.
+    fireEvent.click(await screen.findByRole('menuitem', { name: /remove/i, hidden: true }))
+
+    expect(apiDeleteShoppingListItem).toHaveBeenCalledWith(1)
+    await waitFor(() => expect(useShoppingListStore.getState().items).toEqual([
+      expect.objectContaining({ id: 2 }),
+    ]))
+    expect(within(list).queryByText('Chicken Breast')).not.toBeInTheDocument()
+  })
+
+  it('removing does not toggle the row into bought', async () => {
     const user = userEvent.setup()
     vi.mocked(apiDeleteShoppingListItem).mockResolvedValue(undefined)
 
@@ -475,8 +574,8 @@ describe('ShoppingListView', () => {
     const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
     await user.click(within(list).getByRole('button', { name: 'Remove Chicken Breast' }))
 
-    // The Remove click is stopped from bubbling, so no phantom selection is left behind.
-    expect(list.querySelector('.shopping-list-item.is-selected')).toBeNull()
+    // The Remove click is stopped from bubbling, so it never toggles the Listbox selection.
+    expect(apiUpdateShoppingListItemStatus).not.toHaveBeenCalled()
   })
 
   it('opens the row on a left swipe, then removes it on a second left swipe', async () => {
@@ -540,7 +639,7 @@ describe('ShoppingListView', () => {
 
     expect(await navigator.clipboard.readText()).toBe(
       [
-        "Hey! I'm sending you my shopping list from Forkful — you should check it out!",
+        "Hey! I'm sending you my shopping list from EatForkful — you should check it out!",
         '',
         '- Chicken Breast — 2 oz',
         '- Trash bags',
@@ -587,7 +686,7 @@ describe('buildShoppingListText', () => {
 
     expect(text).toBe(
       [
-        "Hey! I'm sending you my shopping list from Forkful — you should check it out!",
+        "Hey! I'm sending you my shopping list from EatForkful — you should check it out!",
         '',
         '- Chicken Breast — 2 oz',
         '- Lime — 6 pieces', // custom units pluralise by amount

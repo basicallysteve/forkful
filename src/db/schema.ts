@@ -9,7 +9,7 @@ export const pantryExpirationFrequencyEnum = pgEnum('pantry_expiration_frequency
 export const accountClosureActionEnum = pgEnum('account_closure_action', ['deactivated', 'deleted']);
 export const shoppingListStatusEnum = pgEnum('shopping_list_status', ['active', 'archived']);
 export const shoppingListItemSourceTypeEnum = pgEnum('shopping_list_item_source_type', ['food', 'product', 'freeform']);
-export const shoppingListItemStatusEnum = pgEnum('shopping_list_item_status', ['to_buy', 'in_cart', 'purchased']);
+export const shoppingListItemStatusEnum = pgEnum('shopping_list_item_status', ['to_buy', 'bought', 'unavailable']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),

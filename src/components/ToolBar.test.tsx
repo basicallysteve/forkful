@@ -7,7 +7,7 @@ vi.mock('./ThemeToggle', () => ({
 }))
 
 vi.mock('./ThemedLogo', () => ({
-  default: () => <svg role="img" aria-label="Forkful logo" />,
+  default: () => <svg role="img" aria-label="EatForkful logo" />,
 }))
 
 const leftOptions = [
@@ -37,7 +37,7 @@ describe('ToolBar — desktop layout', () => {
   it('renders the brand logo and name', () => {
     render(<ToolBar />)
     expect(screen.getByRole('img', { name: /forkful logo/i })).toBeInTheDocument()
-    expect(screen.getByText('Forkful')).toBeInTheDocument()
+    expect(screen.getByText('EatForkful')).toBeInTheDocument()
   })
 
   it('renders left nav links', () => {

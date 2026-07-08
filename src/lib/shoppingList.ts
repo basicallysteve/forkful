@@ -361,6 +361,37 @@ export async function deleteShoppingListItem(id: number, userId: number): Promis
   return deleted.length > 0
 }
 
+// Change a single line's status on the user's active list (a manual check-off — see CONTEXT.md).
+// Only `status` is touched: the line's foodId/productId reference is never altered, so checking a line
+// off keeps it pointing at the same Food/Product (scan-to-buy, a later slice, is the only path that
+// mutates the reference). Ownership is enforced in one round-trip via the active-list subquery, so a
+// user can neither mutate another user's line nor a line on an archived list. Since only `status`
+// changes — the caller already holds the rest of the line — the RETURNING is kept to `{ id, status }`
+// rather than re-joining the Food/Product to rebuild the whole line. Returns null when no such line
+// exists (already gone, wrong owner, or archived) so the route can answer 404.
+export async function updateShoppingListItemStatus(
+  id: number,
+  userId: number,
+  status: ShoppingListItem['status'],
+): Promise<{ id: number; status: ShoppingListItem['status'] } | null> {
+  const [updated] = await db
+    .update(shoppingListItems)
+    .set({ status })
+    .where(and(
+      eq(shoppingListItems.id, id),
+      inArray(
+        shoppingListItems.shoppingListId,
+        db
+          .select({ id: shoppingLists.id })
+          .from(shoppingLists)
+          .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active'))),
+      ),
+    ))
+    .returning({ id: shoppingListItems.id, status: shoppingListItems.status })
+
+  return updated ?? null
+}
+
 export type CreateShoppingListFreeformItemData = {
   userId: number
   name: string

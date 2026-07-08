@@ -7,18 +7,20 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
-import type { ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
+import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { ListBox } from 'primereact/listbox'
 import { Checkbox } from 'primereact/checkbox'
+import { Menu } from 'primereact/menu'
+import type { MenuItem } from 'primereact/menuitem'
 
 type ShoppingListViewProps = {
   // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
@@ -48,10 +50,10 @@ function itemQuantityLabel(item: ShoppingListItem): string {
 }
 
 // Plain-text rendering of the list for the clipboard. Wrapped in a friendly, marketable message so a
-// pasted list also invites the recipient to try Forkful. One line per item as "- Name — qty" (the
+// pasted list also invites the recipient to try EatForkful. One line per item as "- Name — qty" (the
 // quantity is dropped when it carries no meaning, e.g. a bare 1). Exported so the exact format is
 // unit-testable independently of the clipboard.
-const SHARE_INTRO = "Hey! I'm sending you my shopping list from Forkful — you should check it out!"
+const SHARE_INTRO = "Hey! I'm sending you my shopping list from EatForkful — you should check it out!"
 const SHARE_OUTRO = 'Build your own shopping list at eatforkful.com'
 
 export function buildShoppingListText(items: ShoppingListItem[]): string {
@@ -62,20 +64,27 @@ export function buildShoppingListText(items: ShoppingListItem[]): string {
   return [SHARE_INTRO, '', ...lines, '', SHARE_OUTRO].join('\n')
 }
 
-// A single list row with its Remove affordance. One button serves both breakpoints (styled by CSS at
-// the 720px seam): revealed on hover ≥721px, revealed by a left swipe below it. Extracted to a real
-// component because useSwipeable is a hook and cannot live inside the ListBox itemTemplate callback.
+// A single list row inside the Listbox. The Listbox owns selection, and a selected row *is* a line
+// marked `bought` — so the checkbox reflects that selection as a visual indicator (clicks are handled
+// by the row). The kebab menu holds the row's secondary actions — the `unavailable`/`to_buy` status
+// flip and Remove — stopping propagation so opening it never toggles the row's selection. Remove also
+// has a swipe-reveal button, but only on mobile: at ≥721px that button is hidden and the kebab is the
+// only way to delete; below 720px a left swipe reveals it. Extracted to a real component because
+// useSwipeable is a hook and cannot live inside the Listbox itemTemplate callback.
 function ShoppingListItemRow({
   item,
   selected,
   onRemove,
+  onSetStatus,
 }: {
   item: ShoppingListItem
   selected: boolean
   onRemove: (id: number) => Promise<void>
+  onSetStatus: (item: ShoppingListItem, status: ShoppingListItemStatus) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const menu = useRef<Menu>(null)
 
   async function remove() {
     if (removing) return
@@ -101,27 +110,56 @@ function ShoppingListItemRow({
   })
 
   function handleRemoveClick(event: MouseEvent) {
-    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
+    // The row lives inside a selectable Listbox item; stop the click from also toggling selection.
     event.stopPropagation()
     remove()
   }
 
+  const unavailable = item.status === 'unavailable'
+
+  // The status action flips `unavailable` (or back to `to_buy`); Remove follows after a separator and
+  // is the desktop delete path (the swipe button is hidden there). On mobile both coexist.
+  const menuItems: MenuItem[] = [
+    unavailable
+      ? { label: 'Mark to buy', icon: 'pi pi-shopping-cart', command: () => onSetStatus(item, 'to_buy') }
+      : { label: 'Mark unavailable', icon: 'pi pi-ban', command: () => onSetStatus(item, 'unavailable') },
+    { separator: true },
+    { label: 'Remove', icon: 'pi pi-trash', className: 'menu-item-danger', command: () => remove() },
+  ]
+
   const quantity = itemQuantityLabel(item)
   return (
     <div className={`shopping-list-row${open ? ' is-open' : ''}`} {...swipe}>
-      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
+      <div className={`shopping-list-item status-${item.status}`}>
         <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
         <div className="item-body">
           <span className="item-name">{item.name}</span>
+          {unavailable && <span className="item-status-pill">Unavailable</span>}
           {quantity && <span className="item-qty">{quantity}</span>}
         </div>
+        <Menu model={menuItems} popup ref={menu} id={`shopping-list-menu-${item.id}`} />
+        <button
+          type="button"
+          className="item-menu"
+          aria-label={`More actions for ${item.name}`}
+          aria-haspopup
+          aria-controls={`shopping-list-menu-${item.id}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            menu.current?.toggle(event)
+          }}
+          // mousedown also bubbles to the Listbox item; keep it from starting a selection.
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <i className="pi pi-ellipsis-v" aria-hidden="true" />
+        </button>
       </div>
       <button
         type="button"
         className="item-remove"
         aria-label={`Remove ${item.name}`}
         onClick={handleRemoveClick}
-        // mousedown also bubbles to the ListBox item; keep it from starting a selection.
+        // mousedown also bubbles to the Listbox item; keep it from starting a selection.
         onMouseDown={(event) => event.stopPropagation()}
         disabled={removing}
       >
@@ -153,7 +191,6 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [amount, setAmount] = useState(1)
   const [unit, setUnit] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [selectedItems, setSelectedItems] = useState<ShoppingListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -291,10 +328,45 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     try {
       await apiDeleteShoppingListItem(id)
       removeItem(id)
-      // Drop the removed line from the ListBox selection so no stale id lingers in `value`.
-      setSelectedItems((current) => current.filter((entry) => entry.id !== id))
     } catch {
       setSaveError('Failed to remove item. Please try again.')
+    }
+  }
+
+  // Manual check-off (see CONTEXT.md): flip the status in the store immediately so the aisle-side tap
+  // feels instant, then persist. Only `status` changes server-side and the source reference is never
+  // touched, so the optimistic clone stays correct on success — no reconcile needed. On failure roll
+  // the line back to its prior status and surface the shared error banner.
+  async function handleSetStatus(item: ShoppingListItem, status: ShoppingListItemStatus) {
+    if (item.status === status) return
+    const previous = item.status
+    const next = status
+    setSaveError(null)
+    upsertItem({ ...item, status: next })
+    try {
+      await apiUpdateShoppingListItemStatus(item.id, next)
+    } catch {
+      const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
+      // Only roll back if nothing else has changed the line since this request started.
+      if (current?.status === next) upsertItem({ ...item, status: previous })
+      setSaveError('Failed to update item. Please try again.')
+    }
+  }
+
+  // The Listbox's selection is a live view of which lines are `bought`, derived from status rather than
+  // held as separate state — so an optimistic status flip (or its rollback) re-renders the selection.
+  const boughtItems = useMemo(() => items.filter((item) => item.status === 'bought'), [items])
+
+  // A row toggling in or out of the Listbox selection is a manual check-off: map the change to the
+  // matching status transition. A plain click toggles one row, so at most one line differs here.
+  // `unavailable` is never reached this way — only via a row's kebab menu.
+  function handleSelectionChange(selected: ShoppingListItem[]) {
+    const nextBought = new Set(selected.map((entry) => entry.id))
+    for (const item of items) {
+      const nowBought = nextBought.has(item.id)
+      if (nowBought !== (item.status === 'bought')) {
+        handleSetStatus(item, nowBought ? 'bought' : 'to_buy')
+      }
     }
   }
 
@@ -445,15 +517,16 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               multiple
               metaKeySelection={false}
               dataKey="id"
-              value={selectedItems}
-              onChange={(e) => setSelectedItems(e.value)}
+              value={boughtItems}
+              onChange={(e) => handleSelectionChange(e.value)}
               options={items}
               optionLabel="name"
               itemTemplate={(item: ShoppingListItem) => (
                 <ShoppingListItemRow
                   item={item}
-                  selected={selectedItems.some((entry) => entry.id === item.id)}
+                  selected={item.status === 'bought'}
                   onRemove={handleRemove}
+                  onSetStatus={handleSetStatus}
                 />
               )}
               className="shopping-list-items"

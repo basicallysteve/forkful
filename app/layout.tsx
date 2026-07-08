@@ -10,7 +10,7 @@ import './globals.scss'
 
 
 export const metadata: Metadata = {
-  title: 'Forkful',
+  title: 'EatForkful',
   description: 'Recipes worth repeating',
   icons: {
     icon: '/forkful-favicon.svg',

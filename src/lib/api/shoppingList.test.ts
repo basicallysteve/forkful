@@ -3,6 +3,7 @@ import {
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
   apiFetchShoppingListItems,
+  apiUpdateShoppingListItemStatus,
 } from './shoppingList'
 import type { ShoppingListItem } from '@/types/ShoppingList'
 
@@ -119,5 +120,22 @@ describe('apiDeleteShoppingListItem', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
 
     await expect(apiDeleteShoppingListItem(3)).rejects.toThrow('Failed to delete shopping list item')
+  })
+})
+
+describe('apiUpdateShoppingListItemStatus', () => {
+  it('PATCHes the status and resolves without reading a body', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true } as Response)
+
+    await expect(apiUpdateShoppingListItemStatus(1, 'bought')).resolves.toBeUndefined()
+
+    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/1', expect.objectContaining({ method: 'PATCH' }))
+    expect(postedBody()).toEqual({ status: 'bought' })
+  })
+
+  it('throws on a non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
+
+    await expect(apiUpdateShoppingListItemStatus(1, 'unavailable')).rejects.toThrow('Failed to update shopping list item status')
   })
 })
