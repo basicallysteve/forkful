@@ -340,13 +340,18 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   async function handleSetStatus(item: ShoppingListItem, status: ShoppingListItemStatus) {
     if (item.status === status) return
     const previous = item.status
+    const next = status
     setSaveError(null)
-    upsertItem({ ...item, status })
+    upsertItem({ ...item, status: next })
     try {
-      const updated = await apiUpdateShoppingListItemStatus(item.id, status)
-      upsertItem(updated)
+      const updated = await apiUpdateShoppingListItemStatus(item.id, next)
+      const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
+      // Only reconcile if the line is still in the optimistic state for this request.
+      if (current?.status === next) upsertItem(updated)
     } catch {
-      upsertItem({ ...item, status: previous })
+      const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
+      // Only roll back if nothing else has changed the line since this request started.
+      if (current?.status === next) upsertItem({ ...item, status: previous })
       setSaveError('Failed to update item. Please try again.')
     }
   }

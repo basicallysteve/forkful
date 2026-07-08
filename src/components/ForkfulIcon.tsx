@@ -4,7 +4,7 @@ interface Props {
     className?: string
 }
 
-export default function ForkfulIcon({ color = '#10b981', size = 40, className }: Props) {
+export default function EatForkfulIcon({ color = '#10b981', size = 40, className }: Props) {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"

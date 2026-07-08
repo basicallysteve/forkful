@@ -5,7 +5,7 @@
  *                        light grey). Use for password resets, confirmations,
  *                        alerts, etc.
  *
- * variant="marketing"   Branded layout with a EatForkful green header. Use for
+ * variant="marketing"   Branded layout with an EatForkful green header. Use for
  *                        newsletters, announcements, and promotional emails.
  *
  * Pass trackingPixelUrl to embed a 1×1 transparent tracking pixel at the

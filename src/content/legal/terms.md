@@ -9,7 +9,7 @@ effectiveDate: 2026-07-02
 
 Please read these Terms and Conditions ("Terms") carefully before using EatForkful. By creating an account or using the service, you agree to be bound by these Terms. If you do not agree, do not use EatForkful.
 
-Questions? Contact us at legal@eatEatforkful.com.
+Questions? Contact us at legal@eatforkful.com.
 
 ## 1. Acceptance of Terms
 
@@ -31,7 +31,7 @@ You must create an account to use most features of EatForkful. You agree to prov
 
 ### 3.2 Account Security
 
-You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account. Notify us immediately at legal@eatEatforkful.com if you suspect unauthorized access.
+You are responsible for maintaining the confidentiality of your password and for all activity that occurs under your account. Notify us immediately at legal@eatforkful.com if you suspect unauthorized access.
 
 ### 3.3 One Account Per Person
 
@@ -79,7 +79,7 @@ You may submit, upload, or share content through EatForkful, including food logs
 
 ### 6.2 License to EatForkful
 
-By submitting User Content, you grant Eatforkful a non-exclusive, worldwide, royalty-free license to store, display, process, and use your User Content solely to provide and improve the Service. We do not claim ownership of your content and will not use it for advertising or sell it to third parties.
+By submitting User Content, you grant EatForkful a non-exclusive, worldwide, royalty-free license to store, display, process, and use your User Content solely to provide and improve the Service. We do not claim ownership of your content and will not use it for advertising or sell it to third parties.
 
 ### 6.3 Shared & Public Content
 
@@ -122,13 +122,13 @@ You agree not to:
 
 ## 8. Intellectual Property
 
-### 8.1 Eatforkful's IP
+### 8.1 EatForkful's IP
 
-The Eatforkful name, logo, design, software, and all content we create (excluding User Content) are owned by or licensed to us and are protected by intellectual property laws. You may not copy, reproduce, modify, or distribute our intellectual property without our express written consent.
+The EatForkful name, logo, design, software, and all content we create (excluding User Content) are owned by or licensed to us and are protected by intellectual property laws. You may not copy, reproduce, modify, or distribute our intellectual property without our express written consent.
 
 ### 8.2 Feedback
 
-If you provide feedback, suggestions, or ideas about Eatforkful, you grant us the right to use that feedback without restriction or compensation to you. We appreciate the input and use it to improve the Service.
+If you provide feedback, suggestions, or ideas about EatForkful, you grant us the right to use that feedback without restriction or compensation to you. We appreciate the input and use it to improve the Service.
 
 ### 8.3 Third-Party Content
 
@@ -136,7 +136,7 @@ Nutritional data may be sourced from third-party databases such as the USDA Food
 
 ## 9. Third-Party Services
 
-Eatforkful integrates with third-party services including Stripe for payment processing and AI providers for intelligent features. Your use of these integrations is also subject to the relevant third party's terms and privacy policies. We are not responsible for the practices of third-party services.
+EatForkful integrates with third-party services including Stripe for payment processing and AI providers for intelligent features. Your use of these integrations is also subject to the relevant third party's terms and privacy policies. We are not responsible for the practices of third-party services.
 
 The Service may contain links to third-party websites or resources. These links are provided for convenience only. We do not endorse and are not responsible for the content, accuracy, or practices of any third-party sites.
 
@@ -148,7 +148,7 @@ THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIN
 - Warranties that the Service will be uninterrupted, error-free, or secure
 - Warranties regarding the accuracy, completeness, or reliability of nutritional data or AI outputs
 
-Use of Eatforkful for health or dietary management is at your own risk. We are a tracking and convenience tool, not a medical service.
+Use of EatForkful for health or dietary management is at your own risk. We are a tracking and convenience tool, not a medical service.
 
 ## 11. Limitation of Liability
 
@@ -171,7 +171,7 @@ You may stop using the Service and delete your account at any time through your 
 
 ### 12.2 By Us
 
-We may suspend or terminate your access to Eatforkful at any time if:
+We may suspend or terminate your access to EatForkful at any time if:
 
 - You violate these Terms or our content standards
 - We are required to do so by law
