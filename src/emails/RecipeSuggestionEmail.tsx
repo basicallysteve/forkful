@@ -52,7 +52,7 @@ export function RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixe
       </h1>
 
       <p style={{ margin: '0 0 24px' }}>
-        We picked a few public recipes from Forkful that we thought you might enjoy.
+        We picked a few public recipes from EatForkful that we thought you might enjoy.
       </p>
 
       {recipes.map((recipe, i) => (

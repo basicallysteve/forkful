@@ -3,7 +3,7 @@ import type { Product } from './Product'
 
 export type ShoppingListStatus = 'active' | 'archived'
 export type ShoppingListItemSourceType = 'food' | 'product' | 'freeform'
-export type ShoppingListItemStatus = 'to_buy' | 'in_cart' | 'purchased'
+export type ShoppingListItemStatus = 'to_buy' | 'bought' | 'unavailable'
 
 export type ShoppingList = {
   id: number

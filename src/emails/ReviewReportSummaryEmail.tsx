@@ -31,7 +31,7 @@ const DANGER_RED = '#ef4444'
 export function ReviewReportSummaryEmail({ reportCount, reports, adminUrl }: Props) {
   return (
     <BaseEmail
-      subject={`${reportCount} new review report${reportCount !== 1 ? 's' : ''} on Forkful`}
+      subject={`${reportCount} new review report${reportCount !== 1 ? 's' : ''} on EatForkful`}
       previewText={`${reportCount} review${reportCount !== 1 ? 's were' : ' was'} reported in the last 24 hours.`}
       variant="functional"
     >

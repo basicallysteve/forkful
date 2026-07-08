@@ -6,7 +6,7 @@ export default function MarketingNav() {
     <header className={styles.nav}>
       <Link href="/" className={styles.logo}>
         <ThemedLogo size={36} />
-        <span>Forkful</span>
+        <span>EatForkful</span>
       </Link>
       <nav className={styles.links} aria-label="Marketing navigation">
         <Link href="/about" className={styles.link}>About</Link>

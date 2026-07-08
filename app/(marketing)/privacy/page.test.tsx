@@ -12,13 +12,13 @@ describe('PrivacyPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument()
     expect(screen.getByRole('time')).toHaveAttribute('dateTime', '2026-07-02')
-    expect(screen.getByTestId('mdx-content')).toHaveTextContent('Thank you for using Forkful.')
+    expect(screen.getByTestId('mdx-content')).toHaveTextContent('Thank you for using EatForkful.')
   })
 
   it('sets metadata from legal content frontmatter', async () => {
     const metadata = await generateMetadata()
 
     expect(metadata.title).toBe('Privacy Policy')
-    expect(metadata.description).toBe('How Forkful collects, uses, and protects your personal data.')
+    expect(metadata.description).toBe('How EatForkful collects, uses, and protects your personal data.')
   })
 })

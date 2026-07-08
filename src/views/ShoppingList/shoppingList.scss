@@ -229,8 +229,8 @@
     border-radius: 0;
     color: var(--vscode-text);
 
-    // Neutralise the theme's default selection fill — selection is conveyed by the checkbox and the
-    // strikethrough, not a highlighted row.
+    // Neutralise the theme's default selection fill — a bought line is conveyed by the checkbox and
+    // the strikethrough, not a highlighted row.
     &.p-highlight {
       background: transparent;
       color: inherit;
@@ -246,6 +246,7 @@
   }
 
   .shopping-list-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -276,7 +277,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .item-name {
@@ -291,13 +293,49 @@
     font-variant-numeric: tabular-nums;
   }
 
-  // A selected item is struck through across the entire row (not just the name), drawn as a single
-  // continuous line rather than per-text-run decoration.
-  .shopping-list-item {
-    position: relative;
+  // 'unavailable' is carried by an inline amber pill; 'bought' uses the strikethrough below and
+  // 'to_buy' shows nothing.
+  .item-status-pill {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    color: var(--vscode-warning);
+    background: color-mix(in srgb, var(--vscode-warning) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--vscode-warning) 40%, transparent);
   }
 
-  .shopping-list-item.is-selected {
+  // Always-visible kebab that opens the per-line status menu (Mark unavailable / Mark to buy).
+  .item-menu {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-muted);
+    cursor: pointer;
+
+    .pi {
+      font-size: 16px;
+    }
+
+    &:hover {
+      color: var(--vscode-text);
+      background: var(--accent-hover);
+    }
+  }
+
+  // A bought line is struck through across the entire row (not just the name), drawn as a single
+  // continuous line rather than per-text-run decoration, and its text is dimmed.
+  .shopping-list-item.status-bought {
     &::after {
       content: '';
       position: absolute;
@@ -315,15 +353,15 @@
     }
   }
 
-  // Each row wraps its content plus a single Remove button. The button is styled two ways across the
-  // 720px seam (hover reveal on wide, swipe reveal on narrow); overflow hidden clips it when closed.
+  // Each row wraps its content plus a swipe-reveal Remove button. Below 720px a left swipe reveals it;
+  // at ≥721px it is hidden (delete lives in the kebab). Overflow hidden clips it when closed.
   .shopping-list-row {
     position: relative;
     overflow: hidden;
   }
 
   // Below 720px this is a full-height red panel pinned to the right edge, collapsed to zero width until
-  // a left swipe opens the row. Above 720px the media query below re-styles it into a hover icon.
+  // a left swipe opens the row. At ≥721px it is hidden entirely (the kebab's Remove replaces it).
   .item-remove {
     position: absolute;
     top: 0;
@@ -355,42 +393,11 @@
     width: 64px;
   }
 
-  // Wide screens: no swipe. Reserve a fixed gutter on the right of the row so the icon has its own
-  // space and never overlaps the quantity; the icon lives in that gutter and fades in on hover/focus.
+  // Wide screens: no swipe, and delete lives in the kebab menu — so the swipe-reveal button is hidden
+  // and the row needs no right-hand gutter reserved for it.
   @media (min-width: 721px) {
-    .shopping-list-row .shopping-list-item {
-      padding-right: 44px;
-    }
-
     .item-remove {
-      width: 32px;
-      height: 32px;
-      top: 50%;
-      right: 6px;
-      bottom: auto;
-      transform: translateY(-50%);
-      border-radius: 8px;
-      background: transparent;
-      color: var(--vscode-muted);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
-    }
-
-    // Neutralise the swipe-open width rule so a lingering open state can't affect the desktop layout.
-    .shopping-list-row.is-open .item-remove {
-      width: 32px;
-    }
-
-    .shopping-list-row:hover .item-remove,
-    .shopping-list-row:focus-within .item-remove {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .item-remove:hover {
-      color: var(--vscode-danger);
-      background: var(--accent-hover);
+      display: none;
     }
   }
 
@@ -422,5 +429,14 @@
     .add-item-button {
       width: 100%;
     }
+  }
+}
+
+// The shopping-list kebab menu portals to <body>, outside .shopping-list, so its destructive Remove
+// item is styled here at the top level: danger-red text and icon to flag it as a delete.
+.menu-item-danger .p-menuitem-link {
+  .p-menuitem-text,
+  .p-menuitem-icon {
+    color: var(--vscode-danger);
   }
 }

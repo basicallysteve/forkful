@@ -57,7 +57,7 @@ export default function Welcome() {
     <div className="welcome">
       <div className="welcome-content">
         <header className="welcome-header">
-          <p className="welcome-label">Welcome to Forkful</p>
+          <p className="welcome-label">Welcome to EatForkful</p>
           <h2 className="welcome-title">Let's personalise your experience</h2>
           <p className="welcome-helper">
             Tell us a bit about your tastes. You can change these anytime in your profile.
@@ -102,7 +102,7 @@ export default function Welcome() {
               className={`checkbox-option${marketingEmailOptIn ? ' is-active' : ''}`}
               onClick={() => setMarketingEmailOptIn(prev => !prev)}
             >
-              Send me news and updates about Forkful (optional)
+              Send me news and updates about EatForkful (optional)
             </label>
           </div>
 
