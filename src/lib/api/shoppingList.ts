@@ -88,3 +88,35 @@ export async function apiUpdateShoppingListItemDetails(
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
 }
+
+// A single portion of a split: a share of the line's amount plus its own expiration date.
+export type ShoppingListItemPortionInput = {
+  amount: number
+  expirationDate: Date | null
+}
+
+// Split one line into several, each carrying a share of the amount and its own expiration date (the
+// "different dates per item" path). The portions must sum to the line's amount. An optional linePrice
+// (the whole-line total) is distributed across the portions server-side. Returns every resulting line.
+export async function apiSplitShoppingListItem(
+  id: number,
+  input: { portions: ShoppingListItemPortionInput[]; linePrice?: number | null },
+): Promise<ShoppingListItem[]> {
+  const body: { portions: { amount: number; expirationDate: string | null }[]; linePrice?: number | null } = {
+    portions: input.portions.map((portion) => ({
+      amount: portion.amount,
+      expirationDate: portion.expirationDate ? portion.expirationDate.toISOString() : null,
+    })),
+  }
+  if ('linePrice' in input) body.linePrice = input.linePrice
+
+  const res = await fetch(`/api/shopping-list/${id}/split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) throw new Error('Failed to split shopping list item')
+  const raw: RawShoppingListItem[] = await res.json()
+  return raw.map(parseShoppingListItem)
+}

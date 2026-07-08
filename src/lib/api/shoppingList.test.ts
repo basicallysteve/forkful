@@ -3,6 +3,7 @@ import {
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
   apiFetchShoppingListItems,
+  apiSplitShoppingListItem,
   apiUpdateShoppingListItemDetails,
   apiUpdateShoppingListItemStatus,
 } from './shoppingList'
@@ -180,5 +181,49 @@ describe('apiUpdateShoppingListItemDetails', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
 
     await expect(apiUpdateShoppingListItemDetails(1, { linePrice: 1 })).rejects.toThrow('Failed to update shopping list item details')
+  })
+})
+
+describe('apiSplitShoppingListItem', () => {
+  it('POSTs the portions with ISO dates and parses the returned lines', async () => {
+    const rawA = { ...mockRawItem, id: 1, amount: 1, expirationDate: '2026-02-01T00:00:00.000Z' }
+    const rawB = { ...mockRawItem, id: 2, amount: 1, expirationDate: null }
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [rawA, rawB] } as Response)
+
+    const result = await apiSplitShoppingListItem(1, {
+      portions: [
+        { amount: 1, expirationDate: new Date('2026-02-01T00:00:00.000Z') },
+        { amount: 1, expirationDate: null },
+      ],
+      linePrice: 6,
+    })
+
+    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/1/split', expect.objectContaining({ method: 'POST' }))
+    expect(postedBody()).toEqual({
+      portions: [
+        { amount: 1, expirationDate: '2026-02-01T00:00:00.000Z' },
+        { amount: 1, expirationDate: null },
+      ],
+      linePrice: 6,
+    })
+    expect(result).toHaveLength(2)
+    expect(result[0].expirationDate).toEqual(new Date('2026-02-01T00:00:00.000Z'))
+    expect(result[1].expirationDate).toBeNull()
+  })
+
+  it('omits linePrice when it is not provided', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [mockRawItem] } as Response)
+
+    await apiSplitShoppingListItem(1, { portions: [{ amount: 2, expirationDate: null }] })
+
+    expect(postedBody()).toEqual({ portions: [{ amount: 2, expirationDate: null }] })
+  })
+
+  it('throws on a non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
+
+    await expect(
+      apiSplitShoppingListItem(1, { portions: [{ amount: 1, expirationDate: null }] })
+    ).rejects.toThrow('Failed to split shopping list item')
   })
 })

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ShoppingListView, { buildShoppingListText, formatPrice, resolveLinePriceTotal } from './Index'
+import ShoppingListView, { buildShoppingListText, formatPrice, groupExpirationPortions, resolveLinePriceTotal } from './Index'
+import { formatUtcDateForInput } from '@/utils/dateHelpers'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
@@ -13,6 +14,7 @@ vi.mock('@/lib/api/shoppingList', () => ({
   apiDeleteShoppingListItem: vi.fn(),
   apiUpdateShoppingListItemStatus: vi.fn(),
   apiUpdateShoppingListItemDetails: vi.fn(),
+  apiSplitShoppingListItem: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -58,7 +60,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 
 const mockProduct: Product = {
@@ -726,6 +728,43 @@ describe('formatPrice', () => {
   })
 })
 
+describe('groupExpirationPortions', () => {
+  // A Calendar value is a local Date; the helper normalises to UTC-midnight for both grouping and output.
+  const augFirst = new Date(2026, 7, 1)
+  const augTenth = new Date(2026, 7, 10)
+
+  it('keeps portions with distinct dates as separate groups', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 3, date: augTenth },
+    ])
+    expect(groups).toEqual([
+      { amount: 2, expirationDate: new Date(Date.UTC(2026, 7, 1)) },
+      { amount: 3, expirationDate: new Date(Date.UTC(2026, 7, 10)) },
+    ])
+  })
+
+  it('merges portions that share a calendar day, summing their amounts', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 1, date: new Date(2026, 7, 1, 18, 30) }, // same day, later local time
+    ])
+    expect(groups).toEqual([{ amount: 3, expirationDate: new Date(Date.UTC(2026, 7, 1)) }])
+  })
+
+  it('treats undated portions as their own group and drops non-positive amounts', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 1, date: null },
+      { amount: 0, date: augTenth },
+    ])
+    expect(groups).toEqual([
+      { amount: 2, expirationDate: new Date(Date.UTC(2026, 7, 1)) },
+      { amount: 1, expirationDate: null },
+    ])
+  })
+})
+
 describe('ShoppingListView — price & expiration', () => {
   async function openDetailsDialog(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
@@ -843,16 +882,10 @@ describe('ShoppingListView — price & expiration', () => {
     await waitFor(() => expect(useShoppingListStore.getState().items[0].linePrice).toBe(6))
   })
 
-  it('records an expiration date and shows it on the row', async () => {
+  it('records an expiration date picked from the calendar and shows it on the row', async () => {
     const user = userEvent.setup()
     vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
-      makeItem({
-        id: 1,
-        food: mockFoods[0],
-        amount: 2,
-        unit: 'oz',
-        expirationDate: details.expirationDate ?? null,
-      }),
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', expirationDate: details.expirationDate ?? null }),
     )
 
     render(
@@ -864,16 +897,76 @@ describe('ShoppingListView — price & expiration', () => {
     await screen.findByRole('listbox', { name: 'Shopping list items' })
 
     const dialog = await openDetailsDialog(user)
-    fireEvent.change(within(dialog).getByLabelText(/expiration date/i), { target: { value: '2026-08-01' } })
+    // Open the Calendar panel, step to next month (so the day is always in the future regardless of the
+    // runner's clock), and pick the 15th.
+    await user.click(within(dialog).getByRole('combobox', { name: /expiration date/i }))
+    await user.click(document.querySelector('.p-datepicker-next') as HTMLElement)
+    const panel = document.querySelector('.p-datepicker') as HTMLElement
+    await user.click(within(panel).getByText('15'))
     await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
 
-    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, {
+    // The picked day persists at UTC midnight, timezone-stable.
+    const now = new Date()
+    const expected = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 15))
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: null, expirationDate: expected })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].expirationDate).toEqual(expected))
+    expect(await screen.findByText(`Exp ${formatUtcDateForInput(expected)}`)).toBeInTheDocument()
+  })
+
+  it('splits the line into date-grouped lines when items get different expiration dates', async () => {
+    const user = userEvent.setup()
+    const seededDate = new Date('2026-08-01T00:00:00.000Z')
+    vi.mocked(apiSplitShoppingListItem).mockResolvedValue([
+      makeItem({ id: 1, food: mockFoods[0], amount: 1, unit: 'oz', expirationDate: seededDate }),
+      makeItem({ id: 2, food: mockFoods[0], amount: 1, unit: 'oz', expirationDate: null }),
+    ])
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', expirationDate: seededDate })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // Switch to per-item dates: the sole portion is seeded with the stored date + full amount.
+    fireEvent.click(within(dialog).getByRole('button', { name: /per item/i }))
+    // Add a second (undated) group and give each portion one unit — two distinct groups → a split.
+    await user.click(within(dialog).getByRole('button', { name: /add date/i }))
+    const qty1 = within(dialog).getByRole('spinbutton', { name: /item 1 quantity/i })
+    const qty2 = within(dialog).getByRole('spinbutton', { name: /item 2 quantity/i })
+    await user.clear(qty1)
+    await user.type(qty1, '1')
+    await user.clear(qty2)
+    await user.type(qty2, '1')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiSplitShoppingListItem).toHaveBeenCalledWith(1, {
+      portions: [
+        { amount: 1, expirationDate: seededDate },
+        { amount: 1, expirationDate: null },
+      ],
       linePrice: null,
-      expirationDate: new Date('2026-08-01'),
     })
-    await waitFor(() => expect(useShoppingListStore.getState().items[0].expirationDate).toEqual(new Date('2026-08-01')))
-    // The row shows the UTC calendar day, stable regardless of the runner's timezone.
-    expect(await screen.findByText('Exp 2026-08-01')).toBeInTheDocument()
+    // The one line is replaced by the two the server returns.
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(2))
+  })
+
+  it('offers the per-item toggle only when buying more than one', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 1, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // A single-quantity line has nothing to split, so only the whole-line picker shows.
+    expect(within(dialog).queryByRole('button', { name: /per item/i })).not.toBeInTheDocument()
   })
 
   it('seeds the dialog from an existing price and shows an error when the save fails', async () => {

@@ -10,6 +10,7 @@ import {
   deleteShoppingListItem,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
+  splitShoppingListItem,
   updateShoppingListItemDetails,
   updateShoppingListItemStatus,
 } from './shoppingList'
@@ -387,5 +388,74 @@ describe('shopping list data layer (integration)', () => {
 
     const items = await getShoppingListItems(owner.id)
     expect(items[0].linePrice).toBeNull()
+  })
+
+  it('splits a line into date-grouped lines, partitioning amount and distributing price', async () => {
+    const user = await createTestUser('u')
+    const food = await createTestFood('TestShopping Splittable')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
+    await updateShoppingListItemDetails(created.id, user.id, { linePrice: 6 })
+
+    const augFirst = new Date('2026-08-01T00:00:00.000Z')
+    const result = await splitShoppingListItem(created.id, user.id, [
+      { amount: 4, expirationDate: augFirst },
+      { amount: 2, expirationDate: null },
+    ])
+
+    expect(result).toHaveLength(2)
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(2)
+    // The original line keeps its id as the first portion; a sibling line carries the rest.
+    const original = items.find((item) => item.id === created.id)
+    const sibling = items.find((item) => item.id !== created.id)
+    expect(original?.amount).toBe(4)
+    expect(original?.expirationDate?.getTime()).toBe(augFirst.getTime())
+    expect(original?.food?.id).toBe(food.id)
+    expect(sibling?.amount).toBe(2)
+    expect(sibling?.expirationDate).toBeNull()
+    expect(sibling?.food?.id).toBe(food.id)
+    // The $6 total is split in proportion to amount (4:2), so the parts still sum to $6.
+    expect((original?.linePrice ?? 0) + (sibling?.linePrice ?? 0)).toBe(6)
+    expect(original?.linePrice).toBe(4)
+    expect(sibling?.linePrice).toBe(2)
+  })
+
+  it('rejects a split whose portions do not sum to the line amount', async () => {
+    const user = await createTestUser('v')
+    const food = await createTestFood('TestShopping BadSplit')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
+
+    await expect(
+      splitShoppingListItem(created.id, user.id, [
+        { amount: 4, expirationDate: null },
+        { amount: 1, expirationDate: null },
+      ])
+    ).rejects.toThrow('Portions must sum to the line amount')
+
+    // The line is untouched.
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(6)
+  })
+
+  it('returns null when another user tries to split a line', async () => {
+    const owner = await createTestUser('w')
+    const intruder = await createTestUser('x')
+    const food = await createTestFood('TestShopping SplitGuarded')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 2, unit: 'g' })
+
+    const result = await splitShoppingListItem(created.id, intruder.id, [
+      { amount: 1, expirationDate: null },
+      { amount: 1, expirationDate: null },
+    ])
+    expect(result).toBeNull()
+
+    const items = await getShoppingListItems(owner.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(2)
   })
 })

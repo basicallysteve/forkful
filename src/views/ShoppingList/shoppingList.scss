@@ -486,11 +486,13 @@
       letter-spacing: 0.4px;
     }
 
-    .p-inputnumber {
+    .p-inputnumber,
+    .p-calendar {
       width: 100%;
     }
 
     .p-inputnumber-input,
+    .p-calendar .p-inputtext,
     input[type='date'] {
       width: 100%;
       box-sizing: border-box;
@@ -505,8 +507,9 @@
     }
   }
 
-  // Total / Per unit segmented toggle, mirroring the variant tabs.
-  .price-mode {
+  // Total / Per unit and Whole line / Per item segmented toggles, mirroring the variant tabs.
+  .price-mode,
+  .expiration-mode {
     display: inline-flex;
     align-self: flex-start;
     gap: 2px;
@@ -514,6 +517,77 @@
     border-radius: 999px;
     border: 1px solid var(--vscode-border);
     background: var(--vscode-panel-strong);
+  }
+
+  // Per-item date editor: a stack of quantity + date rows with an add control and a running tally.
+  .expiration-portions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .expiration-portion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .p-inputnumber {
+      flex: 0 0 90px;
+      width: 90px;
+    }
+
+    .p-calendar {
+      flex: 1 1 auto;
+    }
+  }
+
+  .portion-remove {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--vscode-danger);
+      background: var(--accent-hover);
+    }
+  }
+
+  .expiration-portions-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .portion-add {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .portion-tally {
+    font-variant-numeric: tabular-nums;
+
+    // Amber when the portions don't yet add up to the line — Save stays disabled until they do.
+    &.is-off {
+      color: var(--vscode-warning);
+    }
   }
 
   .price-mode-tab {

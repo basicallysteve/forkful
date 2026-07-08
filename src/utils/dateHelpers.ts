@@ -20,3 +20,14 @@ export function formatUtcDateForInput(date: Date): string {
 export function parseInputDateAsUtc(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
 }
+
+// PrimeReact's Calendar works in local time (a picked day is local midnight). These bridge that to the
+// UTC-midnight, date-only representation we persist, so the calendar day never shifts: read a stored
+// date into a Calendar value on the same Y/M/D, and write a picked value back to UTC midnight.
+export function utcDateToCalendarValue(date: Date): Date {
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
+export function calendarValueToUtcDate(date: Date): Date {
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+}
