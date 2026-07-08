@@ -107,7 +107,7 @@ export function BaseEmail({ subject, previewText, variant, trackingPixelUrl, chi
                     <tr>
                       <td style={{ padding: '20px 40px 32px', borderTop: `1px solid ${BORDER_COLOR}` }}>
                         <p style={{ margin: 0, fontSize: 12, color: FOOTER_TEXT, lineHeight: 1.6 }}>
-                          You received this email because you have a EatForkful account.
+                          You received this email because you have an EatForkful account.
                           If you didn&apos;t expect it, you can safely ignore it.
                         </p>
                       </td>

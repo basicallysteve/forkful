@@ -83,9 +83,9 @@ By submitting User Content, you grant EatForkful a non-exclusive, worldwide, roy
 
 ### 6.3 Shared & Public Content
 
-Eatforkful includes features that allow you to share content with other users (such as recipes or food entries). When you share content:
+EatForkful includes features that allow you to share content with other users (such as recipes or food entries). When you share content:
 
-- You understand that shared content may be visible to other Eatforkful users.
+- You understand that shared content may be visible to other EatForkful users.
 - You are responsible for ensuring you have the right to share any content you post.
 - You can manage the visibility of your content through your account settings.
 - We are not responsible for how other users interact with or use content you choose to share.
