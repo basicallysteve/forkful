@@ -9,6 +9,10 @@
   }
 
   .shopping-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--vscode-border);
 
@@ -19,11 +23,70 @@
     }
   }
 
+  // Secondary, ghost-style action beside the title: copies the list to the clipboard.
+  .share-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--vscode-text);
+    background: var(--vscode-panel-strong);
+    border: 1px solid var(--vscode-border);
+    cursor: pointer;
+
+    .pi {
+      font-size: 14px;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
   .shopping-list-panel {
     margin-top: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+
+  // Segmented control that switches the add form between Food / Product / Freeform lines.
+  .variant-tabs {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+  }
+
+  .variant-tab {
+    border: none;
+    background: none;
+    padding: 6px 16px;
+    border-radius: 999px;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    &.is-active {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:not(.is-active):hover {
+      color: var(--vscode-text);
+    }
   }
 
   .add-item-form {
@@ -67,9 +130,21 @@
     }
   }
 
-  .field-food {
+  .field-food,
+  .field-product,
+  .field-freeform {
     flex: 1 1 auto;
     min-width: 200px;
+  }
+
+  .field {
+    // Freeform's plain text inputs match the other controls' height.
+    .p-inputtext {
+      width: 100%;
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
   }
 
   // Fixed widths keep Amount/Unit from dominating the row and stop the Unit
@@ -240,15 +315,103 @@
     }
   }
 
+  // Each row wraps its content plus a single Remove button. The button is styled two ways across the
+  // 720px seam (hover reveal on wide, swipe reveal on narrow); overflow hidden clips it when closed.
+  .shopping-list-row {
+    position: relative;
+    overflow: hidden;
+  }
+
+  // Below 720px this is a full-height red panel pinned to the right edge, collapsed to zero width until
+  // a left swipe opens the row. Above 720px the media query below re-styles it into a hover icon.
+  .item-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: #ffffff;
+    background: var(--vscode-danger);
+    cursor: pointer;
+    transition: width 0.2s ease;
+
+    .pi {
+      font-size: 18px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .shopping-list-row.is-open .item-remove {
+    width: 64px;
+  }
+
+  // Wide screens: no swipe. Reserve a fixed gutter on the right of the row so the icon has its own
+  // space and never overlaps the quantity; the icon lives in that gutter and fades in on hover/focus.
+  @media (min-width: 721px) {
+    .shopping-list-row .shopping-list-item {
+      padding-right: 44px;
+    }
+
+    .item-remove {
+      width: 32px;
+      height: 32px;
+      top: 50%;
+      right: 6px;
+      bottom: auto;
+      transform: translateY(-50%);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--vscode-muted);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+
+    // Neutralise the swipe-open width rule so a lingering open state can't affect the desktop layout.
+    .shopping-list-row.is-open .item-remove {
+      width: 32px;
+    }
+
+    .shopping-list-row:hover .item-remove,
+    .shopping-list-row:focus-within .item-remove {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .item-remove:hover {
+      color: var(--vscode-danger);
+      background: var(--accent-hover);
+    }
+  }
+
   // On narrow screens the row can't hold four controls, so stack them: the food
   // search, Amount, Unit, and the button each take their own full-width row.
   @media (max-width: 720px) {
+    .variant-tabs {
+      width: 100%;
+    }
+    .variant-tab {
+      width: 33%;
+    }
+
     .add-item-form {
       flex-direction: column;
       align-items: stretch;
     }
 
     .field-food,
+    .field-product,
+    .field-freeform,
     .field-amount,
     .field-unit {
       width: 100%;

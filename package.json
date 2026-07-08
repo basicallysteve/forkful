@@ -47,6 +47,7 @@
     "quill": "^2.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-swipeable": "^7.0.2",
     "resend": "^6.12.4",
     "sanitize-html": "^2.17.4",
     "tesseract.js": "^7.0.0",

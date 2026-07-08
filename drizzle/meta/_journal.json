@@ -183,6 +183,13 @@
       "when": 1783042673519,
       "tag": "0025_uneven_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783425815527,
+      "tag": "0026_yummy_shooting_star",
+      "breakpoints": true
     }
   ]
 }

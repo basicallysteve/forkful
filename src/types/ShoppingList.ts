@@ -1,4 +1,5 @@
 import type { Food } from './Food'
+import type { Product } from './Product'
 
 export type ShoppingListStatus = 'active' | 'archived'
 export type ShoppingListItemSourceType = 'food' | 'product' | 'freeform'
@@ -15,8 +16,13 @@ export type ShoppingListItem = {
   id: number
   sourceType: ShoppingListItemSourceType
   status: ShoppingListItemStatus
-  food: Food
+  // Display name for the line, always populated: the linked Food/Product name, or the freeform text.
+  name: string
+  // Present only for the matching sourceType; freeform lines have neither.
+  food?: Food
+  product?: Product
   amount: number
-  unit: string
+  // Null for freeform lines that omit a unit.
+  unit: string | null
   addedDate: Date
 }

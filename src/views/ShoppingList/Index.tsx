@@ -1,28 +1,134 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
+import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
+import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import { apiCreateShoppingListFoodItem } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem } from '@/lib/api/shoppingList'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
-import type { ShoppingListItem } from '@/types/ShoppingList'
+import type { Product } from '@/types/Product'
+import type { ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
+import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { ListBox } from 'primereact/listbox'
 import { Checkbox } from 'primereact/checkbox'
 
 type ShoppingListViewProps = {
-  initialFoods: Food[]
+  // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
+  initialFoods?: Food[]
   initialItems: ShoppingListItem[]
 }
 
-function getFoodUnits(food: Food | null): string[] {
-  if (!food) return []
-  const units = food.measurements.map((measurement) => measurement.unit)
-  return units.length > 0 ? units : [food.servingUnit].filter(Boolean)
+type AddVariant = Extract<ShoppingListItemSourceType, 'food' | 'product' | 'freeform'>
+
+const VARIANT_LABELS: Record<AddVariant, string> = {
+  food: 'Food',
+  product: 'Product',
+  freeform: 'Freeform',
+}
+
+// A source's shopping units come from its Measurements, falling back to its serving unit.
+function getSourceUnits(source: Food | Product | null): string[] {
+  if (!source) return []
+  const units = source.measurements.map((measurement) => measurement.unit)
+  return units.length > 0 ? units : [source.servingUnit].filter(Boolean)
+}
+
+// Amount only reads on the list when it carries meaning: with a unit, or when it isn't a bare "1".
+function itemQuantityLabel(item: ShoppingListItem): string {
+  if (item.unit) return `${item.amount} ${formatUnitForAmount(item.amount, item.unit)}`
+  return item.amount === 1 ? '' : `${item.amount}`
+}
+
+// Plain-text rendering of the list for the clipboard. Wrapped in a friendly, marketable message so a
+// pasted list also invites the recipient to try Forkful. One line per item as "- Name — qty" (the
+// quantity is dropped when it carries no meaning, e.g. a bare 1). Exported so the exact format is
+// unit-testable independently of the clipboard.
+const SHARE_INTRO = "Hey! I'm sending you my shopping list from Forkful — you should check it out!"
+const SHARE_OUTRO = 'Build your own shopping list at eatforkful.com'
+
+export function buildShoppingListText(items: ShoppingListItem[]): string {
+  const lines = items.map((item) => {
+    const quantity = itemQuantityLabel(item)
+    return quantity ? `- ${item.name} — ${quantity}` : `- ${item.name}`
+  })
+  return [SHARE_INTRO, '', ...lines, '', SHARE_OUTRO].join('\n')
+}
+
+// A single list row with its Remove affordance. One button serves both breakpoints (styled by CSS at
+// the 720px seam): revealed on hover ≥721px, revealed by a left swipe below it. Extracted to a real
+// component because useSwipeable is a hook and cannot live inside the ListBox itemTemplate callback.
+function ShoppingListItemRow({
+  item,
+  selected,
+  onRemove,
+}: {
+  item: ShoppingListItem
+  selected: boolean
+  onRemove: (id: number) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  async function remove() {
+    if (removing) return
+    setRemoving(true)
+    try {
+      await onRemove(item.id)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
+  const swipe = useSwipeable({
+    // First left swipe opens the row to reveal Remove; a second left swipe on an already-open row
+    // commits the delete outright, so a decisive double-swipe removes without reaching for the button.
+    onSwipedLeft: () => {
+      if (open) remove()
+      else setOpen(true)
+    },
+    onSwipedRight: () => setOpen(false),
+    // Only react to a deliberate drag, and only to touch — on desktop the hover reveal handles it.
+    delta: 40,
+    trackMouse: false,
+  })
+
+  function handleRemoveClick(event: MouseEvent) {
+    // The row lives inside a selectable ListBox item; stop the click from also toggling selection.
+    event.stopPropagation()
+    remove()
+  }
+
+  const quantity = itemQuantityLabel(item)
+  return (
+    <div className={`shopping-list-row${open ? ' is-open' : ''}`} {...swipe}>
+      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
+        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
+        <div className="item-body">
+          <span className="item-name">{item.name}</span>
+          {quantity && <span className="item-qty">{quantity}</span>}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="item-remove"
+        aria-label={`Remove ${item.name}`}
+        onClick={handleRemoveClick}
+        // mousedown also bubbles to the ListBox item; keep it from starting a selection.
+        onMouseDown={(event) => event.stopPropagation()}
+        disabled={removing}
+      >
+        <i className="pi pi-trash" aria-hidden="true" />
+      </button>
+    </div>
+  )
 }
 
 export default function ShoppingListView({ initialFoods, initialItems }: ShoppingListViewProps) {
@@ -31,31 +137,85 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const items = useShoppingListStore((state) => state.items)
   const setItems = useShoppingListStore((state) => state.setItems)
   const upsertItem = useShoppingListStore((state) => state.upsertItem)
+  const removeItem = useShoppingListStore((state) => state.removeItem)
+
+  const [variant, setVariant] = useState<AddVariant>('food')
 
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
   const [foodName, setFoodName] = useState('')
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productName, setProductName] = useState('')
+
+  const [freeformName, setFreeformName] = useState('')
+  const [freeformUnit, setFreeformUnit] = useState('')
+
   const [amount, setAmount] = useState(1)
   const [unit, setUnit] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [selectedItems, setSelectedItems] = useState<ShoppingListItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  // Holds the pending "Copied!" reset so a rapid re-copy restarts the 2s window instead of stacking
+  // timers, and so it can be cancelled on unmount.
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setFoods(initialFoods)
     setItems(initialItems)
-  }, [initialFoods, initialItems, setFoods, setItems])
+  }, [initialItems, setItems])
 
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current)
+  }, [])
+
+  // Populate the food catalog that backs FoodSearch's instant local suggestions. Prefer a
+  // server-provided list; otherwise fetch it in the background. Either way FoodSearch queries the
+  // server per keystroke, so this only speeds up pre-debounce matches and must never block the page.
+  useEffect(() => {
+    if (initialFoods) {
+      setFoods(initialFoods)
+      return
+    }
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => { if (!cancelled && fetched.length > 0) setFoods(fetched) })
+      .catch(() => { /* instant suggestions are best-effort; server search still works */ })
+    return () => { cancelled = true }
+  }, [initialFoods, setFoods])
+
+  // Food and Product both constrain the Advanced unit picker to their own Measurements.
+  const selectedSource = variant === 'product' ? selectedProduct : selectedFood
   const unitOptions = useMemo(
-    () => shoppingUnitOptions(getFoodUnits(selectedFood)).map((foodUnit) => ({ label: foodUnit, value: foodUnit })),
-    [selectedFood]
+    () => shoppingUnitOptions(getSourceUnits(selectedSource)).map((sourceUnit) => ({ label: sourceUnit, value: sourceUnit })),
+    [selectedSource]
   )
+
+  function resetForm() {
+    setSelectedFood(null)
+    setFoodName('')
+    setSelectedProduct(null)
+    setProductName('')
+    setFreeformName('')
+    setFreeformUnit('')
+    setAmount(1)
+    setUnit('')
+  }
+
+  function handleVariantChange(next: AddVariant) {
+    if (next === variant) return
+    setVariant(next)
+    setSaveError(null)
+    // Collapse the unit override so each variant starts from its own clean default.
+    setShowAdvanced(false)
+    resetForm()
+  }
 
   function handleFoodSelected(food: Food) {
     setSelectedFood(food)
     setFoodName(food.name)
     // The unit is auto-derived and hidden; the user only sees it via "Advanced".
-    setUnit(preferredShoppingUnit(getFoodUnits(food)))
+    setUnit(preferredShoppingUnit(getSourceUnits(food)))
   }
 
   function handleFoodInputChange(text: string) {
@@ -68,22 +228,32 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     }
   }
 
+  function handleProductSelected(product: Product) {
+    setSelectedProduct(product)
+    setProductName(product.name)
+    setUnit(preferredShoppingUnit(getSourceUnits(product)))
+  }
+
   async function handleAddItem() {
-    if (!selectedFood || amount <= 0 || !unit) return
+    if (amount <= 0) return
 
     setSaving(true)
     setSaveError(null)
     try {
-      const created = await apiCreateShoppingListFoodItem({
-        foodId: selectedFood.id,
-        amount,
-        unit,
-      })
+      let created: ShoppingListItem
+      if (variant === 'food') {
+        if (!selectedFood || !unit) return
+        created = await apiCreateShoppingListItem({ sourceType: 'food', foodId: selectedFood.id, amount, unit })
+      } else if (variant === 'product') {
+        if (!selectedProduct || !unit) return
+        created = await apiCreateShoppingListItem({ sourceType: 'product', productId: selectedProduct.id, amount, unit })
+      } else {
+        const name = freeformName.trim()
+        if (!name) return
+        created = await apiCreateShoppingListItem({ sourceType: 'freeform', name, amount, unit: freeformUnit.trim() || undefined })
+      }
       upsertItem(created)
-      setSelectedFood(null)
-      setFoodName('')
-      setAmount(1)
-      setUnit('')
+      resetForm()
     } catch {
       setSaveError('Failed to add item. Please try again.')
     } finally {
@@ -91,19 +261,41 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     }
   }
 
-  const isAddDisabled = saving || !selectedFood || amount <= 0 || !unit
+  const isAddDisabled = saving || amount <= 0 ||
+    (variant === 'food' && (!selectedFood || !unit)) ||
+    (variant === 'product' && (!selectedProduct || !unit)) ||
+    (variant === 'freeform' && freeformName.trim().length === 0)
 
-  function renderItemRow(item: ShoppingListItem) {
-    const selected = selectedItems.some((entry) => entry.id === item.id)
-    return (
-      <div className={`shopping-list-item${selected ? ' is-selected' : ''}`}>
-        <Checkbox checked={selected} readOnly tabIndex={-1} className="item-check" />
-        <div className="item-body">
-          <span className="item-name">{item.food.name}</span>
-          <span className="item-qty">{item.amount} {formatUnitForAmount(item.amount, item.unit)}</span>
-        </div>
-      </div>
-    )
+  // Food/Product lines have an auto-derived unit revealed via "Advanced"; freeform takes a free-text unit inline.
+  const showAdvancedToggle = variant !== 'freeform'
+
+  // Copy the whole list to the clipboard as plain text, with a brief "Copied!" confirmation. Reuses
+  // the shared error banner if the browser blocks clipboard access (e.g. an insecure context).
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(buildShoppingListText(items))
+      setSaveError(null)
+      setCopied(true)
+      // Restart the window on each copy so the confirmation always lingers 2s past the latest one.
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setSaveError('Failed to copy the list. Please try again.')
+    }
+  }
+
+  // Remove Item (see CONTEXT.md): await the hard delete, then drop the line from the store. Mirrors
+  // Pantry's handleDelete — the row only disappears once the server confirms.
+  async function handleRemove(id: number) {
+    setSaveError(null)
+    try {
+      await apiDeleteShoppingListItem(id)
+      removeItem(id)
+      // Drop the removed line from the ListBox selection so no stale id lingers in `value`.
+      setSelectedItems((current) => current.filter((entry) => entry.id !== id))
+    } catch {
+      setSaveError('Failed to remove item. Please try again.')
+    }
   }
 
   return (
@@ -111,23 +303,74 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       <div className="shopping-list-content">
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
+          <button
+            type="button"
+            className="share-button"
+            onClick={handleShare}
+            disabled={items.length === 0}
+          >
+            <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
+            {copied ? 'Copied!' : 'Share'}
+          </button>
         </header>
 
         <div className="shopping-list-panel">
+          <div className="variant-tabs" role="tablist" aria-label="Item type">
+            {(Object.keys(VARIANT_LABELS) as AddVariant[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="tab"
+                aria-selected={variant === option}
+                className={`variant-tab${variant === option ? ' is-active' : ''}`}
+                onClick={() => handleVariantChange(option)}
+              >
+                {VARIANT_LABELS[option]}
+              </button>
+            ))}
+          </div>
+
           <div className="add-item-form">
-            <div className="field field-food">
-              {/* FoodSearch renders its own aria-labelled input and exposes no matching control id,
-                  so this stays a bare caption rather than an htmlFor label pointing at nothing. */}
-              <label>Food</label>
-              <FoodSearch
-                value={foodName}
-                localFoods={foods}
-                onChange={handleFoodSelected}
-                onInputChange={handleFoodInputChange}
-                placeholder="Search foods"
-                inputAriaLabel="Shopping list food"
-              />
-            </div>
+            {variant === 'food' && (
+              <div className="field field-food">
+                {/* FoodSearch renders its own aria-labelled input and exposes no matching control id,
+                    so this stays a bare caption rather than an htmlFor label pointing at nothing. */}
+                <label>Food</label>
+                <FoodSearch
+                  value={foodName}
+                  localFoods={foods}
+                  onChange={handleFoodSelected}
+                  onInputChange={handleFoodInputChange}
+                  placeholder="Search foods"
+                  inputAriaLabel="Shopping list food"
+                />
+              </div>
+            )}
+
+            {variant === 'product' && (
+              <div className="field field-product">
+                <label>Product</label>
+                <ProductSearch
+                  value={productName}
+                  onChange={handleProductSelected}
+                  placeholder="Search products"
+                  inputAriaLabel="Shopping list product"
+                />
+              </div>
+            )}
+
+            {variant === 'freeform' && (
+              <div className="field field-freeform">
+                <label htmlFor="shopping-list-freeform-name">Item</label>
+                <InputText
+                  id="shopping-list-freeform-name"
+                  value={freeformName}
+                  onChange={(e) => setFreeformName(e.target.value)}
+                  placeholder="e.g. Trash bags"
+                  aria-label="Shopping list item name"
+                />
+              </div>
+            )}
 
             <div className="field field-amount">
               <label htmlFor="shopping-list-amount">Amount</label>
@@ -141,7 +384,20 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               />
             </div>
 
-            {showAdvanced && (
+            {variant === 'freeform' && (
+              <div className="field field-unit">
+                <label htmlFor="shopping-list-freeform-unit">Unit</label>
+                <InputText
+                  id="shopping-list-freeform-unit"
+                  value={freeformUnit}
+                  onChange={(e) => setFreeformUnit(e.target.value)}
+                  placeholder="Optional"
+                  aria-label="Shopping list freeform unit"
+                />
+              </div>
+            )}
+
+            {showAdvancedToggle && showAdvanced && (
               <div className="field field-unit">
                 <label htmlFor="shopping-list-unit">Unit</label>
                 <Dropdown
@@ -165,14 +421,16 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
             </button>
           </div>
 
-          <button
-            type="button"
-            className="advanced-toggle"
-            aria-expanded={showAdvanced}
-            onClick={() => setShowAdvanced((shown) => !shown)}
-          >
-            {showAdvanced ? 'Hide advanced' : 'Advanced'}
-          </button>
+          {showAdvancedToggle && (
+            <button
+              type="button"
+              className="advanced-toggle"
+              aria-expanded={showAdvanced}
+              onClick={() => setShowAdvanced((shown) => !shown)}
+            >
+              {showAdvanced ? 'Hide advanced' : 'Advanced'}
+            </button>
+          )}
 
           {saveError && (
             <div className="add-item-error" role="alert">
@@ -190,8 +448,14 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               value={selectedItems}
               onChange={(e) => setSelectedItems(e.value)}
               options={items}
-              optionLabel="food.name"
-              itemTemplate={renderItemRow}
+              optionLabel="name"
+              itemTemplate={(item: ShoppingListItem) => (
+                <ShoppingListItemRow
+                  item={item}
+                  selected={selectedItems.some((entry) => entry.id === item.id)}
+                  onRemove={handleRemove}
+                />
+              )}
               className="shopping-list-items"
               pt={{ list: { 'aria-label': 'Shopping list items' } }}
             />

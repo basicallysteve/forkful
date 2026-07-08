@@ -154,11 +154,16 @@ export const shoppingListItems = pgTable('shopping_list_items', {
     .notNull()
     .references(() => shoppingLists.id, { onDelete: 'cascade' }),
   sourceType: shoppingListItemSourceTypeEnum('source_type').notNull().default('food'),
+  // A line links to at most one of food/product; a freeform line links to neither and carries its
+  // own `name`. Which column is populated is governed by `sourceType`.
   foodId: integer('food_id')
-    .notNull()
     .references(() => foods.id, { onDelete: 'cascade' }),
+  productId: integer('product_id')
+    .references(() => products.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }),
   amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
-  unit: varchar('unit', { length: 50 }).notNull(),
+  // Null for freeform lines that omit a unit; always set for food/product lines.
+  unit: varchar('unit', { length: 50 }),
   status: shoppingListItemStatusEnum('status').notNull().default('to_buy'),
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 }, (t) => ({

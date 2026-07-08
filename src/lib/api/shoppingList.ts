@@ -11,11 +11,12 @@ function parseShoppingListItem(raw: RawShoppingListItem): ShoppingListItem {
   }
 }
 
-export type CreateShoppingListFoodItemData = {
-  foodId: number
-  amount: number
-  unit: string
-}
+// One create payload, discriminated by sourceType — mirrors the single POST /api/shopping-list
+// endpoint, which branches on the same field.
+export type CreateShoppingListItemInput =
+  | { sourceType: 'food'; foodId: number; amount: number; unit: string }
+  | { sourceType: 'product'; productId: number; amount: number; unit: string }
+  | { sourceType: 'freeform'; name: string; amount: number; unit?: string | null }
 
 export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   const res = await fetch('/api/shopping-list')
@@ -24,14 +25,19 @@ export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   return raw.map(parseShoppingListItem)
 }
 
-export async function apiCreateShoppingListFoodItem(data: CreateShoppingListFoodItemData): Promise<ShoppingListItem> {
+export async function apiCreateShoppingListItem(input: CreateShoppingListItemInput): Promise<ShoppingListItem> {
   const res = await fetch('/api/shopping-list', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(input),
   })
 
   if (!res.ok) throw new Error('Failed to create shopping list item')
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
+}
+
+export async function apiDeleteShoppingListItem(id: number): Promise<void> {
+  const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
 }
