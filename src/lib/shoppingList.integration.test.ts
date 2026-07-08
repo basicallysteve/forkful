@@ -10,6 +10,7 @@ import {
   deleteShoppingListItem,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
+  updateShoppingListItemStatus,
 } from './shoppingList'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
@@ -300,5 +301,39 @@ describe('shopping list data layer (integration)', () => {
 
     const deleted = await deleteShoppingListItem(999_999_999, user.id)
     expect(deleted).toBe(false)
+  })
+
+  it('transitions a line through every status reversibly without touching its Food reference', async () => {
+    const user = await createTestUser('n')
+    const food = await createTestFood('TestShopping Transitions')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+    expect(created.status).toBe('to_buy')
+
+    // to_buy → bought → unavailable → to_buy, all reversible; the foodId reference never changes.
+    for (const status of ['bought', 'unavailable', 'to_buy'] as const) {
+      const updated = await updateShoppingListItemStatus(created.id, user.id, status)
+      expect(updated?.status).toBe(status)
+      expect(updated?.food?.id).toBe(food.id)
+    }
+
+    const [row] = (await pool.query('SELECT status, food_id FROM shopping_list_items WHERE id = $1', [created.id])).rows
+    expect(row.status).toBe('to_buy')
+    expect(row.food_id).toBe(food.id)
+  })
+
+  it('returns null and leaves the status intact when another user tries to update it', async () => {
+    const owner = await createTestUser('o')
+    const intruder = await createTestUser('p')
+    const food = await createTestFood('TestShopping Guarded')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
+
+    const updated = await updateShoppingListItemStatus(created.id, intruder.id, 'bought')
+    expect(updated).toBeNull()
+
+    // The owner's line is unchanged.
+    const items = await getShoppingListItems(owner.id)
+    expect(items[0].status).toBe('to_buy')
   })
 })

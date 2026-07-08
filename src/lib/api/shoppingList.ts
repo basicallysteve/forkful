@@ -1,4 +1,4 @@
-import type { ShoppingListItem } from '@/types/ShoppingList'
+import type { ShoppingListItem, ShoppingListItemStatus } from '@/types/ShoppingList'
 
 type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate'> & {
   addedDate: string
@@ -40,4 +40,19 @@ export async function apiCreateShoppingListItem(input: CreateShoppingListItemInp
 export async function apiDeleteShoppingListItem(id: number): Promise<void> {
   const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
+}
+
+export async function apiUpdateShoppingListItemStatus(
+  id: number,
+  status: ShoppingListItemStatus,
+): Promise<ShoppingListItem> {
+  const res = await fetch(`/api/shopping-list/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+
+  if (!res.ok) throw new Error('Failed to update shopping list item status')
+  const raw: RawShoppingListItem = await res.json()
+  return parseShoppingListItem(raw)
 }

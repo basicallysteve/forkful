@@ -7,7 +7,7 @@ export default function ThemedLogo({ size = 34 }: { size?: number }) {
     return (
         <img
             src={src}
-            alt="Forkful logo"
+            alt="EatForkful logo"
             width={size}
             height={size}
             style={{ display: 'block' }}

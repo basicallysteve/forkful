@@ -133,7 +133,7 @@ function CreateAccount() {
             <p className="account-label">Get Started</p>
             <h2 className="account-name">Create Your Account</h2>
             <p className="account-helper">
-              Join Forkful to save recipes, create meal plans, and discover delicious dishes.
+              Join EatForkful to save recipes, create meal plans, and discover delicious dishes.
             </p>
           </div>
         </header>
@@ -295,7 +295,7 @@ function CreateAccount() {
                     onClick={() => setMarketingEmailOptIn(prev => !prev)}
                   >
                     <span className="checkbox-indicator" />
-                    Send me news and updates about Forkful (optional)
+                    Send me news and updates about EatForkful (optional)
                   </label>
                 </div>
               </div>
