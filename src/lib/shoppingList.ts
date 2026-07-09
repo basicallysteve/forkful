@@ -7,7 +7,7 @@ import { EACH_UNIT } from '@/utils/unitConversion'
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
-import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
+import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -657,16 +657,6 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
   })
 }
 
-// The outcome of a Shopping Trip Completion: how many Pantry Items were created, and how the still-
-// unbought lines were handled (kept onto a fresh active list, or dropped with the archive). `items` is
-// the new active list's contents afterwards — the kept lines when keeping, otherwise empty.
-export type CompleteShoppingTripResult = {
-  pantryItemsCreated: number
-  keptCount: number
-  droppedCount: number
-  items: ShoppingListItem[]
-}
-
 // Finish a shopping trip (see CONTEXT.md "Shopping Trip Completion"). Archives the user's active list,
 // turns every *bought* Food/Product line into exactly one Pantry Item (originalSize = the line's
 // quantity + unit, currentSize equal, expiration carried when set, and a provenance FK back to the
@@ -678,7 +668,7 @@ export type CompleteShoppingTripResult = {
 export async function completeShoppingTrip(
   userId: number,
   options: { keepUnbought: boolean },
-): Promise<CompleteShoppingTripResult | null> {
+): Promise<ShoppingTripCompletion | null> {
   const outcome = await db.transaction(async (tx) => {
     // Lock the active list so a concurrent completion/add serialises behind this one.
     const [list] = await tx
@@ -689,39 +679,51 @@ export async function completeShoppingTrip(
 
     if (!list) return null
 
+    // Join the source Food/Product so a line pointing at a soft-deleted one can be recognised. Freeform
+    // lines join neither. `.select()` returns the joined rows as { shopping_list_items, foods, products }.
     const rows = await tx
       .select()
       .from(shoppingListItems)
+      .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+      .leftJoin(products, eq(shoppingListItems.productId, products.id))
       .where(eq(shoppingListItems.shoppingListId, list.id))
 
     // Archive the current list before touching anything else. Doing it first frees the partial unique
     // "one active list per user" index so the fresh active list below can be inserted.
     await tx.update(shoppingLists).set({ status: 'archived' }).where(eq(shoppingLists.id, list.id))
 
-    // Bought Food/Product lines each become one Pantry Item; bought freeform lines never transfer.
-    const transferable = rows.filter(
-      (row) => row.status === 'bought' && (row.sourceType === 'food' || row.sourceType === 'product'),
-    )
+    // Bought Food/Product lines with a live source each become one Pantry Item; bought freeform lines
+    // never transfer. A line whose Food/Product was soft-deleted since it was added is skipped too:
+    // getShoppingListItems already hides such a line and getPantryItems would hide the resulting item,
+    // so transferring it would only orphan invisible stock.
+    const transferable = rows.filter(({ shopping_list_items: line, foods: food, products: product }) => {
+      if (line.status !== 'bought') return false
+      if (line.sourceType === 'food') return food != null && food.dateDeleted == null
+      if (line.sourceType === 'product') return product != null && product.dateDeleted == null
+      return false
+    })
     if (transferable.length > 0) {
-      await tx.insert(pantryItems).values(transferable.map((row) => ({
+      await tx.insert(pantryItems).values(transferable.map(({ shopping_list_items: line }) => ({
         userId,
-        sourceType: row.sourceType,
-        foodId: row.foodId,
-        productId: row.productId,
+        sourceType: line.sourceType,
+        foodId: line.foodId,
+        productId: line.productId,
         // Carried when the line recorded one; null otherwise. Line Price is deliberately not copied.
-        expirationDate: row.expirationDate,
+        expirationDate: line.expirationDate,
         // amount is a numeric column, already a string on read — pass it straight through.
-        originalSizeAmount: row.amount,
-        originalSizeUnit: row.unit,
-        currentSizeAmount: row.amount,
-        currentSizeUnit: row.unit,
-        shoppingListItemId: row.id,
+        originalSizeAmount: line.amount,
+        originalSizeUnit: line.unit,
+        currentSizeAmount: line.amount,
+        currentSizeUnit: line.unit,
+        shoppingListItemId: line.id,
       })))
     }
 
     // `to_buy` and `unavailable` are not distinguished here — both are "still unbought" and handled as
     // one batch. Kept lines move to a new active list; dropped lines stay on the archive.
-    const unbought = rows.filter((row) => row.status === 'to_buy' || row.status === 'unavailable')
+    const unbought = rows
+      .map(({ shopping_list_items: line }) => line)
+      .filter((line) => line.status === 'to_buy' || line.status === 'unavailable')
 
     let keptCount = 0
     if (options.keepUnbought && unbought.length > 0) {

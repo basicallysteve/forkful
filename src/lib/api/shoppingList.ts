@@ -1,4 +1,4 @@
-import type { ShoppingListItem, ShoppingListItemStatus } from '@/types/ShoppingList'
+import type { ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate' | 'expirationDate'> & {
   addedDate: string
@@ -121,18 +121,10 @@ export async function apiSplitShoppingListItem(
   return raw.map(parseShoppingListItem)
 }
 
-// What the server reports after finishing a shopping trip: how many Pantry Items were created, how the
-// leftover lines were handled, and the new active list's items (the kept lines, or empty when dropped).
-export type CompleteShoppingTripResult = {
-  pantryItemsCreated: number
-  keptCount: number
-  droppedCount: number
-  items: ShoppingListItem[]
-}
-
 // Finish the shopping trip: archive the active list, transfer bought Food/Product lines to the Pantry,
 // and keep or drop the still-unbought lines as one batch. `keepUnbought` answers the leftover prompt.
-export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<CompleteShoppingTripResult> {
+// Returns the ShoppingTripCompletion the server reports, with its items parsed to domain objects.
+export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<ShoppingTripCompletion> {
   const res = await fetch('/api/shopping-list/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -140,6 +132,6 @@ export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<Co
   })
 
   if (!res.ok) throw new Error('Failed to complete shopping trip')
-  const raw: Omit<CompleteShoppingTripResult, 'items'> & { items: RawShoppingListItem[] } = await res.json()
+  const raw: Omit<ShoppingTripCompletion, 'items'> & { items: RawShoppingListItem[] } = await res.json()
   return { ...raw, items: raw.items.map(parseShoppingListItem) }
 }

@@ -880,6 +880,7 @@ export default function ShoppingListView({
   // "Done shopping": prompt for the leftovers when any remain, otherwise finish straight away.
   function handleDoneShopping() {
     setTripSummary(null)
+    setSaveError(null)
     if (unboughtItems.length > 0) {
       setCompleteError(null)
       setShowCompletePrompt(true)

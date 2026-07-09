@@ -531,6 +531,24 @@ describe('shopping list data layer (integration)', () => {
     expect(productPantry.shopping_list_item_id).toBe(productLine.id)
   })
 
+  it('does not transfer a bought line whose product was soft-deleted since it was added', async () => {
+    const user = await createTestUser('tripSoftDel')
+    const product = await createTestProduct('TestShopping TripSoftDeleted')
+
+    const line = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
+    await updateShoppingListItemStatus(line.id, user.id, 'bought')
+
+    // Soft-delete the product after it was bought but before completion. Such a line is already hidden
+    // from the shopping list and its resulting pantry item would be hidden too, so it must not transfer.
+    await pool.query(`UPDATE products SET date_deleted = now() WHERE id = $1`, [product.id])
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result?.pantryItemsCreated).toBe(0)
+
+    const pantry = await pool.query(`SELECT id FROM pantry_items WHERE user_id = $1`, [user.id])
+    expect(pantry.rowCount).toBe(0)
+  })
+
   it('does not transfer bought freeform lines to the pantry on completion', async () => {
     const user = await createTestUser('tripB')
 
