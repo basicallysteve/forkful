@@ -18,7 +18,7 @@ import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import { calendarValueToUtcDate, formatUtcDateForInput, utcDateToCalendarValue } from '@/utils/dateHelpers'
-import { round2 } from '@/utils/number'
+import { ceil2, round2 } from '@/utils/number'
 import { formatPrice } from '@/utils/currency'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
@@ -71,7 +71,9 @@ export type LinePriceMode = 'total' | 'per_unit'
 
 export function resolveLinePriceTotal(mode: LinePriceMode, value: number | null, quantity: number): number | null {
   if (value === null || !Number.isFinite(value)) return null
-  return round2(mode === 'per_unit' ? value * quantity : value)
+  // The line total rounds UP so a per-unit × quantity total never undercharges a partial cent. A
+  // directly-entered total is already at the cent (the input caps at 2 decimals), so ceiling is a no-op.
+  return ceil2(mode === 'per_unit' ? value * quantity : value)
 }
 
 // Expiration is either one date for the whole line, or a date per item — which splits the line into
@@ -274,12 +276,13 @@ function ItemDetailsForm({
     return d
   }, [])
 
-  // Flipping the price mode converts the value so the resulting total is preserved.
+  // Flipping the price mode converts the value so the resulting total is preserved: a unit price rounds
+  // to the nearest cent, a total rounds up — matching resolveLinePriceTotal.
   function handleModeChange(next: LinePriceMode) {
     if (next === mode) return
     setPriceValue((value) => {
       if (value === null) return value
-      return next === 'per_unit' ? round2(value / quantity) : round2(value * quantity)
+      return next === 'per_unit' ? round2(value / quantity) : ceil2(value * quantity)
     })
     setMode(next)
   }

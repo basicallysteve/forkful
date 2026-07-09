@@ -704,14 +704,16 @@ describe('buildShoppingListText', () => {
 })
 
 describe('resolveLinePriceTotal', () => {
-  it('carries a total straight through, rounded to 2 decimals', () => {
+  it('carries a directly-entered total through unchanged (already at the cent)', () => {
     expect(resolveLinePriceTotal('total', 4.5, 3)).toBe(4.5)
-    expect(resolveLinePriceTotal('total', 4.005, 3)).toBe(4.01)
+    expect(resolveLinePriceTotal('total', 4.53, 3)).toBe(4.53)
   })
 
-  it('multiplies a per-unit price by the quantity', () => {
+  it('multiplies a per-unit price by the quantity, rounding the total UP to the cent', () => {
     expect(resolveLinePriceTotal('per_unit', 1.5, 4)).toBe(6)
-    // 0.1 × 3 would drift to 0.30000000000000004 without rounding.
+    // A partial cent rounds up so the total never undercharges: 1.005 × 3 = 3.015 → 3.02.
+    expect(resolveLinePriceTotal('per_unit', 1.005, 3)).toBe(3.02)
+    // But a clean total isn't bumped up a penny by float noise: 0.1 × 3 = 0.30000000000000004 → 0.30.
     expect(resolveLinePriceTotal('per_unit', 0.1, 3)).toBe(0.3)
   })
 
