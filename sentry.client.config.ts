@@ -6,8 +6,11 @@ Sentry.init({
   tracesSampleRate: 1.0,
   replaysSessionSampleRate: .2,
   replaysOnErrorSampleRate: 1.0,
-
+  environment: process.env.NODE_ENV,
   integrations: [
+    Sentry.browserProfilingIntegration(),
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
     Sentry.feedbackIntegration({
       autoInject: true,
       // Match the OS/user-toggle preference set by Forkful's ThemeToggle
