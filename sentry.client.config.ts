@@ -2,10 +2,10 @@ import * as Sentry from '@sentry/nextjs'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  enabled: process.env.NODE_ENV === 'production',
-  tracesSampleRate: 0,
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 0,
+  enabled: true,
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: .2,
+  replaysOnErrorSampleRate: 1.0,
 
   integrations: [
     Sentry.feedbackIntegration({
