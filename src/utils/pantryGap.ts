@@ -64,11 +64,13 @@ function convertStockToIngredientUnit(stock: PantryGapStock, ingredient: PantryG
 }
 
 // The shortfall to add to the Shopping List for one ingredient, expressed in the ingredient's unit — or
-// null when the ingredient is already fully stocked and should be skipped. Matching Pantry stock is
-// summed after converting each entry into the ingredient's unit, and the shortfall is the required
-// quantity minus that sum. When any matching entry can't be converted (an Uncalibrated Custom Unit or an
-// unconvertible pair) the amount on hand can't be known precisely, so we fall back to the full required
-// quantity rather than under-buying — matching the Pantry-Gap Fill contract in CONTEXT.md.
+// null when the ingredient is already fully stocked and should be skipped. Each matching Pantry entry is
+// converted into the ingredient's unit and the convertible amounts are summed; the shortfall is the
+// required quantity minus that sum. An entry in a unit that can't be converted (an Uncalibrated Custom
+// Unit, or an otherwise unconvertible pair) can't be measured against the requirement, so it is treated
+// as covering nothing rather than discarding the stock we *can* measure — an ingredient with no
+// convertible stock therefore falls back to its full required quantity, and a mix credits only the
+// convertible part. Never under-buys; see the Pantry-Gap Fill contract in CONTEXT.md.
 export function computePantryGapShortfall(
   ingredient: PantryGapIngredient,
   stock: PantryGapStock[],
@@ -78,8 +80,8 @@ export function computePantryGapShortfall(
   let available = 0
   for (const entry of stock) {
     const converted = convertStockToIngredientUnit(entry, ingredient)
-    // Can't account for this ingredient's stock precisely — buy the whole required quantity to be safe.
-    if (converted === null) return round2(required)
+    // Unmeasurable against the requirement — count it as covering nothing rather than dropping the rest.
+    if (converted === null) continue
     available += converted
   }
 

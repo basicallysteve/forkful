@@ -68,6 +68,16 @@ describe('computePantryGapShortfall', () => {
     expect(result).toBe(7)
   })
 
+  it('credits convertible stock and ignores an unconvertible entry beside it', () => {
+    // 200 g required; 120 g convertible on hand plus 3 uncalibrated "can" we can't measure → credit only
+    // the 120 g, leaving an 80 g shortfall (not the full 200 g the old discard-everything path gave).
+    const result = computePantryGapShortfall(ingredient({ requiredQuantity: 200 }), [
+      stock({ amount: 120, unit: 'g' }),
+      stock({ amount: 3, unit: 'can', measurements: [{ unit: 'can' }] }),
+    ])
+    expect(result).toBe(80)
+  })
+
   it('falls back to the full required quantity for an Uncalibrated Custom Unit ingredient', () => {
     // "clove" has no gram-weight, so gram stock can't be converted → buy the whole requirement.
     const result = computePantryGapShortfall(
