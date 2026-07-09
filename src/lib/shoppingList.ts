@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, ingredients, pantryItems, products, recipes, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -256,14 +256,41 @@ type ResolvedNewItem = {
 // any realistic interleaving; the extra headroom guards against a pathological double-completion.
 const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
 
-// A line's identity is its source: the Food, the Product, or the freeform name. Freeform names match
-// case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its original
-// casing). A Food and Product that share a name never merge, because sourceType — and thus the matched
-// column — differs.
-function itemIdentityMatch(values: ResolvedNewItem): SQL {
-  return values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
-    : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
-      : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
+// A line's merge identity: its sourceType, its source (Food id / Product id / lowercased freeform name),
+// and its unit. Two lines merge iff these match. Freeform names fold case-insensitively so "Trash bags"
+// and "trash bags" are one line (the existing line keeps its casing); a Food and Product that share a
+// name never merge, since the sourceType prefix differs. A null unit gets a sentinel so it can't collide
+// with a real unit string. Built as a string key so a whole batch matches against the list's open lines
+// in memory, rather than issuing one identity SELECT per value. ` ` can't appear in a unit, Food id,
+// or name, so it is a safe field separator.
+function lineMergeKey(sourceType: ShoppingListItemSourceType, identity: string, unit: string | null): string {
+  return `${sourceType} ${identity} ${unit ?? ' '}`
+}
+
+function valuesMergeKey(values: ResolvedNewItem): string {
+  const identity = values.sourceType === 'food' ? String(values.foodId)
+    : values.sourceType === 'product' ? String(values.productId)
+      : (values.name as string).toLowerCase()
+  return lineMergeKey(values.sourceType, identity, values.unit)
+}
+
+function rowMergeKey(row: typeof shoppingListItems.$inferSelect): string {
+  const sourceType = row.sourceType as ShoppingListItemSourceType
+  const identity = sourceType === 'food' ? String(row.foodId)
+    : sourceType === 'product' ? String(row.productId)
+      : (row.name ?? '').toLowerCase()
+  return lineMergeKey(sourceType, identity, row.unit)
+}
+
+// One line's write plan: fold a batch onto exactly one plan per merge key. `existingId` is the open line
+// it lands on (null → a fresh insert); `baseAmount` is that line's current amount (0 for an insert); and
+// `addAmount` accumulates every batch value that shares the key. `order` preserves first-seen position.
+type LineWritePlan = {
+  existingId: number | null
+  baseAmount: number
+  addAmount: number
+  template: ResolvedNewItem
+  order: number
 }
 
 // Insert several new lines at once, or merge each into an existing open (to_buy) line with the same
@@ -275,8 +302,10 @@ function itemIdentityMatch(values: ResolvedNewItem): SQL {
 // Completion archives the list while holding that same row lock, we re-check the status once we hold it;
 // if the list was archived out from under us we re-resolve the now-current active list and retry, so a
 // line can never land on an archived list. Values within one batch that share identity + unit collapse
-// onto a single line, since each lookup sees the batch's own earlier writes. Returns the resulting
-// lines, deduped and in first-seen order.
+// onto a single line. Instead of a SELECT + write per value, the list's open lines are read once and
+// matched in memory, then all new lines go in as a single bulk insert (merges are per-line amount
+// updates), so the transaction is a small constant number of round-trips regardless of batch size.
+// Returns the resulting lines, deduped and in first-seen order.
 async function insertOrMergeItems(userId: number, valuesList: ResolvedNewItem[]): Promise<ShoppingListItem[]> {
   if (valuesList.length === 0) return []
 
@@ -294,58 +323,79 @@ async function insertOrMergeItems(userId: number, valuesList: ResolvedNewItem[])
       // retry rather than writing onto a stale list; the next attempt re-resolves the fresh active list.
       if (!locked || locked.status !== 'active') return null
 
-      const ids: number[] = []
-      for (const values of valuesList) {
-        const [existing] = await tx
-          .select()
-          .from(shoppingListItems)
-          .where(and(
-            eq(shoppingListItems.shoppingListId, shoppingList.id),
-            eq(shoppingListItems.sourceType, values.sourceType),
-            itemIdentityMatch(values),
-            values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
-            eq(shoppingListItems.status, 'to_buy'),
-          ))
+      // Read the list's open lines once; every batch value matches against this map in memory.
+      const openRows = await tx
+        .select()
+        .from(shoppingListItems)
+        .where(and(
+          eq(shoppingListItems.shoppingListId, shoppingList.id),
+          eq(shoppingListItems.status, 'to_buy'),
+        ))
+      const existingByKey = new Map<string, { id: number; amount: number }>()
+      for (const row of openRows) existingByKey.set(rowMergeKey(row), { id: row.id, amount: Number(row.amount) })
 
-        if (existing) {
-          const mergedAmount = Number(existing.amount) + values.amount
-          // Each add is individually in range, but their sum can still exceed the column ceiling.
-          assertAmountInRange(mergedAmount)
-          const [updated] = await tx
-            .update(shoppingListItems)
-            // numeric(10,2): round the merged total to 2 decimals so we never persist a
-            // floating-point artifact like "0.30000000000000004".
-            .set({ amount: mergedAmount.toFixed(2) })
-            .where(eq(shoppingListItems.id, existing.id))
-            .returning()
-          ids.push(updated.id)
-        } else {
-          const [row] = await tx
-            .insert(shoppingListItems)
-            .values({
-              shoppingListId: shoppingList.id,
-              sourceType: values.sourceType,
-              foodId: values.foodId,
-              productId: values.productId,
-              name: values.name,
-              amount: values.amount.toFixed(2),
-              unit: values.unit,
-              status: 'to_buy',
-            })
-            .returning()
-          ids.push(row.id)
+      // Fold the batch into one plan per merge key: in-batch duplicates and matches against an existing
+      // open line both accumulate onto the same plan.
+      const plans = new Map<string, LineWritePlan>()
+      let order = 0
+      for (const values of valuesList) {
+        const key = valuesMergeKey(values)
+        let plan = plans.get(key)
+        if (!plan) {
+          const existing = existingByKey.get(key)
+          plan = { existingId: existing?.id ?? null, baseAmount: existing?.amount ?? 0, addAmount: 0, template: values, order: order++ }
+          plans.set(key, plan)
         }
+        plan.addAmount += values.amount
       }
-      return ids
+      const orderedPlans = [...plans.values()].sort((a, b) => a.order - b.order)
+
+      // Validate every final amount before writing anything — covers both a merged total and a plain
+      // insert (baseAmount is 0 for a new line), so the whole batch fails atomically rather than partway.
+      for (const plan of orderedPlans) assertAmountInRange(plan.baseAmount + plan.addAmount)
+
+      const idByKey = new Map<string, number>()
+
+      // All new lines in a single bulk insert. RETURNING preserves the VALUES order (as elsewhere in this
+      // file — see writeSplitPortions), so inserted rows line up with the inserts array by index.
+      const inserts = orderedPlans.filter((plan) => plan.existingId === null)
+      if (inserts.length > 0) {
+        const insertedRows = await tx
+          .insert(shoppingListItems)
+          .values(inserts.map((plan) => ({
+            shoppingListId: shoppingList.id,
+            sourceType: plan.template.sourceType,
+            foodId: plan.template.foodId,
+            productId: plan.template.productId,
+            name: plan.template.name,
+            // numeric(10,2): round to 2 decimals so an accumulated in-batch sum can't persist a
+            // floating-point artifact like "0.30000000000000004".
+            amount: plan.addAmount.toFixed(2),
+            unit: plan.template.unit,
+            status: 'to_buy' as const,
+          })))
+          .returning({ id: shoppingListItems.id })
+        inserts.forEach((plan, index) => idByKey.set(valuesMergeKey(plan.template), insertedRows[index].id))
+      }
+
+      // Each merge is an amount update on its existing open line (its source/unit/status are untouched).
+      for (const plan of orderedPlans) {
+        if (plan.existingId === null) continue
+        await tx
+          .update(shoppingListItems)
+          .set({ amount: (plan.baseAmount + plan.addAmount).toFixed(2) })
+          .where(eq(shoppingListItems.id, plan.existingId))
+        idByKey.set(valuesMergeKey(plan.template), plan.existingId)
+      }
+
+      return orderedPlans.map((plan) => idByKey.get(valuesMergeKey(plan.template)) as number)
     })
 
     // The list was archived mid-add — re-resolve the current active list and try again.
     if (itemIds === null) continue
 
-    // Two batch values sharing identity + unit resolve to the same line id; dedupe, keeping input order.
-    const uniqueIds = [...new Set(itemIds)]
-    const items = await getShoppingListItemsByIds(uniqueIds, userId)
-    if (items.length !== uniqueIds.length) throw new Error('Failed to create shopping list item')
+    const items = await getShoppingListItemsByIds(itemIds, userId)
+    if (items.length !== itemIds.length) throw new Error('Failed to create shopping list item')
     return items
   }
 

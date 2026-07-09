@@ -745,6 +745,85 @@ describe('shopping list data layer (integration)', () => {
       expect(result!.items[0].unit).toBe('each')
     })
 
+    it('counts product-sourced pantry stock (matched via parentFoodId) toward the shortfall', async () => {
+      const user = await createTestUser('gapE')
+      const food = await createTestFood('TestShopping Milk')
+      // A branded product linked to the ingredient Food — Meal-Prep-Deduction-style matching on parentFoodId.
+      const product = await createProduct({
+        name: 'TestShopping Branded Milk',
+        parentFoodId: food.id,
+        calories: 60,
+        protein: 3,
+        carbs: 5,
+        fat: 3,
+        fiber: 0,
+        servingSize: 100,
+        servingUnit: 'g',
+        measurements: [{ unit: 'g' }],
+      })
+      const recipe = await createRecipe({
+        name: 'TestShopping Latte',
+        meal: 'Breakfast',
+        description: '',
+        ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
+        date_published: null,
+        isPublic: false,
+        userId: user.id,
+      })
+      // Stock is held as the product (not the bare Food); 120 g against 200 g → an 80 g shortfall.
+      await createPantryItem({
+        userId: user.id,
+        productId: product.id,
+        originalSizeAmount: 120,
+        currentSizeAmount: 120,
+        currentSizeUnit: 'g',
+      })
+
+      const result = await fillPantryGapFromRecipe(user.id, recipe.shortId)
+
+      expect(result).not.toBeNull()
+      expect(result!.items).toHaveLength(1)
+      expect(result!.items[0].sourceType).toBe('food')
+      expect(result!.items[0].food?.id).toBe(food.id)
+      expect(result!.items[0].amount).toBe(80)
+    })
+
+    it('merges the shortfall into an existing open line for the same Food and unit', async () => {
+      const user = await createTestUser('gapF')
+      const food = await createTestFood('TestShopping Butter')
+      const recipe = await createRecipe({
+        name: 'TestShopping Pastry',
+        meal: 'Dinner',
+        description: '',
+        ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
+        date_published: null,
+        isPublic: false,
+        userId: user.id,
+      })
+      // An existing to_buy line for the same Food + unit already on the list.
+      const existing = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 50, unit: 'g' })
+      // 120 g on hand → an 80 g shortfall, which should merge onto the existing 50 g line (→ 130 g).
+      await createPantryItem({
+        userId: user.id,
+        foodId: food.id,
+        originalSizeAmount: 120,
+        currentSizeAmount: 120,
+        currentSizeUnit: 'g',
+      })
+
+      const result = await fillPantryGapFromRecipe(user.id, recipe.shortId)
+
+      expect(result).not.toBeNull()
+      expect(result!.items).toHaveLength(1)
+      expect(result!.items[0].id).toBe(existing.id)
+      expect(result!.items[0].amount).toBe(130)
+
+      // Still a single line — the shortfall merged rather than adding a duplicate.
+      const listed = await getShoppingListItems(user.id)
+      expect(listed).toHaveLength(1)
+      expect(listed[0].amount).toBe(130)
+    })
+
     it('returns null for a recipe the user cannot see', async () => {
       const user = await createTestUser('gapD')
       const result = await fillPantryGapFromRecipe(user.id, 'n/ a-none')
