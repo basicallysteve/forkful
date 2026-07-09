@@ -18,6 +18,8 @@ import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import { calendarValueToUtcDate, formatUtcDateForInput, utcDateToCalendarValue } from '@/utils/dateHelpers'
+import { round2 } from '@/utils/number'
+import { formatPrice } from '@/utils/currency'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
@@ -67,18 +69,9 @@ function itemQuantityLabel(item: ShoppingListItem): string {
 // numeric(10,2) column). An empty (null) value clears the price.
 export type LinePriceMode = 'total' | 'per_unit'
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
-
 export function resolveLinePriceTotal(mode: LinePriceMode, value: number | null, quantity: number): number | null {
   if (value === null || !Number.isFinite(value)) return null
   return round2(mode === 'per_unit' ? value * quantity : value)
-}
-
-// The app is single-currency and stores no currency code; the leading symbol is display-only.
-export function formatPrice(total: number): string {
-  return `$${total.toFixed(2)}`
 }
 
 // Expiration is either one date for the whole line, or a date per item — which splits the line into

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ShoppingListView, { buildShoppingListText, formatPrice, groupExpirationPortions, resolveLinePriceTotal } from './Index'
+import ShoppingListView, { buildShoppingListText, groupExpirationPortions, resolveLinePriceTotal } from './Index'
 import { formatUtcDateForInput } from '@/utils/dateHelpers'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
@@ -718,13 +718,6 @@ describe('resolveLinePriceTotal', () => {
   it('returns null for an empty value in either mode', () => {
     expect(resolveLinePriceTotal('total', null, 2)).toBeNull()
     expect(resolveLinePriceTotal('per_unit', null, 2)).toBeNull()
-  })
-})
-
-describe('formatPrice', () => {
-  it('formats a total with a currency symbol and two decimals', () => {
-    expect(formatPrice(4.5)).toBe('$4.50')
-    expect(formatPrice(12)).toBe('$12.00')
   })
 })
 

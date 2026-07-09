@@ -1,13 +1,18 @@
-import moment from 'moment'
+// These format a date in *local* time (the `<input type="date">` convention). Native Date is used
+// rather than moment: moment is legacy (maintenance-only) and unnecessary for a plain YYYY-MM-DD, so
+// new date code here stays dependency-free. `moment` is still used in a few older call sites elsewhere.
 
-// Helper function to get today's date in YYYY-MM-DD format for date inputs
-export function getTodayDateString(): string {
-  return moment().format('YYYY-MM-DD')
+// Format a date as local-time YYYY-MM-DD for date inputs.
+export function formatDateForInput(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
-// Helper function to format a date to YYYY-MM-DD format for date inputs
-export function formatDateForInput(date: Date): string {
-  return moment(date).format('YYYY-MM-DD')
+// Today's date as local-time YYYY-MM-DD for date inputs.
+export function getTodayDateString(): string {
+  return formatDateForInput(new Date())
 }
 
 // Date-only values (an expiration day, no time-of-day) are stored as UTC-midnight timestamps. Format
