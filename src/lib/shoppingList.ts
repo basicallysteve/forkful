@@ -256,27 +256,34 @@ type ResolvedNewItem = {
 // any realistic interleaving; the extra headroom guards against a pathological double-completion.
 const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
 
-// Insert a new line, or merge into an existing open (to_buy) line with the same source identity and
-// unit. Merging keeps a different unit — or an already-bought line — separate. The whole
-// read-then-write runs in a transaction that locks the parent list row, so two concurrent adds of the
-// same source + unit cannot both miss the existing line and insert duplicates. Because a concurrent
-// Trip Completion archives the list while holding that same row lock, we re-check the status once we
-// hold the lock: if the list was archived out from under us we re-resolve the now-current active list
-// and retry, so a line can never land on an archived list.
-async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
-  // A line's identity is its source: the Food, the Product, or the freeform name. Freeform names
-  // match case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its
-  // original casing). A Food and Product that share a name never merge, because sourceType — and thus
-  // the matched column — differs. Independent of the list, so it is built once outside the retry loop.
-  const identityMatch: SQL =
-    values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
-      : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
-        : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
+// A line's identity is its source: the Food, the Product, or the freeform name. Freeform names match
+// case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its original
+// casing). A Food and Product that share a name never merge, because sourceType — and thus the matched
+// column — differs.
+function itemIdentityMatch(values: ResolvedNewItem): SQL {
+  return values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
+    : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
+      : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
+}
+
+// Insert several new lines at once, or merge each into an existing open (to_buy) line with the same
+// source identity and unit — the batch primitive behind every add. Merging keeps a different unit — or
+// an already-bought line — separate. The whole read-then-write runs in ONE transaction that locks the
+// parent list row, so (a) two concurrent adds of the same source + unit cannot both miss the existing
+// line and insert duplicates, and (b) the batch is atomic: if any line fails validation the entire
+// transaction rolls back rather than leaving a partial set of lines behind. Because a concurrent Trip
+// Completion archives the list while holding that same row lock, we re-check the status once we hold it;
+// if the list was archived out from under us we re-resolve the now-current active list and retry, so a
+// line can never land on an archived list. Values within one batch that share identity + unit collapse
+// onto a single line, since each lookup sees the batch's own earlier writes. Returns the resulting
+// lines, deduped and in first-seen order.
+async function insertOrMergeItems(userId: number, valuesList: ResolvedNewItem[]): Promise<ShoppingListItem[]> {
+  if (valuesList.length === 0) return []
 
   for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
     const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-    const itemId = await db.transaction(async (tx) => {
+    const itemIds = await db.transaction(async (tx) => {
       const [locked] = await tx
         .select({ id: shoppingLists.id, status: shoppingLists.status })
         .from(shoppingLists)
@@ -287,57 +294,71 @@ async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promi
       // retry rather than writing onto a stale list; the next attempt re-resolves the fresh active list.
       if (!locked || locked.status !== 'active') return null
 
-      const [existing] = await tx
-        .select()
-        .from(shoppingListItems)
-        .where(and(
-          eq(shoppingListItems.shoppingListId, shoppingList.id),
-          eq(shoppingListItems.sourceType, values.sourceType),
-          identityMatch,
-          values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
-          eq(shoppingListItems.status, 'to_buy'),
-        ))
+      const ids: number[] = []
+      for (const values of valuesList) {
+        const [existing] = await tx
+          .select()
+          .from(shoppingListItems)
+          .where(and(
+            eq(shoppingListItems.shoppingListId, shoppingList.id),
+            eq(shoppingListItems.sourceType, values.sourceType),
+            itemIdentityMatch(values),
+            values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
+            eq(shoppingListItems.status, 'to_buy'),
+          ))
 
-      if (existing) {
-        const mergedAmount = Number(existing.amount) + values.amount
-        // Each add is individually in range, but their sum can still exceed the column ceiling.
-        assertAmountInRange(mergedAmount)
-        const [updated] = await tx
-          .update(shoppingListItems)
-          // numeric(10,2): round the merged total to 2 decimals so we never persist a
-          // floating-point artifact like "0.30000000000000004".
-          .set({ amount: mergedAmount.toFixed(2) })
-          .where(eq(shoppingListItems.id, existing.id))
-          .returning()
-        return updated.id
+        if (existing) {
+          const mergedAmount = Number(existing.amount) + values.amount
+          // Each add is individually in range, but their sum can still exceed the column ceiling.
+          assertAmountInRange(mergedAmount)
+          const [updated] = await tx
+            .update(shoppingListItems)
+            // numeric(10,2): round the merged total to 2 decimals so we never persist a
+            // floating-point artifact like "0.30000000000000004".
+            .set({ amount: mergedAmount.toFixed(2) })
+            .where(eq(shoppingListItems.id, existing.id))
+            .returning()
+          ids.push(updated.id)
+        } else {
+          const [row] = await tx
+            .insert(shoppingListItems)
+            .values({
+              shoppingListId: shoppingList.id,
+              sourceType: values.sourceType,
+              foodId: values.foodId,
+              productId: values.productId,
+              name: values.name,
+              amount: values.amount.toFixed(2),
+              unit: values.unit,
+              status: 'to_buy',
+            })
+            .returning()
+          ids.push(row.id)
+        }
       }
-
-      const [row] = await tx
-        .insert(shoppingListItems)
-        .values({
-          shoppingListId: shoppingList.id,
-          sourceType: values.sourceType,
-          foodId: values.foodId,
-          productId: values.productId,
-          name: values.name,
-          amount: values.amount.toFixed(2),
-          unit: values.unit,
-          status: 'to_buy',
-        })
-        .returning()
-      return row.id
+      return ids
     })
 
     // The list was archived mid-add — re-resolve the current active list and try again.
-    if (itemId === null) continue
+    if (itemIds === null) continue
 
-    const item = await getShoppingListItemById(itemId, userId)
-    if (!item) throw new Error('Failed to create shopping list item')
-    return item
+    // Two batch values sharing identity + unit resolve to the same line id; dedupe, keeping input order.
+    const uniqueIds = [...new Set(itemIds)]
+    const items = await getShoppingListItemsByIds(uniqueIds, userId)
+    if (items.length !== uniqueIds.length) throw new Error('Failed to create shopping list item')
+    return items
   }
 
   // Every attempt found the list archived under the lock (a pathological run of concurrent completions).
   throw new Error('Failed to create shopping list item')
+}
+
+// Add a single line (insert or merge). Thin wrapper over the batch primitive so every add — one line or
+// many — shares the same locking, merge, and archived-list-retry behaviour.
+async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
+  const [item] = await insertOrMergeItems(userId, [values])
+  if (!item) throw new Error('Failed to create shopping list item')
+  return item
 }
 
 export type CreateShoppingListFoodItemData = {
@@ -744,30 +765,40 @@ export async function fillPantryGapFromRecipe(
       inArray(products.parentFoodId, foodIds),
     ))
 
-  const items: ShoppingListItem[] = []
+  // Group both stock sources by the ingredient Food they cover once, so each ingredient is an O(1)
+  // lookup below rather than a full scan of every pantry row (the loop was O(ingredients × pantryRows)).
+  const stockByFoodId = new Map<number, PantryGapStock[]>()
+  const addStock = (foodId: number, entry: PantryGapStock) => {
+    const existing = stockByFoodId.get(foodId)
+    if (existing) existing.push(entry)
+    else stockByFoodId.set(foodId, [entry])
+  }
+  for (const r of foodPantryRows) {
+    addStock(r.foods.id, {
+      amount: Number(r.pantry_items.currentSizeAmount),
+      unit: r.pantry_items.currentSizeUnit ?? r.foods.servingUnit ?? 'g',
+      density: r.foods.density != null ? Number(r.foods.density) : undefined,
+      measurements: parseMeasurements(r.foods.measurements),
+    })
+  }
+  for (const r of productPantryRows) {
+    // The query already restricts parentFoodId to foodIds, so it is non-null here; guard for the type.
+    if (r.products.parentFoodId == null) continue
+    addStock(r.products.parentFoodId, {
+      amount: Number(r.pantry_items.currentSizeAmount),
+      unit: r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
+      density: r.products.density != null ? Number(r.products.density) : undefined,
+      measurements: parseMeasurements(r.products.measurements),
+    })
+  }
+
+  // Compute (and validate) every shortfall up front, before any write, so a validation error can't leave
+  // a partially-filled list behind; the write itself is then a single atomic batch (see insertOrMergeItems).
+  const lines: ResolvedNewItem[] = []
   let skippedFullyStocked = 0
 
   for (const { ingredients: ing, foods: food } of ingredientRows) {
     const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
-
-    const stock: PantryGapStock[] = [
-      ...foodPantryRows
-        .filter((r) => r.foods.id === food.id)
-        .map((r) => ({
-          amount: Number(r.pantry_items.currentSizeAmount),
-          unit: r.pantry_items.currentSizeUnit ?? r.foods.servingUnit ?? 'g',
-          density: r.foods.density != null ? Number(r.foods.density) : undefined,
-          measurements: parseMeasurements(r.foods.measurements),
-        })),
-      ...productPantryRows
-        .filter((r) => r.products.parentFoodId === food.id)
-        .map((r) => ({
-          amount: Number(r.pantry_items.currentSizeAmount),
-          unit: r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
-          density: r.products.density != null ? Number(r.products.density) : undefined,
-          measurements: parseMeasurements(r.products.measurements),
-        })),
-    ]
 
     const shortfall = computePantryGapShortfall(
       {
@@ -776,7 +807,7 @@ export async function fillPantryGapFromRecipe(
         density: food.density != null ? Number(food.density) : undefined,
         measurements: parseMeasurements(food.measurements),
       },
-      stock,
+      stockByFoodId.get(food.id) ?? [],
     )
 
     // null = the ingredient is already fully in stock; skip it.
@@ -789,7 +820,7 @@ export async function fillPantryGapFromRecipe(
     // reaches the write — the same range check createShoppingListFoodItem applies to a user-entered amount.
     assertAmountInRange(shortfall)
 
-    const item = await insertOrMergeItem(userId, {
+    lines.push({
       sourceType: 'food',
       foodId: food.id,
       productId: null,
@@ -797,9 +828,9 @@ export async function fillPantryGapFromRecipe(
       amount: shortfall,
       unit: ingredientUnit,
     })
-    items.push(item)
   }
 
+  const items = await insertOrMergeItems(userId, lines)
   return { items, skippedFullyStocked }
 }
 
