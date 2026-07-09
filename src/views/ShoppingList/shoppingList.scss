@@ -31,6 +31,45 @@
     padding-top: 12px;
     border-top: 1px solid var(--vscode-border);
   }
+  // Groups the title-row actions (Share + Done shopping) so they wrap together on narrow screens.
+  .shopping-list-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  // Primary title-row action: finishes the trip, archives the list, and sends bought lines to the pantry.
+  .done-shopping-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--vscode-accent);
+    border: 1px solid var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    .pi {
+      font-size: 14px;
+    }
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
   // Secondary, ghost-style action beside the title: copies the list to the clipboard.
   .share-button {
     flex: 0 0 auto;
@@ -211,6 +250,17 @@
     background: var(--accent-hover);
     color: var(--vscode-text);
     font-size: 13px;
+  }
+
+  // Confirmation shown after a Shopping Trip Completion (e.g. "3 items added to your pantry").
+  .trip-summary {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-weight: 600;
   }
 
   .shopping-list-empty {
@@ -709,5 +759,18 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+  }
+
+  // The leftover keep/drop batch prompt at Shopping Trip Completion.
+  .complete-trip-message {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: var(--vscode-text);
+  }
+
+  .complete-trip-note {
+    margin: 0;
+    font-size: 13px;
+    color: var(--vscode-muted);
   }
 }

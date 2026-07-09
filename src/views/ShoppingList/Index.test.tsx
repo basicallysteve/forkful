@@ -15,6 +15,7 @@ vi.mock('@/lib/api/shoppingList', () => ({
   apiUpdateShoppingListItemStatus: vi.fn(),
   apiUpdateShoppingListItemDetails: vi.fn(),
   apiSplitShoppingListItem: vi.fn(),
+  apiCompleteShoppingTrip: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
@@ -64,7 +65,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import { apiCompleteShoppingTrip, apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 
@@ -1062,5 +1063,112 @@ describe('ShoppingListView — price & expiration', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(/failed to save/i)
     // The failed save left the stored price untouched.
     expect(useShoppingListStore.getState().items[0].linePrice).toBe(5)
+  })
+})
+
+describe('ShoppingListView — Shopping Trip Completion', () => {
+  beforeEach(() => {
+    resetFoodStore()
+    resetShoppingListStore()
+    vi.clearAllMocks()
+  })
+
+  it('finishes without a prompt when no lines remain unbought', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCompleteShoppingTrip).mockResolvedValue({ pantryItemsCreated: 1, keptCount: 0, droppedCount: 0, items: [] })
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, status: 'bought' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    await user.click(screen.getByRole('button', { name: /done shopping/i }))
+
+    // No leftovers, so it completes straight away (keepUnbought = false) with no prompt.
+    await waitFor(() => expect(apiCompleteShoppingTrip).toHaveBeenCalledWith(false))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // The store is swapped to the server's fresh (empty) list, and a confirmation is shown.
+    expect(useShoppingListStore.getState().items).toHaveLength(0)
+    expect(await screen.findByText(/1 item added to your pantry/i)).toBeInTheDocument()
+  })
+
+  it('prompts for leftovers and keeps them onto the new active list', async () => {
+    const user = userEvent.setup()
+    const keptLine = makeItem({ id: 2, food: mockFoods[1], amount: 1, unit: 'cup', status: 'to_buy' })
+    vi.mocked(apiCompleteShoppingTrip).mockResolvedValue({ pantryItemsCreated: 1, keptCount: 1, droppedCount: 0, items: [keptLine] })
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], status: 'bought' }),
+          keptLine,
+        ]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    await user.click(screen.getByRole('button', { name: /done shopping/i }))
+
+    // One line is still unbought, so the batch prompt appears.
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/you still have 1 item on your list/i)).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: /keep for next time/i }))
+
+    await waitFor(() => expect(apiCompleteShoppingTrip).toHaveBeenCalledWith(true))
+    // The store now shows only the kept line the server returned.
+    await waitFor(() => expect(useShoppingListStore.getState().items.map((i) => i.id)).toEqual([2]))
+  })
+
+  it('drops the leftovers when the user chooses drop', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCompleteShoppingTrip).mockResolvedValue({ pantryItemsCreated: 1, keptCount: 0, droppedCount: 1, items: [] })
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], status: 'bought' }),
+          makeItem({ id: 2, food: mockFoods[1], amount: 1, unit: 'cup', status: 'to_buy' }),
+        ]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    await user.click(screen.getByRole('button', { name: /done shopping/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /drop them/i }))
+
+    await waitFor(() => expect(apiCompleteShoppingTrip).toHaveBeenCalledWith(false))
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(0))
+  })
+
+  it('keeps the prompt open and shows an error when completion fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiCompleteShoppingTrip).mockRejectedValue(new Error('nope'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[
+          makeItem({ id: 1, food: mockFoods[0], status: 'bought' }),
+          makeItem({ id: 2, food: mockFoods[1], amount: 1, unit: 'cup', status: 'to_buy' }),
+        ]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    await user.click(screen.getByRole('button', { name: /done shopping/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /keep for next time/i }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/failed to finish shopping/i)
+    // The prompt stays open and the lines are left in place.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(useShoppingListStore.getState().items).toHaveLength(2)
   })
 })

@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods, products, shoppingListItems, shoppingLists } from '@/db/schema'
+import { foods, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
 import { EACH_UNIT } from '@/utils/unitConversion'
@@ -655,4 +655,100 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
     amount: data.amount,
     unit,
   })
+}
+
+// The outcome of a Shopping Trip Completion: how many Pantry Items were created, and how the still-
+// unbought lines were handled (kept onto a fresh active list, or dropped with the archive). `items` is
+// the new active list's contents afterwards — the kept lines when keeping, otherwise empty.
+export type CompleteShoppingTripResult = {
+  pantryItemsCreated: number
+  keptCount: number
+  droppedCount: number
+  items: ShoppingListItem[]
+}
+
+// Finish a shopping trip (see CONTEXT.md "Shopping Trip Completion"). Archives the user's active list,
+// turns every *bought* Food/Product line into exactly one Pantry Item (originalSize = the line's
+// quantity + unit, currentSize equal, expiration carried when set, and a provenance FK back to the
+// source line), and never transfers freeform lines. Still-unbought lines (`to_buy` and `unavailable`
+// together) are handled as one group: when `keepUnbought` they move onto a fresh active list, otherwise
+// they are discarded with the archive. The Line Price stays on the archived line — it is never copied
+// to the Pantry. The whole thing runs in one transaction that locks the active list row, so a
+// concurrent completion (or add) can't race it. Returns null when the user has no active list (→ 404).
+export async function completeShoppingTrip(
+  userId: number,
+  options: { keepUnbought: boolean },
+): Promise<CompleteShoppingTripResult | null> {
+  const outcome = await db.transaction(async (tx) => {
+    // Lock the active list so a concurrent completion/add serialises behind this one.
+    const [list] = await tx
+      .select({ id: shoppingLists.id })
+      .from(shoppingLists)
+      .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+      .for('update')
+
+    if (!list) return null
+
+    const rows = await tx
+      .select()
+      .from(shoppingListItems)
+      .where(eq(shoppingListItems.shoppingListId, list.id))
+
+    // Archive the current list before touching anything else. Doing it first frees the partial unique
+    // "one active list per user" index so the fresh active list below can be inserted.
+    await tx.update(shoppingLists).set({ status: 'archived' }).where(eq(shoppingLists.id, list.id))
+
+    // Bought Food/Product lines each become one Pantry Item; bought freeform lines never transfer.
+    const transferable = rows.filter(
+      (row) => row.status === 'bought' && (row.sourceType === 'food' || row.sourceType === 'product'),
+    )
+    if (transferable.length > 0) {
+      await tx.insert(pantryItems).values(transferable.map((row) => ({
+        userId,
+        sourceType: row.sourceType,
+        foodId: row.foodId,
+        productId: row.productId,
+        // Carried when the line recorded one; null otherwise. Line Price is deliberately not copied.
+        expirationDate: row.expirationDate,
+        // amount is a numeric column, already a string on read — pass it straight through.
+        originalSizeAmount: row.amount,
+        originalSizeUnit: row.unit,
+        currentSizeAmount: row.amount,
+        currentSizeUnit: row.unit,
+        shoppingListItemId: row.id,
+      })))
+    }
+
+    // `to_buy` and `unavailable` are not distinguished here — both are "still unbought" and handled as
+    // one batch. Kept lines move to a new active list; dropped lines stay on the archive.
+    const unbought = rows.filter((row) => row.status === 'to_buy' || row.status === 'unavailable')
+
+    let keptCount = 0
+    if (options.keepUnbought && unbought.length > 0) {
+      const [newList] = await tx
+        .insert(shoppingLists)
+        .values({ userId, status: 'active' })
+        .returning({ id: shoppingLists.id })
+
+      await tx
+        .update(shoppingListItems)
+        .set({ shoppingListId: newList.id })
+        .where(inArray(shoppingListItems.id, unbought.map((row) => row.id)))
+
+      keptCount = unbought.length
+    }
+
+    return {
+      pantryItemsCreated: transferable.length,
+      keptCount,
+      droppedCount: options.keepUnbought ? 0 : unbought.length,
+    }
+  })
+
+  if (outcome === null) return null
+
+  // Re-read the active list's contents: the kept lines (now on the fresh list) when keeping, else empty
+  // (no active list exists until one is lazily created on the next visit).
+  const items = await getShoppingListItems(userId)
+  return { ...outcome, items }
 }

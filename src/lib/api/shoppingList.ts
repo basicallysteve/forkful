@@ -120,3 +120,26 @@ export async function apiSplitShoppingListItem(
   const raw: RawShoppingListItem[] = await res.json()
   return raw.map(parseShoppingListItem)
 }
+
+// What the server reports after finishing a shopping trip: how many Pantry Items were created, how the
+// leftover lines were handled, and the new active list's items (the kept lines, or empty when dropped).
+export type CompleteShoppingTripResult = {
+  pantryItemsCreated: number
+  keptCount: number
+  droppedCount: number
+  items: ShoppingListItem[]
+}
+
+// Finish the shopping trip: archive the active list, transfer bought Food/Product lines to the Pantry,
+// and keep or drop the still-unbought lines as one batch. `keepUnbought` answers the leftover prompt.
+export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<CompleteShoppingTripResult> {
+  const res = await fetch('/api/shopping-list/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepUnbought }),
+  })
+
+  if (!res.ok) throw new Error('Failed to complete shopping trip')
+  const raw: Omit<CompleteShoppingTripResult, 'items'> & { items: RawShoppingListItem[] } = await res.json()
+  return { ...raw, items: raw.items.map(parseShoppingListItem) }
+}

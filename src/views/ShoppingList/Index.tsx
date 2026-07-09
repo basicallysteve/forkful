@@ -8,6 +8,7 @@ import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import {
+  apiCompleteShoppingTrip,
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
   apiSplitShoppingListItem,
@@ -527,6 +528,60 @@ function ItemDetailsDialog({
   )
 }
 
+// The single batch prompt shown at Shopping Trip Completion when lines remain unbought (`to_buy` and
+// `unavailable` together — the two are not distinguished here). Keep moves them onto a fresh active
+// list; Drop discards them with the archive. Only mounted while `count > 0`; when nothing is left the
+// trip completes without a prompt.
+function CompleteTripDialog({
+  count,
+  saving,
+  error,
+  onKeep,
+  onDrop,
+  onCancel,
+}: {
+  count: number
+  saving: boolean
+  error: string | null
+  onKeep: () => void
+  onDrop: () => void
+  onCancel: () => void
+}) {
+  const footer = (
+    <div className="dialog-footer">
+      <button type="button" className="ghost-button" onClick={onCancel} disabled={saving}>
+        Cancel
+      </button>
+      <button type="button" className="ghost-button" onClick={onDrop} disabled={saving}>
+        Drop them
+      </button>
+      {/* Keep is the default (see CONTEXT.md). */}
+      <button type="button" className="primary-button" onClick={onKeep} disabled={saving} autoFocus>
+        {saving ? 'Finishing…' : 'Keep for next time'}
+      </button>
+    </div>
+  )
+
+  return (
+    <Modal
+      header="Finish shopping"
+      visible
+      onHide={onCancel}
+      footer={footer}
+      className="complete-trip-dialog"
+      style={{ width: 'min(420px, 92vw)' }}
+    >
+      <p className="complete-trip-message">
+        You still have {count} item{count !== 1 ? 's' : ''} on your list — keep {count !== 1 ? 'them' : 'it'} for next time?
+      </p>
+      <p className="complete-trip-note">
+        Bought items move to your pantry either way.
+      </p>
+      {error && <p className="item-details-error" role="alert">{error}</p>}
+    </Modal>
+  )
+}
+
 export default function ShoppingListView({
   initialFoods,
   initialItems,
@@ -570,6 +625,13 @@ export default function ShoppingListView({
   // The user's "collect price & expiration" preference, held locally so the modal checkbox and the
   // inline "enable" link feel instant. Persisted optimistically; rolled back if the PATCH fails.
   const [collectionEnabled, setCollectionEnabled] = useState(pricingCollectionEnabled)
+
+  // Shopping Trip Completion state: the leftover batch prompt's visibility, the in-flight flag while the
+  // completion request runs, its own error banner, and the post-trip confirmation shown once it lands.
+  const [showCompletePrompt, setShowCompletePrompt] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [completeError, setCompleteError] = useState<string | null>(null)
+  const [tripSummary, setTripSummary] = useState<string | null>(null)
 
   async function updateCollectionEnabled(next: boolean) {
     if (next === collectionEnabled) return
@@ -786,6 +848,52 @@ export default function ShoppingListView({
     }
   }
 
+  // Lines still unbought at completion: `to_buy` and `unavailable` together, since the batch prompt
+  // does not distinguish them. Drives whether finishing needs the keep/drop prompt at all.
+  const unboughtItems = useMemo(
+    () => items.filter((item) => item.status === 'to_buy' || item.status === 'unavailable'),
+    [items],
+  )
+
+  // Archive the active list and transfer bought lines to the pantry. `keepUnbought` answers the leftover
+  // prompt; the direct (no-leftover) path passes false. On success swap the store to the server's new
+  // active list (the kept lines, or empty) and show a confirmation. `fromPrompt` routes the error banner
+  // to the open dialog vs. the main add-item banner.
+  async function completeTrip(keepUnbought: boolean, fromPrompt: boolean) {
+    setCompleting(true)
+    setCompleteError(null)
+    setSaveError(null)
+    try {
+      const result = await apiCompleteShoppingTrip(keepUnbought)
+      setItems(result.items)
+      setShowCompletePrompt(false)
+      const created = result.pantryItemsCreated
+      setTripSummary(`Shopping trip complete — ${created} item${created !== 1 ? 's' : ''} added to your pantry.`)
+    } catch {
+      if (fromPrompt) setCompleteError('Failed to finish shopping. Please try again.')
+      else setSaveError('Failed to finish shopping. Please try again.')
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  // "Done shopping": prompt for the leftovers when any remain, otherwise finish straight away.
+  function handleDoneShopping() {
+    setTripSummary(null)
+    if (unboughtItems.length > 0) {
+      setCompleteError(null)
+      setShowCompletePrompt(true)
+    } else {
+      void completeTrip(false, false)
+    }
+  }
+
+  function handleCancelComplete() {
+    if (completing) return
+    setShowCompletePrompt(false)
+    setCompleteError(null)
+  }
+
   // The Listbox's selection is a live view of which lines are `bought`, derived from status rather than
   // held as separate state — so an optimistic status flip (or its rollback) re-renders the selection.
   const boughtItems = useMemo(() => items.filter((item) => item.status === 'bought'), [items])
@@ -808,15 +916,26 @@ export default function ShoppingListView({
       <div className="shopping-list-content">
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
-          <button
-            type="button"
-            className="share-button"
-            onClick={handleShare}
-            disabled={items.length === 0}
-          >
-            <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
-            {copied ? 'Copied!' : 'Share'}
-          </button>
+          <div className="shopping-list-header-actions">
+            <button
+              type="button"
+              className="share-button"
+              onClick={handleShare}
+              disabled={items.length === 0}
+            >
+              <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
+              {copied ? 'Copied!' : 'Share'}
+            </button>
+            <button
+              type="button"
+              className="done-shopping-button"
+              onClick={handleDoneShopping}
+              disabled={items.length === 0 || completing}
+            >
+              <i className="pi pi-check-circle" aria-hidden="true" />
+              {completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}
+            </button>
+          </div>
         </header>
 
         <div className="shopping-list-panel">
@@ -943,6 +1062,12 @@ export default function ShoppingListView({
             </div>
           )}
 
+          {tripSummary && (
+            <div className="trip-summary" role="status">
+              {tripSummary}
+            </div>
+          )}
+
           {!collectionEnabled && (
             <p className="collection-off-hint">
               <em>
@@ -997,6 +1122,17 @@ export default function ShoppingListView({
         onHide={handleCloseDetails}
         onSave={handleSaveDetails}
       />
+
+      {showCompletePrompt && (
+        <CompleteTripDialog
+          count={unboughtItems.length}
+          saving={completing}
+          error={completeError}
+          onKeep={() => completeTrip(true, true)}
+          onDrop={() => completeTrip(false, true)}
+          onCancel={handleCancelComplete}
+        />
+      )}
     </div>
   )
 }
