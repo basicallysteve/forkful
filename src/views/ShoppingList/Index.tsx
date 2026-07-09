@@ -16,6 +16,7 @@ import {
 } from '@/lib/api/shoppingList'
 import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
+import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
 import { calendarValueToUtcDate, formatUtcDateForInput, utcDateToCalendarValue } from '@/utils/dateHelpers'
 import { ceil2, round2 } from '@/utils/number'
@@ -40,6 +41,11 @@ type ShoppingListViewProps = {
   // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
   initialFoods?: Food[]
   initialItems: ShoppingListItem[]
+  // Optional so existing tests can omit them. userId scopes the preference PATCH;
+  // pricingCollectionEnabled is the user's "collect Line Price & expiration" preference — when false,
+  // the check-off prompt and the manual ⋯ entry are both suppressed. Defaults to on.
+  userId?: number
+  pricingCollectionEnabled?: boolean
 }
 
 type AddVariant = Extract<ShoppingListItemSourceType, 'food' | 'product' | 'freeform'>
@@ -131,12 +137,14 @@ export function buildShoppingListText(items: ShoppingListItem[]): string {
 function ShoppingListItemRow({
   item,
   selected,
+  pricingCollectionEnabled,
   onRemove,
   onSetStatus,
   onEditDetails,
 }: {
   item: ShoppingListItem
   selected: boolean
+  pricingCollectionEnabled: boolean
   onRemove: (id: number) => Promise<void>
   onSetStatus: (item: ShoppingListItem, status: ShoppingListItemStatus) => Promise<void>
   onEditDetails: (item: ShoppingListItem) => void
@@ -179,7 +187,10 @@ function ShoppingListItemRow({
   // The status action flips `unavailable` (or back to `to_buy`); Remove follows after a separator and
   // is the desktop delete path (the swipe button is hidden there). On mobile both coexist.
   const menuItems: MenuItem[] = [
-    { label: 'Price & expiration', icon: 'pi pi-dollar', command: () => onEditDetails(item) },
+    // Manual price/expiration entry is hidden entirely when the user has collection turned off.
+    ...(pricingCollectionEnabled
+      ? [{ label: 'Price & expiration', icon: 'pi pi-dollar', command: () => onEditDetails(item) }]
+      : []),
     unavailable
       ? { label: 'Mark to buy', icon: 'pi pi-shopping-cart', command: () => onSetStatus(item, 'to_buy') }
       : { label: 'Mark unavailable', icon: 'pi pi-ban', command: () => onSetStatus(item, 'unavailable') },
@@ -249,12 +260,16 @@ function ItemDetailsForm({
   item,
   saving,
   error,
+  collectionEnabled,
+  onToggleCollection,
   onHide,
   onSave,
 }: {
   item: ShoppingListItem
   saving: boolean
   error: string | null
+  collectionEnabled: boolean
+  onToggleCollection: (enabled: boolean) => void
   onHide: () => void
   onSave: (submit: ItemDetailsSubmit) => void
 }) {
@@ -460,6 +475,17 @@ function ItemDetailsForm({
           <small>Optional — carries to the pantry when you finish shopping.</small>
         </div>
 
+        {/* Toggles the profile preference straight away (checked = don't collect), independent of
+            Save/Cancel, which only act on this line. */}
+        <label className="collection-skip">
+          <Checkbox
+            inputId="skip-collection"
+            checked={!collectionEnabled}
+            onChange={(e) => onToggleCollection(!e.checked)}
+          />
+          <span>Don&apos;t ask on future shopping lists</span>
+        </label>
+
         {error && <p className="item-details-error" role="alert">{error}</p>}
       </div>
     </Modal>
@@ -473,12 +499,16 @@ function ItemDetailsDialog({
   item,
   saving,
   error,
+  collectionEnabled,
+  onToggleCollection,
   onHide,
   onSave,
 }: {
   item: ShoppingListItem | null
   saving: boolean
   error: string | null
+  collectionEnabled: boolean
+  onToggleCollection: (enabled: boolean) => void
   onHide: () => void
   onSave: (submit: ItemDetailsSubmit) => void
 }) {
@@ -489,13 +519,20 @@ function ItemDetailsDialog({
       item={item}
       saving={saving}
       error={error}
+      collectionEnabled={collectionEnabled}
+      onToggleCollection={onToggleCollection}
       onHide={onHide}
       onSave={onSave}
     />
   )
 }
 
-export default function ShoppingListView({ initialFoods, initialItems }: ShoppingListViewProps) {
+export default function ShoppingListView({
+  initialFoods,
+  initialItems,
+  userId,
+  pricingCollectionEnabled = true,
+}: ShoppingListViewProps) {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
   const items = useShoppingListStore((state) => state.items)
@@ -529,6 +566,23 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   const [detailsItem, setDetailsItem] = useState<ShoppingListItem | null>(null)
   const [detailsSaving, setDetailsSaving] = useState(false)
   const [detailsError, setDetailsError] = useState<string | null>(null)
+
+  // The user's "collect price & expiration" preference, held locally so the modal checkbox and the
+  // inline "enable" link feel instant. Persisted optimistically; rolled back if the PATCH fails.
+  const [collectionEnabled, setCollectionEnabled] = useState(pricingCollectionEnabled)
+
+  async function updateCollectionEnabled(next: boolean) {
+    if (next === collectionEnabled) return
+    const previous = collectionEnabled
+    setCollectionEnabled(next)
+    setSaveError(null)
+    try {
+      if (userId != null) await apiUpdateShoppingPreferences(userId, { enableShoppingListPricingCollection: next })
+    } catch {
+      setCollectionEnabled(previous)
+      setSaveError('Failed to update your preference. Please try again.')
+    }
+  }
 
   useEffect(() => {
     setItems(initialItems)
@@ -680,8 +734,8 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
       // Checking a line off is the moment to record what it cost and when it expires, so surface the
       // details dialog automatically — but only once the check-off has actually persisted, so a failed
       // toggle never pops a dialog. Only the to-bought transition prompts; unchecking or marking a line
-      // unavailable never does.
-      if (next === 'bought') handleEditDetails({ ...item, status: next })
+      // unavailable never does — and only when the user hasn't turned price/expiration collection off.
+      if (next === 'bought' && collectionEnabled) handleEditDetails({ ...item, status: next })
     } catch {
       const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
       // Only roll back if nothing else has changed the line since this request started.
@@ -889,6 +943,18 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
             </div>
           )}
 
+          {!collectionEnabled && (
+            <p className="collection-off-hint">
+              <em>
+                Price &amp; expiration collection is off —{' '}
+                <button type="button" className="collection-enable-link" onClick={() => updateCollectionEnabled(true)}>
+                  click here to enable
+                </button>
+                .
+              </em>
+            </p>
+          )}
+
           {items.length === 0 ? (
             <p className="shopping-list-empty">No items yet. Add a food to start your shopping list.</p>
           ) : (
@@ -904,6 +970,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
                 <ShoppingListItemRow
                   item={item}
                   selected={item.status === 'bought'}
+                  pricingCollectionEnabled={collectionEnabled}
                   onRemove={handleRemove}
                   onSetStatus={handleSetStatus}
                   onEditDetails={handleEditDetails}
@@ -925,6 +992,8 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
         item={detailsItem}
         saving={detailsSaving}
         error={detailsError}
+        collectionEnabled={collectionEnabled}
+        onToggleCollection={updateCollectionEnabled}
         onHide={handleCloseDetails}
         onSave={handleSaveDetails}
       />

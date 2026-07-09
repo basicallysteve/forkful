@@ -21,6 +21,10 @@ vi.mock('@/lib/api/foods', () => ({
   apiFetchFoods: vi.fn(),
 }))
 
+vi.mock('@/lib/api/users', () => ({
+  apiUpdateShoppingPreferences: vi.fn(),
+}))
+
 vi.mock('@/components/FoodSearch/FoodSearch', () => ({
   default: ({ onChange, onInputChange, value, localFoods }: {
     onChange: (food: Food) => void
@@ -62,6 +66,7 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
 
 import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
+import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 
 const mockProduct: Product = {
   id: 42,
@@ -828,6 +833,77 @@ describe('ShoppingListView — price & expiration', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/failed to update/i)
     await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('suppresses the auto-prompt and hides the kebab entry when collection is disabled', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+        pricingCollectionEnabled={false}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Checking off no longer pops the dialog.
+    fireEvent.click(within(list).getByRole('option'))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // And the ⋯ menu no longer offers manual entry (but still offers its other actions).
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    expect(await screen.findByRole('menuitem', { name: /remove/i, hidden: true })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /price & expiration/i, hidden: true })).not.toBeInTheDocument()
+  })
+
+  it('shows the off hint and re-enables collection inline', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingPreferences).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+        pricingCollectionEnabled={false}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    expect(screen.getByText(/collection is off/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /click here to enable/i }))
+
+    expect(apiUpdateShoppingPreferences).toHaveBeenCalledWith(7, { enableShoppingListPricingCollection: true })
+    // The hint disappears and manual entry returns.
+    await waitFor(() => expect(screen.queryByText(/collection is off/i)).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    expect(await screen.findByRole('menuitem', { name: /price & expiration/i, hidden: true })).toBeInTheDocument()
+  })
+
+  it('disables collection from the modal checkbox on check-off', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+    vi.mocked(apiUpdateShoppingPreferences).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Auto-prompt opens (collection on by default); tick "Don't ask on future shopping lists".
+    fireEvent.click(within(list).getByRole('option'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/don't ask on future shopping lists/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('checkbox'))
+
+    expect(apiUpdateShoppingPreferences).toHaveBeenCalledWith(7, { enableShoppingListPricingCollection: false })
   })
 
   it('records a total Line Price at check-off and shows it on the row', async () => {

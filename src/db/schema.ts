@@ -109,6 +109,8 @@ export const users = pgTable('users', {
   marketingEmailOptIn: boolean('marketing_email_opt_in').notNull().default(false),
   recipeSuggestionFrequency: recipeSuggestionFrequencyEnum('recipe_suggestion_frequency').notNull().default('weekly'),
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
+  // When off, the shopping list stops prompting for (and hides manual entry of) Line Price & expiration.
+  enableShoppingListPricingCollection: boolean('enable_shopping_list_pricing_collection').notNull().default(true),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),

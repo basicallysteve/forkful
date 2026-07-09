@@ -13,6 +13,7 @@ export type User = {
   marketingEmailOptIn: boolean
   recipeSuggestionFrequency: RecipeSuggestionFrequency
   pantryExpirationFrequency: PantryExpirationFrequency
+  enableShoppingListPricingCollection: boolean
   dateAdded: Date
   dateDeleted: Date | null
 }

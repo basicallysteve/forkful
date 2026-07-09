@@ -65,6 +65,12 @@ export async function apiUpdateEmailPreferences(userId: string | number, data: {
   return patchUser(userId, { action: 'emailPreferences', ...data })
 }
 
+export async function apiUpdateShoppingPreferences(userId: string | number, data: {
+  enableShoppingListPricingCollection: boolean
+}): Promise<void> {
+  return patchUser(userId, { action: 'shoppingPreferences', ...data })
+}
+
 export async function apiUpdateEmail(userId: string | number, email: string): Promise<void> {
   return patchUser(userId, { action: 'email', email })
 }

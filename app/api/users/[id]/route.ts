@@ -6,6 +6,7 @@ import {
   updateUserPassword,
   updateUsername,
   updateEmailPreferences,
+  updateShoppingPreferences,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
@@ -69,6 +70,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         marketingEmailOptIn: body.marketingEmailOptIn,
         recipeSuggestionFrequency: body.recipeSuggestionFrequency as RecipeSuggestionFrequency,
         pantryExpirationFrequency: body.pantryExpirationFrequency as PantryExpirationFrequency,
+      }))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'shoppingPreferences') {
+      if (typeof body.enableShoppingListPricingCollection !== 'boolean') {
+        return NextResponse.json({ error: 'Invalid enableShoppingListPricingCollection value' }, { status: 400 })
+      }
+      await taskRunner.run(() => updateShoppingPreferences(targetId, {
+        enableShoppingListPricingCollection: body.enableShoppingListPricingCollection,
       }))
       return NextResponse.json({ ok: true })
     }

@@ -20,6 +20,7 @@ function mapUser(row: typeof users.$inferSelect): User {
     marketingEmailOptIn: row.marketingEmailOptIn,
     recipeSuggestionFrequency: row.recipeSuggestionFrequency as RecipeSuggestionFrequency,
     pantryExpirationFrequency: row.pantryExpirationFrequency as PantryExpirationFrequency,
+    enableShoppingListPricingCollection: row.enableShoppingListPricingCollection,
     dateAdded: row.dateAdded!,
     dateDeleted: row.dateDeleted,
   }
@@ -289,6 +290,12 @@ export async function updateEmailPreferences(userId: number, data: {
     marketingEmailOptIn: boolean
     recipeSuggestionFrequency: RecipeSuggestionFrequency
     pantryExpirationFrequency: PantryExpirationFrequency
+}): Promise<void> {
+    await db.update(users).set(data).where(eq(users.id, userId))
+}
+
+export async function updateShoppingPreferences(userId: number, data: {
+    enableShoppingListPricingCollection: boolean
 }): Promise<void> {
     await db.update(users).set(data).where(eq(users.id, userId))
 }
