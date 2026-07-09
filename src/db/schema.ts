@@ -109,6 +109,8 @@ export const users = pgTable('users', {
   marketingEmailOptIn: boolean('marketing_email_opt_in').notNull().default(false),
   recipeSuggestionFrequency: recipeSuggestionFrequencyEnum('recipe_suggestion_frequency').notNull().default('weekly'),
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
+  // When off, the shopping list stops prompting for (and hides manual entry of) Line Price & expiration.
+  enableShoppingListPricingCollection: boolean('enable_shopping_list_pricing_collection').notNull().default(true),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),
@@ -165,6 +167,12 @@ export const shoppingListItems = pgTable('shopping_list_items', {
   // Null for freeform lines that omit a unit; always set for food/product lines.
   unit: varchar('unit', { length: 50 }),
   status: shoppingListItemStatusEnum('status').notNull().default('to_buy'),
+  // Total paid for the whole line (not per-unit), in the app's single currency. Optionally recorded
+  // at check-off; per-unit cost is derived as line_price / amount when needed. Null until entered.
+  linePrice: numeric('line_price', { precision: 10, scale: 2 }),
+  // Optionally recorded at check-off; transfers to the resulting Pantry Item's expirationDate on Trip
+  // Completion. Null when the user leaves it blank.
+  expirationDate: timestamp('expiration_date'),
   dateAdded: timestamp('date_added').defaultNow().notNull(),
 }, (t) => ({
   shoppingListIdIdx: index('shopping_list_items_shopping_list_id_idx').on(t.shoppingListId),

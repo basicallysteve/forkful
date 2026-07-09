@@ -7,9 +7,20 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import {
+  apiCreateShoppingListItem,
+  apiDeleteShoppingListItem,
+  apiSplitShoppingListItem,
+  apiUpdateShoppingListItemDetails,
+  apiUpdateShoppingListItemStatus,
+} from '@/lib/api/shoppingList'
+import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
+import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
+import { calendarValueToUtcDate, formatUtcDateForInput, utcDateToCalendarValue } from '@/utils/dateHelpers'
+import { ceil2, round2 } from '@/utils/number'
+import { formatPrice } from '@/utils/currency'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
@@ -19,6 +30,10 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { ListBox } from 'primereact/listbox'
 import { Checkbox } from 'primereact/checkbox'
+import { Calendar } from 'primereact/calendar'
+// PrimeReact's Calendar emits a FormEvent; there is no dedicated CalendarChangeEvent export in v10.
+import type { FormEvent as CalendarChangeEvent } from 'primereact/ts-helpers'
+import Modal from '@/components/Modal/Modal'
 import { Menu } from 'primereact/menu'
 import type { MenuItem } from 'primereact/menuitem'
 
@@ -26,6 +41,11 @@ type ShoppingListViewProps = {
   // Optional: the server no longer ships the whole catalog. When omitted, the view loads it lazily.
   initialFoods?: Food[]
   initialItems: ShoppingListItem[]
+  // Optional so existing tests can omit them. userId scopes the preference PATCH;
+  // pricingCollectionEnabled is the user's "collect Line Price & expiration" preference — when false,
+  // the check-off prompt and the manual ⋯ entry are both suppressed. Defaults to on.
+  userId?: number
+  pricingCollectionEnabled?: boolean
 }
 
 type AddVariant = Extract<ShoppingListItemSourceType, 'food' | 'product' | 'freeform'>
@@ -48,6 +68,49 @@ function itemQuantityLabel(item: ShoppingListItem): string {
   if (item.unit) return `${item.amount} ${formatUnitForAmount(item.amount, item.unit)}`
   return item.amount === 1 ? '' : `${item.amount}`
 }
+
+// The Line Price can be entered as the whole-line total or as a per-unit price. `total` is the mode
+// carried straight through; `per_unit` is multiplied by the line's quantity. Either way only the total
+// is persisted, so this collapses both modes to a single rounded total (2 decimals, matching the
+// numeric(10,2) column). An empty (null) value clears the price.
+export type LinePriceMode = 'total' | 'per_unit'
+
+export function resolveLinePriceTotal(mode: LinePriceMode, value: number | null, quantity: number): number | null {
+  if (value === null || !Number.isFinite(value)) return null
+  // The line total rounds UP so a per-unit × quantity total never undercharges a partial cent. A
+  // directly-entered total is already at the cent (the input caps at 2 decimals), so ceiling is a no-op.
+  return ceil2(mode === 'per_unit' ? value * quantity : value)
+}
+
+// Expiration is either one date for the whole line, or a date per item — which splits the line into
+// separate lines grouped by date (see CONTEXT.md). Per-item is only offered when the line has more than
+// one of something.
+export type ExpirationMode = 'whole' | 'per_item'
+
+// A row in the per-item editor: a share of the amount plus its Calendar-local date (null = undated).
+export type ItemExpirationPortion = { amount: number; date: Date | null }
+
+// Collapse per-item portions into one entry per distinct expiration day (undated is its own group),
+// summing amounts and dropping non-positive shares. Dates are normalised to the UTC date-only value we
+// persist, so two picks of the same calendar day always merge regardless of the local time-of-day.
+export function groupExpirationPortions(portions: ItemExpirationPortion[]): ShoppingListItemPortionInput[] {
+  const groups = new Map<string, ShoppingListItemPortionInput>()
+  for (const portion of portions) {
+    if (!(portion.amount > 0)) continue
+    const utcDate = portion.date ? calendarValueToUtcDate(portion.date) : null
+    const key = utcDate ? utcDate.toISOString() : 'none'
+    const existing = groups.get(key)
+    if (existing) existing.amount = round2(existing.amount + portion.amount)
+    else groups.set(key, { amount: round2(portion.amount), expirationDate: utcDate })
+  }
+  return [...groups.values()]
+}
+
+// What the details dialog hands back: a plain price/expiration edit, or — when per-item dates resolve to
+// more than one group — a split into date-grouped lines.
+export type ItemDetailsSubmit =
+  | { kind: 'details'; linePrice: number | null; expirationDate: Date | null }
+  | { kind: 'split'; linePrice: number | null; portions: ShoppingListItemPortionInput[] }
 
 // Plain-text rendering of the list for the clipboard. Wrapped in a friendly, marketable message so a
 // pasted list also invites the recipient to try EatForkful. One line per item as "- Name — qty" (the
@@ -74,13 +137,17 @@ export function buildShoppingListText(items: ShoppingListItem[]): string {
 function ShoppingListItemRow({
   item,
   selected,
+  pricingCollectionEnabled,
   onRemove,
   onSetStatus,
+  onEditDetails,
 }: {
   item: ShoppingListItem
   selected: boolean
+  pricingCollectionEnabled: boolean
   onRemove: (id: number) => Promise<void>
   onSetStatus: (item: ShoppingListItem, status: ShoppingListItemStatus) => Promise<void>
+  onEditDetails: (item: ShoppingListItem) => void
 }) {
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -120,6 +187,10 @@ function ShoppingListItemRow({
   // The status action flips `unavailable` (or back to `to_buy`); Remove follows after a separator and
   // is the desktop delete path (the swipe button is hidden there). On mobile both coexist.
   const menuItems: MenuItem[] = [
+    // Manual price/expiration entry is hidden entirely when the user has collection turned off.
+    ...(pricingCollectionEnabled
+      ? [{ label: 'Price & expiration', icon: 'pi pi-dollar', command: () => onEditDetails(item) }]
+      : []),
     unavailable
       ? { label: 'Mark to buy', icon: 'pi pi-shopping-cart', command: () => onSetStatus(item, 'to_buy') }
       : { label: 'Mark unavailable', icon: 'pi pi-ban', command: () => onSetStatus(item, 'unavailable') },
@@ -135,6 +206,10 @@ function ShoppingListItemRow({
         <div className="item-body">
           <span className="item-name">{item.name}</span>
           {unavailable && <span className="item-status-pill">Unavailable</span>}
+          {item.expirationDate && (
+            <span className="item-expiration">Exp {formatUtcDateForInput(item.expirationDate)}</span>
+          )}
+          {item.linePrice != null && <span className="item-price">{formatPrice(item.linePrice)}</span>}
           {quantity && <span className="item-qty">{quantity}</span>}
         </div>
         <Menu model={menuItems} popup ref={menu} id={`shopping-list-menu-${item.id}`} />
@@ -169,7 +244,295 @@ function ShoppingListItemRow({
   )
 }
 
-export default function ShoppingListView({ initialFoods, initialItems }: ShoppingListViewProps) {
+let portionKeySeq = 0
+
+type EditablePortion = { key: number; amount: number | null; date: Date | null }
+
+function makePortion(amount: number | null, date: Date | null): EditablePortion {
+  return { key: portionKeySeq++, amount, date }
+}
+
+// The optional check-off details editor's body: Line Price (total or per-unit) and expiration. Both are
+// optional — clearing the price persists null, a blank date a null expiration. Expiration is either one
+// date for the whole line, or a date per item, which splits the line into date-grouped lines. Mounted
+// with `key={item.id}` by the dialog so its useState seeds fresh from each line without an effect.
+function ItemDetailsForm({
+  item,
+  saving,
+  error,
+  collectionEnabled,
+  onToggleCollection,
+  onHide,
+  onSave,
+}: {
+  item: ShoppingListItem
+  saving: boolean
+  error: string | null
+  collectionEnabled: boolean
+  onToggleCollection: (enabled: boolean) => void
+  onHide: () => void
+  onSave: (submit: ItemDetailsSubmit) => void
+}) {
+  const [mode, setMode] = useState<LinePriceMode>('total')
+  const [priceValue, setPriceValue] = useState<number | null>(item.linePrice)
+
+  const seededDate = item.expirationDate ? utcDateToCalendarValue(item.expirationDate) : null
+  const [expirationMode, setExpirationMode] = useState<ExpirationMode>('whole')
+  const [wholeDate, setWholeDate] = useState<Date | null>(seededDate)
+  const [portions, setPortions] = useState<EditablePortion[]>(() => [makePortion(item.amount, seededDate)])
+
+  const quantity = item.amount
+  // Per-item dates only make sense when buying more than one of something.
+  const canSplit = quantity > 1
+  // The Calendar's floor: today at local midnight, so past days can't be picked.
+  const minDate = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  // Flipping the price mode converts the value so the resulting total is preserved: a unit price rounds
+  // to the nearest cent, a total rounds up — matching resolveLinePriceTotal.
+  function handleModeChange(next: LinePriceMode) {
+    if (next === mode) return
+    setPriceValue((value) => {
+      if (value === null) return value
+      return next === 'per_unit' ? round2(value / quantity) : ceil2(value * quantity)
+    })
+    setMode(next)
+  }
+
+  function updatePortion(key: number, patch: Partial<EditablePortion>) {
+    setPortions((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)))
+  }
+
+  function addPortion() {
+    // Seed a new row with whatever quantity is still unassigned, so a simple two-way split is one click.
+    const remaining = round2(quantity - portions.reduce((sum, row) => sum + (row.amount ?? 0), 0))
+    setPortions((rows) => [...rows, makePortion(remaining > 0 ? remaining : null, null)])
+  }
+
+  function removePortion(key: number) {
+    setPortions((rows) => (rows.length > 1 ? rows.filter((row) => row.key !== key) : rows))
+  }
+
+  const assigned = round2(portions.reduce((sum, row) => sum + (row.amount ?? 0), 0))
+  const portionsCoverLine = Math.abs(assigned - quantity) <= 0.005
+  const linePrice = resolveLinePriceTotal(mode, priceValue, quantity)
+  const resolvedTotal = linePrice
+
+  // Per-item entry is only invalid while the portions don't add up to the line; the whole-line path is
+  // always valid (price and date are both optional).
+  const canSave = expirationMode === 'whole' || !canSplit || portionsCoverLine
+
+  function handleSave() {
+    if (expirationMode === 'per_item' && canSplit) {
+      const groups = groupExpirationPortions(portions.map((row) => ({ amount: row.amount ?? 0, date: row.date })))
+      // One resolved group is just a plain edit (all items share a date, or none) — no split needed.
+      if (groups.length > 1) {
+        onSave({ kind: 'split', linePrice, portions: groups })
+        return
+      }
+      onSave({ kind: 'details', linePrice, expirationDate: groups[0]?.expirationDate ?? null })
+      return
+    }
+    onSave({
+      kind: 'details',
+      linePrice,
+      // A picked day is anchored at UTC midnight so the stored day is timezone-stable.
+      expirationDate: wholeDate ? calendarValueToUtcDate(wholeDate) : null,
+    })
+  }
+
+  const footer = (
+    <div className="dialog-footer">
+      <button type="button" className="ghost-button" onClick={onHide} disabled={saving}>
+        Cancel
+      </button>
+      <button type="button" className="primary-button" onClick={handleSave} disabled={saving || !canSave}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    </div>
+  )
+
+  return (
+    <Modal
+      header="Price & expiration"
+      visible
+      onHide={onHide}
+      footer={footer}
+      className="item-details-dialog"
+      style={{ width: 'min(440px, 92vw)' }}
+    >
+      <div className="item-details-form">
+        <div className="field">
+          <span className="field-label" id="line-price-mode-label">Line Price</span>
+          <div className="price-mode" role="group" aria-labelledby="line-price-mode-label">
+            {(['total', 'per_unit'] as LinePriceMode[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`price-mode-tab${mode === option ? ' is-active' : ''}`}
+                aria-pressed={mode === option}
+                onClick={() => handleModeChange(option)}
+              >
+                {option === 'total' ? 'Total' : 'Per unit'}
+              </button>
+            ))}
+          </div>
+          <InputNumber
+            inputId="line-price"
+            value={priceValue}
+            onValueChange={(e: InputNumberValueChangeEvent) => setPriceValue(e.value ?? null)}
+            mode="decimal"
+            min={0}
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            prefix="$"
+            placeholder="0.00"
+            aria-label={mode === 'per_unit' ? 'Per-unit price' : 'Line price total'}
+          />
+          {mode === 'per_unit' && resolvedTotal !== null && (
+            <small className="price-hint">Total: {formatPrice(resolvedTotal)}</small>
+          )}
+        </div>
+
+        <div className="field">
+          <span className="field-label" id="expiration-mode-label">Expiration date</span>
+          {canSplit && (
+            <div className="expiration-mode" role="group" aria-labelledby="expiration-mode-label">
+              {(['whole', 'per_item'] as ExpirationMode[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`price-mode-tab${expirationMode === option ? ' is-active' : ''}`}
+                  aria-pressed={expirationMode === option}
+                  onClick={() => setExpirationMode(option)}
+                >
+                  {option === 'whole' ? 'Whole line' : 'Per item'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {expirationMode === 'whole' || !canSplit ? (
+            <Calendar
+              inputId="line-expiration"
+              value={wholeDate}
+              onChange={(e: CalendarChangeEvent<Date>) => setWholeDate(e.value ?? null)}
+              minDate={minDate}
+              dateFormat="yy-mm-dd"
+              placeholder="Select a date"
+              showButtonBar
+              ariaLabel="Expiration date"
+            />
+          ) : (
+            <div className="expiration-portions">
+              {portions.map((portion, index) => (
+                <div className="expiration-portion" key={portion.key}>
+                  <InputNumber
+                    inputId={`portion-amount-${index}`}
+                    value={portion.amount}
+                    onValueChange={(e: InputNumberValueChangeEvent) => updatePortion(portion.key, { amount: e.value ?? null })}
+                    min={0}
+                    minFractionDigits={0}
+                    maxFractionDigits={2}
+                    placeholder="Qty"
+                    aria-label={`Item ${index + 1} quantity`}
+                  />
+                  <Calendar
+                    inputId={`portion-date-${index}`}
+                    value={portion.date}
+                    onChange={(e: CalendarChangeEvent<Date>) => updatePortion(portion.key, { date: e.value ?? null })}
+                    minDate={minDate}
+                    dateFormat="yy-mm-dd"
+                    placeholder="Select a date"
+                    showButtonBar
+                    ariaLabel={`Item ${index + 1} expiration date`}
+                  />
+                  {portions.length > 1 && (
+                    <button
+                      type="button"
+                      className="portion-remove"
+                      aria-label={`Remove date ${index + 1}`}
+                      onClick={() => removePortion(portion.key)}
+                    >
+                      <i className="pi pi-times" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="expiration-portions-footer">
+                <button type="button" className="portion-add" onClick={addPortion}>
+                  <i className="pi pi-plus" aria-hidden="true" /> Add date
+                </button>
+                <small className={portionsCoverLine ? 'portion-tally' : 'portion-tally is-off'}>
+                  {assigned} of {quantity} {item.unit ? formatUnitForAmount(quantity, item.unit) : 'items'}
+                </small>
+              </div>
+            </div>
+          )}
+          <small>Optional — carries to the pantry when you finish shopping.</small>
+        </div>
+
+        {/* Toggles the profile preference straight away (checked = don't collect), independent of
+            Save/Cancel, which only act on this line. */}
+        <label className="collection-skip">
+          <Checkbox
+            inputId="skip-collection"
+            checked={!collectionEnabled}
+            onChange={(e) => onToggleCollection(!e.checked)}
+          />
+          <span>Don&apos;t ask on future shopping lists</span>
+        </label>
+
+        {error && <p className="item-details-error" role="alert">{error}</p>}
+      </div>
+    </Modal>
+  )
+}
+
+// Available while the list is active, so it doubles as the "edit later" path as well as the
+// at-check-off capture. Keyed on the line id and mounted only while a line is being edited, so the
+// form's inputs seed fresh from that line on open (no reset effect needed).
+function ItemDetailsDialog({
+  item,
+  saving,
+  error,
+  collectionEnabled,
+  onToggleCollection,
+  onHide,
+  onSave,
+}: {
+  item: ShoppingListItem | null
+  saving: boolean
+  error: string | null
+  collectionEnabled: boolean
+  onToggleCollection: (enabled: boolean) => void
+  onHide: () => void
+  onSave: (submit: ItemDetailsSubmit) => void
+}) {
+  if (!item) return null
+  return (
+    <ItemDetailsForm
+      key={item.id}
+      item={item}
+      saving={saving}
+      error={error}
+      collectionEnabled={collectionEnabled}
+      onToggleCollection={onToggleCollection}
+      onHide={onHide}
+      onSave={onSave}
+    />
+  )
+}
+
+export default function ShoppingListView({
+  initialFoods,
+  initialItems,
+  userId,
+  pricingCollectionEnabled = true,
+}: ShoppingListViewProps) {
   const foods = useFoodStore((state) => state.foods)
   const setFoods = useFoodStore((state) => state.setFoods)
   const items = useShoppingListStore((state) => state.items)
@@ -197,6 +560,29 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   // Holds the pending "Copied!" reset so a rapid re-copy restarts the 2s window instead of stacking
   // timers, and so it can be cancelled on unmount.
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // The line whose Price & expiration dialog is open (null = closed), plus its own save/error state so
+  // a details save never touches the add-item form's banner.
+  const [detailsItem, setDetailsItem] = useState<ShoppingListItem | null>(null)
+  const [detailsSaving, setDetailsSaving] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+
+  // The user's "collect price & expiration" preference, held locally so the modal checkbox and the
+  // inline "enable" link feel instant. Persisted optimistically; rolled back if the PATCH fails.
+  const [collectionEnabled, setCollectionEnabled] = useState(pricingCollectionEnabled)
+
+  async function updateCollectionEnabled(next: boolean) {
+    if (next === collectionEnabled) return
+    const previous = collectionEnabled
+    setCollectionEnabled(next)
+    setSaveError(null)
+    try {
+      if (userId != null) await apiUpdateShoppingPreferences(userId, { enableShoppingListPricingCollection: next })
+    } catch {
+      setCollectionEnabled(previous)
+      setSaveError('Failed to update your preference. Please try again.')
+    }
+  }
 
   useEffect(() => {
     setItems(initialItems)
@@ -345,6 +731,11 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     upsertItem({ ...item, status: next })
     try {
       await apiUpdateShoppingListItemStatus(item.id, next)
+      // Checking a line off is the moment to record what it cost and when it expires, so surface the
+      // details dialog automatically — but only once the check-off has actually persisted, so a failed
+      // toggle never pops a dialog. Only the to-bought transition prompts; unchecking or marking a line
+      // unavailable never does — and only when the user hasn't turned price/expiration collection off.
+      if (next === 'bought' && collectionEnabled) handleEditDetails({ ...item, status: next })
     } catch {
       const current = useShoppingListStore.getState().items.find((entry) => entry.id === item.id)
       // Only roll back if nothing else has changed the line since this request started.
@@ -353,10 +744,52 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
     }
   }
 
+  function handleEditDetails(item: ShoppingListItem) {
+    setDetailsError(null)
+    setDetailsItem(item)
+  }
+
+  function handleCloseDetails() {
+    if (detailsSaving) return
+    setDetailsItem(null)
+    setDetailsError(null)
+  }
+
+  // Persist the dialog's edit, then replace the store copy(ies) with the re-joined line(s) the server
+  // returns (carrying the persisted, rounded price). A plain edit updates one line; a per-item split
+  // replaces the one line with the several date-grouped lines it becomes. Unlike the status flip this
+  // isn't optimistic: the dialog stays open with a spinner until the write confirms. On failure the
+  // dialog keeps its inputs and shows an inline error.
+  async function handleSaveDetails(submit: ItemDetailsSubmit) {
+    if (!detailsItem) return
+    setDetailsSaving(true)
+    setDetailsError(null)
+    try {
+      if (submit.kind === 'split') {
+        const updated = await apiSplitShoppingListItem(detailsItem.id, {
+          portions: submit.portions,
+          linePrice: submit.linePrice,
+        })
+        updated.forEach(upsertItem)
+      } else {
+        const updated = await apiUpdateShoppingListItemDetails(detailsItem.id, {
+          linePrice: submit.linePrice,
+          expirationDate: submit.expirationDate,
+        })
+        upsertItem(updated)
+      }
+      setDetailsItem(null)
+    } catch {
+      setDetailsError('Failed to save. Please try again.')
+    } finally {
+      setDetailsSaving(false)
+    }
+  }
+
   // The Listbox's selection is a live view of which lines are `bought`, derived from status rather than
   // held as separate state — so an optimistic status flip (or its rollback) re-renders the selection.
   const boughtItems = useMemo(() => items.filter((item) => item.status === 'bought'), [items])
-
+  const totalPrice = useMemo(() => ceil2(boughtItems.reduce((sum, item) => sum + (item.linePrice ?? 0), 0)), [boughtItems])
   // A row toggling in or out of the Listbox selection is a manual check-off: map the change to the
   // matching status transition. A plain click toggles one row, so at most one line differs here.
   // `unavailable` is never reached this way — only via a row's kebab menu.
@@ -510,6 +943,18 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
             </div>
           )}
 
+          {!collectionEnabled && (
+            <p className="collection-off-hint">
+              <em>
+                Price &amp; expiration collection is off —{' '}
+                <button type="button" className="collection-enable-link" onClick={() => updateCollectionEnabled(true)}>
+                  click here to enable
+                </button>
+                .
+              </em>
+            </p>
+          )}
+
           {items.length === 0 ? (
             <p className="shopping-list-empty">No items yet. Add a food to start your shopping list.</p>
           ) : (
@@ -525,16 +970,33 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
                 <ShoppingListItemRow
                   item={item}
                   selected={item.status === 'bought'}
+                  pricingCollectionEnabled={collectionEnabled}
                   onRemove={handleRemove}
                   onSetStatus={handleSetStatus}
+                  onEditDetails={handleEditDetails}
                 />
               )}
               className="shopping-list-items"
               pt={{ list: { 'aria-label': 'Shopping list items' } }}
             />
           )}
+          <div className="shopping-list-footer">
+            <strong>Totals: </strong>
+            <p className="shopping-list-count">{boughtItems.length} item{boughtItems.length !== 1 ? 's' : ''}</p>
+            <p className="shopping-list-count">{totalPrice > 0 ? formatPrice(totalPrice) : 'No prices yet'}</p>
+          </div>
         </div>
       </div>
+
+      <ItemDetailsDialog
+        item={detailsItem}
+        saving={detailsSaving}
+        error={detailsError}
+        collectionEnabled={collectionEnabled}
+        onToggleCollection={updateCollectionEnabled}
+        onHide={handleCloseDetails}
+        onSave={handleSaveDetails}
+      />
     </div>
   )
 }

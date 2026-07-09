@@ -16,6 +16,7 @@ import {
   apiUploadAvatar,
   apiUpdateUsername,
   apiUpdateEmailPreferences,
+  apiUpdateShoppingPreferences,
   apiDeactivateAccount,
   apiDeleteAccount,
   apiSubmitAccountFeedback,
@@ -192,6 +193,26 @@ export default function Profile({ user }: ProfileProps) {
       setEmailPrefError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setEmailPrefSaving(false)
+    }
+  }
+
+  // Shopping list preferences
+  const [pricingCollection, setPricingCollection] = useState(user.enableShoppingListPricingCollection)
+  const [shoppingPrefSaving, setShoppingPrefSaving] = useState(false)
+  const [shoppingPrefError, setShoppingPrefError] = useState<string | null>(null)
+  const [shoppingPrefSuccess, setShoppingPrefSuccess] = useState(false)
+
+  async function saveShoppingPreferences() {
+    setShoppingPrefSaving(true)
+    setShoppingPrefError(null)
+    setShoppingPrefSuccess(false)
+    try {
+      await apiUpdateShoppingPreferences(user.id!, { enableShoppingListPricingCollection: pricingCollection })
+      setShoppingPrefSuccess(true)
+    } catch (err) {
+      setShoppingPrefError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setShoppingPrefSaving(false)
     }
   }
 
@@ -433,6 +454,31 @@ export default function Profile({ user }: ProfileProps) {
               {emailPrefError && <span className="field-error" role="alert">{emailPrefError}</span>}
               <button className="primary-button" onClick={saveEmailPreferences} disabled={emailPrefSaving}>
                 {emailPrefSaving ? 'Saving…' : 'Save Email Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Shopping list preferences */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Shopping List</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <div className="pref-group">
+              <label className={`checkbox-option${pricingCollection ? ' is-active' : ''}`} onClick={() => { setPricingCollection(prev => !prev); setShoppingPrefSuccess(false) }}>
+                <span className="checkbox-indicator" />
+                Enable pricing/expiration collection
+              </label>
+              <small className="field-hint">When on, checking an item off prompts you to record its price and expiration date.</small>
+            </div>
+            <div className="panel-footer">
+              {shoppingPrefSuccess && <span className="success-text">Saved!</span>}
+              {shoppingPrefError && <span className="field-error" role="alert">{shoppingPrefError}</span>}
+              <button className="primary-button" onClick={saveShoppingPreferences} disabled={shoppingPrefSaving}>
+                {shoppingPrefSaving ? 'Saving…' : 'Save Shopping List Preferences'}
               </button>
             </div>
           </div>

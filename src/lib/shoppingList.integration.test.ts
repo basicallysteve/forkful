@@ -10,6 +10,8 @@ import {
   deleteShoppingListItem,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
+  splitShoppingListItem,
+  updateShoppingListItemDetails,
   updateShoppingListItemStatus,
 } from './shoppingList'
 
@@ -335,5 +337,145 @@ describe('shopping list data layer (integration)', () => {
     // The owner's line is unchanged.
     const items = await getShoppingListItems(owner.id)
     expect(items[0].status).toBe('to_buy')
+  })
+
+  it('records and clears a Line Price and expiration without touching the status or reference', async () => {
+    const user = await createTestUser('q')
+    const food = await createTestFood('TestShopping Priced')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    expect(created.linePrice).toBeNull()
+    expect(created.expirationDate).toBeNull()
+
+    const expiration = new Date('2026-02-01T00:00:00.000Z')
+    const priced = await updateShoppingListItemDetails(created.id, user.id, { linePrice: 4.5, expirationDate: expiration })
+    expect(priced?.linePrice).toBe(4.5)
+    expect(priced?.expirationDate?.getTime()).toBe(expiration.getTime())
+    // Only price/expiration change — the status and Food reference are left as they were.
+    expect(priced?.status).toBe('to_buy')
+    expect(priced?.food?.id).toBe(food.id)
+
+    // Each field clears independently: null the price, leave the expiration untouched by omitting it.
+    const cleared = await updateShoppingListItemDetails(created.id, user.id, { linePrice: null })
+    expect(cleared?.linePrice).toBeNull()
+    expect(cleared?.expirationDate?.getTime()).toBe(expiration.getTime())
+  })
+
+  it('rounds the persisted Line Price to the numeric(10,2) column and rejects a negative price', async () => {
+    const user = await createTestUser('r')
+    const food = await createTestFood('TestShopping Rounding')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+
+    // A per-unit × quantity total computed upstream can arrive with float drift; it persists rounded.
+    const priced = await updateShoppingListItemDetails(created.id, user.id, { linePrice: 0.1 + 0.2 })
+    expect(priced?.linePrice).toBe(0.3)
+
+    await expect(
+      updateShoppingListItemDetails(created.id, user.id, { linePrice: -1 })
+    ).rejects.toThrow('Price must be zero or greater')
+  })
+
+  it('returns null when another user tries to set a line’s price', async () => {
+    const owner = await createTestUser('s')
+    const intruder = await createTestUser('t')
+    const food = await createTestFood('TestShopping PriceGuarded')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
+
+    const updated = await updateShoppingListItemDetails(created.id, intruder.id, { linePrice: 9.99 })
+    expect(updated).toBeNull()
+
+    const items = await getShoppingListItems(owner.id)
+    expect(items[0].linePrice).toBeNull()
+  })
+
+  it('splits a line into date-grouped lines, partitioning amount and distributing price', async () => {
+    const user = await createTestUser('u')
+    const food = await createTestFood('TestShopping Splittable')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
+    await updateShoppingListItemDetails(created.id, user.id, { linePrice: 6 })
+
+    const augFirst = new Date('2026-08-01T00:00:00.000Z')
+    const result = await splitShoppingListItem(created.id, user.id, [
+      { amount: 4, expirationDate: augFirst },
+      { amount: 2, expirationDate: null },
+    ])
+
+    expect(result).toHaveLength(2)
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(2)
+    // The original line keeps its id as the first portion; a sibling line carries the rest.
+    const original = items.find((item) => item.id === created.id)
+    const sibling = items.find((item) => item.id !== created.id)
+    expect(original?.amount).toBe(4)
+    expect(original?.expirationDate?.getTime()).toBe(augFirst.getTime())
+    expect(original?.food?.id).toBe(food.id)
+    expect(sibling?.amount).toBe(2)
+    expect(sibling?.expirationDate).toBeNull()
+    expect(sibling?.food?.id).toBe(food.id)
+    // The $6 total is split in proportion to amount (4:2), so the parts still sum to $6.
+    expect((original?.linePrice ?? 0) + (sibling?.linePrice ?? 0)).toBe(6)
+    expect(original?.linePrice).toBe(4)
+    expect(sibling?.linePrice).toBe(2)
+  })
+
+  it('rejects a split whose portions do not sum to the line amount', async () => {
+    const user = await createTestUser('v')
+    const food = await createTestFood('TestShopping BadSplit')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
+
+    await expect(
+      splitShoppingListItem(created.id, user.id, [
+        { amount: 4, expirationDate: null },
+        { amount: 1, expirationDate: null },
+      ])
+    ).rejects.toThrow('Portions must sum to the line amount')
+
+    // The line is untouched.
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(6)
+  })
+
+  it('rejects a split whose portion rounds to a zero amount', async () => {
+    const user = await createTestUser('y')
+    const food = await createTestFood('TestShopping SubCent')
+
+    const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+
+    // A sub-cent share rounds to 0.00 at the column scale, so it is rejected rather than stored as a
+    // zero-amount line.
+    await expect(
+      splitShoppingListItem(created.id, user.id, [
+        { amount: 1.999, expirationDate: null },
+        { amount: 0.001, expirationDate: null },
+      ])
+    ).rejects.toThrow('Amount must be greater than zero')
+
+    const items = await getShoppingListItems(user.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(2)
+  })
+
+  it('returns null when another user tries to split a line', async () => {
+    const owner = await createTestUser('w')
+    const intruder = await createTestUser('x')
+    const food = await createTestFood('TestShopping SplitGuarded')
+
+    const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 2, unit: 'g' })
+
+    const result = await splitShoppingListItem(created.id, intruder.id, [
+      { amount: 1, expirationDate: null },
+      { amount: 1, expirationDate: null },
+    ])
+    expect(result).toBeNull()
+
+    const items = await getShoppingListItems(owner.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(2)
   })
 })

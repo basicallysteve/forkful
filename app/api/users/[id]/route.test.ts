@@ -7,6 +7,7 @@ import {
   updateUserPassword,
   updateUsername,
   updateEmailPreferences,
+  updateShoppingPreferences,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
@@ -18,6 +19,7 @@ vi.mock('@/lib/users', () => ({
   updateUserPassword: vi.fn(),
   updateUsername: vi.fn(),
   updateEmailPreferences: vi.fn(),
+  updateShoppingPreferences: vi.fn(),
   deactivateAccount: vi.fn(),
   deleteAccount: vi.fn(),
 }))
@@ -312,6 +314,32 @@ describe('PATCH /api/users/[id] — emailPreferences', () => {
       recipeSuggestionFrequency: 'weekly',
       pantryExpirationFrequency: 'daily',
     })
+  })
+
+  it('updates shopping preferences and returns ok', async () => {
+    (updateShoppingPreferences as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'shoppingPreferences',
+      enableShoppingListPricingCollection: false,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(updateShoppingPreferences).toHaveBeenCalledWith(42, { enableShoppingListPricingCollection: false })
+  })
+
+  it('returns 400 when enableShoppingListPricingCollection is not a boolean', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'shoppingPreferences',
+      enableShoppingListPricingCollection: 'nope',
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateShoppingPreferences).not.toHaveBeenCalled()
   })
 
   it('returns 400 when marketingEmailOptIn is not a boolean', async () => {

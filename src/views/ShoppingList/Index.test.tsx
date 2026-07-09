@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ShoppingListView, { buildShoppingListText } from './Index'
+import ShoppingListView, { buildShoppingListText, groupExpirationPortions, resolveLinePriceTotal } from './Index'
+import { formatUtcDateForInput } from '@/utils/dateHelpers'
 import { resetFoodStore } from '@/stores/food'
 import { useShoppingListStore, resetShoppingListStore } from '@/stores/shoppingList'
 import type { Food } from '@/types/Food'
@@ -12,10 +13,16 @@ vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListItem: vi.fn(),
   apiDeleteShoppingListItem: vi.fn(),
   apiUpdateShoppingListItemStatus: vi.fn(),
+  apiUpdateShoppingListItemDetails: vi.fn(),
+  apiSplitShoppingListItem: vi.fn(),
 }))
 
 vi.mock('@/lib/api/foods', () => ({
   apiFetchFoods: vi.fn(),
+}))
+
+vi.mock('@/lib/api/users', () => ({
+  apiUpdateShoppingPreferences: vi.fn(),
 }))
 
 vi.mock('@/components/FoodSearch/FoodSearch', () => ({
@@ -57,8 +64,9 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import { apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
+import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 
 const mockProduct: Product = {
   id: 42,
@@ -122,6 +130,8 @@ function makeItem(overrides: Partial<ShoppingListItem> = {}): ShoppingListItem {
     food: mockFoods[0],
     amount: 2,
     unit: 'oz',
+    linePrice: null,
+    expirationDate: null,
     addedDate: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
   }
@@ -695,5 +705,362 @@ describe('buildShoppingListText', () => {
         'Build your own shopping list at eatforkful.com',
       ].join('\n'),
     )
+  })
+})
+
+describe('resolveLinePriceTotal', () => {
+  it('carries a directly-entered total through unchanged (already at the cent)', () => {
+    expect(resolveLinePriceTotal('total', 4.5, 3)).toBe(4.5)
+    expect(resolveLinePriceTotal('total', 4.53, 3)).toBe(4.53)
+  })
+
+  it('multiplies a per-unit price by the quantity, rounding the total UP to the cent', () => {
+    expect(resolveLinePriceTotal('per_unit', 1.5, 4)).toBe(6)
+    // A partial cent rounds up so the total never undercharges: 1.005 × 3 = 3.015 → 3.02.
+    expect(resolveLinePriceTotal('per_unit', 1.005, 3)).toBe(3.02)
+    // But a clean total isn't bumped up a penny by float noise: 0.1 × 3 = 0.30000000000000004 → 0.30.
+    expect(resolveLinePriceTotal('per_unit', 0.1, 3)).toBe(0.3)
+  })
+
+  it('returns null for an empty value in either mode', () => {
+    expect(resolveLinePriceTotal('total', null, 2)).toBeNull()
+    expect(resolveLinePriceTotal('per_unit', null, 2)).toBeNull()
+  })
+})
+
+describe('groupExpirationPortions', () => {
+  // A Calendar value is a local Date; the helper normalises to UTC-midnight for both grouping and output.
+  const augFirst = new Date(2026, 7, 1)
+  const augTenth = new Date(2026, 7, 10)
+
+  it('keeps portions with distinct dates as separate groups', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 3, date: augTenth },
+    ])
+    expect(groups).toEqual([
+      { amount: 2, expirationDate: new Date(Date.UTC(2026, 7, 1)) },
+      { amount: 3, expirationDate: new Date(Date.UTC(2026, 7, 10)) },
+    ])
+  })
+
+  it('merges portions that share a calendar day, summing their amounts', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 1, date: new Date(2026, 7, 1, 18, 30) }, // same day, later local time
+    ])
+    expect(groups).toEqual([{ amount: 3, expirationDate: new Date(Date.UTC(2026, 7, 1)) }])
+  })
+
+  it('treats undated portions as their own group and drops non-positive amounts', () => {
+    const groups = groupExpirationPortions([
+      { amount: 2, date: augFirst },
+      { amount: 1, date: null },
+      { amount: 0, date: augTenth },
+    ])
+    expect(groups).toEqual([
+      { amount: 2, expirationDate: new Date(Date.UTC(2026, 7, 1)) },
+      { amount: 1, expirationDate: null },
+    ])
+  })
+})
+
+describe('ShoppingListView — price & expiration', () => {
+  async function openDetailsDialog(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    // The kebab menu portals and stays aria-hidden in jsdom, mirroring the status-menu tests.
+    fireEvent.click(await screen.findByRole('menuitem', { name: /price & expiration/i, hidden: true }))
+    return screen.findByRole('dialog')
+  }
+
+  it('opens the details dialog automatically once a line is checked off as bought', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // No dialog until a line is actually checked off.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(within(list).getByRole('option'))
+
+    // The check-off persists first, then the Price & expiration dialog surfaces for that line.
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('does not open the dialog when a line is marked unavailable or unchecked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', status: 'bought' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Unchecking a bought line (→ to_buy) never prompts.
+    fireEvent.click(within(list).getByRole('option'))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // Marking a line unavailable via the kebab never prompts either.
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /mark unavailable/i, hidden: true }))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('unavailable'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('does not open the dialog when the check-off fails to persist', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+    fireEvent.click(within(list).getByRole('option'))
+
+    // The failed toggle rolls back to to_buy and surfaces the banner — no dialog.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to update/i)
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('to_buy'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('suppresses the auto-prompt and hides the kebab entry when collection is disabled', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+        pricingCollectionEnabled={false}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Checking off no longer pops the dialog.
+    fireEvent.click(within(list).getByRole('option'))
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].status).toBe('bought'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // And the ⋯ menu no longer offers manual entry (but still offers its other actions).
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    expect(await screen.findByRole('menuitem', { name: /remove/i, hidden: true })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /price & expiration/i, hidden: true })).not.toBeInTheDocument()
+  })
+
+  it('shows the off hint and re-enables collection inline', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingPreferences).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+        pricingCollectionEnabled={false}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    expect(screen.getByText(/collection is off/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /click here to enable/i }))
+
+    expect(apiUpdateShoppingPreferences).toHaveBeenCalledWith(7, { enableShoppingListPricingCollection: true })
+    // The hint disappears and manual entry returns.
+    await waitFor(() => expect(screen.queryByText(/collection is off/i)).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'More actions for Chicken Breast' }))
+    expect(await screen.findByRole('menuitem', { name: /price & expiration/i, hidden: true })).toBeInTheDocument()
+  })
+
+  it('disables collection from the modal checkbox on check-off', async () => {
+    vi.mocked(apiUpdateShoppingListItemStatus).mockResolvedValue(undefined)
+    vi.mocked(apiUpdateShoppingPreferences).mockResolvedValue(undefined)
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+        userId={7}
+      />,
+    )
+    const list = await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    // Auto-prompt opens (collection on by default); tick "Don't ask on future shopping lists".
+    fireEvent.click(within(list).getByRole('option'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/don't ask on future shopping lists/i)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('checkbox'))
+
+    expect(apiUpdateShoppingPreferences).toHaveBeenCalledWith(7, { enableShoppingListPricingCollection: false })
+  })
+
+  it('records a total Line Price at check-off and shows it on the row', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: details.linePrice ?? null }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    await user.type(within(dialog).getByRole('spinbutton'), '4.50')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: 4.5, expirationDate: null })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].linePrice).toBe(4.5))
+    expect(await screen.findByText('$4.50')).toBeInTheDocument()
+  })
+
+  it('records a per-unit price multiplied by the quantity, persisting only the total', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: details.linePrice ?? null }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // Switch to per-unit entry, then a $3 unit price on a 2-unit line persists a $6 total.
+    await user.click(within(dialog).getByRole('button', { name: /per unit/i }))
+    await user.type(within(dialog).getByRole('spinbutton'), '3')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: 6, expirationDate: null })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].linePrice).toBe(6))
+  })
+
+  it('records an expiration date picked from the calendar and shows it on the row', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockImplementation(async (_id, details) =>
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', expirationDate: details.expirationDate ?? null }),
+    )
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // Open the Calendar panel, step to next month (so the day is always in the future regardless of the
+    // runner's clock), and pick the 15th.
+    await user.click(within(dialog).getByRole('combobox', { name: /expiration date/i }))
+    await user.click(document.querySelector('.p-datepicker-next') as HTMLElement)
+    const panel = document.querySelector('.p-datepicker') as HTMLElement
+    await user.click(within(panel).getByText('15'))
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    // The picked day persists at UTC midnight, timezone-stable.
+    const now = new Date()
+    const expected = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 15))
+    expect(apiUpdateShoppingListItemDetails).toHaveBeenCalledWith(1, { linePrice: null, expirationDate: expected })
+    await waitFor(() => expect(useShoppingListStore.getState().items[0].expirationDate).toEqual(expected))
+    expect(await screen.findByText(`Exp ${formatUtcDateForInput(expected)}`)).toBeInTheDocument()
+  })
+
+  it('splits the line into date-grouped lines when items get different expiration dates', async () => {
+    const user = userEvent.setup()
+    const seededDate = new Date('2026-08-01T00:00:00.000Z')
+    vi.mocked(apiSplitShoppingListItem).mockResolvedValue([
+      makeItem({ id: 1, food: mockFoods[0], amount: 1, unit: 'oz', expirationDate: seededDate }),
+      makeItem({ id: 2, food: mockFoods[0], amount: 1, unit: 'oz', expirationDate: null }),
+    ])
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', expirationDate: seededDate })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // Switch to per-item dates: the sole portion is seeded with the stored date + full amount.
+    fireEvent.click(within(dialog).getByRole('button', { name: /per item/i }))
+    // Add a second (undated) group and give each portion one unit — two distinct groups → a split.
+    await user.click(within(dialog).getByRole('button', { name: /add date/i }))
+    const qty1 = within(dialog).getByRole('spinbutton', { name: /item 1 quantity/i })
+    const qty2 = within(dialog).getByRole('spinbutton', { name: /item 2 quantity/i })
+    await user.clear(qty1)
+    await user.type(qty1, '1')
+    await user.clear(qty2)
+    await user.type(qty2, '1')
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+
+    expect(apiSplitShoppingListItem).toHaveBeenCalledWith(1, {
+      portions: [
+        { amount: 1, expirationDate: seededDate },
+        { amount: 1, expirationDate: null },
+      ],
+      linePrice: null,
+    })
+    // The one line is replaced by the two the server returns.
+    await waitFor(() => expect(useShoppingListStore.getState().items).toHaveLength(2))
+  })
+
+  it('offers the per-item toggle only when buying more than one', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 1, unit: 'oz' })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+
+    const dialog = await openDetailsDialog(user)
+    // A single-quantity line has nothing to split, so only the whole-line picker shows.
+    expect(within(dialog).queryByRole('button', { name: /per item/i })).not.toBeInTheDocument()
+  })
+
+  it('seeds the dialog from an existing price and shows an error when the save fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiUpdateShoppingListItemDetails).mockRejectedValue(new Error('network'))
+
+    render(
+      <ShoppingListView
+        initialFoods={mockFoods}
+        initialItems={[makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', linePrice: 5 })]}
+      />,
+    )
+    await screen.findByRole('listbox', { name: 'Shopping list items' })
+    // The persisted price is already visible on the row.
+    expect(screen.getByText('$5.00')).toBeInTheDocument()
+
+    const dialog = await openDetailsDialog(user)
+    // The dialog re-seeds from the stored total.
+    expect(within(dialog).getByRole('spinbutton')).toHaveValue('$5.00')
+
+    await user.click(within(dialog).getByRole('button', { name: /^save$/i }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/failed to save/i)
+    // The failed save left the stored price untouched.
+    expect(useShoppingListStore.getState().items[0].linePrice).toBe(5)
   })
 })

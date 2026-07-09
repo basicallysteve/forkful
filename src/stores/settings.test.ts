@@ -12,6 +12,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   marketingEmailOptIn: false,
   recipeSuggestionFrequency: 'weekly',
   pantryExpirationFrequency: 'weekly',
+  enableShoppingListPricingCollection: true,
   dateAdded: new Date('2024-01-01'),
   dateDeleted: null,
   ...overrides,

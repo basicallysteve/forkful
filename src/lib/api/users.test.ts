@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar } from './users'
+import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences } from './users'
 
 const mockUser = {
   id: '1',
@@ -90,6 +90,22 @@ describe('apiLogout', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/logout',
       expect.objectContaining({ method: 'POST', credentials: 'same-origin' })
+    )
+  })
+})
+
+describe('apiUpdateShoppingPreferences', () => {
+  it('sends PATCH with the shoppingPreferences action', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
+
+    await apiUpdateShoppingPreferences(42, { enableShoppingListPricingCollection: false })
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/42',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'shoppingPreferences', enableShoppingListPricingCollection: false }),
+      })
     )
   })
 })

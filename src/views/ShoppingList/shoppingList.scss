@@ -23,6 +23,14 @@
     }
   }
 
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--vscode-border);
+  }
   // Secondary, ghost-style action beside the title: copies the list to the clipboard.
   .share-button {
     flex: 0 0 auto;
@@ -212,6 +220,28 @@
     color: var(--vscode-muted);
   }
 
+  // Shown above the list when the user has turned price/expiration collection off.
+  .collection-off-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--vscode-muted);
+  }
+
+  // Inline "click here to enable" affordance inside the hint — reads as a link, not a button.
+  .collection-enable-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--vscode-accent);
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+  }
+
   // The item list is a PrimeReact Listbox (multiple + checkbox); strip its card chrome so it reads
   // as a plain checklist inside the panel.
   .shopping-list-items.p-listbox {
@@ -291,6 +321,29 @@
     color: var(--vscode-muted);
     font-size: 14px;
     font-variant-numeric: tabular-nums;
+  }
+
+  // The captured Line Price total, right-aligned alongside the quantity.
+  .item-price {
+    flex: 0 0 auto;
+    color: var(--vscode-text);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The optional expiration date, shown as a muted chip so it reads as metadata, not an action.
+  .item-expiration {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    color: var(--vscode-muted);
+    background: var(--vscode-panel-strong);
+    border: 1px solid var(--vscode-border);
   }
 
   // 'unavailable' is carried by an inline amber pill; 'bought' uses the strikethrough below and
@@ -438,5 +491,223 @@
   .p-menuitem-text,
   .p-menuitem-icon {
     color: var(--vscode-danger);
+  }
+}
+
+// The Price & expiration dialog also portals to <body>, so it is styled here at the top level.
+.item-details-dialog {
+  .item-details-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .field-label {
+      font-size: 12px;
+      color: var(--vscode-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .p-inputnumber,
+    .p-calendar {
+      width: 100%;
+    }
+
+    .p-inputnumber-input,
+    .p-calendar .p-inputtext,
+    input[type='date'] {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
+
+    small {
+      color: var(--vscode-muted);
+      font-size: 12px;
+    }
+  }
+
+  // Total / Per unit and Whole line / Per item segmented toggles, mirroring the variant tabs.
+  .price-mode,
+  .expiration-mode {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+  }
+
+  // Per-item date editor: a stack of quantity + date rows with an add control and a running tally.
+  .expiration-portions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .expiration-portion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .p-inputnumber {
+      flex: 0 0 90px;
+      width: 90px;
+    }
+
+    .p-calendar {
+      flex: 1 1 auto;
+    }
+  }
+
+  .portion-remove {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--vscode-danger);
+      background: var(--accent-hover);
+    }
+  }
+
+  .expiration-portions-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .portion-add {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .portion-tally {
+    font-variant-numeric: tabular-nums;
+
+    // Amber when the portions don't yet add up to the line — Save stays disabled until they do.
+    &.is-off {
+      color: var(--vscode-warning);
+    }
+  }
+
+  .price-mode-tab {
+    border: none;
+    background: none;
+    padding: 5px 14px;
+    border-radius: 999px;
+    color: var(--vscode-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.is-active {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:not(.is-active):hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  .price-hint {
+    color: var(--vscode-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .item-details-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  // "Don't ask on future shopping lists" — the profile-preference toggle inside the modal.
+  .collection-skip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--vscode-muted);
+    cursor: pointer;
+  }
+
+  // Footer actions live in the Modal's footer slot. Styled locally (the app's .primary-button /
+  // .ghost-button classes are declared ad-hoc across view stylesheets), mirroring their ghost + accent
+  // look so this dialog matches the other Modals.
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .primary-button {
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  .ghost-button {
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: var(--vscode-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }
