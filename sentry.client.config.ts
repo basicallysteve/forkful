@@ -9,6 +9,7 @@ Sentry.init({
 
   integrations: [
     Sentry.feedbackIntegration({
+      autoInject: true,
       // Match the OS/user-toggle preference set by Forkful's ThemeToggle
       colorScheme: 'system',
       showBranding: false,

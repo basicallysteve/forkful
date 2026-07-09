@@ -1,4 +1,5 @@
 'use client'
+import '../sentry.client.config'
 
 import ToolBar from '@/components/ToolBar'
 import MarketingNav from '@/components/marketing/MarketingNav'

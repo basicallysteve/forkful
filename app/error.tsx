@@ -14,10 +14,12 @@ export default function Error({ error, reset }: ErrorProps) {
     Sentry.captureException(error)
   }, [error])
 
-  function openFeedback() {
+  async function openFeedback() {
     const feedback = Sentry.getFeedback()
     if (feedback) {
-      feedback.openDialog()
+      const form = await feedback?.createForm();
+      form.appendToDom();
+      form.open();
     }
   }
 
