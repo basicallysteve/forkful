@@ -735,7 +735,7 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
   // The Listbox's selection is a live view of which lines are `bought`, derived from status rather than
   // held as separate state — so an optimistic status flip (or its rollback) re-renders the selection.
   const boughtItems = useMemo(() => items.filter((item) => item.status === 'bought'), [items])
-
+  const totalPrice = useMemo(() => ceil2(boughtItems.reduce((sum, item) => sum + (item.linePrice ?? 0), 0)), [boughtItems])
   // A row toggling in or out of the Listbox selection is a manual check-off: map the change to the
   // matching status transition. A plain click toggles one row, so at most one line differs here.
   // `unavailable` is never reached this way — only via a row's kebab menu.
@@ -913,6 +913,11 @@ export default function ShoppingListView({ initialFoods, initialItems }: Shoppin
               pt={{ list: { 'aria-label': 'Shopping list items' } }}
             />
           )}
+          <div className="shopping-list-footer">
+            <strong>Totals: </strong>
+            <p className="shopping-list-count">{boughtItems.length} item{boughtItems.length !== 1 ? 's' : ''}</p>
+            <p className="shopping-list-count">{totalPrice > 0 ? formatPrice(totalPrice) : 'No prices yet'}</p>
+          </div>
         </div>
       </div>
 

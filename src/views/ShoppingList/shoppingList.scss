@@ -23,6 +23,14 @@
     }
   }
 
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--vscode-border);
+  }
   // Secondary, ghost-style action beside the title: copies the list to the clipboard.
   .share-button {
     flex: 0 0 auto;
