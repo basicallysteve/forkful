@@ -4,6 +4,7 @@ import { createFood } from './foods'
 import { createProduct } from './products'
 import { signUp } from './users'
 import {
+  completeShoppingTrip,
   createShoppingListFoodItem,
   createShoppingListFreeformItem,
   createShoppingListProductItem,
@@ -20,6 +21,9 @@ const connectionString = process.env.DATABASE_URL || `postgresql://${process.env
 const pool = new Pool({ connectionString })
 
 async function cleanup() {
+  // Trip Completion turns bought lines into pantry items; clear those first so the FK back to the
+  // shopping line (onDelete set null) and the food/product deletes below have nothing dangling.
+  await pool.query(`DELETE FROM pantry_items WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%')`)
   await pool.query(`DELETE FROM shopping_list_items WHERE shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%'))`)
   await pool.query(`DELETE FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%')`)
   await pool.query(`DELETE FROM products WHERE name LIKE 'TestShopping%'`)
@@ -477,5 +481,165 @@ describe('shopping list data layer (integration)', () => {
     const items = await getShoppingListItems(owner.id)
     expect(items).toHaveLength(1)
     expect(items[0].amount).toBe(2)
+  })
+
+  it('completes a trip: bought food/product lines become pantry items with carried size/expiration and provenance', async () => {
+    const user = await createTestUser('tripA')
+    const food = await createTestFood('TestShopping TripFood')
+    const product = await createTestProduct('TestShopping TripProduct')
+
+    const foodLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
+    const productLine = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
+
+    const expiration = new Date('2026-09-01T00:00:00.000Z')
+    // The bought food line carries a price (not copied to the pantry) and an expiration (carried).
+    await updateShoppingListItemDetails(foodLine.id, user.id, { linePrice: 5, expirationDate: expiration })
+    await updateShoppingListItemStatus(foodLine.id, user.id, 'bought')
+    await updateShoppingListItemStatus(productLine.id, user.id, 'bought')
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result).not.toBeNull()
+    expect(result?.pantryItemsCreated).toBe(2)
+    // Nothing left unbought, so the fresh active list is empty.
+    expect(result?.items).toHaveLength(0)
+
+    // The old list is archived.
+    const lists = await pool.query(`SELECT status FROM shopping_lists WHERE user_id = $1 ORDER BY id`, [user.id])
+    expect(lists.rows.some((row) => row.status === 'archived')).toBe(true)
+
+    // One pantry item per bought line, sizes/expiration/provenance carried; Line Price never copied.
+    const pantry = await pool.query(
+      `SELECT source_type, food_id, product_id, original_size_amount, original_size_unit, current_size_amount, current_size_unit, expiration_date, shopping_list_item_id
+         FROM pantry_items WHERE user_id = $1 ORDER BY id`,
+      [user.id]
+    )
+    expect(pantry.rowCount).toBe(2)
+
+    const foodPantry = pantry.rows.find((row) => row.food_id === food.id)
+    expect(foodPantry.source_type).toBe('food')
+    expect(Number(foodPantry.original_size_amount)).toBe(2)
+    expect(foodPantry.original_size_unit).toBe('oz')
+    expect(Number(foodPantry.current_size_amount)).toBe(2)
+    expect(foodPantry.current_size_unit).toBe('oz')
+    expect(new Date(foodPantry.expiration_date).getTime()).toBe(expiration.getTime())
+    expect(foodPantry.shopping_list_item_id).toBe(foodLine.id)
+
+    const productPantry = pantry.rows.find((row) => row.product_id === product.id)
+    expect(productPantry.source_type).toBe('product')
+    expect(Number(productPantry.original_size_amount)).toBe(1)
+    expect(productPantry.original_size_unit).toBe('box')
+    expect(productPantry.shopping_list_item_id).toBe(productLine.id)
+  })
+
+  it('does not transfer a bought line whose product was soft-deleted since it was added', async () => {
+    const user = await createTestUser('tripSoftDel')
+    const product = await createTestProduct('TestShopping TripSoftDeleted')
+
+    const line = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
+    await updateShoppingListItemStatus(line.id, user.id, 'bought')
+
+    // Soft-delete the product after it was bought but before completion. Such a line is already hidden
+    // from the shopping list and its resulting pantry item would be hidden too, so it must not transfer.
+    await pool.query(`UPDATE products SET date_deleted = now() WHERE id = $1`, [product.id])
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result?.pantryItemsCreated).toBe(0)
+
+    const pantry = await pool.query(`SELECT id FROM pantry_items WHERE user_id = $1`, [user.id])
+    expect(pantry.rowCount).toBe(0)
+  })
+
+  it('does not transfer bought freeform lines to the pantry on completion', async () => {
+    const user = await createTestUser('tripB')
+
+    const freeform = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping TripBags', amount: 3, unit: 'box' })
+    await updateShoppingListItemStatus(freeform.id, user.id, 'bought')
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result?.pantryItemsCreated).toBe(0)
+
+    const pantry = await pool.query(`SELECT id FROM pantry_items WHERE user_id = $1`, [user.id])
+    expect(pantry.rowCount).toBe(0)
+  })
+
+  it('keeps still-unbought lines on a fresh active list when the batch prompt is kept', async () => {
+    const user = await createTestUser('tripC')
+    const bought = await createTestFood('TestShopping TripKeptBought')
+    const toBuy = await createTestFood('TestShopping TripKeptToBuy')
+    const unavailable = await createTestFood('TestShopping TripKeptUnavailable')
+
+    const boughtLine = await createShoppingListFoodItem({ userId: user.id, foodId: bought.id, amount: 1, unit: 'g' })
+    const toBuyLine = await createShoppingListFoodItem({ userId: user.id, foodId: toBuy.id, amount: 1, unit: 'g' })
+    const unavailableLine = await createShoppingListFoodItem({ userId: user.id, foodId: unavailable.id, amount: 1, unit: 'g' })
+    await updateShoppingListItemStatus(boughtLine.id, user.id, 'bought')
+    await updateShoppingListItemStatus(unavailableLine.id, user.id, 'unavailable')
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: true })
+    expect(result?.pantryItemsCreated).toBe(1)
+    // Both the to_buy and the unavailable line are kept together on the new active list.
+    expect(result?.keptCount).toBe(2)
+    expect(result?.droppedCount).toBe(0)
+
+    const activeItems = await getShoppingListItems(user.id)
+    expect(activeItems.map((item) => item.id).sort()).toEqual([toBuyLine.id, unavailableLine.id].sort())
+    // Exactly one active list exists after completion.
+    const active = await pool.query(`SELECT COUNT(*)::int AS count FROM shopping_lists WHERE user_id = $1 AND status = 'active'`, [user.id])
+    expect(active.rows[0].count).toBe(1)
+  })
+
+  it('drops still-unbought lines with the archive when the batch prompt is not kept', async () => {
+    const user = await createTestUser('tripD')
+    const bought = await createTestFood('TestShopping TripDropBought')
+    const toBuy = await createTestFood('TestShopping TripDropToBuy')
+
+    const boughtLine = await createShoppingListFoodItem({ userId: user.id, foodId: bought.id, amount: 1, unit: 'g' })
+    const toBuyLine = await createShoppingListFoodItem({ userId: user.id, foodId: toBuy.id, amount: 1, unit: 'g' })
+    await updateShoppingListItemStatus(boughtLine.id, user.id, 'bought')
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result?.keptCount).toBe(0)
+    expect(result?.droppedCount).toBe(1)
+    // Dropped lines are discarded with the archive: the fresh active list is empty.
+    expect(result?.items).toHaveLength(0)
+
+    // The dropped line stays on the archived list (not deleted) — just no longer on an active list.
+    const stillThere = await pool.query(`SELECT id FROM shopping_list_items WHERE id = $1`, [toBuyLine.id])
+    expect(stillThere.rowCount).toBe(1)
+    const active = await pool.query(`SELECT COUNT(*)::int AS count FROM shopping_lists WHERE user_id = $1 AND status = 'active'`, [user.id])
+    expect(active.rows[0].count).toBe(0)
+  })
+
+  it('adds a new line onto a fresh active list after a completion archived the previous one', async () => {
+    const user = await createTestUser('tripReadd')
+    const food = await createTestFood('TestShopping TripReadd')
+
+    const firstLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+    await updateShoppingListItemStatus(firstLine.id, user.id, 'bought')
+    await completeShoppingTrip(user.id, { keepUnbought: false })
+
+    // Adding after completion must resolve (and, here, create) a fresh active list — never write onto
+    // the archived one. This is the sequential form of the archived-under-lock retry guard.
+    const secondLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    expect(secondLine.id).not.toBe(firstLine.id)
+
+    const active = await getShoppingListItems(user.id)
+    expect(active.map((item) => item.id)).toEqual([secondLine.id])
+
+    // The new line sits on an active list distinct from the archived one holding the first line.
+    const listRows = await pool.query(
+      `SELECT sl.status FROM shopping_list_items sli JOIN shopping_lists sl ON sl.id = sli.shopping_list_id WHERE sli.id = $1`,
+      [secondLine.id]
+    )
+    expect(listRows.rows[0].status).toBe('active')
+  })
+
+  it('returns null when completing a trip with no active list', async () => {
+    const user = await createTestUser('tripE')
+    // Create then archive the only active list, leaving none.
+    await getOrCreateActiveShoppingList(user.id)
+    await completeShoppingTrip(user.id, { keepUnbought: false })
+
+    const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+    expect(result).toBeNull()
   })
 })

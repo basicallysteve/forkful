@@ -75,6 +75,7 @@ function mapPantryItem(
     recipeId: row.recipeId ?? null,
     recipeNameSnapshot: row.recipeNameSnapshot ?? null,
     recipeShortId: recipeShortId ?? null,
+    shoppingListItemId: row.shoppingListItemId ?? null,
     expirationDate,
     originalSize: {
       size: Number(row.originalSizeAmount),
