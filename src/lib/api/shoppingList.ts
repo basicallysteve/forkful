@@ -28,6 +28,27 @@ export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   return raw.map(parseShoppingListItem)
 }
 
+// The outcome of a Pantry-Gap Fill: the Food lines added to (or merged into) the active list for the
+// short ingredients, plus how many ingredients were skipped as already fully stocked.
+export type PantryGapFillResult = {
+  items: ShoppingListItem[]
+  skippedFullyStocked: number
+}
+
+// Pantry-Gap Fill: add only the ingredients a recipe is short on to the active Shopping List. Returns the
+// added/merged lines (parsed to domain objects) and the fully-stocked skip count.
+export async function apiFillPantryGapFromRecipe(recipeShortId: string): Promise<PantryGapFillResult> {
+  const res = await fetch('/api/shopping-list/gap-fill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeShortId }),
+  })
+
+  if (!res.ok) throw new Error('Failed to add missing ingredients to shopping list')
+  const raw: { items: RawShoppingListItem[]; skippedFullyStocked: number } = await res.json()
+  return { items: raw.items.map(parseShoppingListItem), skippedFullyStocked: raw.skippedFullyStocked }
+}
+
 export async function apiCreateShoppingListItem(input: CreateShoppingListItemInput): Promise<ShoppingListItem> {
   const res = await fetch('/api/shopping-list', {
     method: 'POST',

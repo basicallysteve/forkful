@@ -1,9 +1,10 @@
 import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
+import { foods, ingredients, pantryItems, products, recipes, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
 import { EACH_UNIT } from '@/utils/unitConversion'
+import { computePantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap'
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
@@ -676,6 +677,130 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
     amount: data.amount,
     unit,
   })
+}
+
+// The outcome of a Pantry-Gap Fill: the Food lines added (or merged into) the active list for the
+// ingredients that were short, plus how many ingredients were skipped because they were already fully
+// in stock. `null` from the function itself means the recipe wasn't found (→ 404); an empty `items`
+// with a non-zero skip count means everything was already covered.
+export type PantryGapFillResult = {
+  items: ShoppingListItem[]
+  skippedFullyStocked: number
+}
+
+// Pantry-Gap Fill (see CONTEXT.md): populate the active Shopping List with only the *missing* portion of
+// a Recipe's ingredients. Each ingredient is matched against current Pantry stock with the same
+// Food-matching as Meal Preparation Deduction — a `'food'` Pantry Item matches on `foodId`, a
+// `'product'` one on its Product's `parentFoodId`. For any ingredient not fully covered, a `'food'` line
+// referencing that ingredient's Food is added for the shortfall (in the ingredient's unit); fully-stocked
+// ingredients are skipped, and an unconvertible / uncalibrated shortfall falls back to the full required
+// quantity. Returns null when the recipe isn't visible to the user (missing, soft-deleted, or private).
+export async function fillPantryGapFromRecipe(
+  userId: number,
+  recipeShortId: string,
+): Promise<PantryGapFillResult | null> {
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
+
+  if (!recipe) return null
+
+  const ingredientRows = await db
+    .select()
+    .from(ingredients)
+    .innerJoin(foods, eq(ingredients.foodId, foods.id))
+    .where(and(eq(ingredients.recipeId, recipe.id), isNull(ingredients.dateDeleted), isNull(foods.dateDeleted)))
+
+  if (ingredientRows.length === 0) return { items: [], skippedFullyStocked: 0 }
+
+  const foodIds = ingredientRows.map((r) => r.foods.id)
+
+  // Food-sourced Pantry stock matching any ingredient Food (foodId), mirroring Meal Prep Deduction.
+  const foodPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(foods.dateDeleted),
+      inArray(pantryItems.foodId, foodIds),
+    ))
+
+  // Product-sourced Pantry stock whose Product's parentFoodId matches any ingredient Food.
+  const productPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(products, eq(pantryItems.productId, products.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(products.dateDeleted),
+      inArray(products.parentFoodId, foodIds),
+    ))
+
+  const items: ShoppingListItem[] = []
+  let skippedFullyStocked = 0
+
+  for (const { ingredients: ing, foods: food } of ingredientRows) {
+    const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
+
+    const stock: PantryGapStock[] = [
+      ...foodPantryRows
+        .filter((r) => r.foods.id === food.id)
+        .map((r) => ({
+          amount: Number(r.pantry_items.currentSizeAmount),
+          unit: r.pantry_items.currentSizeUnit ?? r.foods.servingUnit ?? 'g',
+          density: r.foods.density != null ? Number(r.foods.density) : undefined,
+          measurements: parseMeasurements(r.foods.measurements),
+        })),
+      ...productPantryRows
+        .filter((r) => r.products.parentFoodId === food.id)
+        .map((r) => ({
+          amount: Number(r.pantry_items.currentSizeAmount),
+          unit: r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
+          density: r.products.density != null ? Number(r.products.density) : undefined,
+          measurements: parseMeasurements(r.products.measurements),
+        })),
+    ]
+
+    const shortfall = computePantryGapShortfall(
+      {
+        requiredQuantity: Number(ing.quantity),
+        unit: ingredientUnit,
+        density: food.density != null ? Number(food.density) : undefined,
+        measurements: parseMeasurements(food.measurements),
+      },
+      stock,
+    )
+
+    // null = the ingredient is already fully in stock; skip it.
+    if (shortfall === null) {
+      skippedFullyStocked++
+      continue
+    }
+
+    // The shortfall derives from persisted numeric(10,2) values, but guard the column ceiling before it
+    // reaches the write — the same range check createShoppingListFoodItem applies to a user-entered amount.
+    assertAmountInRange(shortfall)
+
+    const item = await insertOrMergeItem(userId, {
+      sourceType: 'food',
+      foodId: food.id,
+      productId: null,
+      name: null,
+      amount: shortfall,
+      unit: ingredientUnit,
+    })
+    items.push(item)
+  }
+
+  return { items, skippedFullyStocked }
 }
 
 // Finish a shopping trip (see CONTEXT.md "Shopping Trip Completion"). Archives the user's active list,
