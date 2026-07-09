@@ -609,6 +609,30 @@ describe('shopping list data layer (integration)', () => {
     expect(active.rows[0].count).toBe(0)
   })
 
+  it('adds a new line onto a fresh active list after a completion archived the previous one', async () => {
+    const user = await createTestUser('tripReadd')
+    const food = await createTestFood('TestShopping TripReadd')
+
+    const firstLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+    await updateShoppingListItemStatus(firstLine.id, user.id, 'bought')
+    await completeShoppingTrip(user.id, { keepUnbought: false })
+
+    // Adding after completion must resolve (and, here, create) a fresh active list — never write onto
+    // the archived one. This is the sequential form of the archived-under-lock retry guard.
+    const secondLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+    expect(secondLine.id).not.toBe(firstLine.id)
+
+    const active = await getShoppingListItems(user.id)
+    expect(active.map((item) => item.id)).toEqual([secondLine.id])
+
+    // The new line sits on an active list distinct from the archived one holding the first line.
+    const listRows = await pool.query(
+      `SELECT sl.status FROM shopping_list_items sli JOIN shopping_lists sl ON sl.id = sli.shopping_list_id WHERE sli.id = $1`,
+      [secondLine.id]
+    )
+    expect(listRows.rows[0].status).toBe('active')
+  })
+
   it('returns null when completing a trip with no active list', async () => {
     const user = await createTestUser('tripE')
     // Create then archive the only active list, leaving none.

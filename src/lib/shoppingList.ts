@@ -249,73 +249,94 @@ type ResolvedNewItem = {
   unit: string | null
 }
 
+// A concurrent Shopping Trip Completion can archive the active list between the moment an add resolves
+// it and the moment the add locks its row. Cap how many times the add re-resolves the (new) active list
+// before giving up — a completion creates at most one fresh active list, so a couple of retries covers
+// any realistic interleaving; the extra headroom guards against a pathological double-completion.
+const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
+
 // Insert a new line, or merge into an existing open (to_buy) line with the same source identity and
 // unit. Merging keeps a different unit — or an already-bought line — separate. The whole
 // read-then-write runs in a transaction that locks the parent list row, so two concurrent adds of the
-// same source + unit cannot both miss the existing line and insert duplicates.
+// same source + unit cannot both miss the existing line and insert duplicates. Because a concurrent
+// Trip Completion archives the list while holding that same row lock, we re-check the status once we
+// hold the lock: if the list was archived out from under us we re-resolve the now-current active list
+// and retry, so a line can never land on an archived list.
 async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
-  const shoppingList = await getOrCreateActiveShoppingList(userId)
-
   // A line's identity is its source: the Food, the Product, or the freeform name. Freeform names
   // match case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its
   // original casing). A Food and Product that share a name never merge, because sourceType — and thus
-  // the matched column — differs.
+  // the matched column — differs. Independent of the list, so it is built once outside the retry loop.
   const identityMatch: SQL =
     values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
       : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
         : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
 
-  const itemId = await db.transaction(async (tx) => {
-    await tx
-      .select({ id: shoppingLists.id })
-      .from(shoppingLists)
-      .where(eq(shoppingLists.id, shoppingList.id))
-      .for('update')
+  for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
+    const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-    const [existing] = await tx
-      .select()
-      .from(shoppingListItems)
-      .where(and(
-        eq(shoppingListItems.shoppingListId, shoppingList.id),
-        eq(shoppingListItems.sourceType, values.sourceType),
-        identityMatch,
-        values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
-        eq(shoppingListItems.status, 'to_buy'),
-      ))
+    const itemId = await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: shoppingLists.id, status: shoppingLists.status })
+        .from(shoppingLists)
+        .where(eq(shoppingLists.id, shoppingList.id))
+        .for('update')
 
-    if (existing) {
-      const mergedAmount = Number(existing.amount) + values.amount
-      // Each add is individually in range, but their sum can still exceed the column ceiling.
-      assertAmountInRange(mergedAmount)
-      const [updated] = await tx
-        .update(shoppingListItems)
-        // numeric(10,2): round the merged total to 2 decimals so we never persist a
-        // floating-point artifact like "0.30000000000000004".
-        .set({ amount: mergedAmount.toFixed(2) })
-        .where(eq(shoppingListItems.id, existing.id))
+      // Archived (or gone) after we resolved it — a concurrent Trip Completion won the race. Signal a
+      // retry rather than writing onto a stale list; the next attempt re-resolves the fresh active list.
+      if (!locked || locked.status !== 'active') return null
+
+      const [existing] = await tx
+        .select()
+        .from(shoppingListItems)
+        .where(and(
+          eq(shoppingListItems.shoppingListId, shoppingList.id),
+          eq(shoppingListItems.sourceType, values.sourceType),
+          identityMatch,
+          values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
+          eq(shoppingListItems.status, 'to_buy'),
+        ))
+
+      if (existing) {
+        const mergedAmount = Number(existing.amount) + values.amount
+        // Each add is individually in range, but their sum can still exceed the column ceiling.
+        assertAmountInRange(mergedAmount)
+        const [updated] = await tx
+          .update(shoppingListItems)
+          // numeric(10,2): round the merged total to 2 decimals so we never persist a
+          // floating-point artifact like "0.30000000000000004".
+          .set({ amount: mergedAmount.toFixed(2) })
+          .where(eq(shoppingListItems.id, existing.id))
+          .returning()
+        return updated.id
+      }
+
+      const [row] = await tx
+        .insert(shoppingListItems)
+        .values({
+          shoppingListId: shoppingList.id,
+          sourceType: values.sourceType,
+          foodId: values.foodId,
+          productId: values.productId,
+          name: values.name,
+          amount: values.amount.toFixed(2),
+          unit: values.unit,
+          status: 'to_buy',
+        })
         .returning()
-      return updated.id
-    }
+      return row.id
+    })
 
-    const [row] = await tx
-      .insert(shoppingListItems)
-      .values({
-        shoppingListId: shoppingList.id,
-        sourceType: values.sourceType,
-        foodId: values.foodId,
-        productId: values.productId,
-        name: values.name,
-        amount: values.amount.toFixed(2),
-        unit: values.unit,
-        status: 'to_buy',
-      })
-      .returning()
-    return row.id
-  })
+    // The list was archived mid-add — re-resolve the current active list and try again.
+    if (itemId === null) continue
 
-  const item = await getShoppingListItemById(itemId, userId)
-  if (!item) throw new Error('Failed to create shopping list item')
-  return item
+    const item = await getShoppingListItemById(itemId, userId)
+    if (!item) throw new Error('Failed to create shopping list item')
+    return item
+  }
+
+  // Every attempt found the list archived under the lock (a pathological run of concurrent completions).
+  throw new Error('Failed to create shopping list item')
 }
 
 export type CreateShoppingListFoodItemData = {
