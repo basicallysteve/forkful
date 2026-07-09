@@ -129,6 +129,11 @@ export const pantryItems = pgTable('pantry_items', {
   recipeId: integer('recipe_id')
     .references(() => recipes.id, { onDelete: 'set null' }),
   recipeNameSnapshot: varchar('recipe_name_snapshot', { length: 255 }),
+  // Provenance back to the Shopping List Item that produced this Pantry Item on Shopping Trip
+  // Completion (see CONTEXT.md). Null for items created any other way (manual add, Prepared Meal).
+  // `set null` so archiving/removing the source line never deletes the resulting stock.
+  shoppingListItemId: integer('shopping_list_item_id')
+    .references(() => shoppingListItems.id, { onDelete: 'set null' }),
   expirationDate: timestamp('expiration_date'),
   originalSizeAmount: numeric('original_size_amount', { precision: 10, scale: 2 }).notNull(),
   originalSizeUnit: varchar('original_size_unit', { length: 50 }),

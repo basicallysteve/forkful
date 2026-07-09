@@ -1,13 +1,13 @@
 import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods, products, shoppingListItems, shoppingLists } from '@/db/schema'
+import { foods, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
 import { EACH_UNIT } from '@/utils/unitConversion'
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
-import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
+import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -249,73 +249,94 @@ type ResolvedNewItem = {
   unit: string | null
 }
 
+// A concurrent Shopping Trip Completion can archive the active list between the moment an add resolves
+// it and the moment the add locks its row. Cap how many times the add re-resolves the (new) active list
+// before giving up — a completion creates at most one fresh active list, so a couple of retries covers
+// any realistic interleaving; the extra headroom guards against a pathological double-completion.
+const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
+
 // Insert a new line, or merge into an existing open (to_buy) line with the same source identity and
 // unit. Merging keeps a different unit — or an already-bought line — separate. The whole
 // read-then-write runs in a transaction that locks the parent list row, so two concurrent adds of the
-// same source + unit cannot both miss the existing line and insert duplicates.
+// same source + unit cannot both miss the existing line and insert duplicates. Because a concurrent
+// Trip Completion archives the list while holding that same row lock, we re-check the status once we
+// hold the lock: if the list was archived out from under us we re-resolve the now-current active list
+// and retry, so a line can never land on an archived list.
 async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
-  const shoppingList = await getOrCreateActiveShoppingList(userId)
-
   // A line's identity is its source: the Food, the Product, or the freeform name. Freeform names
   // match case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its
   // original casing). A Food and Product that share a name never merge, because sourceType — and thus
-  // the matched column — differs.
+  // the matched column — differs. Independent of the list, so it is built once outside the retry loop.
   const identityMatch: SQL =
     values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
       : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
         : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
 
-  const itemId = await db.transaction(async (tx) => {
-    await tx
-      .select({ id: shoppingLists.id })
-      .from(shoppingLists)
-      .where(eq(shoppingLists.id, shoppingList.id))
-      .for('update')
+  for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
+    const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-    const [existing] = await tx
-      .select()
-      .from(shoppingListItems)
-      .where(and(
-        eq(shoppingListItems.shoppingListId, shoppingList.id),
-        eq(shoppingListItems.sourceType, values.sourceType),
-        identityMatch,
-        values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
-        eq(shoppingListItems.status, 'to_buy'),
-      ))
+    const itemId = await db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: shoppingLists.id, status: shoppingLists.status })
+        .from(shoppingLists)
+        .where(eq(shoppingLists.id, shoppingList.id))
+        .for('update')
 
-    if (existing) {
-      const mergedAmount = Number(existing.amount) + values.amount
-      // Each add is individually in range, but their sum can still exceed the column ceiling.
-      assertAmountInRange(mergedAmount)
-      const [updated] = await tx
-        .update(shoppingListItems)
-        // numeric(10,2): round the merged total to 2 decimals so we never persist a
-        // floating-point artifact like "0.30000000000000004".
-        .set({ amount: mergedAmount.toFixed(2) })
-        .where(eq(shoppingListItems.id, existing.id))
+      // Archived (or gone) after we resolved it — a concurrent Trip Completion won the race. Signal a
+      // retry rather than writing onto a stale list; the next attempt re-resolves the fresh active list.
+      if (!locked || locked.status !== 'active') return null
+
+      const [existing] = await tx
+        .select()
+        .from(shoppingListItems)
+        .where(and(
+          eq(shoppingListItems.shoppingListId, shoppingList.id),
+          eq(shoppingListItems.sourceType, values.sourceType),
+          identityMatch,
+          values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
+          eq(shoppingListItems.status, 'to_buy'),
+        ))
+
+      if (existing) {
+        const mergedAmount = Number(existing.amount) + values.amount
+        // Each add is individually in range, but their sum can still exceed the column ceiling.
+        assertAmountInRange(mergedAmount)
+        const [updated] = await tx
+          .update(shoppingListItems)
+          // numeric(10,2): round the merged total to 2 decimals so we never persist a
+          // floating-point artifact like "0.30000000000000004".
+          .set({ amount: mergedAmount.toFixed(2) })
+          .where(eq(shoppingListItems.id, existing.id))
+          .returning()
+        return updated.id
+      }
+
+      const [row] = await tx
+        .insert(shoppingListItems)
+        .values({
+          shoppingListId: shoppingList.id,
+          sourceType: values.sourceType,
+          foodId: values.foodId,
+          productId: values.productId,
+          name: values.name,
+          amount: values.amount.toFixed(2),
+          unit: values.unit,
+          status: 'to_buy',
+        })
         .returning()
-      return updated.id
-    }
+      return row.id
+    })
 
-    const [row] = await tx
-      .insert(shoppingListItems)
-      .values({
-        shoppingListId: shoppingList.id,
-        sourceType: values.sourceType,
-        foodId: values.foodId,
-        productId: values.productId,
-        name: values.name,
-        amount: values.amount.toFixed(2),
-        unit: values.unit,
-        status: 'to_buy',
-      })
-      .returning()
-    return row.id
-  })
+    // The list was archived mid-add — re-resolve the current active list and try again.
+    if (itemId === null) continue
 
-  const item = await getShoppingListItemById(itemId, userId)
-  if (!item) throw new Error('Failed to create shopping list item')
-  return item
+    const item = await getShoppingListItemById(itemId, userId)
+    if (!item) throw new Error('Failed to create shopping list item')
+    return item
+  }
+
+  // Every attempt found the list archived under the lock (a pathological run of concurrent completions).
+  throw new Error('Failed to create shopping list item')
 }
 
 export type CreateShoppingListFoodItemData = {
@@ -655,4 +676,102 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
     amount: data.amount,
     unit,
   })
+}
+
+// Finish a shopping trip (see CONTEXT.md "Shopping Trip Completion"). Archives the user's active list,
+// turns every *bought* Food/Product line into exactly one Pantry Item (originalSize = the line's
+// quantity + unit, currentSize equal, expiration carried when set, and a provenance FK back to the
+// source line), and never transfers freeform lines. Still-unbought lines (`to_buy` and `unavailable`
+// together) are handled as one group: when `keepUnbought` they move onto a fresh active list, otherwise
+// they are discarded with the archive. The Line Price stays on the archived line — it is never copied
+// to the Pantry. The whole thing runs in one transaction that locks the active list row, so a
+// concurrent completion (or add) can't race it. Returns null when the user has no active list (→ 404).
+export async function completeShoppingTrip(
+  userId: number,
+  options: { keepUnbought: boolean },
+): Promise<ShoppingTripCompletion | null> {
+  const outcome = await db.transaction(async (tx) => {
+    // Lock the active list so a concurrent completion/add serialises behind this one.
+    const [list] = await tx
+      .select({ id: shoppingLists.id })
+      .from(shoppingLists)
+      .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'active')))
+      .for('update')
+
+    if (!list) return null
+
+    // Join the source Food/Product so a line pointing at a soft-deleted one can be recognised. Freeform
+    // lines join neither. `.select()` returns the joined rows as { shopping_list_items, foods, products }.
+    const rows = await tx
+      .select()
+      .from(shoppingListItems)
+      .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+      .leftJoin(products, eq(shoppingListItems.productId, products.id))
+      .where(eq(shoppingListItems.shoppingListId, list.id))
+
+    // Archive the current list before touching anything else. Doing it first frees the partial unique
+    // "one active list per user" index so the fresh active list below can be inserted.
+    await tx.update(shoppingLists).set({ status: 'archived' }).where(eq(shoppingLists.id, list.id))
+
+    // Bought Food/Product lines with a live source each become one Pantry Item; bought freeform lines
+    // never transfer. A line whose Food/Product was soft-deleted since it was added is skipped too:
+    // getShoppingListItems already hides such a line and getPantryItems would hide the resulting item,
+    // so transferring it would only orphan invisible stock.
+    const transferable = rows.filter(({ shopping_list_items: line, foods: food, products: product }) => {
+      if (line.status !== 'bought') return false
+      if (line.sourceType === 'food') return food != null && food.dateDeleted == null
+      if (line.sourceType === 'product') return product != null && product.dateDeleted == null
+      return false
+    })
+    if (transferable.length > 0) {
+      await tx.insert(pantryItems).values(transferable.map(({ shopping_list_items: line }) => ({
+        userId,
+        sourceType: line.sourceType,
+        foodId: line.foodId,
+        productId: line.productId,
+        // Carried when the line recorded one; null otherwise. Line Price is deliberately not copied.
+        expirationDate: line.expirationDate,
+        // amount is a numeric column, already a string on read — pass it straight through.
+        originalSizeAmount: line.amount,
+        originalSizeUnit: line.unit,
+        currentSizeAmount: line.amount,
+        currentSizeUnit: line.unit,
+        shoppingListItemId: line.id,
+      })))
+    }
+
+    // `to_buy` and `unavailable` are not distinguished here — both are "still unbought" and handled as
+    // one batch. Kept lines move to a new active list; dropped lines stay on the archive.
+    const unbought = rows
+      .map(({ shopping_list_items: line }) => line)
+      .filter((line) => line.status === 'to_buy' || line.status === 'unavailable')
+
+    let keptCount = 0
+    if (options.keepUnbought && unbought.length > 0) {
+      const [newList] = await tx
+        .insert(shoppingLists)
+        .values({ userId, status: 'active' })
+        .returning({ id: shoppingLists.id })
+
+      await tx
+        .update(shoppingListItems)
+        .set({ shoppingListId: newList.id })
+        .where(inArray(shoppingListItems.id, unbought.map((row) => row.id)))
+
+      keptCount = unbought.length
+    }
+
+    return {
+      pantryItemsCreated: transferable.length,
+      keptCount,
+      droppedCount: options.keepUnbought ? 0 : unbought.length,
+    }
+  })
+
+  if (outcome === null) return null
+
+  // Re-read the active list's contents: the kept lines (now on the fresh list) when keeping, else empty
+  // (no active list exists until one is lazily created on the next visit).
+  const items = await getShoppingListItems(userId)
+  return { ...outcome, items }
 }

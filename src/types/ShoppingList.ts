@@ -31,3 +31,14 @@ export type ShoppingListItem = {
   expirationDate: Date | null
   addedDate: Date
 }
+
+// The outcome of a Shopping Trip Completion, shared by the data layer (which produces it) and the API
+// client (which parses it): how many Pantry Items were created, how the still-unbought lines were
+// handled (kept onto a fresh active list, or dropped with the archive), and the new active list's
+// contents afterwards — the kept lines when keeping, otherwise empty.
+export type ShoppingTripCompletion = {
+  pantryItemsCreated: number
+  keptCount: number
+  droppedCount: number
+  items: ShoppingListItem[]
+}
