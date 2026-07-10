@@ -123,3 +123,16 @@ export async function apiUploadImage(file: File): Promise<string> {
   const data = await res.json()
   return data.url
 }
+
+export async function apiScrapeRecipeFromUrl(url: string): Promise<Partial<Recipe> | null> {
+  const res = await fetch('/api/recipes/url-import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json()
+    throw new Error(errorData.error || 'Failed to scrape recipe')
+  }
+  return res.json()
+}

@@ -21,6 +21,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
     "@codemirror/language": "^6.12.3",
+    "@primereact/hooks": "^11.0.0-alpha.1",
     "@react-email/render": "^2.0.8",
     "@sentry/nextjs": "^10.57.0",
     "@types/sanitize-html": "^2.16.1",
@@ -48,6 +49,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-swipeable": "^7.0.2",
+    "recipe-scrapers": "^1.9.0",
     "resend": "^6.12.4",
     "sanitize-html": "^2.17.4",
     "tesseract.js": "^7.0.0",
