@@ -230,16 +230,31 @@ _Avoid_: moderator, superuser
 The average star rating and total Review count for a Recipe, computed at query time from the `reviews` table. Displayed on the recipe detail page as e.g. "★ 4.2 · 18 reviews". No denormalised column on the Recipe.
 _Avoid_: rating score, review summary
 
-## Markdown Recipe Import
-An alternative recipe creation mode on the New Recipe page. The user writes a single structured markdown document — title, metadata (meal, serves, prep/cook time), ingredient list, and numbered steps — which is parsed and converted into a Recipe in one step. Distinct from the Guided Recipe Form (the existing two-tab form). Both modes produce the same Recipe schema; Markdown Recipe Import is purely an authoring shortcut.
+## Recipe Import
+An umbrella for the recipe creation modes that produce a Recipe from an existing document rather than the Guided Recipe Form. Two sources exist: Markdown Recipe Import (the user pastes a structured markdown document) and URL Recipe Import (the user supplies a web URL to scrape). Both sources converge on a single shared Recipe Import Preview and Ingredient Resolution flow, differing only in how the source is parsed into a canonical parsed-recipe structure (title, metadata, ingredient strings, steps). All modes produce the same Recipe schema; Recipe Import is purely an authoring shortcut.
 _Avoid_: paste import, bulk create, template import
 
+## Markdown Recipe Import
+A Recipe Import source in which the user writes a single structured markdown document — title, metadata (meal, serves, prep/cook time), ingredient list, and numbered steps — parsed **client-side** into the canonical parsed-recipe structure (see ADR-0017). Distinct from the Guided Recipe Form (the existing two-tab form).
+
+## URL Recipe Import
+A Recipe Import source in which the user supplies the URL of a recipe web page. The page is fetched and parsed **server-side** (the `recipe-scrapers` library extracts title, description, category, times, yields, ingredient strings, and instructions), then mapped into the same canonical parsed-recipe structure that Markdown Recipe Import produces, so it feeds the identical Recipe Import Preview. Individual ingredient strings use the scraper's own structured parse (quantity, unit, food name) rather than the markdown ingredient regex, as web recipe strings are messier than hand-written markdown. Ingredient section headers (e.g. "For the sauce") are dropped. The fetched URL is subject to the URL Fetch Guard. Because a server round-trip is unavoidable for scraping, ingredient-line parsing happens server-side here — this does not contradict ADR-0017, whose client-side-parsing rationale is specific to markdown. A URL-imported Recipe carries Recipe Attribution back to its source.
+_Avoid_: recipe scraper, link import, web import
+
+## Recipe Attribution
+The link back to a Recipe's original source, captured only for URL Recipe Import. Stored as two nullable columns on the Recipe: `sourceUrl` (the scraper's canonical URL, falling back to the URL the user supplied) and `sourceName` (the scraper's site name, e.g. "NYT Cooking"). Rendered on the recipe detail page as a "Source:" link that opens the original in a new tab; when `sourceName` is absent the link text falls back to the URL's hostname. Recipes created via the Guided Recipe Form or Markdown Recipe Import have no attribution (both columns null). Attribution is display-only — it is not editable in the recipe editor.
+_Avoid_: credit, citation, provenance (provenance is reserved for the Shopping List Item → Pantry Item link)
+
+## URL Fetch Guard
+The set of restrictions applied to a user-supplied URL before the server fetches it for URL Recipe Import, defending against server-side request forgery. Rejects non-http(s) schemes and hostnames resolving to loopback, private, or link-local ranges (`localhost`, `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`), and bounds the fetch with a timeout and a maximum response size. See ADR-0023.
+_Avoid_: SSRF filter, URL allowlist, link validation
+
 ## Recipe Import Preview
-The intermediate state between submitting a Markdown Recipe Import and committing the Recipe to the database. Shows the parsed Recipe with each Ingredient either resolved (matched to a Food), substitutable (up to 3 candidate Foods presented for the user to choose from), or skippable (omitted from the Recipe with a warning that Nutrition Complete status may be affected). Metadata fields not present in the markdown (meal, serves, etc.) are shown as editable fallbacks. The user must confirm the Preview before the Recipe is created.
+The intermediate state between a Recipe Import (Markdown or URL) and committing the Recipe to the database. Shows the parsed Recipe with each Ingredient either resolved (matched to a Food), substitutable (up to 3 candidate Foods presented for the user to choose from), or skippable (omitted from the Recipe with a warning that Nutrition Complete status may be affected). Metadata fields not present in the source (meal, serves, etc.) are shown as editable fallbacks. The user must confirm the Preview before the Recipe is created. Shared verbatim across both Recipe Import sources — it takes a parsed-recipe structure and owns everything from Ingredient Resolution through draft creation.
 _Avoid_: parse result, import confirmation
 
 ## Ingredient Resolution
-The process of matching a parsed ingredient string (from a Markdown Recipe Import) to a Food in the database. First tries a case-insensitive substring match; if no match is found, returns up to 3 candidate Foods ranked by relevance for the user to choose from in the Recipe Import Preview. An ingredient that cannot be matched may be skipped, in which case it is omitted from the Recipe and the Recipe may not be Nutrition Complete.
+The process of matching a parsed ingredient string (from any Recipe Import source) to a Food in the database. First tries a case-insensitive substring match; if no match is found, returns up to 3 candidate Foods ranked by relevance for the user to choose from in the Recipe Import Preview. An ingredient that cannot be matched may be skipped, in which case it is omitted from the Recipe and the Recipe may not be Nutrition Complete.
 _Avoid_: food lookup, ingredient matching
 
 ## Review Like

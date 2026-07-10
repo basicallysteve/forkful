@@ -451,9 +451,9 @@ function Store() {
   if (inputMode === 'guided') {
     panelContent = activeTab === "details" ? detailsTabContent : ingredientsTabContent
   } else if (inputMode === 'markdown') {
-    panelContent = <MarkdownImport onImport={(importedRecipe) => setRecipe(importedRecipe)} />
+    panelContent = <MarkdownImport />
   } else if (inputMode === 'import') {
-    panelContent = (<RecipeImporter onImport={(importedRecipe) => setRecipe(importedRecipe)} />)
+    panelContent = <RecipeImporter />
   }
   
   return (
