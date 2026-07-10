@@ -12,13 +12,16 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-  let { url } = body
+  const { url } = body
   if (!url || typeof url !== 'string') {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })
   }
 
   try {
     const recipe = await scrapeRecipeFromUrl(url)
+    if (!recipe) {
+      return NextResponse.json({ error: 'Failed to scrape recipe' }, { status: 422 })
+    }
     return NextResponse.json(recipe, { status: 200 })
   } catch {
     return NextResponse.json({ error: 'Failed to scrape recipe' }, { status: 500 })

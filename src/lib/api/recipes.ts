@@ -1,5 +1,6 @@
 import type { Recipe, CreateRecipeInput } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
+import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 
 export type RecipeQueryOptions = {
   ingredient?: string
@@ -124,7 +125,7 @@ export async function apiUploadImage(file: File): Promise<string> {
   return data.url
 }
 
-export async function apiScrapeRecipeFromUrl(url: string): Promise<Partial<Recipe> | null> {
+export async function apiScrapeRecipeFromUrl(url: string): Promise<ParsedRecipe> {
   const res = await fetch('/api/recipes/url-import', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

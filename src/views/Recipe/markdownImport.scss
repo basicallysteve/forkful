@@ -121,6 +121,12 @@
     font-size: 13px;
   }
 
+  .mi-resolving {
+    margin: 0 0 10px;
+    color: var(--vscode-fg-muted, #94a3b8);
+    font-size: 13px;
+  }
+
   .mi-preview {
     display: flex;
     flex-direction: column;

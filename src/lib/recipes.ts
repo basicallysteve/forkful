@@ -12,7 +12,9 @@ import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
 import { scrapeRecipe } from "recipe-scrapers"
-import { getFoodsByNames } from '@/lib/foods'
+import { mapScrapedRecipe } from '@/lib/recipeScrapeMapper'
+import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES } from '@/lib/urlFetchGuard'
+import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 
 export type RecipeQueryOptions = {
   user_id?: number
@@ -120,6 +122,8 @@ function mapRecipeRow(
     date_published: row.datePublished ?? null,
     userId: row.userId ?? null,
     serves: row.serves ?? null,
+    sourceUrl: row.sourceUrl ?? null,
+    sourceName: row.sourceName ?? null,
     isPublic: row.isPublic === 1,
     nutritionComplete: row.nutritionComplete ?? true,
     viewCount: row.viewCount ?? 0,
@@ -287,6 +291,8 @@ export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
     cuisineType: data.cuisineType ?? null,
     dietaryTags: data.dietaryTags ?? [],
     serves: data.serves ?? null,
+    sourceUrl: data.sourceUrl ?? null,
+    sourceName: data.sourceName ?? null,
     isPublic: data.isPublic ? 1 : 0,
     nutritionComplete,
     userId: data.userId ?? null,
@@ -498,134 +504,28 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
   }
 }
 
-export async function scrapeRecipeFromUrl(url: string): Promise<Partial<Recipe> | null> {
+export async function scrapeRecipeFromUrl(url: string): Promise<ParsedRecipe | null> {
   try {
-    const html = await fetch(url).then((res) => res.text())
-    const rawRecipe = await scrapeRecipe(html, url);
-    let recipe: Partial<Recipe> = {
-      name: rawRecipe.name ?? '',
-      description: rawRecipe.description ?? '',
-      meal: rawRecipe?.category.find((cat) => ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'].includes(cat)) as Recipe['meal'] | undefined,
-      prepTime: rawRecipe.prepTime ?? null,
-      cookTime: rawRecipe.cookTime ?? null,
-      steps: [],
-      ingredients: [],
-    }
-    //TODO: Map ingredients
-    if(rawRecipe.ingredients && rawRecipe.ingredients.length > 0) {
-      for(const ingredient of rawRecipe.ingredients) {
-        for(const ingredientItem of ingredient.items) {
-          const resolved = await resolveIngredient(ingredientItem.value);
-          if (resolved) {
-            recipe.ingredients.push(resolved);
-          }
+    const safeUrl = assertFetchableUrl(url)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    let html: string
+    try {
+      const res = await fetch(safeUrl, { signal: controller.signal, redirect: 'follow' })
+      const buffer = await res.arrayBuffer()
+      if (buffer.byteLength > MAX_RESPONSE_BYTES) {
+        throw new Error('Response too large')
       }
-    }
-    }
-
-    if(rawRecipe.instructions && rawRecipe.instructions.length > 0) {
-        recipe.steps = rawRecipe.instructions.map((instruction) => {
-          return instruction.items.map((item) => ({ content: item.value }))
-        }).flat(Infinity);
-        console.log(recipe.steps)
+      html = new TextDecoder().decode(buffer)
+    } finally {
+      clearTimeout(timeout)
     }
 
-    return recipe;
+    const rawRecipe = await scrapeRecipe(html, safeUrl.toString())
+    return mapScrapedRecipe(rawRecipe, safeUrl.toString())
   } catch (error) {
-    console.error('Error scraping recipe:', error);
-    return null;
+    console.error('Error scraping recipe:', error)
+    return null
   }
 }
-
-async function resolveIngredient(ingredient: string) {
-  // do regex for numbers like 1, 1.5, 1/2, 1 1/2, etc. and units like tsp, tbsp, cup, oz, g, kg, ml, l, etc.
-  const quantity = ingredient.match(/^\s*\d+(\.\d+)?\s*/)?.[0] ?? '';
-  const unit = ingredient.match(/^\s*\d+(\.\d+)?\s*(tsp|tbs|cup|oz|g|kg|ml|l)\s*/)?.[2] ?? '';
-  //splice after unit to get the food name
-  const foodName = ingredient.slice(quantity.length + unit.length + 1);
-    const STOP_WORDS = new Set(['and', 'or', 'the', 'of', 'a', 'an', 'with', 'in', 'on', 'for'])
-  const uniqueNames = [...new Set([foodName])]
-  const searchTerms = new Set(uniqueNames)
-  for (const name of uniqueNames) {
-    for (const word of name.split(/\s+/)) {
-      if (word.length > 2 && !STOP_WORDS.has(word.toLowerCase())) {
-        searchTerms.add(word)
-      }
-    }
-  }
-  const allFoods = await getFoodsByNames([...searchTerms])
-  
-  let foodNameLower = foodName.toLowerCase()
-  let foodNameWords = foodNameLower.split(/\s+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w))
-  const phraseMatches = allFoods.filter((f) => f.name.toLowerCase().includes(foodNameLower))
-  const wordMatches =
-    phraseMatches.length > 0
-      ? phraseMatches
-      : allFoods.filter((f) => {
-          const fLower = f.name.toLowerCase()
-          return foodNameWords.some((w) => fLower.includes(w))
-        })
-  const matches = wordMatches.slice().sort((a, b) => {
-    const aL = a.name.toLowerCase()
-    const bL = b.name.toLowerCase()
-    const tier = (n: string) => (n === foodNameLower ? 0 : n.startsWith(foodNameLower) ? 1 : 2)
-    return tier(aL) - tier(bL) || aL.localeCompare(bL)
-  })
-  const exact = matches.find((f) => f.name.toLowerCase() === foodNameLower)
-  if (exact) return { quantity: parseFloat(quantity) || 0, unit, foodName: exact.name, foodId: exact.id, status: 'matched' }
-  const candidates = matches.slice(0, 3)
-  if (candidates.length > 0) return { quantity: parseFloat(quantity) || 0, unit, candidates, status: 'candidates' }
-  return { quantity: parseFloat(quantity) || 0, unit, foodName, status: 'unresolved' }
-
-}
-// function resolveIngredient(ingredient: string): { quantity: number; unit: string; foodName: string } | null {
-//   // Simple regex to parse quantity, unit, and food name from a raw ingredient string
-//   // Build search terms: full phrase + meaningful individual words (>2 chars, no stop words)
-//     // so "white vinegar" also searches "vinegar" and can surface "Distilled Vinegar"
-//     const STOP_WORDS = new Set(['and', 'or', 'the', 'of', 'a', 'an', 'with', 'in', 'on', 'for'])
-//     const uniqueNames = [...new Set(ingredients.filter((i) => i.foodName).map((i) => i.foodName!))]
-//     const searchTerms = new Set(uniqueNames)
-//     for (const name of uniqueNames) {
-//       for (const word of name.split(/\s+/)) {
-//         if (word.length > 2 && !STOP_WORDS.has(word.toLowerCase())) {
-//           searchTerms.add(word)
-//         }
-//       }
-//     }
-//     const allFoods = await getFoodsByNames([...searchTerms])
-  
-//     const results: ResolvedIngredient[] = ingredients.map((ing): ResolvedIngredient => {
-//       const base = { raw: ing.raw, parsed: { quantity: ing.quantity, unit: ing.unit, foodName: ing.foodName } }
-  
-//       if (!ing.foodName) {
-//         return { ...base, status: 'unresolved' }
-//       }
-  
-//       const nameLower = ing.foodName.toLowerCase()
-//       const nameWords = nameLower.split(/\s+/).filter((w) => w.length > 2 && !STOP_WORDS.has(w))
-  
-//       // Phrase match first; fall back to word matching so "white vinegar" finds "Distilled Vinegar"
-//       const phraseMatches = allFoods.filter((f) => f.name.toLowerCase().includes(nameLower))
-//       const wordMatches =
-//         phraseMatches.length > 0
-//           ? phraseMatches
-//           : allFoods.filter((f) => {
-//               const fLower = f.name.toLowerCase()
-//               return nameWords.some((w) => fLower.includes(w))
-//             })
-  
-//       const matches = wordMatches.slice().sort((a, b) => {
-//         const aL = a.name.toLowerCase()
-//         const bL = b.name.toLowerCase()
-//         const tier = (n: string) => (n === nameLower ? 0 : n.startsWith(nameLower) ? 1 : 2)
-//         return tier(aL) - tier(bL) || aL.localeCompare(bL)
-//       })
-  
-//       const exact = matches.find((f) => f.name.toLowerCase() === nameLower)
-//       if (exact) return { ...base, status: 'matched', food: exact }
-  
-//       const candidates = matches.slice(0, 3)
-//       if (candidates.length > 0) return { ...base, status: 'candidates', candidates }
-//     return { ...base, status: 'unresolved' }
-//     })
-// }

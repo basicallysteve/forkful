@@ -224,8 +224,11 @@ describe('MarkdownImport — preview state', () => {
     const parseBtn = screen.getByRole('button', { name: /parse & preview/i })
     await user.click(parseBtn)
 
-    // Wait for preview to appear
+    // Wait for preview to appear, then for ingredient resolution to settle
     await screen.findByText('Recipe Details')
+    await waitFor(() =>
+      expect(screen.queryByText('Resolving ingredients…')).not.toBeInTheDocument()
+    )
     return user
   }
 

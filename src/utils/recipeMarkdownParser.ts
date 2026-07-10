@@ -16,6 +16,9 @@ export interface ParsedRecipe {
   description: string
   ingredients: ParsedIngredient[]
   steps: string[]
+  // Attribution — populated only for URL Recipe Import; absent for markdown.
+  sourceUrl?: string | null
+  sourceName?: string | null
 }
 
 const KNOWN_UNITS = new Set([...MASS_UNITS, ...VOLUME_UNITS])

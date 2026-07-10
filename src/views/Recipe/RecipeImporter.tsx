@@ -2,42 +2,72 @@
 import { useState, useMemo } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { apiScrapeRecipeFromUrl } from '@/lib/api/recipes'
-// import { useMask } from '@primereact/hooks'
+import RecipeImportPreview from './RecipeImportPreview'
+import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 import './recipeImporter.scss'
-export default function RecipeImporter({ onImport }: { onImport: (importedRecipe: any) => void }) {
-    // const {ref: urlMask} = useMask({ mask: 'https://*.*/*', placeholder: 'https://example.com/recipe' })
-    const [url, setUrl] = useState('')
 
-    const isValidUrl = useMemo(() => {
-        try {
-            new URL(url)
-            return true
-        } catch (e) {
-            return false
-        }
-    }, [url])
+type Stage = 'url' | 'scraping' | 'preview'
 
-    function handleUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
-        let newUrl = e.target.value
-        if (!newUrl?.startsWith?.('http://') && !newUrl?.startsWith?.('https://')) {
-            newUrl = 'https://' + newUrl
-        }
-        setUrl(newUrl)
+export default function RecipeImporter() {
+  const [url, setUrl] = useState('')
+  const [stage, setStage] = useState<Stage>('url')
+  const [parsed, setParsed] = useState<ParsedRecipe | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const isValidUrl = useMemo(() => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
     }
+  }, [url])
 
-    async function handleImport() {
-        try {
-            const importedRecipe = await apiScrapeRecipeFromUrl(url)
-            onImport(importedRecipe)
-        } catch (error) {
-            console.error('Failed to import recipe:', error)
-        }
+  function handleUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
+    let newUrl = e.target.value
+    if (!newUrl?.startsWith?.('http://') && !newUrl?.startsWith?.('https://')) {
+      newUrl = 'https://' + newUrl
     }
-    return (
+    setUrl(newUrl)
+  }
+
+  async function handleImport() {
+    setError(null)
+    setStage('scraping')
+    try {
+      const importedRecipe = await apiScrapeRecipeFromUrl(url)
+      setParsed(importedRecipe)
+      setStage('preview')
+    } catch {
+      setError("Couldn't import a recipe from that URL. Check the link or try another site.")
+      setStage('url')
+    }
+  }
+
+  if (stage === 'preview' && parsed) {
+    return <RecipeImportPreview parsed={parsed} onBack={() => setStage('url')} />
+  }
+
+  const scraping = stage === 'scraping'
+
+  return (
     <div className="import-panel">
-      <InputText value={url} onChange={handleUrlChange} placeholder="https://example.com/recipe" />
+      <InputText
+        value={url}
+        onChange={handleUrlChange}
+        placeholder="https://example.com/recipe"
+        disabled={scraping}
+      />
+      {error && <p className="import-error" role="alert">{error}</p>}
       <div className="actions">
-        <button disabled={!isValidUrl} onClick={handleImport} type="button" className="primary-button import-button">Import</button>
+        <button
+          disabled={!isValidUrl || scraping}
+          onClick={handleImport}
+          type="button"
+          className="primary-button import-button"
+        >
+          {scraping ? 'Importing…' : 'Import'}
+        </button>
       </div>
     </div>
   )
