@@ -1,0 +1,74 @@
+import * as Sentry from '@sentry/nextjs'
+
+// Client-side Sentry init. In Next.js (App Router + Turbopack) this file is the
+// supported entry point for browser instrumentation — the legacy
+// `sentry.client.config.ts` is not loaded under Turbopack.
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  enabled: true,
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.2,
+  replaysOnErrorSampleRate: 1.0,
+  environment: process.env.NODE_ENV,
+  integrations: [
+    Sentry.browserProfilingIntegration(),
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
+    Sentry.feedbackIntegration({
+      autoInject: true,
+      // Match the OS/user-toggle preference set by Forkful's ThemeToggle
+      colorScheme: 'system',
+      showBranding: false,
+      triggerLabel: 'Report an issue',
+      formTitle: 'Report an Issue',
+      submitButtonLabel: 'Send Report',
+      // Light-mode palette — matches light-color-vars in theme.scss
+      themeLight: {
+        accentBackground: '#10b981',
+        accentForeground: '#ffffff',
+        background: '#ffffff',
+        backgroundHover: '#f1f5f9',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+        foreground: '#0f172a',
+        formBorderRadius: '8px',
+        inputBackground: '#ffffff',
+        inputBorderRadius: '8px',
+        submitBackground: '#10b981',
+        submitForeground: '#ffffff',
+        submitBackgroundHover: '#059669',
+        submitOutlineFocus: 'rgba(16,185,129,0.4)',
+        successColor: '#10b981',
+        errorColor: '#ef4444',
+        cancelBackground: 'transparent',
+        cancelForeground: '#64748b',
+        cancelBorderColor: '#e2e8f0',
+      },
+      // Dark-mode palette — matches dark-color-vars in theme.scss
+      themeDark: {
+        accentBackground: '#34d399',
+        accentForeground: '#ffffff',
+        background: '#0c2b20',
+        backgroundHover: '#123629',
+        border: '1px solid #1c4d38',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+        foreground: '#ecfdf5',
+        formBorderRadius: '8px',
+        inputBackground: '#0c2b20',
+        inputBorderRadius: '8px',
+        submitBackground: '#34d399',
+        submitForeground: '#ffffff',
+        submitBackgroundHover: '#10b981',
+        submitOutlineFocus: 'rgba(52,211,153,0.5)',
+        successColor: '#34d399',
+        errorColor: '#ef4444',
+        cancelBackground: 'transparent',
+        cancelForeground: '#5ab88d',
+        cancelBorderColor: '#1c4d38',
+      },
+    }),
+  ],
+})
+
+// Instruments App Router navigations so client-side route changes are traced.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
