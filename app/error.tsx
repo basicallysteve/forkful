@@ -2,6 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
+import { openFeedbackForm } from '@/utils/sentryFeedback'
 import styles from './error.module.scss'
 
 interface ErrorProps {
@@ -14,15 +15,6 @@ export default function Error({ error, reset }: ErrorProps) {
     Sentry.captureException(error)
   }, [error])
 
-  async function openFeedback() {
-    const feedback = Sentry.getFeedback()
-    if (feedback) {
-      const form = await feedback?.createForm();
-      form.appendToDom();
-      form.open();
-    }
-  }
-
   return (
     <div className={styles.container}>
       <div className={styles.card}>
@@ -31,10 +23,10 @@ export default function Error({ error, reset }: ErrorProps) {
           An unexpected error occurred. You can try again or let us know what happened.
         </p>
         <div className={styles.actions}>
-          <button className="primary-button" onClick={reset}>
+          <button className={styles.primaryBtn} onClick={reset}>
             Try again
           </button>
-          <button className="ghost-button" onClick={openFeedback}>
+          <button className={styles.ghostBtn} onClick={() => openFeedbackForm()}>
             Report issue
           </button>
         </div>

@@ -1,10 +1,13 @@
 import * as Sentry from '@sentry/nextjs'
 
+// Client-side Sentry init. In Next.js (App Router + Turbopack) this file is the
+// supported entry point for browser instrumentation — the legacy
+// `sentry.client.config.ts` is not loaded under Turbopack.
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: true,
   tracesSampleRate: 1.0,
-  replaysSessionSampleRate: .2,
+  replaysSessionSampleRate: 0.2,
   replaysOnErrorSampleRate: 1.0,
   environment: process.env.NODE_ENV,
   integrations: [
@@ -66,3 +69,6 @@ Sentry.init({
     }),
   ],
 })
+
+// Instruments App Router navigations so client-side route changes are traced.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

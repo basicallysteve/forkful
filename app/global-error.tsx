@@ -2,6 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
+import { openFeedbackForm } from '@/utils/sentryFeedback'
 
 interface GlobalErrorProps {
   error: Error & { digest?: string }
@@ -14,15 +15,6 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     Sentry.captureException(error)
   }, [error])
-
-  async function openFeedback() {
-    const feedback = Sentry.getFeedback()
-    if (feedback) {
-      const form = await feedback?.createForm();
-      form.appendToDom();
-      form.open();
-    }
-  }
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -81,7 +73,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <button className="btn btn-primary" onClick={reset}>
               Try again
             </button>
-            <button className="btn btn-secondary" onClick={openFeedback}>
+            <button className="btn btn-secondary" onClick={() => openFeedbackForm()}>
               Report issue
             </button>
           </div>
