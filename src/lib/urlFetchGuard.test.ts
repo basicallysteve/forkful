@@ -39,4 +39,27 @@ describe('assertFetchableUrl', () => {
   it('rejects the cloud metadata link-local address', () => {
     expect(() => assertFetchableUrl('http://169.254.169.254/latest/meta-data/')).toThrow()
   })
+
+  it('rejects decimal/hex encodings of loopback (URL normalises them to dotted-quad)', () => {
+    expect(() => assertFetchableUrl('http://2130706433/x')).toThrow() // 127.0.0.1
+    expect(() => assertFetchableUrl('http://0x7f000001/x')).toThrow() // 127.0.0.1
+  })
+
+  it('rejects IPv4-mapped / -compatible IPv6 forms of internal targets', () => {
+    expect(() => assertFetchableUrl('http://[::ffff:169.254.169.254]/x')).toThrow() // metadata
+    expect(() => assertFetchableUrl('http://[::ffff:127.0.0.1]/x')).toThrow() // loopback
+    expect(() => assertFetchableUrl('http://[::ffff:a9fe:a9fe]/x')).toThrow() // metadata, hextet form
+    expect(() => assertFetchableUrl('http://[::10.0.0.1]/x')).toThrow() // deprecated compatible form
+  })
+
+  it('rejects IPv6 unspecified, unique-local and link-local ranges', () => {
+    expect(() => assertFetchableUrl('http://[::]/x')).toThrow() // unspecified
+    expect(() => assertFetchableUrl('http://[fc00::1]/x')).toThrow() // ULA
+    expect(() => assertFetchableUrl('http://[fd12:3456::1]/x')).toThrow() // ULA
+    expect(() => assertFetchableUrl('http://[fe80::1]/x')).toThrow() // link-local
+  })
+
+  it('still allows a public IPv6 address', () => {
+    expect(assertFetchableUrl('http://[2606:4700:4700::1111]/x').hostname).toBe('[2606:4700:4700::1111]')
+  })
 })
