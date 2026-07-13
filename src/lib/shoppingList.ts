@@ -1,9 +1,10 @@
-import { and, asc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
+import { foods, ingredients, pantryItems, products, recipes, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
 import { EACH_UNIT } from '@/utils/unitConversion'
+import { computePantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap'
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
@@ -255,27 +256,63 @@ type ResolvedNewItem = {
 // any realistic interleaving; the extra headroom guards against a pathological double-completion.
 const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
 
-// Insert a new line, or merge into an existing open (to_buy) line with the same source identity and
-// unit. Merging keeps a different unit — or an already-bought line — separate. The whole
-// read-then-write runs in a transaction that locks the parent list row, so two concurrent adds of the
-// same source + unit cannot both miss the existing line and insert duplicates. Because a concurrent
-// Trip Completion archives the list while holding that same row lock, we re-check the status once we
-// hold the lock: if the list was archived out from under us we re-resolve the now-current active list
-// and retry, so a line can never land on an archived list.
-async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
-  // A line's identity is its source: the Food, the Product, or the freeform name. Freeform names
-  // match case-insensitively, so "Trash bags" and "trash bags" merge (the existing line keeps its
-  // original casing). A Food and Product that share a name never merge, because sourceType — and thus
-  // the matched column — differs. Independent of the list, so it is built once outside the retry loop.
-  const identityMatch: SQL =
-    values.sourceType === 'food' ? eq(shoppingListItems.foodId, values.foodId as number)
-      : values.sourceType === 'product' ? eq(shoppingListItems.productId, values.productId as number)
-        : sql`lower(${shoppingListItems.name}) = lower(${values.name as string})`
+// A line's merge identity: its sourceType, its source (Food id / Product id / lowercased freeform name),
+// and its unit. Two lines merge iff these match. Freeform names fold case-insensitively so "Trash bags"
+// and "trash bags" are one line (the existing line keeps its casing); a Food and Product that share a
+// name never merge, since the sourceType prefix differs. A null unit gets a sentinel so it can't collide
+// with a real unit string. Built as a string key so a whole batch matches against the list's open lines
+// in memory, rather than issuing one identity SELECT per value. ` ` can't appear in a unit, Food id,
+// or name, so it is a safe field separator.
+function lineMergeKey(sourceType: ShoppingListItemSourceType, identity: string, unit: string | null): string {
+  return `${sourceType} ${identity} ${unit ?? ' '}`
+}
+
+function valuesMergeKey(values: ResolvedNewItem): string {
+  const identity = values.sourceType === 'food' ? String(values.foodId)
+    : values.sourceType === 'product' ? String(values.productId)
+      : (values.name as string).toLowerCase()
+  return lineMergeKey(values.sourceType, identity, values.unit)
+}
+
+function rowMergeKey(row: typeof shoppingListItems.$inferSelect): string {
+  const sourceType = row.sourceType as ShoppingListItemSourceType
+  const identity = sourceType === 'food' ? String(row.foodId)
+    : sourceType === 'product' ? String(row.productId)
+      : (row.name ?? '').toLowerCase()
+  return lineMergeKey(sourceType, identity, row.unit)
+}
+
+// One line's write plan: fold a batch onto exactly one plan per merge key. `existingId` is the open line
+// it lands on (null → a fresh insert); `baseAmount` is that line's current amount (0 for an insert); and
+// `addAmount` accumulates every batch value that shares the key. `order` preserves first-seen position.
+type LineWritePlan = {
+  existingId: number | null
+  baseAmount: number
+  addAmount: number
+  template: ResolvedNewItem
+  order: number
+}
+
+// Insert several new lines at once, or merge each into an existing open (to_buy) line with the same
+// source identity and unit — the batch primitive behind every add. Merging keeps a different unit — or
+// an already-bought line — separate. The whole read-then-write runs in ONE transaction that locks the
+// parent list row, so (a) two concurrent adds of the same source + unit cannot both miss the existing
+// line and insert duplicates, and (b) the batch is atomic: if any line fails validation the entire
+// transaction rolls back rather than leaving a partial set of lines behind. Because a concurrent Trip
+// Completion archives the list while holding that same row lock, we re-check the status once we hold it;
+// if the list was archived out from under us we re-resolve the now-current active list and retry, so a
+// line can never land on an archived list. Values within one batch that share identity + unit collapse
+// onto a single line. Instead of a SELECT + write per value, the list's open lines are read once and
+// matched in memory, then all new lines go in as a single bulk insert (merges are per-line amount
+// updates), so the transaction is a small constant number of round-trips regardless of batch size.
+// Returns the resulting lines, deduped and in first-seen order.
+async function insertOrMergeItems(userId: number, valuesList: ResolvedNewItem[]): Promise<ShoppingListItem[]> {
+  if (valuesList.length === 0) return []
 
   for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
     const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-    const itemId = await db.transaction(async (tx) => {
+    const itemIds = await db.transaction(async (tx) => {
       const [locked] = await tx
         .select({ id: shoppingLists.id, status: shoppingLists.status })
         .from(shoppingLists)
@@ -286,57 +323,92 @@ async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promi
       // retry rather than writing onto a stale list; the next attempt re-resolves the fresh active list.
       if (!locked || locked.status !== 'active') return null
 
-      const [existing] = await tx
+      // Read the list's open lines once; every batch value matches against this map in memory.
+      const openRows = await tx
         .select()
         .from(shoppingListItems)
         .where(and(
           eq(shoppingListItems.shoppingListId, shoppingList.id),
-          eq(shoppingListItems.sourceType, values.sourceType),
-          identityMatch,
-          values.unit === null ? isNull(shoppingListItems.unit) : eq(shoppingListItems.unit, values.unit),
           eq(shoppingListItems.status, 'to_buy'),
         ))
+      const existingByKey = new Map<string, { id: number; amount: number }>()
+      for (const row of openRows) existingByKey.set(rowMergeKey(row), { id: row.id, amount: Number(row.amount) })
 
-      if (existing) {
-        const mergedAmount = Number(existing.amount) + values.amount
-        // Each add is individually in range, but their sum can still exceed the column ceiling.
-        assertAmountInRange(mergedAmount)
-        const [updated] = await tx
-          .update(shoppingListItems)
-          // numeric(10,2): round the merged total to 2 decimals so we never persist a
-          // floating-point artifact like "0.30000000000000004".
-          .set({ amount: mergedAmount.toFixed(2) })
-          .where(eq(shoppingListItems.id, existing.id))
-          .returning()
-        return updated.id
+      // Fold the batch into one plan per merge key: in-batch duplicates and matches against an existing
+      // open line both accumulate onto the same plan.
+      const plans = new Map<string, LineWritePlan>()
+      let order = 0
+      for (const values of valuesList) {
+        const key = valuesMergeKey(values)
+        let plan = plans.get(key)
+        if (!plan) {
+          const existing = existingByKey.get(key)
+          plan = { existingId: existing?.id ?? null, baseAmount: existing?.amount ?? 0, addAmount: 0, template: values, order: order++ }
+          plans.set(key, plan)
+        }
+        plan.addAmount += values.amount
+      }
+      const orderedPlans = [...plans.values()].sort((a, b) => a.order - b.order)
+
+      // Validate every final amount before writing anything — covers both a merged total and a plain
+      // insert (baseAmount is 0 for a new line), so the whole batch fails atomically rather than partway.
+      for (const plan of orderedPlans) assertAmountInRange(plan.baseAmount + plan.addAmount)
+
+      const idByKey = new Map<string, number>()
+
+      // All new lines in a single bulk insert. RETURNING preserves the VALUES order (as elsewhere in this
+      // file — see writeSplitPortions), so inserted rows line up with the inserts array by index.
+      const inserts = orderedPlans.filter((plan) => plan.existingId === null)
+      if (inserts.length > 0) {
+        const insertedRows = await tx
+          .insert(shoppingListItems)
+          .values(inserts.map((plan) => ({
+            shoppingListId: shoppingList.id,
+            sourceType: plan.template.sourceType,
+            foodId: plan.template.foodId,
+            productId: plan.template.productId,
+            name: plan.template.name,
+            // numeric(10,2): round to 2 decimals so an accumulated in-batch sum can't persist a
+            // floating-point artifact like "0.30000000000000004".
+            amount: plan.addAmount.toFixed(2),
+            unit: plan.template.unit,
+            status: 'to_buy' as const,
+          })))
+          .returning({ id: shoppingListItems.id })
+        inserts.forEach((plan, index) => idByKey.set(valuesMergeKey(plan.template), insertedRows[index].id))
       }
 
-      const [row] = await tx
-        .insert(shoppingListItems)
-        .values({
-          shoppingListId: shoppingList.id,
-          sourceType: values.sourceType,
-          foodId: values.foodId,
-          productId: values.productId,
-          name: values.name,
-          amount: values.amount.toFixed(2),
-          unit: values.unit,
-          status: 'to_buy',
-        })
-        .returning()
-      return row.id
+      // Each merge is an amount update on its existing open line (its source/unit/status are untouched).
+      for (const plan of orderedPlans) {
+        if (plan.existingId === null) continue
+        await tx
+          .update(shoppingListItems)
+          .set({ amount: (plan.baseAmount + plan.addAmount).toFixed(2) })
+          .where(eq(shoppingListItems.id, plan.existingId))
+        idByKey.set(valuesMergeKey(plan.template), plan.existingId)
+      }
+
+      return orderedPlans.map((plan) => idByKey.get(valuesMergeKey(plan.template)) as number)
     })
 
     // The list was archived mid-add — re-resolve the current active list and try again.
-    if (itemId === null) continue
+    if (itemIds === null) continue
 
-    const item = await getShoppingListItemById(itemId, userId)
-    if (!item) throw new Error('Failed to create shopping list item')
-    return item
+    const items = await getShoppingListItemsByIds(itemIds, userId)
+    if (items.length !== itemIds.length) throw new Error('Failed to create shopping list item')
+    return items
   }
 
   // Every attempt found the list archived under the lock (a pathological run of concurrent completions).
   throw new Error('Failed to create shopping list item')
+}
+
+// Add a single line (insert or merge). Thin wrapper over the batch primitive so every add — one line or
+// many — shares the same locking, merge, and archived-list-retry behaviour.
+async function insertOrMergeItem(userId: number, values: ResolvedNewItem): Promise<ShoppingListItem> {
+  const [item] = await insertOrMergeItems(userId, [values])
+  if (!item) throw new Error('Failed to create shopping list item')
+  return item
 }
 
 export type CreateShoppingListFoodItemData = {
@@ -676,6 +748,140 @@ export async function createShoppingListFreeformItem(data: CreateShoppingListFre
     amount: data.amount,
     unit,
   })
+}
+
+// The outcome of a Pantry-Gap Fill: the Food lines added (or merged into) the active list for the
+// ingredients that were short, plus how many ingredients were skipped because they were already fully
+// in stock. `null` from the function itself means the recipe wasn't found (→ 404); an empty `items`
+// with a non-zero skip count means everything was already covered.
+export type PantryGapFillResult = {
+  items: ShoppingListItem[]
+  skippedFullyStocked: number
+}
+
+// Pantry-Gap Fill (see CONTEXT.md): populate the active Shopping List with only the *missing* portion of
+// a Recipe's ingredients. Each ingredient is matched against current Pantry stock with the same
+// Food-matching as Meal Preparation Deduction — a `'food'` Pantry Item matches on `foodId`, a
+// `'product'` one on its Product's `parentFoodId`. For any ingredient not fully covered, a `'food'` line
+// referencing that ingredient's Food is added for the shortfall (in the ingredient's unit); fully-stocked
+// ingredients are skipped, and an unconvertible / uncalibrated shortfall falls back to the full required
+// quantity. Returns null when the recipe isn't visible to the user (missing, soft-deleted, or private).
+export async function fillPantryGapFromRecipe(
+  userId: number,
+  recipeShortId: string,
+): Promise<PantryGapFillResult | null> {
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(
+      eq(recipes.shortId, recipeShortId),
+      isNull(recipes.dateDeleted),
+      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
+    ))
+
+  if (!recipe) return null
+
+  const ingredientRows = await db
+    .select()
+    .from(ingredients)
+    .innerJoin(foods, eq(ingredients.foodId, foods.id))
+    .where(and(eq(ingredients.recipeId, recipe.id), isNull(ingredients.dateDeleted), isNull(foods.dateDeleted)))
+
+  if (ingredientRows.length === 0) return { items: [], skippedFullyStocked: 0 }
+
+  const foodIds = ingredientRows.map((r) => r.foods.id)
+
+  // Food-sourced Pantry stock matching any ingredient Food (foodId), mirroring Meal Prep Deduction.
+  const foodPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(foods, eq(pantryItems.foodId, foods.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(foods.dateDeleted),
+      inArray(pantryItems.foodId, foodIds),
+    ))
+
+  // Product-sourced Pantry stock whose Product's parentFoodId matches any ingredient Food.
+  const productPantryRows = await db
+    .select()
+    .from(pantryItems)
+    .innerJoin(products, eq(pantryItems.productId, products.id))
+    .where(and(
+      eq(pantryItems.userId, userId),
+      isNull(pantryItems.dateDeleted),
+      isNull(products.dateDeleted),
+      inArray(products.parentFoodId, foodIds),
+    ))
+
+  // Group both stock sources by the ingredient Food they cover once, so each ingredient is an O(1)
+  // lookup below rather than a full scan of every pantry row (the loop was O(ingredients × pantryRows)).
+  const stockByFoodId = new Map<number, PantryGapStock[]>()
+  const addStock = (foodId: number, entry: PantryGapStock) => {
+    const existing = stockByFoodId.get(foodId)
+    if (existing) existing.push(entry)
+    else stockByFoodId.set(foodId, [entry])
+  }
+  for (const r of foodPantryRows) {
+    addStock(r.foods.id, {
+      amount: Number(r.pantry_items.currentSizeAmount),
+      unit: r.pantry_items.currentSizeUnit ?? r.foods.servingUnit ?? 'g',
+      density: r.foods.density != null ? Number(r.foods.density) : undefined,
+      measurements: parseMeasurements(r.foods.measurements),
+    })
+  }
+  for (const r of productPantryRows) {
+    // The query already restricts parentFoodId to foodIds, so it is non-null here; guard for the type.
+    if (r.products.parentFoodId == null) continue
+    addStock(r.products.parentFoodId, {
+      amount: Number(r.pantry_items.currentSizeAmount),
+      unit: r.pantry_items.currentSizeUnit ?? r.products.servingUnit ?? 'g',
+      density: r.products.density != null ? Number(r.products.density) : undefined,
+      measurements: parseMeasurements(r.products.measurements),
+    })
+  }
+
+  // Compute (and validate) every shortfall up front, before any write, so a validation error can't leave
+  // a partially-filled list behind; the write itself is then a single atomic batch (see insertOrMergeItems).
+  const lines: ResolvedNewItem[] = []
+  let skippedFullyStocked = 0
+
+  for (const { ingredients: ing, foods: food } of ingredientRows) {
+    const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
+
+    const shortfall = computePantryGapShortfall(
+      {
+        requiredQuantity: Number(ing.quantity),
+        unit: ingredientUnit,
+        density: food.density != null ? Number(food.density) : undefined,
+        measurements: parseMeasurements(food.measurements),
+      },
+      stockByFoodId.get(food.id) ?? [],
+    )
+
+    // null = the ingredient is already fully in stock; skip it.
+    if (shortfall === null) {
+      skippedFullyStocked++
+      continue
+    }
+
+    // The shortfall derives from persisted numeric(10,2) values, but guard the column ceiling before it
+    // reaches the write — the same range check createShoppingListFoodItem applies to a user-entered amount.
+    assertAmountInRange(shortfall)
+
+    lines.push({
+      sourceType: 'food',
+      foodId: food.id,
+      productId: null,
+      name: null,
+      amount: shortfall,
+      unit: ingredientUnit,
+    })
+  }
+
+  const items = await insertOrMergeItems(userId, lines)
+  return { items, skippedFullyStocked }
 }
 
 // Finish a shopping trip (see CONTEXT.md "Shopping Trip Completion"). Archives the user's active list,
