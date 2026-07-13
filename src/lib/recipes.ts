@@ -13,7 +13,7 @@ import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
 import { scrapeRecipe } from "recipe-scrapers"
 import { mapScrapedRecipe } from '@/lib/recipeScrapeMapper'
-import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES } from '@/lib/urlFetchGuard'
+import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES, MAX_REDIRECTS } from '@/lib/urlFetchGuard'
 import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 
 export type RecipeQueryOptions = {
@@ -504,6 +504,50 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
   }
 }
 
+// Follow redirects manually, re-running the SSRF guard on every hop. `fetch`'s built-in
+// `redirect: 'follow'` would re-validate nothing, so a public page could 302 us onto an
+// internal target (e.g. the cloud metadata endpoint). See ADR-0023.
+async function guardedFetch(startUrl: URL, signal: AbortSignal): Promise<Response> {
+  let url = startUrl
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const res = await fetch(url, { signal, redirect: 'manual' })
+    if (res.status >= 300 && res.status < 400 && res.headers.has('location')) {
+      const location = res.headers.get('location')!
+      // Resolve relative redirects against the current URL, then re-validate scheme + host.
+      url = assertFetchableUrl(new URL(location, url).toString())
+      continue
+    }
+    return res
+  }
+  throw new Error('Too many redirects')
+}
+
+// Read a response body, aborting as soon as it exceeds MAX_RESPONSE_BYTES so a hostile
+// server cannot force us to buffer an unbounded payload into memory.
+async function readCappedBody(res: Response): Promise<string> {
+  const declaredLength = Number(res.headers.get('content-length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    throw new Error('Response too large')
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) return ''
+
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > MAX_RESPONSE_BYTES) {
+      await reader.cancel()
+      throw new Error('Response too large')
+    }
+    chunks.push(value)
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks))
+}
+
 export async function scrapeRecipeFromUrl(url: string): Promise<ParsedRecipe | null> {
   try {
     const safeUrl = assertFetchableUrl(url)
@@ -512,12 +556,8 @@ export async function scrapeRecipeFromUrl(url: string): Promise<ParsedRecipe | n
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     let html: string
     try {
-      const res = await fetch(safeUrl, { signal: controller.signal, redirect: 'follow' })
-      const buffer = await res.arrayBuffer()
-      if (buffer.byteLength > MAX_RESPONSE_BYTES) {
-        throw new Error('Response too large')
-      }
-      html = new TextDecoder().decode(buffer)
+      const res = await guardedFetch(safeUrl, controller.signal)
+      html = await readCappedBody(res)
     } finally {
       clearTimeout(timeout)
     }
