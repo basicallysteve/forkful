@@ -46,3 +46,46 @@
     color: var(--text-muted, #888);
   }
 }
+
+// "Add a new food" modal form. Mirrors the BarcodeCreationModal form idiom so it
+// matches the rest of the app's modals (stacked label above a full-width input).
+.add-food-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    > span {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--vscode-muted, #888);
+    }
+
+    input.text-input,
+    .p-inputtext {
+      width: 100%;
+    }
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .add-food-note {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--vscode-muted, #888);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
