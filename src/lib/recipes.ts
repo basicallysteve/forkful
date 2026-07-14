@@ -510,11 +510,10 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
 async function guardedFetch(startUrl: URL, signal: AbortSignal): Promise<Response> {
   let url = startUrl
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    // `url` is validated by assertFetchableUrl (scheme + SSRF host denylist) before this
-    // call and again on every redirect hop below, so the destination is guarded. CodeQL's
-    // taint analysis can't see the runtime guard; suppress its request-forgery alert here.
-    // Residual DNS-rebinding risk is an accepted trade-off — see ADR-0023.
-    // codeql[js/request-forgery]
+    // SSRF: `url` is validated by assertFetchableUrl (scheme + host denylist) before this
+    // call and re-validated on every redirect hop below. Residual DNS-rebinding risk is an
+    // accepted trade-off — see ADR-0023. (CodeQL flags this user-derived fetch regardless;
+    // the alert is dismissed in code scanning with that justification.)
     const res = await fetch(url, { signal, redirect: 'manual' })
     if (res.status >= 300 && res.status < 400 && res.headers.has('location')) {
       const location = res.headers.get('location')!
