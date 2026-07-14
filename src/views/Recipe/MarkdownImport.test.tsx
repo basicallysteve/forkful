@@ -362,7 +362,15 @@ describe('MarkdownImport — preview state', () => {
 
     await waitFor(() => {
       expect(apiCreateRecipe).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Test Recipe', meal: 'Dinner', serves: 2 })
+        expect.objectContaining({
+          name: 'Test Recipe',
+          meal: 'Dinner',
+          serves: 2,
+          // The editable quantity/unit defaults (seeded from the parse) commit through the override.
+          ingredients: expect.arrayContaining([
+            expect.objectContaining({ quantity: 500, servingUnit: 'g' }),
+          ]),
+        })
       )
       // Two steps in the template
       expect(apiCreateRecipeStep).toHaveBeenCalledTimes(2)

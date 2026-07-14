@@ -193,9 +193,9 @@
 
   .mi-ingredient-raw {
     display: flex;
-    align-items: baseline;
-    gap: 4px;
-    min-width: 160px;
+    align-items: center;
+    gap: 6px;
+    min-width: 220px;
     font-size: 13px;
     color: var(--vscode-text);
   }
@@ -207,6 +207,21 @@
 
   .mi-unit {
     color: var(--vscode-muted);
+    font-size: 12px;
+  }
+
+  // Editable quantity/unit (parser guesses are correctable defaults — see ADR-0024)
+  .mi-qty-input {
+    width: 64px;
+
+    input {
+      width: 100%;
+      text-align: right;
+    }
+  }
+
+  .mi-unit-select {
+    min-width: 84px;
     font-size: 12px;
   }
 
