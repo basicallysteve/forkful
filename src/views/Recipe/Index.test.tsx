@@ -104,6 +104,26 @@ describe('Recipe View Page', () => {
       expect(screen.getByText('Lunch')).toBeInTheDocument()
     })
 
+    it('renders a source attribution link for an imported recipe', () => {
+      const imported = { ...mockRecipe, sourceUrl: 'https://cooking.example.com/r/1', sourceName: 'Example Cooking' }
+      renderWithStores(<Recipe recipe={imported} />)
+      const link = screen.getByRole('link', { name: /example cooking/i })
+      expect(link).toHaveAttribute('href', 'https://cooking.example.com/r/1')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    })
+
+    it('falls back to the hostname when the imported recipe has no source name', () => {
+      const imported = { ...mockRecipe, sourceUrl: 'https://www.example.com/r/1', sourceName: null }
+      renderWithStores(<Recipe recipe={imported} />)
+      expect(screen.getByRole('link', { name: /example\.com/i })).toBeInTheDocument()
+    })
+
+    it('shows no source attribution for a non-imported recipe', () => {
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      expect(screen.queryByText(/^Source:/)).not.toBeInTheDocument()
+    })
+
     it('displays ingredient count', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('2 ingredients')).toBeInTheDocument()

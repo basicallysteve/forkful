@@ -120,6 +120,21 @@
   font-size: 14px;
 }
 
+.recipe-source {
+  margin: -6px 0 18px;
+  color: var(--vscode-muted);
+  font-size: 13px;
+
+  .recipe-source-link {
+    color: var(--vscode-accent, #4ea1ff);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 .recipe-panel {
   border: 1px solid var(--vscode-border);
   border-radius: 12px;

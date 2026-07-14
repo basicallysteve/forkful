@@ -21,6 +21,8 @@ export type Recipe = {
   date_published?: Date | null
   userId?: number | null
   serves?: number | null
+  sourceUrl?: string | null
+  sourceName?: string | null
   isPublic: boolean
   nutritionComplete: boolean
   viewCount?: number
