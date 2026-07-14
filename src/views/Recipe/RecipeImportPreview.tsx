@@ -10,7 +10,7 @@ import { useFoodStore } from '@/stores/food'
 import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { toRecipeUrl } from '@/utils/slug'
-import { calculateCalories } from '@/utils/unitConversion'
+import { calculateCalories, getAllowedUnits } from '@/utils/unitConversion'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
@@ -23,6 +23,10 @@ type IngredientOverride = {
   skipped: boolean
   selectedFood: Food | null
   searchText: string
+  // Editable quantity/unit, seeded from the parse. `unit: null` means "fall back to the
+  // resolved Food's serving unit" — parser guesses are defaults, not commitments (ADR-0024).
+  quantity: number | null
+  unit: string | null
 }
 
 /**
@@ -76,7 +80,13 @@ export default function RecipeImportPreview({
       const data = await res.json()
       setResolved(data.results)
       setOverrides(
-        data.results.map(() => ({ skipped: false, selectedFood: null, searchText: '' }))
+        data.results.map((r: ResolvedIngredient) => ({
+          skipped: false,
+          selectedFood: null,
+          searchText: '',
+          quantity: r.parsed.quantity,
+          unit: r.parsed.unit,
+        }))
       )
     } catch {
       setError('Failed to resolve ingredients. Please try again.')
@@ -104,8 +114,10 @@ export default function RecipeImportPreview({
           if (overrides[i].skipped) return null
           const food = overrides[i].selectedFood ?? r.food
           if (!food) return null
-          const qty = r.parsed.quantity ?? 1
-          const unit = r.parsed.unit ?? food.servingUnit
+          // Commit the user-editable quantity/unit, falling back to the parse and then to the
+          // Food's serving unit when the parsed unit was unrecognised (ADR-0024).
+          const qty = overrides[i].quantity ?? 1
+          const unit = overrides[i].unit ?? food.servingUnit
           const measurement = food.measurements?.find((m) => m.unit === unit)
           const calories =
             calculateCalories({
@@ -282,11 +294,43 @@ function IngredientRow({
   const effectiveStatus = override.selectedFood ? 'matched' : status
   const localFoods = useFoodStore((state) => state.foods)
 
+  // Unit options come from the resolved Food's Measurements plus the units its serving unit /
+  // Density make convertible — the same set the Guided form offers. A parsed unit not in that
+  // set is kept as an extra option so a valid custom unit isn't silently dropped. Until an
+  // ingredient resolves to a Food we can't constrain the list, so we show the parsed unit as-is.
+  const unitOptions = (() => {
+    if (!resolvedFood) return []
+    const stored = (resolvedFood.measurements || []).map((m) => m.unit)
+    const allowed = getAllowedUnits(resolvedFood.servingUnit, resolvedFood.density).filter((u) => !stored.includes(u))
+    const all = [...stored, ...allowed]
+    const extra = override.unit && !all.includes(override.unit) ? [override.unit] : []
+    return [...all, ...extra]
+  })()
+  const unitValue = override.unit ?? resolvedFood?.servingUnit ?? null
+
   return (
     <div className={`mi-ingredient-row mi-ingredient-row--${override.skipped ? 'skipped' : effectiveStatus}`}>
       <div className="mi-ingredient-raw">
-        <span className="mi-qty">{parsed.quantity ?? '?'}</span>
-        <span className="mi-unit">{parsed.unit ?? ''}</span>
+        <InputNumber
+          className="mi-qty-input"
+          value={override.quantity}
+          onValueChange={(e) => onOverride({ quantity: e.value ?? null })}
+          min={0}
+          disabled={override.skipped}
+          aria-label="Quantity"
+        />
+        {resolvedFood ? (
+          <Dropdown
+            className="mi-unit-select"
+            value={unitValue}
+            options={unitOptions.map((u) => ({ label: u, value: u }))}
+            onChange={(e) => onOverride({ unit: e.value })}
+            disabled={override.skipped}
+            aria-label="Unit"
+          />
+        ) : (
+          <span className="mi-unit">{parsed.unit ?? ''}</span>
+        )}
         <span className="mi-food-name">{parsed.foodName ?? resolved.raw}</span>
       </div>
 
