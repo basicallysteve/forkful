@@ -14,28 +14,33 @@ export default function RecipeImporter() {
   const [parsed, setParsed] = useState<ParsedRecipe | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Keep the input verbatim so the field stays fully editable; only add a default scheme when
+  // deriving the URL we validate and submit, so typing/clearing/pasting isn't fought against.
+  const normalizedUrl = useMemo(() => {
+    const trimmed = url.trim()
+    if (!trimmed) return ''
+    return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed
+  }, [url])
+
   const isValidUrl = useMemo(() => {
+    if (!normalizedUrl) return false
     try {
-      new URL(url)
+      new URL(normalizedUrl)
       return true
     } catch {
       return false
     }
-  }, [url])
+  }, [normalizedUrl])
 
   function handleUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
-    let newUrl = e.target.value
-    if (!newUrl?.startsWith?.('http://') && !newUrl?.startsWith?.('https://')) {
-      newUrl = 'https://' + newUrl
-    }
-    setUrl(newUrl)
+    setUrl(e.target.value)
   }
 
   async function handleImport() {
     setError(null)
     setStage('scraping')
     try {
-      const importedRecipe = await apiScrapeRecipeFromUrl(url)
+      const importedRecipe = await apiScrapeRecipeFromUrl(normalizedUrl)
       setParsed(importedRecipe)
       setStage('preview')
     } catch {

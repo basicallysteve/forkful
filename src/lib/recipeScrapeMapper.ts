@@ -1,33 +1,18 @@
 import type { RecipeObject } from 'recipe-scrapers'
 import type { ParsedRecipe, ParsedIngredient } from '@/utils/recipeMarkdownParser'
-import { parseIngredientLine } from '@/utils/recipeMarkdownParser'
+import { parseIngredientLine, normalizeUnitToken } from '@/utils/recipeMarkdownParser'
 
 const MEAL_OPTIONS = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'] as const
 
-// parse-ingredient normalizes units to a canonical id (e.g. "tablespoon"); map those the
-// app understands onto our canonical units (see MASS_UNITS / VOLUME_UNITS in unitConversion).
-// Unrecognised units fall through unchanged — the ingredient still resolves to a Food, it
-// just won't calorie-calc until the user picks a known unit in the preview.
-const UNIT_MAP: Record<string, string> = {
-  teaspoon: 'tsp',
-  tablespoon: 'Tbs',
-  cup: 'cup',
-  ounce: 'oz',
-  'fluid-ounce': 'fl-oz',
-  pound: 'lb',
-  gram: 'g',
-  kilogram: 'kg',
-  milligram: 'mg',
-  milliliter: 'ml',
-  millilitre: 'ml',
-  liter: 'l',
-  litre: 'l',
-}
-
+// parse-ingredient normalizes units to a canonical id (e.g. "tablespoon"); map those the app
+// understands onto our canonical units through the shared alias table (see ADR-0024) so the URL
+// and Markdown import paths agree on unit spelling. Unrecognised units fall through unchanged —
+// the ingredient still resolves to a Food, it just won't calorie-calc until the user picks a
+// known unit in the preview.
 function normalizeUnit(unitId: string | null, unit: string | null): string | null {
-  const key = (unitId ?? unit ?? '').toLowerCase().trim()
-  if (!key) return null
-  return UNIT_MAP[key] ?? unit ?? unitId
+  const raw = (unitId ?? unit ?? '').trim()
+  if (!raw) return null
+  return normalizeUnitToken(raw) ?? unit ?? unitId
 }
 
 // "4 servings" → 4, "Serves 6-8" → 6, "Makes a dozen" → null

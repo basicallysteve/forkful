@@ -101,7 +101,7 @@ function parseLeadingQuantity(text: string): { value: number; rest: string } | n
 
 // Normalise a candidate unit token (case / plural / common alias) to a canonical unit, or null
 // when it is not a recognised unit — in which case it belongs to the food name (see ADR-0024).
-function normalizeUnitToken(token: string): string | null {
+export function normalizeUnitToken(token: string): string | null {
   const lower = token.toLowerCase()
   return UNIT_ALIASES[lower] ?? UNIT_ALIASES[pluralize.singular(lower)] ?? null
 }

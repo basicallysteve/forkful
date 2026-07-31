@@ -554,7 +554,19 @@ async function readCappedBody(res: Response): Promise<string> {
     }
     chunks.push(value)
   }
-  return new TextDecoder().decode(Buffer.concat(chunks))
+
+  // Decode with the charset the server declares (older recipe sites still serve latin-1 /
+  // windows-1252), falling back to UTF-8 when it's absent or unsupported by TextDecoder.
+  const charset = res.headers.get('content-type')?.match(/charset=([^;\s]+)/i)?.[1]
+  const body = Buffer.concat(chunks)
+  if (charset) {
+    try {
+      return new TextDecoder(charset).decode(body)
+    } catch {
+      // Unknown/invalid charset label — fall through to UTF-8.
+    }
+  }
+  return new TextDecoder().decode(body)
 }
 
 export async function scrapeRecipeFromUrl(url: string): Promise<ParsedRecipe | null> {
