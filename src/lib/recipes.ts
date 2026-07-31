@@ -509,6 +509,11 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
 // internal target (e.g. the cloud metadata endpoint). See ADR-0023.
 async function guardedFetch(startUrl: URL, signal: AbortSignal): Promise<Response> {
   let url = startUrl
+
+  const BLACKLISTED_HOSTS = process.env.BLACKLISTED_HOSTS?.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean) ?? []
+  if (BLACKLISTED_HOSTS.includes(url.hostname.toLowerCase())) {
+    throw new Error(`Blocked host: ${url.hostname}`)
+  }
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     // SSRF: `url` is validated by assertFetchableUrl (scheme + host denylist) before this
     // call and re-validated on every redirect hop below. Residual DNS-rebinding risk is an
