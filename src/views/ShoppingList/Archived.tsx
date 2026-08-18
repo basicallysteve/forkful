@@ -1,14 +1,11 @@
 import Link from 'next/link'
 import { formatPrice } from '@/utils/currency'
+import { formatDisplayDate } from '@/utils/dateHelpers'
 import type { ArchivedShoppingListSummary } from '@/types/ShoppingList'
 
 // Read-only price-history index: every completed (archived) Shopping List, most recent first, each
 // summarised by how many lines were bought and the total spent. Rendered server-side — there's no
 // mutation here, so it needs no store or client state.
-function formatListDate(date: Date): string {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 export default function ArchivedShoppingLists({ lists }: { lists: ArchivedShoppingListSummary[] }) {
   return (
     <div className="shopping-list">
@@ -31,7 +28,7 @@ export default function ArchivedShoppingLists({ lists }: { lists: ArchivedShoppi
               {lists.map((list) => (
                 <li key={list.id} className="archived-list-row">
                   <Link href={`/shopping-list/archived/${list.id}`} className="archived-list-link">
-                    <span className="archived-list-date">{formatListDate(list.dateAdded)}</span>
+                    <span className="archived-list-date">{formatDisplayDate(list.dateAdded)}</span>
                     <span className="archived-list-count">
                       {list.boughtItemCount} item{list.boughtItemCount !== 1 ? 's' : ''}
                     </span>

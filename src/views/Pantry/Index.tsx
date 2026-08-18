@@ -9,6 +9,7 @@ import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
 import { formatPrice } from '@/utils/currency'
+import { formatDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
@@ -119,11 +120,7 @@ export default function Pantry() {
 
   function formatDate(date: Date | null): string {
     if (!date) return 'No expiration'
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return formatDisplayDate(new Date(date))
   }
 
   function getStatusLabel(status: PantryItemStatus): string {

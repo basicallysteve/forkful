@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
-  apiFetchArchivedShoppingList,
-  apiFetchArchivedShoppingLists,
   apiFetchShoppingListItems,
   apiSplitShoppingListItem,
   apiUpdateShoppingListItemDetails,
@@ -61,52 +59,6 @@ describe('apiFetchShoppingListItems', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
 
     await expect(apiFetchShoppingListItems()).rejects.toThrow('Failed to fetch shopping list items')
-  })
-})
-
-describe('apiFetchArchivedShoppingLists', () => {
-  it('fetches the archived index and parses each list date', async () => {
-    const raw = [{ id: 3, dateAdded: '2026-02-01T00:00:00.000Z', boughtItemCount: 2, pricedItemCount: 2, totalSpent: 12.5 }]
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => raw } as Response)
-
-    const result = await apiFetchArchivedShoppingLists()
-
-    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/archived')
-    expect(result).toEqual([
-      { id: 3, dateAdded: new Date('2026-02-01T00:00:00.000Z'), boughtItemCount: 2, pricedItemCount: 2, totalSpent: 12.5 },
-    ])
-  })
-
-  it('throws on a non-ok response', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
-    await expect(apiFetchArchivedShoppingLists()).rejects.toThrow('Failed to fetch archived shopping lists')
-  })
-})
-
-describe('apiFetchArchivedShoppingList', () => {
-  it('fetches one archived list and parses its items and date', async () => {
-    const raw = { id: 3, dateAdded: '2026-02-01T00:00:00.000Z', totalSpent: 2, items: [mockRawItem] }
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => raw } as Response)
-
-    const result = await apiFetchArchivedShoppingList(3)
-
-    expect(fetch).toHaveBeenCalledWith('/api/shopping-list/archived/3')
-    expect(result).toEqual({
-      id: 3,
-      dateAdded: new Date('2026-02-01T00:00:00.000Z'),
-      totalSpent: 2,
-      items: [mockParsedItem],
-    })
-  })
-
-  it('returns null on a 404', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
-    expect(await apiFetchArchivedShoppingList(999)).toBeNull()
-  })
-
-  it('throws on a non-404 error response', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
-    await expect(apiFetchArchivedShoppingList(3)).rejects.toThrow('Failed to fetch archived shopping list')
   })
 })
 

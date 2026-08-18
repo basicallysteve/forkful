@@ -1,4 +1,4 @@
-import type { ArchivedShoppingList, ArchivedShoppingListSummary, ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
+import type { ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate' | 'expirationDate'> & {
   addedDate: string
@@ -20,32 +20,6 @@ export type CreateShoppingListItemInput =
   | { sourceType: 'food'; foodId: number; amount: number; unit: string }
   | { sourceType: 'product'; productId: number; amount: number; unit: string }
   | { sourceType: 'freeform'; name: string; amount: number; unit?: string | null }
-
-// Over the wire an archived list summary carries dateAdded as an ISO string; parse it back to a Date.
-type RawArchivedShoppingListSummary = Omit<ArchivedShoppingListSummary, 'dateAdded'> & { dateAdded: string }
-type RawArchivedShoppingList = Omit<ArchivedShoppingList, 'dateAdded' | 'items'> & {
-  dateAdded: string
-  items: RawShoppingListItem[]
-}
-
-// The archived-lists index for the price-history browse view: each completed list with its bought-line
-// count and total spent, most recent first.
-export async function apiFetchArchivedShoppingLists(): Promise<ArchivedShoppingListSummary[]> {
-  const res = await fetch('/api/shopping-list/archived')
-  if (!res.ok) throw new Error('Failed to fetch archived shopping lists')
-  const raw: RawArchivedShoppingListSummary[] = await res.json()
-  return raw.map((list) => ({ ...list, dateAdded: new Date(list.dateAdded) }))
-}
-
-// One archived list opened from the index: its bought lines (each with its Line Price) and total spent.
-// Returns null on a 404 so the caller can render a "not found" state rather than throw.
-export async function apiFetchArchivedShoppingList(id: number): Promise<ArchivedShoppingList | null> {
-  const res = await fetch(`/api/shopping-list/archived/${id}`)
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error('Failed to fetch archived shopping list')
-  const raw: RawArchivedShoppingList = await res.json()
-  return { ...raw, dateAdded: new Date(raw.dateAdded), items: raw.items.map(parseShoppingListItem) }
-}
 
 export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
   const res = await fetch('/api/shopping-list')

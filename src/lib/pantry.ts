@@ -178,6 +178,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
       .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
+      // Provenance link to the source Shopping List Item, so purchase price surfaces through the FK.
+      .leftJoin(shoppingListItems, eq(pantryItems.shoppingListItemId, shoppingListItems.id))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -193,7 +195,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
       row.products ? mapProductRow(row.products) : undefined,
-      row.recipes?.shortId ?? null
+      row.recipes?.shortId ?? null,
+      row.shopping_list_items?.linePrice ?? null
     ))
   } catch {
     return []
