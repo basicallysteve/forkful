@@ -73,6 +73,8 @@ export const recipes = pgTable('recipes', {
   dietaryTags: jsonb('dietary_tags').$type<string[]>().default([]),
   isPublic: integer('is_public').notNull().default(0),
   serves: integer('serves'),
+  sourceUrl: text('source_url'),
+  sourceName: varchar('source_name', { length: 255 }),
   nutritionComplete: boolean('nutrition_complete').notNull().default(true),
   viewCount: integer('view_count').notNull().default(0),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),

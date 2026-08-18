@@ -24,10 +24,28 @@ import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
 import PrepareMealDialog from '@/components/PrepareMealDialog/PrepareMealDialog'
+import { apiFillPantryGapFromRecipe } from '@/lib/api/shoppingList'
 import SignupWall from '@/components/SignupWall/SignupWall'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
+
+// Attribution link back to the original recipe for URL-imported recipes.
+function RecipeSource({ recipe }: { recipe: Recipe }) {
+  if (!recipe.sourceUrl) return null
+  let label = recipe.sourceName
+  if (!label) {
+    try { label = new URL(recipe.sourceUrl).hostname.replace(/^www\./, '') } catch { label = recipe.sourceUrl }
+  }
+  return (
+    <p className="recipe-source">
+      Source:{' '}
+      <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="recipe-source-link">
+        {label} ↗
+      </a>
+    </p>
+  )
+}
 
 interface RecipeProps {
   recipe: Recipe
@@ -48,6 +66,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [saved, setSaved] = useState(initialSaved)
   const [savePending, setSavePending] = useState(false)
   const [prepareMealVisible, setPrepareMealVisible] = useState(false)
+  const [gapFillPending, setGapFillPending] = useState(false)
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>({ ...recipe })
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
@@ -148,6 +167,34 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   function handleCopyRecipe() {
     // Placeholder for copy recipe functionality
     console.log('Copy recipe clicked:', recipe.name)
+  }
+
+  // Pantry-Gap Fill: add only the ingredients this recipe is short on to the active shopping list.
+  async function handleFillPantryGap() {
+    setGapFillPending(true)
+    try {
+      const { items, skippedFullyStocked } = await apiFillPantryGapFromRecipe(currentRecipe.shortId)
+      if (items.length === 0) {
+        toast.current?.show({
+          severity: 'info',
+          summary: 'Nothing to add',
+          detail: skippedFullyStocked > 0
+            ? 'Your pantry already covers every ingredient.'
+            : 'This recipe has no ingredients to add.',
+          life: 3500,
+        })
+      } else {
+        const added = `Added ${items.length} missing ${items.length === 1 ? 'ingredient' : 'ingredients'} to your shopping list.`
+        const skipped = skippedFullyStocked > 0
+          ? ` ${skippedFullyStocked} already in stock.`
+          : ''
+        toast.current?.show({ severity: 'success', summary: 'Shopping list updated', detail: added + skipped, life: 4000 })
+      }
+    } catch {
+      toast.current?.show({ severity: 'error', summary: 'Could not update shopping list', detail: 'Please try again.', life: 4000 })
+    } finally {
+      setGapFillPending(false)
+    }
   }
 
   // Helper: calories for a given quantity + unit, falling back to 0 if unconvertible
@@ -422,6 +469,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
           />
 
+          <RecipeSource recipe={recipe} />
+
           {hasMeta && (
             <section className="recipe-meta-display">
               <div className="meta-pills">
@@ -490,6 +539,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             dangerouslySetInnerHTML={{ __html: sanitizeRichText(displayRecipe.description) }}
           />
         )}
+
+        {!editMode && <RecipeSource recipe={displayRecipe} />}
 
         {editMode && (
           <section className="recipe-meta-fields">
@@ -665,6 +716,17 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                       aria-label="Prepare this meal and save to pantry"
                     >
                       Prepare Meal
+                    </button>
+                  )}
+                  {isLoggedIn && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={handleFillPantryGap}
+                      disabled={gapFillPending}
+                      aria-label="Add missing ingredients to your shopping list"
+                    >
+                      {gapFillPending ? 'Adding…' : 'Add Missing to List'}
                     </button>
                   )}
                   {visibilityButton}
