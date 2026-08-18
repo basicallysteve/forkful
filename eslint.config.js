@@ -5,7 +5,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '.next']),
+  // Match these anywhere in the tree, not just at the repo root: agent isolation runs leave full repo
+  // copies (each with their own build output) under .claude/worktrees, and those must not be linted.
+  globalIgnores(['**/dist/**', '**/.next/**', '.claude/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
