@@ -1,8 +1,9 @@
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { db } from '@/db'
-import { foods, ingredients, pantryItems, products, recipes, shoppingListItems, shoppingLists } from '@/db/schema'
+import { foods, ingredients, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
+import { getRecipeByShortId } from '@/lib/recipes'
 import { EACH_UNIT } from '@/utils/unitConversion'
 import { computePantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap'
 import { round2 } from '@/utils/number'
@@ -379,14 +380,17 @@ async function insertOrMergeItems(userId: number, valuesList: ResolvedNewItem[])
       }
 
       // Each merge is an amount update on its existing open line (its source/unit/status are untouched).
-      for (const plan of orderedPlans) {
-        if (plan.existingId === null) continue
-        await tx
+      // Every merge targets a distinct existing line, so they're issued together (pipelined on the tx
+      // connection) rather than awaited one at a time — N merges cost one round-trip's worth of latency,
+      // not N, keeping the lock-holding transaction short regardless of batch size.
+      const merges = orderedPlans.filter((plan): plan is LineWritePlan & { existingId: number } => plan.existingId !== null)
+      await Promise.all(merges.map((plan) =>
+        tx
           .update(shoppingListItems)
           .set({ amount: (plan.baseAmount + plan.addAmount).toFixed(2) })
           .where(eq(shoppingListItems.id, plan.existingId))
-        idByKey.set(valuesMergeKey(plan.template), plan.existingId)
-      }
+      ))
+      for (const plan of merges) idByKey.set(valuesMergeKey(plan.template), plan.existingId)
 
       return orderedPlans.map((plan) => idByKey.get(valuesMergeKey(plan.template)) as number)
     })
@@ -770,15 +774,9 @@ export async function fillPantryGapFromRecipe(
   userId: number,
   recipeShortId: string,
 ): Promise<PantryGapFillResult | null> {
-  const [recipe] = await db
-    .select({ id: recipes.id })
-    .from(recipes)
-    .where(and(
-      eq(recipes.shortId, recipeShortId),
-      isNull(recipes.dateDeleted),
-      or(eq(recipes.userId, userId), eq(recipes.isPublic, 1)),
-    ))
-
+  // Reuse the canonical recipe-visibility rule (undeleted + owned-or-public) rather than re-deriving it
+  // here, so gap-fill can't drift from the rest of the app if that rule changes.
+  const recipe = await getRecipeByShortId(recipeShortId, userId)
   if (!recipe) return null
 
   const ingredientRows = await db
@@ -842,17 +840,29 @@ export async function fillPantryGapFromRecipe(
     })
   }
 
+  // Several ingredient rows can resolve to the same Food (a recipe that legitimately lists eggs twice, say).
+  // Combine their required quantities per (Food, unit) first, so the matching pantry stock is credited once
+  // against the *total* requirement instead of being re-credited in full to each row — which would treat
+  // each row as separately covered and under-buy.
+  type Requirement = { food: typeof foods.$inferSelect; unit: string; required: number }
+  const requirementByFoodUnit = new Map<string, Requirement>()
+  for (const { ingredients: ing, foods: food } of ingredientRows) {
+    const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
+    const key = lineMergeKey('food', String(food.id), ingredientUnit)
+    const existing = requirementByFoodUnit.get(key)
+    if (existing) existing.required += Number(ing.quantity)
+    else requirementByFoodUnit.set(key, { food, unit: ingredientUnit, required: Number(ing.quantity) })
+  }
+
   // Compute (and validate) every shortfall up front, before any write, so a validation error can't leave
   // a partially-filled list behind; the write itself is then a single atomic batch (see insertOrMergeItems).
   const lines: ResolvedNewItem[] = []
   let skippedFullyStocked = 0
 
-  for (const { ingredients: ing, foods: food } of ingredientRows) {
-    const ingredientUnit = ing.servingUnit ?? food.servingUnit ?? 'g'
-
+  for (const { food, unit: ingredientUnit, required } of requirementByFoodUnit.values()) {
     const shortfall = computePantryGapShortfall(
       {
-        requiredQuantity: Number(ing.quantity),
+        requiredQuantity: required,
         unit: ingredientUnit,
         density: food.density != null ? Number(food.density) : undefined,
         measurements: parseMeasurements(food.measurements),
