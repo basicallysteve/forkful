@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, or, gt, count } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, ingredients, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -1004,7 +1004,9 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
   const lists = await db
     .select()
     .from(shoppingLists)
-    .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'archived')))
+    .fullJoin(shoppingListItems, eq(shoppingLists.id, shoppingListItems.shoppingListId))
+    .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'archived'), eq(shoppingListItems.status, 'bought')))
+    .having(gt(count(shoppingListItems.id), 0))
     .orderBy(desc(shoppingLists.dateAdded), desc(shoppingLists.id))
 
   if (lists.length === 0) return []
