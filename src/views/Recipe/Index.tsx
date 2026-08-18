@@ -29,6 +29,23 @@ import SignupWall from '@/components/SignupWall/SignupWall'
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
 
+// Attribution link back to the original recipe for URL-imported recipes.
+function RecipeSource({ recipe }: { recipe: Recipe }) {
+  if (!recipe.sourceUrl) return null
+  let label = recipe.sourceName
+  if (!label) {
+    try { label = new URL(recipe.sourceUrl).hostname.replace(/^www\./, '') } catch { label = recipe.sourceUrl }
+  }
+  return (
+    <p className="recipe-source">
+      Source:{' '}
+      <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="recipe-source-link">
+        {label} ↗
+      </a>
+    </p>
+  )
+}
+
 interface RecipeProps {
   recipe: Recipe
   foods?: Food[]
@@ -422,6 +439,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
           />
 
+          <RecipeSource recipe={recipe} />
+
           {hasMeta && (
             <section className="recipe-meta-display">
               <div className="meta-pills">
@@ -490,6 +509,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             dangerouslySetInnerHTML={{ __html: sanitizeRichText(displayRecipe.description) }}
           />
         )}
+
+        {!editMode && <RecipeSource recipe={displayRecipe} />}
 
         {editMode && (
           <section className="recipe-meta-fields">

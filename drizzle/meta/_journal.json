@@ -218,6 +218,13 @@
       "when": 1783601398624,
       "tag": "0030_solid_darwin",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1783684274555,
+      "tag": "0031_motionless_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
