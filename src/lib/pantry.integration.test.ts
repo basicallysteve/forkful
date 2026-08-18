@@ -308,7 +308,7 @@ describe('pantry data layer (integration)', () => {
 
   describe('purchase price through the provenance FK', () => {
     it('surfaces the source Shopping List Item’s Line Price on a pantry item created by a trip', async () => {
-      const user = await createTestUser(`price_${Date.now()}`)
+      const user = await createTestUser('plink')
       const food = await createTestFood()
 
       // Buy a priced line, then complete the trip so it becomes a pantry item carrying the FK back to it.
@@ -328,7 +328,7 @@ describe('pantry data layer (integration)', () => {
     })
 
     it('reports a null purchase price for a manually-added pantry item (no source line)', async () => {
-      const user = await createTestUser(`noprice_${Date.now()}`)
+      const user = await createTestUser('noplink')
       const food = await createTestFood()
 
       const item = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
