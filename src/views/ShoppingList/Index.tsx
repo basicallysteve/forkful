@@ -918,6 +918,10 @@ export default function ShoppingListView({
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
           <div className="shopping-list-header-actions">
+            <a href="/shopping-list/archived" className="share-button">
+              <i className="pi pi-history" aria-hidden="true" />
+              History
+            </a>
             <button
               type="button"
               className="share-button"

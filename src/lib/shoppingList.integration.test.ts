@@ -12,6 +12,8 @@ import {
   createShoppingListProductItem,
   deleteShoppingListItem,
   fillPantryGapFromRecipe,
+  getArchivedShoppingListById,
+  getArchivedShoppingLists,
   getOrCreateActiveShoppingList,
   getShoppingListItems,
   splitShoppingListItem,
@@ -828,6 +830,81 @@ describe('shopping list data layer (integration)', () => {
       const user = await createTestUser('gapD')
       const result = await fillPantryGapFromRecipe(user.id, 'n/ a-none')
       expect(result).toBeNull()
+    })
+  })
+
+  describe('Archived lists & price history', () => {
+    it('lists archived lists most-recent-first with a bought-line count and total spent', async () => {
+      const user = await createTestUser('archIndex')
+      const food = await createTestFood('TestShopping ArchFood')
+
+      // First trip: two bought lines, one priced ($5) and one left unpriced. Total spent = 5.
+      const lineA = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
+      const lineB = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+      await updateShoppingListItemDetails(lineA.id, user.id, { linePrice: 5 })
+      await updateShoppingListItemStatus(lineA.id, user.id, 'bought')
+      await updateShoppingListItemStatus(lineB.id, user.id, 'bought')
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      // Second trip: one bought priced line ($7) plus a still-unbought line (excluded from the count).
+      const lineC = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'oz' })
+      await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 4, unit: 'g' })
+      await updateShoppingListItemDetails(lineC.id, user.id, { linePrice: 7 })
+      await updateShoppingListItemStatus(lineC.id, user.id, 'bought')
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      const lists = await getArchivedShoppingLists(user.id)
+      expect(lists).toHaveLength(2)
+      // Most recent first: the second trip (1 bought line, $7) leads.
+      expect(lists[0].boughtItemCount).toBe(1)
+      expect(lists[0].totalSpent).toBe(7)
+      // The first trip: two bought lines, only one priced, so the total is $5.
+      expect(lists[1].boughtItemCount).toBe(2)
+      expect(lists[1].totalSpent).toBe(5)
+    })
+
+    it('returns an archived list’s bought lines with their Line Prices and the total spent', async () => {
+      const user = await createTestUser('archDetail')
+      const food = await createTestFood('TestShopping ArchDetailFood')
+
+      const boughtPriced = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
+      const boughtUnpriced = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+      // A still-unbought line must NOT appear on the archived detail — history is what was bought.
+      await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 5, unit: 'g' })
+      await updateShoppingListItemDetails(boughtPriced.id, user.id, { linePrice: 4.5 })
+      await updateShoppingListItemStatus(boughtPriced.id, user.id, 'bought')
+      await updateShoppingListItemStatus(boughtUnpriced.id, user.id, 'bought')
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      const [summary] = await getArchivedShoppingLists(user.id)
+      const detail = await getArchivedShoppingListById(summary.id, user.id)
+      expect(detail).not.toBeNull()
+      expect(detail?.items).toHaveLength(2)
+      const priced = detail?.items.find((item) => item.id === boughtPriced.id)
+      expect(priced?.linePrice).toBe(4.5)
+      const unpriced = detail?.items.find((item) => item.id === boughtUnpriced.id)
+      expect(unpriced?.linePrice).toBeNull()
+      expect(detail?.totalSpent).toBe(4.5)
+    })
+
+    it('returns null for an active list, another user’s list, or a missing id', async () => {
+      const owner = await createTestUser('archOwner')
+      const other = await createTestUser('archOther')
+      const food = await createTestFood('TestShopping ArchScopeFood')
+
+      // An active (un-completed) list is not retrievable via the archived reader.
+      const activeList = await getOrCreateActiveShoppingList(owner.id)
+      expect(await getArchivedShoppingListById(activeList.id, owner.id)).toBeNull()
+
+      // Complete a trip so there is a real archived list, then check cross-user scoping.
+      const line = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'oz' })
+      await updateShoppingListItemStatus(line.id, owner.id, 'bought')
+      await completeShoppingTrip(owner.id, { keepUnbought: false })
+      const [archived] = await getArchivedShoppingLists(owner.id)
+
+      expect(await getArchivedShoppingListById(archived.id, other.id)).toBeNull()
+      expect(await getArchivedShoppingListById(999999999, owner.id)).toBeNull()
+      expect(await getArchivedShoppingLists(other.id)).toHaveLength(0)
     })
   })
 })

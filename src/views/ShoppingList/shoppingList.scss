@@ -773,4 +773,75 @@
     font-size: 13px;
     color: var(--vscode-muted);
   }
+
+  // Price-history index: one row per completed trip, tapping through to its detail.
+  .archived-lists,
+  .archived-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .archived-list-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+    color: var(--vscode-text);
+    text-decoration: none;
+
+    &:hover {
+      border-color: var(--vscode-focus-border, var(--vscode-border));
+    }
+
+    .archived-list-date {
+      flex: 1;
+      font-weight: 600;
+    }
+
+    .archived-list-count {
+      color: var(--vscode-muted);
+      font-size: 14px;
+    }
+
+    .archived-list-total {
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pi-chevron-right {
+      color: var(--vscode-muted);
+      font-size: 12px;
+    }
+  }
+
+  // Price-history detail: one bought line, name at left and price paid at right.
+  .archived-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+
+    .archived-item-name {
+      flex: 1;
+      color: var(--vscode-text);
+      font-weight: 500;
+    }
+
+    .archived-item-price {
+      flex: 0 0 auto;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--vscode-text);
+    }
+  }
 }

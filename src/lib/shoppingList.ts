@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, ingredients, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -9,7 +9,7 @@ import { creditPantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
-import type { ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
+import type { ArchivedShoppingList, ArchivedShoppingListSummary, ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -993,4 +993,75 @@ export async function completeShoppingTrip(
   // (no active list exists until one is lazily created on the next visit).
   const items = await getShoppingListItems(userId)
   return { ...outcome, items }
+}
+
+// The archived-lists index (price-history browse — see CONTEXT.md). Every archived Shopping List the
+// user owns, most recent first, each summarised by its bought-line count and total spent (the sum of
+// those lines' Line Prices, an unpriced line contributing 0). The per-list aggregate is computed from a
+// single batched read of all the lists' bought lines rather than one query per list, so the index costs
+// two round-trips regardless of how many trips the user has completed.
+export async function getArchivedShoppingLists(userId: number): Promise<ArchivedShoppingListSummary[]> {
+  const lists = await db
+    .select()
+    .from(shoppingLists)
+    .where(and(eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'archived')))
+    .orderBy(desc(shoppingLists.dateAdded), desc(shoppingLists.id))
+
+  if (lists.length === 0) return []
+
+  const listIds = lists.map((list) => list.id)
+  const boughtRows = await db
+    .select({ shoppingListId: shoppingListItems.shoppingListId, linePrice: shoppingListItems.linePrice })
+    .from(shoppingListItems)
+    .where(and(inArray(shoppingListItems.shoppingListId, listIds), eq(shoppingListItems.status, 'bought')))
+
+  const aggByList = new Map<number, { count: number; total: number }>()
+  for (const row of boughtRows) {
+    const agg = aggByList.get(row.shoppingListId) ?? { count: 0, total: 0 }
+    agg.count += 1
+    agg.total = round2(agg.total + (row.linePrice != null ? Number(row.linePrice) : 0))
+    aggByList.set(row.shoppingListId, agg)
+  }
+
+  return lists.map((list) => {
+    const agg = aggByList.get(list.id)
+    return {
+      id: list.id,
+      dateAdded: list.dateAdded ?? new Date(),
+      boughtItemCount: agg?.count ?? 0,
+      totalSpent: agg?.total ?? 0,
+    }
+  })
+}
+
+// One archived Shopping List opened from the index: its *bought* lines (each with its Line Price) and
+// the total spent across them. Scoped to the caller and to `archived` status, so an active list or
+// another user's list resolves to null (→ 404). Unlike the active-list reads, a line whose Food/Product
+// was soft-deleted after the trip is deliberately NOT hidden here — price history should keep showing
+// what was bought — so the source is left-joined for its display name without a not-deleted filter.
+export async function getArchivedShoppingListById(id: number, userId: number): Promise<ArchivedShoppingList | null> {
+  const [list] = await db
+    .select()
+    .from(shoppingLists)
+    .where(and(eq(shoppingLists.id, id), eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'archived')))
+
+  if (!list) return null
+
+  const rows = await db
+    .select()
+    .from(shoppingListItems)
+    .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+    .leftJoin(products, eq(shoppingListItems.productId, products.id))
+    .where(and(eq(shoppingListItems.shoppingListId, list.id), eq(shoppingListItems.status, 'bought')))
+    .orderBy(asc(shoppingListItems.dateAdded), asc(shoppingListItems.id))
+
+  const items = rows.map(mapJoinedRow)
+  const totalSpent = round2(items.reduce((sum, item) => sum + (item.linePrice ?? 0), 0))
+
+  return {
+    id: list.id,
+    dateAdded: list.dateAdded ?? new Date(),
+    items,
+    totalSpent,
+  }
 }

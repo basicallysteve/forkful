@@ -3,6 +3,12 @@ import { Pool } from 'pg'
 import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems, getExpiringPantryItems } from './pantry'
 import { createFood } from './foods'
 import { signUp } from './users'
+import {
+  completeShoppingTrip,
+  createShoppingListFoodItem,
+  updateShoppingListItemDetails,
+  updateShoppingListItemStatus,
+} from './shoppingList'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
@@ -297,6 +303,40 @@ describe('pantry data layer (integration)', () => {
 
       const results = await getExpiringPantryItems(user2.id)
       expect(results.some(r => r.id === item.id)).toBe(false)
+    })
+  })
+
+  describe('purchase price through the provenance FK', () => {
+    it('surfaces the source Shopping List Item’s Line Price on a pantry item created by a trip', async () => {
+      const user = await createTestUser(`price_${Date.now()}`)
+      const food = await createTestFood()
+
+      // Buy a priced line, then complete the trip so it becomes a pantry item carrying the FK back to it.
+      const line = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
+      await updateShoppingListItemDetails(line.id, user.id, { linePrice: 6.5 })
+      await updateShoppingListItemStatus(line.id, user.id, 'bought')
+      const result = await completeShoppingTrip(user.id, { keepUnbought: false })
+      expect(result?.pantryItemsCreated).toBe(1)
+
+      // The price is read THROUGH shoppingListItemId — it is never stored on the pantry row itself.
+      const [fromList] = await getPantryItems(user.id)
+      expect(fromList.shoppingListItemId).toBe(line.id)
+      expect(fromList.purchasePrice).toBe(6.5)
+
+      const byId = await getPantryItemById(fromList.id, user.id)
+      expect(byId?.purchasePrice).toBe(6.5)
+    })
+
+    it('reports a null purchase price for a manually-added pantry item (no source line)', async () => {
+      const user = await createTestUser(`noprice_${Date.now()}`)
+      const food = await createTestFood()
+
+      const item = await createPantryItem({ userId: user.id, foodId: food.id, originalSizeAmount: 1, currentSizeAmount: 1 })
+      expect(item.shoppingListItemId).toBeNull()
+      expect(item.purchasePrice).toBeNull()
+
+      const byId = await getPantryItemById(item.id, user.id)
+      expect(byId?.purchasePrice).toBeNull()
     })
   })
 })
