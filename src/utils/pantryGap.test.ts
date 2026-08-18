@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { computePantryGapShortfall, type PantryGapIngredient, type PantryGapStock } from './pantryGap'
+import {
+  computePantryGapShortfall,
+  creditPantryGapShortfall,
+  type PantryGapIngredient,
+  type PantryGapStock,
+} from './pantryGap'
 
 // A gram-anchored ingredient with an optional Calibrated Custom Unit ("slice" = 30g).
 function ingredient(overrides: Partial<PantryGapIngredient> = {}): PantryGapIngredient {
@@ -103,5 +108,35 @@ describe('computePantryGapShortfall', () => {
       [stock({ amount: 100, unit: 'g' })],
     )
     expect(result).toBe(250)
+  })
+
+  it('does not draw down the caller-supplied stock', () => {
+    const onHand = [stock({ amount: 120 })]
+    computePantryGapShortfall(ingredient({ requiredQuantity: 200 }), onHand)
+    expect(onHand[0].amount).toBe(120)
+  })
+})
+
+describe('creditPantryGapShortfall', () => {
+  it('credits shared stock only once across two convertible-unit requirements for the same Food', () => {
+    // 100 g in the pantry against two requirements for the same Food: 100 g and 0.1 kg (also 100 g).
+    // Summing them is impossible (different units), so the stock must be consumed across the two calls —
+    // one is covered, the other falls back to its full requirement rather than both looking fully stocked.
+    const onHand = [stock({ amount: 100 })]
+
+    const first = creditPantryGapShortfall(ingredient({ requiredQuantity: 100, unit: 'g' }), onHand)
+    const second = creditPantryGapShortfall(ingredient({ requiredQuantity: 0.1, unit: 'kg' }), onHand)
+
+    expect(first).toBeNull() // first requirement eats the 100 g
+    expect(second).toBe(0.1) // 0.1 kg (100 g) still missing — stock wasn't re-credited
+  })
+
+  it('draws a single entry down proportionally across requirements', () => {
+    // 250 g on hand, three 100 g requirements → 100 + 100 covered, third short by 50 g.
+    const onHand = [stock({ amount: 250 })]
+    const results = [100, 100, 100].map((q) =>
+      creditPantryGapShortfall(ingredient({ requiredQuantity: q, unit: 'g' }), onHand),
+    )
+    expect(results).toEqual([null, null, 50])
   })
 })

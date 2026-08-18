@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  if (typeof body.recipeShortId !== 'string' || body.recipeShortId.trim().length === 0) {
+  if (typeof body?.recipeShortId !== 'string' || body.recipeShortId.trim().length === 0) {
     return NextResponse.json({ error: 'recipeShortId is required' }, { status: 400 })
   }
 

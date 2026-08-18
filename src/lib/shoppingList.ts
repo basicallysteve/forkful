@@ -1,11 +1,11 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, ingredients, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
 import { getProductById } from '@/lib/products'
 import { getRecipeByShortId } from '@/lib/recipes'
 import { EACH_UNIT } from '@/utils/unitConversion'
-import { computePantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap'
+import { creditPantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap'
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
@@ -262,10 +262,10 @@ const INSERT_ACTIVE_LIST_MAX_ATTEMPTS = 3
 // and "trash bags" are one line (the existing line keeps its casing); a Food and Product that share a
 // name never merge, since the sourceType prefix differs. A null unit gets a sentinel so it can't collide
 // with a real unit string. Built as a string key so a whole batch matches against the list's open lines
-// in memory, rather than issuing one identity SELECT per value. ` ` can't appear in a unit, Food id,
-// or name, so it is a safe field separator.
+// in memory, rather than issuing one identity SELECT per value. A NUL (`\0`) can't appear in a unit,
+// Food id, or name, so it is a safe field separator and null-unit sentinel.
 function lineMergeKey(sourceType: ShoppingListItemSourceType, identity: string, unit: string | null): string {
-  return `${sourceType} ${identity} ${unit ?? ' '}`
+  return `${sourceType}\0${identity}\0${unit ?? '\0'}`
 }
 
 function valuesMergeKey(values: ResolvedNewItem): string {
@@ -841,9 +841,10 @@ export async function fillPantryGapFromRecipe(
   }
 
   // Several ingredient rows can resolve to the same Food (a recipe that legitimately lists eggs twice, say).
-  // Combine their required quantities per (Food, unit) first, so the matching pantry stock is credited once
-  // against the *total* requirement instead of being re-credited in full to each row — which would treat
-  // each row as separately covered and under-buy.
+  // Combine their required quantities per (Food, unit) first, so a single line covers each unit rather than
+  // one per row. Two rows for the same Food in different but convertible units (100 g and 0.1 kg) still form
+  // separate groups here — they can't be summed into one number — but they share the Food's pantry stock,
+  // which creditPantryGapShortfall draws down once across the groups below (see the per-Food pass).
   type Requirement = { food: typeof foods.$inferSelect; unit: string; required: number }
   const requirementByFoodUnit = new Map<string, Requirement>()
   for (const { ingredients: ing, foods: food } of ingredientRows) {
@@ -860,7 +861,9 @@ export async function fillPantryGapFromRecipe(
   let skippedFullyStocked = 0
 
   for (const { food, unit: ingredientUnit, required } of requirementByFoodUnit.values()) {
-    const shortfall = computePantryGapShortfall(
+    // creditPantryGapShortfall mutates the Food's stock array, drawing it down by what this requirement
+    // consumes so later requirements for the same Food only see what's left — each quantity credited once.
+    const shortfall = creditPantryGapShortfall(
       {
         requiredQuantity: required,
         unit: ingredientUnit,

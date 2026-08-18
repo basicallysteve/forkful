@@ -65,27 +65,46 @@ function convertStockToIngredientUnit(stock: PantryGapStock, ingredient: PantryG
 
 // The shortfall to add to the Shopping List for one ingredient, expressed in the ingredient's unit — or
 // null when the ingredient is already fully stocked and should be skipped. Each matching Pantry entry is
-// converted into the ingredient's unit and the convertible amounts are summed; the shortfall is the
-// required quantity minus that sum. An entry in a unit that can't be converted (an Uncalibrated Custom
-// Unit, or an otherwise unconvertible pair) can't be measured against the requirement, so it is treated
-// as covering nothing rather than discarding the stock we *can* measure — an ingredient with no
-// convertible stock therefore falls back to its full required quantity, and a mix credits only the
+// converted into the ingredient's unit and the convertible amounts are credited against the requirement;
+// the shortfall is the required quantity minus that sum. An entry in a unit that can't be converted (an
+// Uncalibrated Custom Unit, or an otherwise unconvertible pair) can't be measured against the requirement,
+// so it is treated as covering nothing rather than discarding the stock we *can* measure — an ingredient
+// with no convertible stock therefore falls back to its full required quantity, and a mix credits only the
 // convertible part. Never under-buys; see the Pantry-Gap Fill contract in CONTEXT.md.
 export function computePantryGapShortfall(
   ingredient: PantryGapIngredient,
   stock: PantryGapStock[],
 ): number | null {
-  const required = ingredient.requiredQuantity
+  // Copy so the caller's stock isn't drawn down. For a single requirement, crediting every convertible
+  // entry (capped at the requirement) is exactly summing them, so this matches the old behaviour.
+  return creditPantryGapShortfall(ingredient, stock.map((entry) => ({ ...entry })))
+}
 
-  let available = 0
+// Like computePantryGapShortfall, but draws each Pantry entry's `amount` down by what it contributes and
+// mutates `stock` in place. When a recipe lists the same Food more than once — including in two mutually
+// convertible units (100 g and 0.1 kg, say) — the requirements share one stock array, so each Pantry
+// quantity is credited exactly once across them instead of being re-credited in full to every requirement
+// (which would treat each as separately covered and under-buy). Process a Food's requirements in sequence,
+// passing the same `stock` array to each call.
+export function creditPantryGapShortfall(
+  ingredient: PantryGapIngredient,
+  stock: PantryGapStock[],
+): number | null {
+  let remaining = ingredient.requiredQuantity
+
   for (const entry of stock) {
+    if (entry.amount <= 0) continue
     const converted = convertStockToIngredientUnit(entry, ingredient)
-    // Unmeasurable against the requirement — count it as covering nothing rather than dropping the rest.
-    if (converted === null) continue
-    available += converted
+    // Unmeasurable against this requirement — leave it for a later one whose unit it *can* bridge.
+    if (converted === null || converted <= 0) continue
+
+    const used = Math.min(remaining, converted)
+    // Draw the entry down in its own unit, proportional to the fraction of its converted amount consumed.
+    entry.amount -= entry.amount * (used / converted)
+    remaining -= used
+    if (remaining <= SHORTFALL_EPSILON) break
   }
 
-  const shortfall = required - available
-  if (shortfall <= SHORTFALL_EPSILON) return null
-  return round2(shortfall)
+  if (remaining <= SHORTFALL_EPSILON) return null
+  return round2(remaining)
 }
