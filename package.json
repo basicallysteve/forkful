@@ -8,7 +8,7 @@
     "build": "next build",
     "vercel-build": "drizzle-kit migrate || true && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest --config vitest.integration.config.ts",
