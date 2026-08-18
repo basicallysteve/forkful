@@ -51,6 +51,10 @@ export type ArchivedShoppingListSummary = {
   id: number
   dateAdded: Date
   boughtItemCount: number
+  // How many bought lines recorded a Line Price. Distinguishes "no prices recorded" from a trip whose
+  // prices legitimately sum to $0.00 (a free/comped line is allowed) — the index keys its price display
+  // off this, not off `totalSpent > 0`.
+  pricedItemCount: number
   totalSpent: number
 }
 

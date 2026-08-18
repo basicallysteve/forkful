@@ -1015,11 +1015,14 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
     .from(shoppingListItems)
     .where(and(inArray(shoppingListItems.shoppingListId, listIds), eq(shoppingListItems.status, 'bought')))
 
-  const aggByList = new Map<number, { count: number; total: number }>()
+  const aggByList = new Map<number, { count: number; priced: number; total: number }>()
   for (const row of boughtRows) {
-    const agg = aggByList.get(row.shoppingListId) ?? { count: 0, total: 0 }
+    const agg = aggByList.get(row.shoppingListId) ?? { count: 0, priced: 0, total: 0 }
     agg.count += 1
-    agg.total = round2(agg.total + (row.linePrice != null ? Number(row.linePrice) : 0))
+    if (row.linePrice != null) {
+      agg.priced += 1
+      agg.total = round2(agg.total + Number(row.linePrice))
+    }
     aggByList.set(row.shoppingListId, agg)
   }
 
@@ -1029,6 +1032,7 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
       id: list.id,
       dateAdded: list.dateAdded ?? new Date(),
       boughtItemCount: agg?.count ?? 0,
+      pricedItemCount: agg?.priced ?? 0,
       totalSpent: agg?.total ?? 0,
     }
   })

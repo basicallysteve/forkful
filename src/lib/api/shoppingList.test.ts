@@ -66,14 +66,14 @@ describe('apiFetchShoppingListItems', () => {
 
 describe('apiFetchArchivedShoppingLists', () => {
   it('fetches the archived index and parses each list date', async () => {
-    const raw = [{ id: 3, dateAdded: '2026-02-01T00:00:00.000Z', boughtItemCount: 2, totalSpent: 12.5 }]
+    const raw = [{ id: 3, dateAdded: '2026-02-01T00:00:00.000Z', boughtItemCount: 2, pricedItemCount: 2, totalSpent: 12.5 }]
     global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => raw } as Response)
 
     const result = await apiFetchArchivedShoppingLists()
 
     expect(fetch).toHaveBeenCalledWith('/api/shopping-list/archived')
     expect(result).toEqual([
-      { id: 3, dateAdded: new Date('2026-02-01T00:00:00.000Z'), boughtItemCount: 2, totalSpent: 12.5 },
+      { id: 3, dateAdded: new Date('2026-02-01T00:00:00.000Z'), boughtItemCount: 2, pricedItemCount: 2, totalSpent: 12.5 },
     ])
   })
 

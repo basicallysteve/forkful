@@ -36,7 +36,7 @@ export default function ArchivedShoppingLists({ lists }: { lists: ArchivedShoppi
                       {list.boughtItemCount} item{list.boughtItemCount !== 1 ? 's' : ''}
                     </span>
                     <span className="archived-list-total">
-                      {list.totalSpent > 0 ? formatPrice(list.totalSpent) : 'No prices'}
+                      {list.pricedItemCount > 0 ? formatPrice(list.totalSpent) : 'No prices'}
                     </span>
                     <i className="pi pi-chevron-right" aria-hidden="true" />
                   </Link>

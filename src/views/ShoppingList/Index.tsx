@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
+import Link from 'next/link'
 import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
@@ -918,10 +919,10 @@ export default function ShoppingListView({
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
           <div className="shopping-list-header-actions">
-            <a href="/shopping-list/archived" className="share-button">
+            <Link href="/shopping-list/archived" className="share-button">
               <i className="pi pi-history" aria-hidden="true" />
               History
-            </a>
+            </Link>
             <button
               type="button"
               className="share-button"

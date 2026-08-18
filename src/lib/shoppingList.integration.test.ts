@@ -857,9 +857,11 @@ describe('shopping list data layer (integration)', () => {
       expect(lists).toHaveLength(2)
       // Most recent first: the second trip (1 bought line, $7) leads.
       expect(lists[0].boughtItemCount).toBe(1)
+      expect(lists[0].pricedItemCount).toBe(1)
       expect(lists[0].totalSpent).toBe(7)
       // The first trip: two bought lines, only one priced, so the total is $5.
       expect(lists[1].boughtItemCount).toBe(2)
+      expect(lists[1].pricedItemCount).toBe(1)
       expect(lists[1].totalSpent).toBe(5)
     })
 

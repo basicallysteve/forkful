@@ -16,6 +16,9 @@ function formatListDate(date: Date): string {
 }
 
 export default function ArchivedShoppingListDetail({ list }: { list: ArchivedShoppingList }) {
+  // A recorded Line Price of $0.00 (free/comped) is valid, so "were any prices recorded" is the presence
+  // of a non-null linePrice — not totalSpent > 0, which would hide a legitimate all-$0 trip.
+  const hasAnyPrice = list.items.some((item) => item.linePrice != null)
   return (
     <div className="shopping-list">
       <div className="shopping-list-content">
@@ -55,7 +58,7 @@ export default function ArchivedShoppingListDetail({ list }: { list: ArchivedSho
           <div className="shopping-list-footer">
             <strong>Total spent: </strong>
             <p className="shopping-list-count">
-              {list.totalSpent > 0 ? formatPrice(list.totalSpent) : 'No prices recorded'}
+              {hasAnyPrice ? formatPrice(list.totalSpent) : 'No prices recorded'}
             </p>
           </div>
         </div>
