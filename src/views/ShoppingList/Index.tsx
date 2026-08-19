@@ -20,7 +20,7 @@ import {
   apiUpdateShoppingListItemDetails,
   apiUpdateShoppingListItemStatus,
 } from '@/lib/api/shoppingList'
-import type { ScanToBuyOutcome, ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
+import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchProductByBarcode } from '@/lib/api/products'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiUpdateShoppingPreferences } from '@/lib/api/users'
@@ -31,7 +31,7 @@ import { ceil2, round2 } from '@/utils/number'
 import { formatPrice } from '@/utils/currency'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
-import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
+import type { ScanToBuyOutcome, ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
@@ -619,8 +619,11 @@ function ScanToBuyModal({
   const resumeScanner = useCallback(() => setScanSession((session) => session + 1), [])
 
   // Post the resolved Product to the active list, surface the outcome, and resume scanning for the next
-  // item. Errors surface a banner and still resume, so a failed scan doesn't strand the scanner.
+  // item. Toggles `loading` itself so the in-flight overlay shows for every buy — including the ones
+  // driven from the link/create modals, which don't go through handleDetected. Errors surface a banner
+  // and still resume, so a failed scan doesn't strand the scanner.
   const buyProduct = useCallback(async (productId: number) => {
+    setLoading(true)
     try {
       const { item, outcome } = await apiScanToBuyShoppingListItem(productId)
       onScanned(item)
@@ -628,6 +631,7 @@ function ScanToBuyModal({
     } catch {
       setError('Scan failed. Please try again.')
     } finally {
+      setLoading(false)
       resumeScanner()
     }
   }, [onScanned, resumeScanner])

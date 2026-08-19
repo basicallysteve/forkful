@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import { scanToBuyShoppingListItem } from '@/lib/shoppingList'
+import { isPositiveInteger } from '@/utils/number'
 
 type ScanBody = {
   productId?: unknown
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return Number.isInteger(value) && (value as number) > 0
 }
 
 // Scan-to-Buy (ADR-0021): the client has already resolved the scanned barcode to a Product (via the

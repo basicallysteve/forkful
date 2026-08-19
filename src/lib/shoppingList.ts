@@ -9,7 +9,7 @@ import { creditPantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
-import type { ArchivedShoppingList, ArchivedShoppingListSummary, ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
+import type { ArchivedShoppingList, ArchivedShoppingListSummary, ScanToBuyResult, ScanToBuyOutcome, ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -486,13 +486,6 @@ export async function createShoppingListProductItem(data: CreateShoppingListProd
 // re-deriving the quantity). Runs in one transaction that locks the active list row, mirroring
 // insertOrMergeItems: a concurrent Trip Completion that archives the list under the lock is retried
 // against the fresh active list. Returns null when the Product doesn't exist (→ 404).
-export type ScanToBuyOutcome = 'upgraded' | 'checked' | 'impulse'
-
-export type ScanToBuyResult = {
-  item: ShoppingListItem
-  outcome: ScanToBuyOutcome
-}
-
 export async function scanToBuyShoppingListItem(userId: number, productId: number): Promise<ScanToBuyResult | null> {
   const product = await getProductById(productId)
   if (!product) return null
@@ -500,7 +493,7 @@ export async function scanToBuyShoppingListItem(userId: number, productId: numbe
   for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
     const shoppingList = await getOrCreateActiveShoppingList(userId)
 
-    const resolved = await db.transaction(async (tx): Promise<{ id: number; outcome: ScanToBuyOutcome } | null> => {
+    const resolved = await db.transaction(async (tx): Promise<ScanToBuyResult | null> => {
       const [locked] = await tx
         .select({ id: shoppingLists.id, status: shoppingLists.status })
         .from(shoppingLists)
@@ -511,20 +504,39 @@ export async function scanToBuyShoppingListItem(userId: number, productId: numbe
       if (!locked || locked.status !== 'active') return null
 
       // The list's open (to_buy) lines, oldest first, so a scan lands on the earliest matching plan.
-      const openRows = await tx
+      // Lines whose Food/Product was soft-deleted are excluded (notSoftDeletedSources, as in every other
+      // read) so a scan can't match — and resurrect — a line that is already hidden from the user.
+      const openJoined = await tx
         .select()
         .from(shoppingListItems)
+        .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+        .leftJoin(products, eq(shoppingListItems.productId, products.id))
         .where(and(
           eq(shoppingListItems.shoppingListId, shoppingList.id),
           eq(shoppingListItems.status, 'to_buy'),
+          notSoftDeletedSources,
         ))
         .orderBy(asc(shoppingListItems.dateAdded), asc(shoppingListItems.id))
+      const openRows = openJoined.map((row) => row.shopping_list_items)
+
+      // Re-read the resulting line (joined to its source) and map it inside the transaction, so the
+      // returned item never depends on the list still being active afterwards — a concurrent Trip
+      // Completion could archive it between commit and a post-commit active-scoped read.
+      const readResult = async (id: number, outcome: ScanToBuyOutcome): Promise<ScanToBuyResult> => {
+        const [row] = await tx
+          .select()
+          .from(shoppingListItems)
+          .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+          .leftJoin(products, eq(shoppingListItems.productId, products.id))
+          .where(eq(shoppingListItems.id, id))
+        return { item: mapJoinedRow(row), outcome }
+      }
 
       // Already planned as this exact Product: a scan just checks it off (no reference to upgrade).
       const productLine = openRows.find((row) => row.sourceType === 'product' && row.productId === product.id)
       if (productLine) {
         await tx.update(shoppingListItems).set({ status: 'bought' }).where(eq(shoppingListItems.id, productLine.id))
-        return { id: productLine.id, outcome: 'checked' }
+        return readResult(productLine.id, 'checked')
       }
 
       // Planned as the generic Food this Product refines: upgrade the line in place to the Product.
@@ -535,7 +547,7 @@ export async function scanToBuyShoppingListItem(userId: number, productId: numbe
             .update(shoppingListItems)
             .set({ sourceType: 'product', productId: product.id, foodId: null, status: 'bought' })
             .where(eq(shoppingListItems.id, foodLine.id))
-          return { id: foodLine.id, outcome: 'upgraded' }
+          return readResult(foodLine.id, 'upgraded')
         }
       }
 
@@ -556,15 +568,13 @@ export async function scanToBuyShoppingListItem(userId: number, productId: numbe
           status: 'bought',
         })
         .returning({ id: shoppingListItems.id })
-      return { id: inserted.id, outcome: 'impulse' }
+      return readResult(inserted.id, 'impulse')
     })
 
     // The list was archived mid-scan — re-resolve the current active list and try again.
     if (resolved === null) continue
 
-    const item = await getShoppingListItemById(resolved.id, userId)
-    if (!item) throw new Error('Failed to scan shopping list item')
-    return { item, outcome: resolved.outcome }
+    return resolved
   }
 
   // Every attempt found the list archived under the lock (a pathological run of concurrent completions).

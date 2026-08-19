@@ -4,6 +4,12 @@ export function round2(value: number): number {
   return Math.round(value * 100) / 100
 }
 
+// True only for a whole number strictly greater than zero — the shape of a valid database id. Shared by
+// the API routes that validate `id`-typed body params, so id validation stays consistent across them.
+export function isPositiveInteger(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) > 0
+}
+
 // Round UP to two decimal places, for a charged total — so a partial cent is never undercharged. The
 // scaled value is snapped to 6 places first to strip binary-float noise (0.30 * 100 =
 // 30.000000000000004); without that, a value already exactly at the cent would be bumped up a penny.
