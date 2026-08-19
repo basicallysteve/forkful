@@ -64,6 +64,9 @@ export async function POST(request: Request) {
     if (err instanceof Error && err.message === 'Food not found') {
       return NextResponse.json({ error: 'Food not found' }, { status: 404 })
     }
+    if (err instanceof Error && err.message === 'Invalid unit') {
+      return NextResponse.json({ error: 'unit is not one of the food\'s measurements' }, { status: 400 })
+    }
     throw err
   }
 }

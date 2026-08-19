@@ -100,6 +100,29 @@ describe('food log data layer (integration)', () => {
     expect(today.total.protein).toBe(45)
   })
 
+  it('rejects a unit the food does not offer', async () => {
+    const user = await createTestUser('f')
+    const food = await createTestFood() // measurements: g, oz
+
+    await expect(
+      createFoodLogEntry({ userId: user.id, foodId: food.id, amount: 1, unit: 'cup', logDate: '2026-08-19' })
+    ).rejects.toThrow('Invalid unit')
+  })
+
+  it('nulls the referent food in the daily log once it is soft-deleted', async () => {
+    const user = await createTestUser('g')
+    const food = await createTestFood()
+
+    await createFoodLogEntry({ userId: user.id, foodId: food.id, amount: 100, unit: 'g', logDate: '2026-08-19' })
+    await pool.query(`UPDATE foods SET date_deleted = now() WHERE id = $1`, [food.id])
+
+    const daily = await getDailyLog(user.id, '2026-08-19')
+    expect(daily.entries).toHaveLength(1)
+    expect(daily.entries[0].food).toBeNull()
+    // The frozen macros still stand — the entry survives on its snapshot.
+    expect(daily.total.calories).toBe(200)
+  })
+
   it('scopes the daily log to the requesting user', async () => {
     const userA = await createTestUser('d')
     const userB = await createTestUser('e')

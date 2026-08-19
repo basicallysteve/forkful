@@ -73,6 +73,14 @@ export function computeFrozenMacros(food: Food, amount: number, unit: string): M
   }
 }
 
+// The units a Food may be logged in: its own Measurements, always including its base serving unit —
+// mirrors the client's unit picker so the write path can reject a unit that isn't offered.
+export function allowedUnitsForFood(food: Food): string[] {
+  const units = food.measurements.map((m) => m.unit).filter(Boolean)
+  if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
+  return units
+}
+
 export type CreateFoodLogEntryData = {
   userId: number
   foodId: number
@@ -90,6 +98,14 @@ export async function createFoodLogEntry(data: CreateFoodLogEntryData): Promise<
   if (!foodRow) throw new Error('Food not found')
 
   const food = mapFood(foodRow)
+
+  // Reject a unit the Food doesn't offer. An offered-but-uncalibrated custom unit still logs (zero
+  // macros, per ADR-0025 — logging is never a dead end); an entirely unknown unit is a bad request.
+  const allowed = allowedUnitsForFood(food)
+  if (allowed.length > 0 && !allowed.includes(data.unit)) {
+    throw new Error('Invalid unit')
+  }
+
   const macros = computeFrozenMacros(food, data.amount, data.unit)
 
   const [row] = await db
@@ -142,6 +158,10 @@ export async function getDailyLog(userId: number, logDate: string): Promise<Dail
     ))
     .orderBy(asc(foodLogEntries.dateAdded), asc(foodLogEntries.id))
 
-  const entries = rows.map((r) => mapEntry(r.food_log_entries, r.foods ? mapFood(r.foods) : null))
+  // A soft-deleted referent (dateDeleted set) is treated as absent: the entry stands on its frozen
+  // macros with food = null, per the FoodLogEntry contract — never leak a hidden Food into the UI.
+  const entries = rows.map((r) =>
+    mapEntry(r.food_log_entries, r.foods && !r.foods.dateDeleted ? mapFood(r.foods) : null)
+  )
   return { logDate, entries, total: sumMacros(entries) }
 }
