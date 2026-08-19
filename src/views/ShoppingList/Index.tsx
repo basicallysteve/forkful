@@ -1077,35 +1077,40 @@ export default function ShoppingListView({
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
           <div className="shopping-list-header-actions">
-            <Link href="/shopping-list/archived" className="share-button">
+            {/* The label text is hidden on mobile (icon-only), so each button carries an aria-label to
+                keep an accessible name when only the icon shows. */}
+            <Link href="/shopping-list/archived" className="share-button" aria-label="History">
               <i className="pi pi-history" aria-hidden="true" />
-              History
+              <span className="btn-label">History</span>
             </Link>
             <button
               type="button"
               className="share-button"
               onClick={() => setShowScan(true)}
+              aria-label="Scan"
             >
               <i className="pi pi-barcode" aria-hidden="true" />
-              Scan
+              <span className="btn-label">Scan</span>
             </button>
             <button
               type="button"
               className="share-button"
               onClick={handleShare}
               disabled={items.length === 0}
+              aria-label={copied ? 'Copied!' : 'Share'}
             >
               <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
-              {copied ? 'Copied!' : 'Share'}
+              <span className="btn-label">{copied ? 'Copied!' : 'Share'}</span>
             </button>
             <button
               type="button"
               className="done-shopping-button"
               onClick={handleDoneShopping}
               disabled={items.length === 0 || completing}
+              aria-label={completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}
             >
               <i className="pi pi-check-circle" aria-hidden="true" />
-              {completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}
+              <span className="btn-label">{completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}</span>
             </button>
           </div>
         </header>
