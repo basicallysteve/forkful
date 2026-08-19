@@ -8,6 +8,8 @@ import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
+import { formatPrice } from '@/utils/currency'
+import { formatDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
@@ -118,11 +120,7 @@ export default function Pantry() {
 
   function formatDate(date: Date | null): string {
     if (!date) return 'No expiration'
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return formatDisplayDate(new Date(date))
   }
 
   function getStatusLabel(status: PantryItemStatus): string {
@@ -302,6 +300,7 @@ export default function Pantry() {
                     </th>
                     <th>Food Item</th>
                     <th>Size (Orig/Curr)</th>
+                    <th>Price Paid</th>
                     <th>Expiration Date</th>
                     <th>Status</th>
                     <th>Added Date</th>
@@ -339,6 +338,7 @@ export default function Pantry() {
                         )}
                       </td>
                       <td>{item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}</td>
+                      <td>{item.purchasePrice != null ? formatPrice(item.purchasePrice) : '—'}</td>
                       <td>
                         {item.frozenDate ? (
                           <span className="status-badge status-frozen">Frozen</span>
@@ -443,6 +443,12 @@ export default function Pantry() {
                             {item.frozenDate ? formatDate(item.frozenDate) : formatDate(item.expirationDate)}
                           </span>
                         </div>
+                        {item.purchasePrice != null && (
+                          <div className="detail-row">
+                            <span className="detail-label">Price paid:</span>
+                            <span className="detail-value">{formatPrice(item.purchasePrice)}</span>
+                          </div>
+                        )}
                         <div className="detail-row">
                           <span className="detail-label">Added:</span>
                           <span className="detail-value">{formatDate(item.addedDate)}</span>

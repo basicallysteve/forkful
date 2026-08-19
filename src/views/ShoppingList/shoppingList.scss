@@ -774,3 +774,202 @@
     color: var(--vscode-muted);
   }
 }
+
+// Shopping History (archived lists) — the price-history browse pages. Mirrors the Foods/Recipes browse
+// layout: a header with label + title + pill counts, a bordered panel, and a responsive Card grid.
+.archive-list {
+  color: var(--vscode-text);
+  width: 100%;
+  box-sizing: border-box;
+
+  .archive-content {
+    padding: 22px 22px 18px;
+    background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
+  }
+
+  .archive-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-border);
+  }
+
+  .archive-label {
+    margin: 0;
+    color: var(--vscode-muted);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  .archive-name {
+    margin: 4px 0 0;
+    font-size: 24px;
+    color: var(--vscode-text);
+  }
+
+  .archive-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .pill {
+    border-radius: 999px;
+    padding: clamp(0.3rem, 1vw, 0.5rem) clamp(0.4rem, 1.5vw, 0.65rem);
+    font-size: clamp(0.6rem, 2vw, 0.75rem);
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+    color: var(--vscode-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  a.pill:hover {
+    color: var(--vscode-text);
+    border-color: var(--vscode-accent);
+  }
+
+  .pill-primary {
+    color: #ffffff;
+    border-color: var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pill-ghost {
+    background: var(--accent-hover);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .archive-panel {
+    border: 1px solid var(--vscode-border);
+    border-radius: 12px;
+    background: var(--vscode-panel-deep);
+    margin-top: 18px;
+  }
+
+  .panel-content {
+    padding: 14px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .archive-empty-text {
+    margin: 0;
+    padding: 24px;
+    border: 1px dashed var(--vscode-border);
+    border-radius: 10px;
+    color: var(--vscode-muted);
+    background: var(--accent-hover);
+    text-align: center;
+  }
+
+  .archive-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  .archive-card {
+    &.p-card .p-card-body {
+      width: 100%;
+      padding: clamp(0.8rem, 1.5vw, 1rem);
+    }
+    &.p-card .p-card-content {
+      padding: 0;
+    }
+    border-radius: 10px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+    box-shadow: none;
+    transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+
+    &:not(.is-static):hover {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+      box-shadow: 0 4px 12px var(--shadow-container);
+    }
+  }
+
+  .card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .card-title {
+    margin: 0;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+    font-weight: 600;
+    color: var(--vscode-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+  }
+
+  .card-meta {
+    font-size: 12px;
+    color: var(--vscode-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-total {
+    flex: 1;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--vscode-text);
+  }
+
+  .card-chevron {
+    color: var(--vscode-muted);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 720px) {
+    .archive-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .archive-meta {
+      justify-content: flex-start;
+    }
+
+    .archive-cards {
+      grid-template-columns: 1fr;
+    }
+  }
+}

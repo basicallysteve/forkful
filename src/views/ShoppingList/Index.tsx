@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
+import Link from 'next/link'
 import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
@@ -19,6 +20,7 @@ import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
+import { itemQuantityLabel } from '@/utils/shoppingListDisplay'
 import { calendarValueToUtcDate, formatUtcDateForInput, utcDateToCalendarValue } from '@/utils/dateHelpers'
 import { ceil2, round2 } from '@/utils/number'
 import { formatPrice } from '@/utils/currency'
@@ -62,12 +64,6 @@ function getSourceUnits(source: Food | Product | null): string[] {
   if (!source) return []
   const units = source.measurements.map((measurement) => measurement.unit)
   return units.length > 0 ? units : [source.servingUnit].filter(Boolean)
-}
-
-// Amount only reads on the list when it carries meaning: with a unit, or when it isn't a bare "1".
-function itemQuantityLabel(item: ShoppingListItem): string {
-  if (item.unit) return `${item.amount} ${formatUnitForAmount(item.amount, item.unit)}`
-  return item.amount === 1 ? '' : `${item.amount}`
 }
 
 // The Line Price can be entered as the whole-line total or as a per-unit price. `total` is the mode
@@ -918,6 +914,10 @@ export default function ShoppingListView({
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
           <div className="shopping-list-header-actions">
+            <Link href="/shopping-list/archived" className="share-button">
+              <i className="pi pi-history" aria-hidden="true" />
+              History
+            </Link>
             <button
               type="button"
               className="share-button"

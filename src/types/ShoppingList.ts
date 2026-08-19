@@ -42,3 +42,28 @@ export type ShoppingTripCompletion = {
   droppedCount: number
   items: ShoppingListItem[]
 }
+
+// One row in the archived-lists index (the price-history browse view). A completed Shopping List is
+// retained for price history; the index summarises it by how many lines were bought and how much was
+// spent (the sum of the bought lines' Line Prices, an unpriced line contributing 0), plus the list's
+// date. `dateAdded` is when the list was started — the app stores no separate completion timestamp.
+export type ArchivedShoppingListSummary = {
+  id: number
+  dateAdded: Date
+  boughtItemCount: number
+  // How many bought lines recorded a Line Price. Distinguishes "no prices recorded" from a trip whose
+  // prices legitimately sum to $0.00 (a free/comped line is allowed) — the index keys its price display
+  // off this, not off `totalSpent > 0`.
+  pricedItemCount: number
+  totalSpent: number
+}
+
+// A single archived Shopping List opened from the index: the lines that were actually bought, each
+// carrying its Line Price, plus the total spent across them. Only bought lines are surfaced — an
+// archive's price history is what was purchased, not what was left unbought when the trip ended.
+export type ArchivedShoppingList = {
+  id: number
+  dateAdded: Date
+  items: ShoppingListItem[]
+  totalSpent: number
+}

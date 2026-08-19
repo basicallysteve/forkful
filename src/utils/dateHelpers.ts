@@ -12,6 +12,12 @@ export function getTodayDateString(): string {
   return moment().format('YYYY-MM-DD')
 }
 
+// A human-readable local-time date for display (e.g. "Aug 1, 2026"). Shared by the pantry and the
+// shopping-history views so the app formats calendar dates the same everywhere.
+export function formatDisplayDate(date: Date): string {
+  return moment(date).format('MMM D, YYYY')
+}
+
 // Date-only values (an expiration day, no time-of-day) are stored as UTC-midnight timestamps. Format
 // and parse them in UTC — not local time like formatDateForInput — so the calendar day never shifts
 // for users outside UTC (a 2026-08-01T00:00:00Z timestamp must read back as "2026-08-01" everywhere).

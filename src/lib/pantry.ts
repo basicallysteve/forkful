@@ -1,6 +1,6 @@
 import { eq, isNull, isNotNull, and, or, inArray, lte, gt, asc, desc, sql, ilike } from 'drizzle-orm'
 import { db } from '@/db'
-import { pantryItems, foods, products, recipes, ingredients } from '@/db/schema'
+import { pantryItems, foods, products, recipes, ingredients, shoppingListItems } from '@/db/schema'
 import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
@@ -63,7 +63,9 @@ function mapPantryItem(
   row: typeof pantryItems.$inferSelect,
   food?: Food,
   product?: Product,
-  recipeShortId?: string | null
+  recipeShortId?: string | null,
+  // The source Shopping List Item's Line Price, read through the provenance FK. numeric → string on read.
+  purchaseLinePrice?: string | null
 ): PantryItem {
   const expirationDate = row.expirationDate ? new Date(row.expirationDate) : null
   const sourceType = (row.sourceType as 'food' | 'product' | 'recipe') ?? 'food'
@@ -76,6 +78,8 @@ function mapPantryItem(
     recipeNameSnapshot: row.recipeNameSnapshot ?? null,
     recipeShortId: recipeShortId ?? null,
     shoppingListItemId: row.shoppingListItemId ?? null,
+    // Surfaced by reading through shoppingListItemId, not stored on the pantry row.
+    purchasePrice: purchaseLinePrice != null ? Number(purchaseLinePrice) : null,
     expirationDate,
     originalSize: {
       size: Number(row.originalSizeAmount),
@@ -135,6 +139,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
       .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
+      // Provenance link to the source Shopping List Item, so purchase price surfaces through the FK.
+      .leftJoin(shoppingListItems, eq(pantryItems.shoppingListItemId, shoppingListItems.id))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -153,7 +159,8 @@ export async function getPantryItems(userId: number, options: PantryQueryOptions
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
       row.products ? mapProductRow(row.products) : undefined,
-      row.recipes?.shortId ?? null
+      row.recipes?.shortId ?? null,
+      row.shopping_list_items?.linePrice ?? null
     ))
   } catch (err) {
     console.error('getPantryItems failed:', err)
@@ -171,6 +178,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
       .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
+      // Provenance link to the source Shopping List Item, so purchase price surfaces through the FK.
+      .leftJoin(shoppingListItems, eq(pantryItems.shoppingListItemId, shoppingListItems.id))
       .where(
         and(
           eq(pantryItems.userId, userId),
@@ -186,7 +195,8 @@ export async function getExpiringPantryItems(userId: number, limit = 5): Promise
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
       row.products ? mapProductRow(row.products) : undefined,
-      row.recipes?.shortId ?? null
+      row.recipes?.shortId ?? null,
+      row.shopping_list_items?.linePrice ?? null
     ))
   } catch {
     return []
@@ -201,6 +211,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       .leftJoin(foods, eq(pantryItems.foodId, foods.id))
       .leftJoin(products, eq(pantryItems.productId, products.id))
       .leftJoin(recipes, and(eq(pantryItems.recipeId, recipes.id), isNull(recipes.dateDeleted), or(eq(recipes.isPublic, 1), eq(recipes.userId, userId))))
+      // Provenance link to the source Shopping List Item, so purchase price surfaces through the FK.
+      .leftJoin(shoppingListItems, eq(pantryItems.shoppingListItemId, shoppingListItems.id))
       .where(
         and(
           eq(pantryItems.id, id),
@@ -215,7 +227,8 @@ export async function getPantryItemById(id: number, userId: number): Promise<Pan
       row.pantry_items,
       row.foods ? mapFoodRow(row.foods) : undefined,
       row.products ? mapProductRow(row.products) : undefined,
-      row.recipes?.shortId ?? null
+      row.recipes?.shortId ?? null,
+      row.shopping_list_items?.linePrice ?? null
     )
   } catch (err) {
     console.error('getPantryItemById failed:', err)
