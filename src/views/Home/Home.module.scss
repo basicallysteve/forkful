@@ -142,6 +142,10 @@
   font-size: 1.75rem;
   font-weight: 700;
   margin: 1.5rem 0 1.5rem;
+  // The username can be an email — one long, unbreakable token. Allow it to break across lines so it
+  // can't push the heading (and the whole page) wider than the viewport on narrow screens.
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .dashboardRecipes {
