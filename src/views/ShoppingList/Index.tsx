@@ -613,14 +613,24 @@ function ScanToBuyModal({
   const [pendingLinkProduct, setPendingLinkProduct] = useState<Product | null>(null)
   const [lastMessage, setLastMessage] = useState<string | null>(null)
 
-  // Post the resolved Product to the active list and surface the outcome. Bumping scanSession remounts
-  // the scanner so the next item can be scanned without reopening the modal.
+  // BarcodeScanner stops after its first detection, so every path that hands control back to it —
+  // a completed buy, a failed scan, or a dismissed creation/link modal — remounts it (bumped `key`) to
+  // resume the camera. Without this the modal would go dead after one scan until reopened.
+  const resumeScanner = useCallback(() => setScanSession((session) => session + 1), [])
+
+  // Post the resolved Product to the active list, surface the outcome, and resume scanning for the next
+  // item. Errors surface a banner and still resume, so a failed scan doesn't strand the scanner.
   const buyProduct = useCallback(async (productId: number) => {
-    const { item, outcome } = await apiScanToBuyShoppingListItem(productId)
-    onScanned(item)
-    setLastMessage(scanOutcomeMessage(outcome, item.name))
-    setScanSession((session) => session + 1)
-  }, [onScanned])
+    try {
+      const { item, outcome } = await apiScanToBuyShoppingListItem(productId)
+      onScanned(item)
+      setLastMessage(scanOutcomeMessage(outcome, item.name))
+    } catch {
+      setError('Scan failed. Please try again.')
+    } finally {
+      resumeScanner()
+    }
+  }, [onScanned, resumeScanner])
 
   const handleDetected = useCallback(async (code: string) => {
     setLoading(true)
@@ -641,12 +651,15 @@ function ScanToBuyModal({
       }
       await buyProduct(product.id)
     } catch {
+      // Only the barcode lookup can throw here (buyProduct swallows its own errors) — resume so a failed
+      // lookup can be retried without reopening the modal.
       setError('Scan failed. Please try again.')
+      resumeScanner()
     } finally {
       setLoading(false)
       setDetectingCode(null)
     }
-  }, [buyProduct])
+  }, [buyProduct, resumeScanner])
 
   const footer = (
     <div className="dialog-footer">
@@ -681,13 +694,17 @@ function ScanToBuyModal({
           // the server re-reads the product by id, so a just-saved link is reflected in the match.
           onLinked={(product) => {
             setPendingLinkProduct(null)
-            buyProduct(product.id).catch(() => setError('Scan failed. Please try again.'))
+            void buyProduct(product.id)
           }}
           onSkip={(product) => {
             setPendingLinkProduct(null)
-            buyProduct(product.id).catch(() => setError('Scan failed. Please try again.'))
+            void buyProduct(product.id)
           }}
-          onHide={() => setPendingLinkProduct(null)}
+          // Cancelled without linking — resume so the scanner is live again.
+          onHide={() => {
+            setPendingLinkProduct(null)
+            resumeScanner()
+          }}
         />
       )}
 
@@ -696,9 +713,13 @@ function ScanToBuyModal({
           barcode={pendingBarcode}
           onCreated={(product) => {
             setPendingBarcode(null)
-            buyProduct(product.id).catch(() => setError('Scan failed. Please try again.'))
+            void buyProduct(product.id)
           }}
-          onHide={() => setPendingBarcode(null)}
+          // Cancelled without creating — resume so the scanner is live again.
+          onHide={() => {
+            setPendingBarcode(null)
+            resumeScanner()
+          }}
         />
       )}
     </Modal>

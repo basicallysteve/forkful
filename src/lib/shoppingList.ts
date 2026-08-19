@@ -539,8 +539,10 @@ export async function scanToBuyShoppingListItem(userId: number, productId: numbe
         }
       }
 
-      // Nothing on the list matches: an off-list impulse buy — a new, already-bought Product line.
-      const unit = getAllowedUnits(product.measurements, product.servingUnit)[0]
+      // Nothing on the list matches: an off-list impulse buy — a new, already-bought Product line at
+      // quantity 1 in the Product's own serving unit (mapProductRow always resolves one, defaulting to
+      // 'g'), so the line uses the Product's canonical unit rather than whichever Measurement sorts first.
+      const unit = product.servingUnit
       const [inserted] = await tx
         .insert(shoppingListItems)
         .values({
