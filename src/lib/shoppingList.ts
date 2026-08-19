@@ -1044,37 +1044,40 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
 }
 
 // One archived Shopping List opened from the index: its *bought* lines (each with its Line Price) and
-// the total spent across them. Scoped to the caller and to `archived` status, so an active list or
-// another user's list resolves to null (→ 404). A list with no bought lines also resolves to null: it's
-// hidden from the index (getArchivedShoppingLists), so a direct link to one should 404 rather than show
-// an empty detail. Unlike the active-list reads, a line whose Food/Product was soft-deleted after the
-// trip is deliberately NOT hidden here — price history should keep showing what was bought — so the
-// source is left-joined for its display name without a not-deleted filter.
+// the total spent across them. A single query — the bought lines INNER-joined to their owning list,
+// scoped by id + owner + `archived` status — so an active list, another user's list, or a missing id all
+// yield zero rows. A list with no bought lines yields zero rows too and is likewise treated as not found
+// (→ 404): it's hidden from the index (getArchivedShoppingLists), so a direct link to one shouldn't show
+// an empty detail. Because every "not found" case collapses to "zero rows", no separate existence check
+// is needed. The list's dateAdded rides along on each joined row. (An INNER — not FULL — join is what we
+// want: we only care about rows where a bought line and its owning archived list both match; a FULL join
+// would additionally surface unmatched rows on either side.) Unlike the active-list reads, a line whose
+// Food/Product was soft-deleted after the trip is deliberately NOT hidden here — price history should
+// keep showing what was bought — so the source is left-joined for its display name without a filter.
 export async function getArchivedShoppingListById(id: number, userId: number): Promise<ArchivedShoppingList | null> {
-  const [list] = await db
-    .select()
-    .from(shoppingLists)
-    .where(and(eq(shoppingLists.id, id), eq(shoppingLists.userId, userId), eq(shoppingLists.status, 'archived')))
-
-  if (!list) return null
-
   const rows = await db
     .select()
     .from(shoppingListItems)
+    .innerJoin(shoppingLists, eq(shoppingListItems.shoppingListId, shoppingLists.id))
     .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
     .leftJoin(products, eq(shoppingListItems.productId, products.id))
-    .where(and(eq(shoppingListItems.shoppingListId, list.id), eq(shoppingListItems.status, 'bought')))
+    .where(and(
+      eq(shoppingLists.id, id),
+      eq(shoppingLists.userId, userId),
+      eq(shoppingLists.status, 'archived'),
+      eq(shoppingListItems.status, 'bought'),
+    ))
     .orderBy(asc(shoppingListItems.dateAdded), asc(shoppingListItems.id))
 
-  // No bought lines → nothing to show; treat as not found so the detail matches the index's exclusion.
+  // Zero rows = not found (missing / not owned / not archived / no bought lines) → 404.
   if (rows.length === 0) return null
 
   const items = rows.map(mapJoinedRow)
   const totalSpent = round2(items.reduce((sum, item) => sum + (item.linePrice ?? 0), 0))
 
   return {
-    id: list.id,
-    dateAdded: list.dateAdded ?? new Date(),
+    id,
+    dateAdded: rows[0].shopping_lists.dateAdded ?? new Date(),
     items,
     totalSpent,
   }
