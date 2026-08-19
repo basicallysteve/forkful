@@ -1,22 +1,27 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import Link from 'next/link'
 import { useSwipeable } from 'react-swipeable'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
+import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
+import BarcodeCreationModal from '@/components/BarcodeCreationModal/BarcodeCreationModal'
+import LinkFoodModal from '@/components/BarcodeCreationModal/LinkFoodModal'
 import { useFoodStore } from '@/stores/food'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import {
   apiCompleteShoppingTrip,
   apiCreateShoppingListItem,
   apiDeleteShoppingListItem,
+  apiScanToBuyShoppingListItem,
   apiSplitShoppingListItem,
   apiUpdateShoppingListItemDetails,
   apiUpdateShoppingListItemStatus,
 } from '@/lib/api/shoppingList'
 import type { ShoppingListItemPortionInput } from '@/lib/api/shoppingList'
+import { apiFetchProductByBarcode } from '@/lib/api/products'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 import { formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from '@/utils/unitConversion'
@@ -26,7 +31,7 @@ import { ceil2, round2 } from '@/utils/number'
 import { formatPrice } from '@/utils/currency'
 import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
-import type { ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
+import type { ScanToBuyOutcome, ShoppingListItem, ShoppingListItemSourceType, ShoppingListItemStatus } from '@/types/ShoppingList'
 import { InputNumber } from 'primereact/inputnumber'
 import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
@@ -578,6 +583,153 @@ function CompleteTripDialog({
   )
 }
 
+// Human-readable confirmation for each Scan-to-Buy outcome (see ADR-0021), shown as a running banner in
+// the scan modal so the shopper gets immediate feedback on what the last scan did.
+function scanOutcomeMessage(outcome: ScanToBuyOutcome, name: string): string {
+  if (outcome === 'upgraded') return `Bought ${name} — matched to your planned item.`
+  if (outcome === 'checked') return `Bought ${name}.`
+  return `Added ${name} to your cart.`
+}
+
+// Scan-to-Buy (ADR-0021): a camera/manual barcode entry that stays open for a run of scans. Each scan
+// resolves the barcode to a Product — reusing the shared barcode lookup, and the Barcode Creation Modal
+// for an unknown code — then folds it onto the active list server-side (upgrade / check-off / impulse).
+// The BarcodeScanner stops itself after one detection, so it's remounted (via a bumped `key`) after each
+// resolved scan to resume the camera for the next item.
+function ScanToBuyModal({
+  onScanned,
+  onHide,
+}: {
+  onScanned: (item: ShoppingListItem) => void
+  onHide: () => void
+}) {
+  const [scanSession, setScanSession] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [detectingCode, setDetectingCode] = useState<string | null>(null)
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null)
+  // A resolved product that has no parent Food yet: linking it (or skipping) precedes the buy, so a
+  // scanned unlinked product can still upgrade a planned Food line instead of only ever impulse-adding.
+  const [pendingLinkProduct, setPendingLinkProduct] = useState<Product | null>(null)
+  const [lastMessage, setLastMessage] = useState<string | null>(null)
+
+  // BarcodeScanner stops after its first detection, so every path that hands control back to it —
+  // a completed buy, a failed scan, or a dismissed creation/link modal — remounts it (bumped `key`) to
+  // resume the camera. Without this the modal would go dead after one scan until reopened.
+  const resumeScanner = useCallback(() => setScanSession((session) => session + 1), [])
+
+  // Post the resolved Product to the active list, surface the outcome, and resume scanning for the next
+  // item. Toggles `loading` itself so the in-flight overlay shows for every buy — including the ones
+  // driven from the link/create modals, which don't go through handleDetected. Errors surface a banner
+  // and still resume, so a failed scan doesn't strand the scanner.
+  const buyProduct = useCallback(async (productId: number) => {
+    setLoading(true)
+    try {
+      const { item, outcome } = await apiScanToBuyShoppingListItem(productId)
+      onScanned(item)
+      setLastMessage(scanOutcomeMessage(outcome, item.name))
+    } catch {
+      setError('Scan failed. Please try again.')
+    } finally {
+      setLoading(false)
+      resumeScanner()
+    }
+  }, [onScanned, resumeScanner])
+
+  const handleDetected = useCallback(async (code: string) => {
+    setLoading(true)
+    setDetectingCode(code)
+    setError(null)
+    try {
+      const product = await apiFetchProductByBarcode(code)
+      // Unknown barcode: create the Product inline, then the modal's onCreated proceeds as a scan.
+      if (!product) {
+        setPendingBarcode(code)
+        return
+      }
+      // Known but not yet linked to a Food: prompt to link first (mirroring ProductSearch), so it can
+      // match — and upgrade — a planned Food line rather than silently becoming an impulse buy.
+      if (!product.parentFoodId) {
+        setPendingLinkProduct(product)
+        return
+      }
+      await buyProduct(product.id)
+    } catch {
+      // Only the barcode lookup can throw here (buyProduct swallows its own errors) — resume so a failed
+      // lookup can be retried without reopening the modal.
+      setError('Scan failed. Please try again.')
+      resumeScanner()
+    } finally {
+      setLoading(false)
+      setDetectingCode(null)
+    }
+  }, [buyProduct, resumeScanner])
+
+  const footer = (
+    <div className="dialog-footer">
+      <button type="button" className="primary-button" onClick={onHide}>Done</button>
+    </div>
+  )
+
+  return (
+    <Modal
+      header="Scan to buy"
+      visible
+      onHide={onHide}
+      footer={footer}
+      className="scan-to-buy-dialog"
+      style={{ width: 'min(480px, 95vw)' }}
+    >
+      <div className="scan-to-buy-body">
+        {lastMessage && <p className="scan-to-buy-result" role="status">{lastMessage}</p>}
+        {error && <p className="item-details-error" role="alert">{error}</p>}
+        <BarcodeScanner
+          key={scanSession}
+          onDetected={handleDetected}
+          loading={loading}
+          detectedCode={detectingCode}
+        />
+      </div>
+
+      {pendingLinkProduct && (
+        <LinkFoodModal
+          product={pendingLinkProduct}
+          // Linked (parentFoodId now set) or skipped (still unlinked → impulse), both proceed to the buy;
+          // the server re-reads the product by id, so a just-saved link is reflected in the match.
+          onLinked={(product) => {
+            setPendingLinkProduct(null)
+            void buyProduct(product.id)
+          }}
+          onSkip={(product) => {
+            setPendingLinkProduct(null)
+            void buyProduct(product.id)
+          }}
+          // Cancelled without linking — resume so the scanner is live again.
+          onHide={() => {
+            setPendingLinkProduct(null)
+            resumeScanner()
+          }}
+        />
+      )}
+
+      {pendingBarcode && (
+        <BarcodeCreationModal
+          barcode={pendingBarcode}
+          onCreated={(product) => {
+            setPendingBarcode(null)
+            void buyProduct(product.id)
+          }}
+          // Cancelled without creating — resume so the scanner is live again.
+          onHide={() => {
+            setPendingBarcode(null)
+            resumeScanner()
+          }}
+        />
+      )}
+    </Modal>
+  )
+}
+
 export default function ShoppingListView({
   initialFoods,
   initialItems,
@@ -628,6 +780,17 @@ export default function ShoppingListView({
   const [completing, setCompleting] = useState(false)
   const [completeError, setCompleteError] = useState<string | null>(null)
   const [tripSummary, setTripSummary] = useState<string | null>(null)
+
+  // Scan-to-Buy: whether the barcode scanner modal is open.
+  const [showScan, setShowScan] = useState(false)
+
+  // A resolved scan returns its post-write line (an upgraded, checked-off, or new impulse line); upsert
+  // it so the list reflects the change immediately. upsertItem replaces an upgraded/checked line in place
+  // by id and appends a fresh impulse line.
+  const handleScanned = useCallback((item: ShoppingListItem) => {
+    setSaveError(null)
+    upsertItem(item)
+  }, [upsertItem])
 
   async function updateCollectionEnabled(next: boolean) {
     if (next === collectionEnabled) return
@@ -914,27 +1077,40 @@ export default function ShoppingListView({
         <header className="shopping-list-header">
           <h1>Shopping List</h1>
           <div className="shopping-list-header-actions">
-            <Link href="/shopping-list/archived" className="share-button">
+            {/* The label text is hidden on mobile (icon-only), so each button carries an aria-label to
+                keep an accessible name when only the icon shows. */}
+            <Link href="/shopping-list/archived" className="share-button" aria-label="History">
               <i className="pi pi-history" aria-hidden="true" />
-              History
+              <span className="btn-label">History</span>
             </Link>
+            <button
+              type="button"
+              className="share-button"
+              onClick={() => setShowScan(true)}
+              aria-label="Scan"
+            >
+              <i className="pi pi-barcode" aria-hidden="true" />
+              <span className="btn-label">Scan</span>
+            </button>
             <button
               type="button"
               className="share-button"
               onClick={handleShare}
               disabled={items.length === 0}
+              aria-label={copied ? 'Copied!' : 'Share'}
             >
               <i className={`pi ${copied ? 'pi-check' : 'pi-share-alt'}`} aria-hidden="true" />
-              {copied ? 'Copied!' : 'Share'}
+              <span className="btn-label">{copied ? 'Copied!' : 'Share'}</span>
             </button>
             <button
               type="button"
               className="done-shopping-button"
               onClick={handleDoneShopping}
               disabled={items.length === 0 || completing}
+              aria-label={completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}
             >
               <i className="pi pi-check-circle" aria-hidden="true" />
-              {completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}
+              <span className="btn-label">{completing && !showCompletePrompt ? 'Finishing…' : 'Done shopping'}</span>
             </button>
           </div>
         </header>
@@ -1123,6 +1299,13 @@ export default function ShoppingListView({
         onHide={handleCloseDetails}
         onSave={handleSaveDetails}
       />
+
+      {showScan && (
+        <ScanToBuyModal
+          onScanned={handleScanned}
+          onHide={() => setShowScan(false)}
+        />
+      )}
 
       {showCompletePrompt && (
         <CompleteTripDialog

@@ -1,4 +1,4 @@
-import type { ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
+import type { ScanToBuyOutcome, ScanToBuyResult, ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate' | 'expirationDate'> & {
   addedDate: string
@@ -59,6 +59,23 @@ export async function apiCreateShoppingListItem(input: CreateShoppingListItemInp
   if (!res.ok) throw new Error('Failed to create shopping list item')
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
+}
+
+// Scan-to-Buy (ADR-0021): the client resolves a scanned barcode to a Product, then posts its id here.
+// The server folds it onto the active list and reports the resulting line plus what happened —
+// 'upgraded' (a planned Food line promoted to this Product), 'checked' (a planned Product line marked
+// bought), or 'impulse' (a fresh bought Product line for an off-list scan). The outcome/result types are
+// shared via @/types/ShoppingList (as ShoppingTripCompletion is), so the layers can't drift.
+export async function apiScanToBuyShoppingListItem(productId: number): Promise<ScanToBuyResult> {
+  const res = await fetch('/api/shopping-list/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId }),
+  })
+
+  if (!res.ok) throw new Error('Failed to scan shopping list item')
+  const raw: { item: RawShoppingListItem; outcome: ScanToBuyOutcome } = await res.json()
+  return { item: parseShoppingListItem(raw.item), outcome: raw.outcome }
 }
 
 export async function apiDeleteShoppingListItem(id: number): Promise<void> {

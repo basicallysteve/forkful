@@ -9,7 +9,7 @@ import { creditPantryGapShortfall, type PantryGapStock } from '@/utils/pantryGap
 import { round2 } from '@/utils/number'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product, ProductSource } from '@/types/Product'
-import type { ArchivedShoppingList, ArchivedShoppingListSummary, ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
+import type { ArchivedShoppingList, ArchivedShoppingListSummary, ScanToBuyResult, ScanToBuyOutcome, ShoppingList, ShoppingListItem, ShoppingListItemSourceType, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 const POSTGRES_UNIQUE_VIOLATION = '23505'
 
@@ -469,6 +469,116 @@ export async function createShoppingListProductItem(data: CreateShoppingListProd
     amount: data.amount,
     unit: data.unit,
   })
+}
+
+// Scan-to-Buy (ADR-0021). A scan resolves to a concrete Product; how it lands on the list depends on
+// what's already planned:
+//   'upgraded' — a planned `'food'` line whose Food is this Product's parent (foodId === parentFoodId)
+//     is mutated in place: promoted to `'product'`, the scanned Product attached, marked `'bought'`. The
+//     line's foodId is cleared — the live `sourceType` is the source of truth (see the ADR) — so a later
+//     soft-delete of the generic Food can't hide an item that is now a Product.
+//   'checked'  — a planned `'product'` line already referencing this same Product is simply marked
+//     `'bought'` (a scan check-off; there is nothing to upgrade), rather than duplicating the line.
+//   'impulse'  — no matching planned line, so a fresh already-`'bought'` `'product'` line is added (an
+//     off-list impulse buy) at amount 1 in the Product's own unit.
+// The Product's unit/measurements are not re-validated against an upgraded line's existing unit — the
+// line keeps whatever unit it was planned in (the ADR treats the upgrade as reconciling references, not
+// re-deriving the quantity). Runs in one transaction that locks the active list row, mirroring
+// insertOrMergeItems: a concurrent Trip Completion that archives the list under the lock is retried
+// against the fresh active list. Returns null when the Product doesn't exist (→ 404).
+export async function scanToBuyShoppingListItem(userId: number, productId: number): Promise<ScanToBuyResult | null> {
+  const product = await getProductById(productId)
+  if (!product) return null
+
+  for (let attempt = 0; attempt < INSERT_ACTIVE_LIST_MAX_ATTEMPTS; attempt++) {
+    const shoppingList = await getOrCreateActiveShoppingList(userId)
+
+    const resolved = await db.transaction(async (tx): Promise<ScanToBuyResult | null> => {
+      const [locked] = await tx
+        .select({ id: shoppingLists.id, status: shoppingLists.status })
+        .from(shoppingLists)
+        .where(eq(shoppingLists.id, shoppingList.id))
+        .for('update')
+
+      // Archived out from under us by a concurrent completion — signal a retry against the fresh list.
+      if (!locked || locked.status !== 'active') return null
+
+      // The list's open (to_buy) lines, oldest first, so a scan lands on the earliest matching plan.
+      // Lines whose Food/Product was soft-deleted are excluded (notSoftDeletedSources, as in every other
+      // read) so a scan can't match — and resurrect — a line that is already hidden from the user.
+      const openJoined = await tx
+        .select()
+        .from(shoppingListItems)
+        .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+        .leftJoin(products, eq(shoppingListItems.productId, products.id))
+        .where(and(
+          eq(shoppingListItems.shoppingListId, shoppingList.id),
+          eq(shoppingListItems.status, 'to_buy'),
+          notSoftDeletedSources,
+        ))
+        .orderBy(asc(shoppingListItems.dateAdded), asc(shoppingListItems.id))
+      const openRows = openJoined.map((row) => row.shopping_list_items)
+
+      // Re-read the resulting line (joined to its source) and map it inside the transaction, so the
+      // returned item never depends on the list still being active afterwards — a concurrent Trip
+      // Completion could archive it between commit and a post-commit active-scoped read.
+      const readResult = async (id: number, outcome: ScanToBuyOutcome): Promise<ScanToBuyResult> => {
+        const [row] = await tx
+          .select()
+          .from(shoppingListItems)
+          .leftJoin(foods, eq(shoppingListItems.foodId, foods.id))
+          .leftJoin(products, eq(shoppingListItems.productId, products.id))
+          .where(eq(shoppingListItems.id, id))
+        return { item: mapJoinedRow(row), outcome }
+      }
+
+      // Already planned as this exact Product: a scan just checks it off (no reference to upgrade).
+      const productLine = openRows.find((row) => row.sourceType === 'product' && row.productId === product.id)
+      if (productLine) {
+        await tx.update(shoppingListItems).set({ status: 'bought' }).where(eq(shoppingListItems.id, productLine.id))
+        return readResult(productLine.id, 'checked')
+      }
+
+      // Planned as the generic Food this Product refines: upgrade the line in place to the Product.
+      if (product.parentFoodId != null) {
+        const foodLine = openRows.find((row) => row.sourceType === 'food' && row.foodId === product.parentFoodId)
+        if (foodLine) {
+          await tx
+            .update(shoppingListItems)
+            .set({ sourceType: 'product', productId: product.id, foodId: null, status: 'bought' })
+            .where(eq(shoppingListItems.id, foodLine.id))
+          return readResult(foodLine.id, 'upgraded')
+        }
+      }
+
+      // Nothing on the list matches: an off-list impulse buy — a new, already-bought Product line at
+      // quantity 1 in the Product's own serving unit (mapProductRow always resolves one, defaulting to
+      // 'g'), so the line uses the Product's canonical unit rather than whichever Measurement sorts first.
+      const unit = product.servingUnit
+      const [inserted] = await tx
+        .insert(shoppingListItems)
+        .values({
+          shoppingListId: shoppingList.id,
+          sourceType: 'product',
+          foodId: null,
+          productId: product.id,
+          name: null,
+          amount: '1.00',
+          unit,
+          status: 'bought',
+        })
+        .returning({ id: shoppingListItems.id })
+      return readResult(inserted.id, 'impulse')
+    })
+
+    // The list was archived mid-scan — re-resolve the current active list and try again.
+    if (resolved === null) continue
+
+    return resolved
+  }
+
+  // Every attempt found the list archived under the lock (a pathological run of concurrent completions).
+  throw new Error('Failed to scan shopping list item')
 }
 
 // Hard-delete a single line off the user's active list (a Remove Item — see CONTEXT.md). The row is

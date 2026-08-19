@@ -12,6 +12,7 @@ import type { ShoppingListItem } from '@/types/ShoppingList'
 vi.mock('@/lib/api/shoppingList', () => ({
   apiCreateShoppingListItem: vi.fn(),
   apiDeleteShoppingListItem: vi.fn(),
+  apiScanToBuyShoppingListItem: vi.fn(),
   apiUpdateShoppingListItemStatus: vi.fn(),
   apiUpdateShoppingListItemDetails: vi.fn(),
   apiSplitShoppingListItem: vi.fn(),
@@ -20,6 +21,44 @@ vi.mock('@/lib/api/shoppingList', () => ({
 
 vi.mock('@/lib/api/foods', () => ({
   apiFetchFoods: vi.fn(),
+}))
+
+vi.mock('@/lib/api/products', () => ({
+  apiFetchProductByBarcode: vi.fn(),
+}))
+
+// A minimal BarcodeScanner stand-in: a button that fires a fixed detected code, so the scan flow can be
+// driven without a camera. Exposes the loading flag for assertions.
+vi.mock('@/components/BarcodeScanner/BarcodeScanner', () => ({
+  default: ({ onDetected, loading }: { onDetected: (code: string) => void; loading?: boolean }) => (
+    <button type="button" aria-label="mock-detect" data-loading={loading ? 'true' : 'false'} onClick={() => onDetected('1112223334445')}>
+      detect
+    </button>
+  ),
+}))
+
+// A minimal Link Food Modal stand-in: shows the product it was handed, and links (setting a parentFoodId)
+// or skips (leaving it unlinked) on click.
+vi.mock('@/components/BarcodeCreationModal/LinkFoodModal', () => ({
+  default: ({ product, onLinked, onSkip }: { product: Product; onLinked: (p: Product) => void; onSkip: (p: Product) => void }) => (
+    <div>
+      <span>link-modal:{product.name}</span>
+      <button type="button" aria-label="mock-link" onClick={() => onLinked({ ...product, parentFoodId: 1 })}>link</button>
+      <button type="button" aria-label="mock-skip-link" onClick={() => onSkip(product)}>skip</button>
+    </div>
+  ),
+}))
+
+// A minimal Barcode Creation Modal stand-in: shows the barcode it was handed and creates a product on click.
+vi.mock('@/components/BarcodeCreationModal/BarcodeCreationModal', () => ({
+  default: ({ barcode, onCreated }: { barcode: string; onCreated: (product: Product) => void }) => (
+    <div>
+      <span>creation-modal:{barcode}</span>
+      <button type="button" aria-label="mock-create" onClick={() => onCreated({ ...mockProduct, id: 77, name: 'New Snack' })}>
+        create
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('@/lib/api/users', () => ({
@@ -65,8 +104,9 @@ vi.mock('@/components/ProductSearch/ProductSearch', () => ({
   ),
 }))
 
-import { apiCompleteShoppingTrip, apiCreateShoppingListItem, apiDeleteShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
+import { apiCompleteShoppingTrip, apiCreateShoppingListItem, apiDeleteShoppingListItem, apiScanToBuyShoppingListItem, apiSplitShoppingListItem, apiUpdateShoppingListItemDetails, apiUpdateShoppingListItemStatus } from '@/lib/api/shoppingList'
 import { apiFetchFoods } from '@/lib/api/foods'
+import { apiFetchProductByBarcode } from '@/lib/api/products'
 import { apiUpdateShoppingPreferences } from '@/lib/api/users'
 
 const mockProduct: Product = {
@@ -1170,5 +1210,103 @@ describe('ShoppingListView — Shopping Trip Completion', () => {
     // The prompt stays open and the lines are left in place.
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(useShoppingListStore.getState().items).toHaveLength(2)
+  })
+
+  describe('scan-to-buy', () => {
+    async function openScanner(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: /^scan$/i }))
+      // The scanner modal (with the mock detect button) is now mounted.
+      return screen.getByRole('button', { name: 'mock-detect' })
+    }
+
+    it('resolves a scanned barcode to a product, upgrades the matching line, and confirms the outcome', async () => {
+      const user = userEvent.setup()
+      // A planned food line that the scan will upgrade in place (same id, now a product line).
+      const planned = makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })
+      const upgraded = makeItem({ id: 1, sourceType: 'product', status: 'bought', product: mockProduct, amount: 2, unit: 'oz' })
+      // Already linked to the planned food (parentFoodId), so the scan buys straight through with no link prompt.
+      vi.mocked(apiFetchProductByBarcode).mockResolvedValue({ ...mockProduct, parentFoodId: 1 })
+      vi.mocked(apiScanToBuyShoppingListItem).mockResolvedValue({ item: upgraded, outcome: 'upgraded' })
+
+      render(<ShoppingListView initialFoods={mockFoods} initialItems={[planned]} />)
+
+      const detect = await openScanner(user)
+      await user.click(detect)
+
+      await waitFor(() => expect(apiFetchProductByBarcode).toHaveBeenCalledWith('1112223334445'))
+      expect(apiScanToBuyShoppingListItem).toHaveBeenCalledWith(mockProduct.id)
+      // The running confirmation banner reflects the upgrade.
+      expect(await screen.findByRole('status')).toHaveTextContent(/matched to your planned item/i)
+      // The store now holds the upgraded product line under the same id.
+      const stored = useShoppingListStore.getState().items
+      expect(stored).toHaveLength(1)
+      expect(stored[0].sourceType).toBe('product')
+      expect(stored[0].status).toBe('bought')
+    })
+
+    it('prompts to link an unlinked scanned product before buying, so it can upgrade the planned food line', async () => {
+      const user = userEvent.setup()
+      const planned = makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' })
+      const upgraded = makeItem({ id: 1, sourceType: 'product', status: 'bought', product: { ...mockProduct, parentFoodId: 1 }, amount: 2, unit: 'oz' })
+      // Resolved product has no parentFoodId → the link modal must appear before any buy.
+      vi.mocked(apiFetchProductByBarcode).mockResolvedValue({ ...mockProduct, parentFoodId: undefined })
+      vi.mocked(apiScanToBuyShoppingListItem).mockResolvedValue({ item: upgraded, outcome: 'upgraded' })
+
+      render(<ShoppingListView initialFoods={mockFoods} initialItems={[planned]} />)
+
+      const detect = await openScanner(user)
+      await user.click(detect)
+
+      // The link modal is shown; nothing is bought yet.
+      expect(await screen.findByText('link-modal:Cereal Box')).toBeInTheDocument()
+      expect(apiScanToBuyShoppingListItem).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'mock-link' }))
+
+      // After linking, the scan proceeds and upgrades the planned line in place.
+      await waitFor(() => expect(apiScanToBuyShoppingListItem).toHaveBeenCalledWith(mockProduct.id))
+      expect(await screen.findByRole('status')).toHaveTextContent(/matched to your planned item/i)
+      const stored = useShoppingListStore.getState().items
+      expect(stored).toHaveLength(1)
+      expect(stored[0].sourceType).toBe('product')
+    })
+
+    it('opens the barcode creation modal for an unknown barcode, then buys the created product', async () => {
+      const user = userEvent.setup()
+      vi.mocked(apiFetchProductByBarcode).mockResolvedValue(null)
+      const impulse = makeItem({ id: 99, sourceType: 'product', status: 'bought', product: { ...mockProduct, id: 77, name: 'New Snack' }, amount: 1, unit: 'box' })
+      vi.mocked(apiScanToBuyShoppingListItem).mockResolvedValue({ item: impulse, outcome: 'impulse' })
+
+      render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+      const detect = await openScanner(user)
+      await user.click(detect)
+
+      // Unknown code → the creation modal appears seeded with the scanned barcode.
+      expect(await screen.findByText('creation-modal:1112223334445')).toBeInTheDocument()
+      expect(apiScanToBuyShoppingListItem).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'mock-create' }))
+
+      // The newly-created product (id 77) is scanned onto the list as an impulse buy.
+      await waitFor(() => expect(apiScanToBuyShoppingListItem).toHaveBeenCalledWith(77))
+      expect(await screen.findByRole('status')).toHaveTextContent(/added new snack to your cart/i)
+      expect(useShoppingListStore.getState().items).toHaveLength(1)
+    })
+
+    it('surfaces an error when the scan request fails', async () => {
+      const user = userEvent.setup()
+      // Linked product → straight to the buy, which is what fails here.
+      vi.mocked(apiFetchProductByBarcode).mockResolvedValue({ ...mockProduct, parentFoodId: 1 })
+      vi.mocked(apiScanToBuyShoppingListItem).mockRejectedValue(new Error('boom'))
+
+      render(<ShoppingListView initialFoods={mockFoods} initialItems={[]} />)
+
+      const detect = await openScanner(user)
+      await user.click(detect)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/scan failed/i)
+      expect(useShoppingListStore.getState().items).toHaveLength(0)
+    })
   })
 })

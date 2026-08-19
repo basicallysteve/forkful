@@ -43,6 +43,16 @@ export type ShoppingTripCompletion = {
   items: ShoppingListItem[]
 }
 
+// The outcome of a Scan-to-Buy (ADR-0021), shared by the data layer (which produces it) and the API
+// client (which parses it): 'upgraded' (a planned Food line promoted to the scanned Product), 'checked'
+// (a planned Product line marked bought), or 'impulse' (a fresh bought Product line for an off-list scan).
+export type ScanToBuyOutcome = 'upgraded' | 'checked' | 'impulse'
+
+export type ScanToBuyResult = {
+  item: ShoppingListItem
+  outcome: ScanToBuyOutcome
+}
+
 // One row in the archived-lists index (the price-history browse view). A completed Shopping List is
 // retained for price history; the index summarises it by how many lines were bought and how much was
 // spent (the sum of the bought lines' Line Prices, an unpriced line contributing 0), plus the list's
