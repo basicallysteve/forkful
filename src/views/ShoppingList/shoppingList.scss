@@ -31,12 +31,27 @@
     padding-top: 12px;
     border-top: 1px solid var(--vscode-border);
   }
-  // Groups the title-row actions (Share + Done shopping) so they wrap together on narrow screens.
+  // Groups the title-row actions (History / Scan / Share / Done shopping) on a single, non-wrapping row.
+  // On mobile the buttons collapse to icon-only (see .btn-label below), which keeps them narrow and
+  // uniform so all four stay on that row without overflowing.
   .shopping-list-header-actions {
     display: flex;
     flex: 0 0 auto;
     align-items: center;
     gap: 8px;
+
+    // Below the 720px breakpoint (matching the row swipe-to-remove cutoff) show icons only: hide the
+    // label text and even out the padding so each button is a consistent square-ish icon target.
+    @media (max-width: 720px) {
+      .btn-label {
+        display: none;
+      }
+
+      .share-button,
+      .done-shopping-button {
+        padding: 0.4rem 0.6rem;
+      }
+    }
   }
 
   // Primary title-row action: finishes the trip, archives the list, and sends bought lines to the pantry.
@@ -544,8 +559,28 @@
   }
 }
 
-// The Price & expiration dialog also portals to <body>, so it is styled here at the top level.
-.item-details-dialog {
+// These dialogs portal to <body>, so they are styled here at the top level rather than under
+// .shopping-list. The Scan-to-Buy modal shares the footer / primary-button / error styling below.
+.item-details-dialog,
+.scan-to-buy-dialog {
+  // Scan-to-Buy modal body: the running confirmation banner sits above the scanner.
+  .scan-to-buy-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scan-to-buy-result {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
   .item-details-form {
     display: flex;
     flex-direction: column;

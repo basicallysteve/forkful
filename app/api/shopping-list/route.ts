@@ -9,6 +9,7 @@ import {
   getShoppingListItems,
 } from '@/lib/shoppingList'
 import type { ShoppingListItem, ShoppingListItemSourceType } from '@/types/ShoppingList'
+import { isPositiveInteger } from '@/utils/number'
 
 type CreateBody = {
   sourceType?: ShoppingListItemSourceType
@@ -17,10 +18,6 @@ type CreateBody = {
   name?: string
   amount?: number
   unit?: string | null
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return Number.isInteger(value) && (value as number) > 0
 }
 
 // Data-layer error messages the route surfaces as client errors; anything else is a real 500.
