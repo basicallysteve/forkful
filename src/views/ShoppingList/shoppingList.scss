@@ -10,6 +10,7 @@
 
   .shopping-list-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
@@ -31,11 +32,16 @@
     padding-top: 12px;
     border-top: 1px solid var(--vscode-border);
   }
-  // Groups the title-row actions (Share + Done shopping) so they wrap together on narrow screens.
+  // Groups the title-row actions (History / Scan / Share / Done shopping). It can shrink (min-width: 0)
+  // and wrap its buttons so that on a narrow screen they flow onto extra lines against the right edge
+  // instead of overflowing the header.
   .shopping-list-header-actions {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
   }
 
