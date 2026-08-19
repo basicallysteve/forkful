@@ -29,36 +29,33 @@ export default function ArchivedShoppingListDetail({ list }: { list: ArchivedSho
         </header>
 
         <section className="archive-panel">
+          {/* The page 404s an archived list with no bought lines, so items is always non-empty here. */}
           <div className="panel-content">
-            {list.items.length === 0 ? (
-              <p className="archive-empty-text">Nothing was bought on this trip.</p>
-            ) : (
-              <div className="archive-cards">
-                {list.items.map((item) => {
-                  const quantity = itemQuantityLabel(item)
-                  return (
-                    <Card key={item.id} className="archive-card is-static">
-                      <div className="card-content">
-                        <div className="card-header">
-                          <h3 className="card-title">{item.name}</h3>
-                          <div className="card-badges">
-                            <span className="pill pill-ghost">
-                              {item.linePrice != null ? formatPrice(item.linePrice) : '—'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="card-footer">
-                          {quantity && <span className="card-meta">{quantity}</span>}
-                          {item.expirationDate && (
-                            <span className="card-meta">Exp {formatUtcDateForInput(item.expirationDate)}</span>
-                          )}
+            <div className="archive-cards">
+              {list.items.map((item) => {
+                const quantity = itemQuantityLabel(item)
+                return (
+                  <Card key={item.id} className="archive-card is-static">
+                    <div className="card-content">
+                      <div className="card-header">
+                        <h3 className="card-title">{item.name}</h3>
+                        <div className="card-badges">
+                          <span className="pill pill-ghost">
+                            {item.linePrice != null ? formatPrice(item.linePrice) : '—'}
+                          </span>
                         </div>
                       </div>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+                      <div className="card-footer">
+                        {quantity && <span className="card-meta">{quantity}</span>}
+                        {item.expirationDate && (
+                          <span className="card-meta">Exp {formatUtcDateForInput(item.expirationDate)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
           </div>
         </section>
       </div>

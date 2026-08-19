@@ -15,6 +15,7 @@ import {
   getArchivedShoppingListById,
   getArchivedShoppingLists,
   getOrCreateActiveShoppingList,
+  purgeEmptyArchivedShoppingLists,
   getShoppingListItems,
   splitShoppingListItem,
   updateShoppingListItemDetails,
@@ -906,6 +907,20 @@ describe('shopping list data layer (integration)', () => {
       const lists = await getArchivedShoppingLists(user.id)
       expect(lists).toHaveLength(1)
       expect(lists[0].boughtItemCount).toBe(1)
+
+      // The empty archived list is hidden from the index; a direct fetch of it 404s (null) too, so the
+      // detail matches the index's exclusion. Grab its id straight from the DB since the index omits it.
+      const { rows: emptyLists } = await pool.query(
+        `SELECT sl.id FROM shopping_lists sl
+           WHERE sl.user_id = $1 AND sl.status = 'archived'
+             AND NOT EXISTS (
+               SELECT 1 FROM shopping_list_items sli
+                WHERE sli.shopping_list_id = sl.id AND sli.status = 'bought'
+             )`,
+        [user.id]
+      )
+      expect(emptyLists).toHaveLength(1)
+      expect(await getArchivedShoppingListById(emptyLists[0].id, user.id)).toBeNull()
     })
 
     it('returns null for an active list, another user’s list, or a missing id', async () => {
@@ -926,6 +941,36 @@ describe('shopping list data layer (integration)', () => {
       expect(await getArchivedShoppingListById(archived.id, other.id)).toBeNull()
       expect(await getArchivedShoppingListById(999999999, owner.id)).toBeNull()
       expect(await getArchivedShoppingLists(other.id)).toHaveLength(0)
+    })
+
+    it('purges archived lists with no bought lines but keeps ones that had a purchase', async () => {
+      const user = await createTestUser('archPurge')
+      const food = await createTestFood('TestShopping ArchPurgeFood')
+
+      // A trip with a real purchase — this archived list must survive the purge.
+      const bought = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'oz' })
+      await updateShoppingListItemStatus(bought.id, user.id, 'bought')
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+      const [kept] = await getArchivedShoppingLists(user.id)
+
+      // Two trips completed with nothing bought — these empty archived lists should be swept away.
+      await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+      await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      const before = await pool.query(`SELECT COUNT(*)::int AS n FROM shopping_lists WHERE user_id = $1 AND status = 'archived'`, [user.id])
+      expect(before.rows[0].n).toBe(3)
+
+      const result = await purgeEmptyArchivedShoppingLists()
+      // Global sweep, so at least the two empties here were removed (other suites may add more).
+      expect(result.deletedCount).toBeGreaterThanOrEqual(2)
+
+      // Only the list with a purchase remains, and it's still readable.
+      const remaining = await pool.query(`SELECT id FROM shopping_lists WHERE user_id = $1 AND status = 'archived'`, [user.id])
+      expect(remaining.rows).toHaveLength(1)
+      expect(remaining.rows[0].id).toBe(kept.id)
+      expect(await getArchivedShoppingListById(kept.id, user.id)).not.toBeNull()
     })
   })
 })

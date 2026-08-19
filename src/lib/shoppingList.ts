@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, notExists, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { foods, ingredients, pantryItems, products, shoppingListItems, shoppingLists } from '@/db/schema'
 import { getFoodById } from '@/lib/foods'
@@ -1045,9 +1045,11 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
 
 // One archived Shopping List opened from the index: its *bought* lines (each with its Line Price) and
 // the total spent across them. Scoped to the caller and to `archived` status, so an active list or
-// another user's list resolves to null (→ 404). Unlike the active-list reads, a line whose Food/Product
-// was soft-deleted after the trip is deliberately NOT hidden here — price history should keep showing
-// what was bought — so the source is left-joined for its display name without a not-deleted filter.
+// another user's list resolves to null (→ 404). A list with no bought lines also resolves to null: it's
+// hidden from the index (getArchivedShoppingLists), so a direct link to one should 404 rather than show
+// an empty detail. Unlike the active-list reads, a line whose Food/Product was soft-deleted after the
+// trip is deliberately NOT hidden here — price history should keep showing what was bought — so the
+// source is left-joined for its display name without a not-deleted filter.
 export async function getArchivedShoppingListById(id: number, userId: number): Promise<ArchivedShoppingList | null> {
   const [list] = await db
     .select()
@@ -1064,6 +1066,9 @@ export async function getArchivedShoppingListById(id: number, userId: number): P
     .where(and(eq(shoppingListItems.shoppingListId, list.id), eq(shoppingListItems.status, 'bought')))
     .orderBy(asc(shoppingListItems.dateAdded), asc(shoppingListItems.id))
 
+  // No bought lines → nothing to show; treat as not found so the detail matches the index's exclusion.
+  if (rows.length === 0) return null
+
   const items = rows.map(mapJoinedRow)
   const totalSpent = round2(items.reduce((sum, item) => sum + (item.linePrice ?? 0), 0))
 
@@ -1073,4 +1078,30 @@ export async function getArchivedShoppingListById(id: number, userId: number): P
     items,
     totalSpent,
   }
+}
+
+// Maintenance sweep (run on a cron): hard-delete every archived Shopping List that never had a bought
+// line. Such a list is a trip completed with nothing purchased (all lines dropped/unavailable) — it
+// carries no price history and is already hidden from both the index and the detail, so it's pure dead
+// weight. Deleting the list cascades to its leftover (dropped) lines; no Pantry Item can reference them,
+// since Pantry Items are only ever created from *bought* lines, so nothing is orphaned. Active lists are
+// never matched (status is 'archived' only). Returns how many lists were removed.
+export async function purgeEmptyArchivedShoppingLists(): Promise<{ deletedCount: number }> {
+  const deleted = await db
+    .delete(shoppingLists)
+    .where(and(
+      eq(shoppingLists.status, 'archived'),
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(shoppingListItems)
+          .where(and(
+            eq(shoppingListItems.shoppingListId, shoppingLists.id),
+            eq(shoppingListItems.status, 'bought'),
+          )),
+      ),
+    ))
+    .returning({ id: shoppingLists.id })
+
+  return { deletedCount: deleted.length }
 }
