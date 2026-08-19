@@ -151,11 +151,14 @@
 // Widget grid
 .widgetGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  // minmax(0, 1fr) rather than 1fr: a bare 1fr track has an implicit `auto` minimum, so a widget with a
+  // long unbreakable line (e.g. a nowrap pantry name) forces its column — and the whole page — wider than
+  // the viewport. The 0 floor lets the track shrink so that content truncates instead of overflowing.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -233,6 +236,10 @@
 }
 
 .pantryName {
+  // min-width: 0 lets this flex child shrink below its (nowrap) content width so the ellipsis actually
+  // engages; without it a long name can't shrink and pushes the row past the widget/page edge.
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
