@@ -163,6 +163,45 @@ export function calculateCalories({
   return (baseCalories / baseServingSize) * convertedAmount
 }
 
+// The factor by which a Food's per-serving nutrition scales to a target amount + unit — i.e. how many
+// base servings the target represents. Mirrors calculateCalories' conversion logic (calories =
+// baseCalories × this factor) but returns the bare factor so all five macros can be scaled uniformly
+// and frozen onto a Food Log Entry (see ADR-0025). Returns null when the target unit can't be resolved
+// to the base serving unit (cross-category with no density, or an uncalibrated custom unit).
+export function servingScaleFactor({
+  baseServingSize,
+  baseServingUnit,
+  targetAmount,
+  targetUnit,
+  gramsPerUnit,
+  density,
+}: {
+  baseServingSize: number
+  baseServingUnit: string
+  targetAmount: number
+  targetUnit: string
+  gramsPerUnit?: number
+  density?: number
+}): number | null {
+  if (baseServingSize <= 0) return null
+
+  if (baseServingUnit === targetUnit) {
+    return targetAmount / baseServingSize
+  }
+
+  if (getUnitCategory(targetUnit) === 'custom') {
+    if (!gramsPerUnit || gramsPerUnit <= 0) return null
+    const gramsAmount = targetAmount * gramsPerUnit
+    const convertedAmount = convertUnit({ value: gramsAmount, fromUnit: 'g', toUnit: baseServingUnit, density })
+    if (convertedAmount === null) return null
+    return convertedAmount / baseServingSize
+  }
+
+  const convertedAmount = convertUnit({ value: targetAmount, fromUnit: targetUnit, toUnit: baseServingUnit, density })
+  if (convertedAmount === null) return null
+  return convertedAmount / baseServingSize
+}
+
 export function getUnitLabel(unit: string): string {
   const labels: Record<string, string> = {
     g: 'grams',

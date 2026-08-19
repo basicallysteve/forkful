@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, date, jsonb, boolean, pgEnum, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Measurement } from '@/types/Food'
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts', 'usda']);
@@ -10,6 +10,9 @@ export const accountClosureActionEnum = pgEnum('account_closure_action', ['deact
 export const shoppingListStatusEnum = pgEnum('shopping_list_status', ['active', 'archived']);
 export const shoppingListItemSourceTypeEnum = pgEnum('shopping_list_item_source_type', ['food', 'product', 'freeform']);
 export const shoppingListItemStatusEnum = pgEnum('shopping_list_item_status', ['to_buy', 'bought', 'unavailable']);
+// Referent discriminator for a Food Log Entry (see ADR-0025). Only 'food' is written in the current
+// slice; 'product' / 'prepared_meal' are seeded now so later slices need no enum migration.
+export const foodLogSourceTypeEnum = pgEnum('food_log_source_type', ['food', 'product', 'prepared_meal']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -285,6 +288,37 @@ export const reviewLikes = pgTable('review_likes', {
 }, (t) => ({
   userReviewUnique: unique('review_likes_user_review_unique').on(t.userId, t.reviewId),
   reviewIdIdx: index('review_likes_review_id_idx').on(t.reviewId),
+}));
+
+// A Food Log Entry: an independent nutrition ledger row (see ADR-0025 and CONTEXT.md). The five macros
+// are snapshotted (frozen) at create time — never recomputed from the referent on read — so daily
+// totals are stable and survive edits or deletion of the referent Food. `logDate` is the user-local
+// calendar day, derived on the client and sent with the write; UTC is never used for day bucketing.
+export const foodLogEntries = pgTable('food_log_entries', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  sourceType: foodLogSourceTypeEnum('source_type').notNull().default('food'),
+  // Nullable + `set null` so an entry outlives soft/hard deletion of its referent Food, surviving on
+  // its frozen macro snapshot (the same orphan behaviour as a Prepared Meal's recipeNameSnapshot).
+  foodId: integer('food_id').references(() => foods.id, { onDelete: 'set null' }),
+  // Resolved amount + unit at log time, retained for provenance and display. Unit is constrained to
+  // the referent Food's Measurements by the write path.
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  unit: varchar('unit', { length: 50 }),
+  // Frozen macros — facts of record, computed once at create time via calculateCalories / convertUnit.
+  calories: numeric('calories', { precision: 10, scale: 2 }).notNull().default('0'),
+  protein: numeric('protein', { precision: 10, scale: 2 }).notNull().default('0'),
+  carbs: numeric('carbs', { precision: 10, scale: 2 }).notNull().default('0'),
+  fat: numeric('fat', { precision: 10, scale: 2 }).notNull().default('0'),
+  fiber: numeric('fiber', { precision: 10, scale: 2 }).notNull().default('0'),
+  // The user-local calendar day this entry is filed under (a plain date, no time-of-day).
+  logDate: date('log_date').notNull(),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+  dateDeleted: timestamp('date_deleted'),
+}, (t) => ({
+  userLogDateIdx: index('food_log_entries_user_log_date_idx').on(t.userId, t.logDate, t.dateDeleted),
 }));
 
 export const reviewReports = pgTable('review_reports', {

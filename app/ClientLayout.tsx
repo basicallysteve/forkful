@@ -35,6 +35,10 @@ export default function ClientLayout({ children, isLoggedIn, username, avatarUrl
       label: 'Shopping List',
       to: '/shopping-list',
     },
+    {
+      label: 'Log',
+      to: '/log',
+    },
     ...(isLoggedIn
       ? [
           { label: username ?? 'Profile', to: '/profile', align: 'right' as const, avatar: { url: avatarUrl ?? null, initial: (username ?? 'P').charAt(0).toUpperCase() } },
