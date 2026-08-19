@@ -61,6 +61,29 @@ export async function apiCreateShoppingListItem(input: CreateShoppingListItemInp
   return parseShoppingListItem(raw)
 }
 
+// Scan-to-Buy (ADR-0021): the client resolves a scanned barcode to a Product, then posts its id here.
+// The server folds it onto the active list and reports the resulting line plus what happened —
+// 'upgraded' (a planned Food line promoted to this Product), 'checked' (a planned Product line marked
+// bought), or 'impulse' (a fresh bought Product line for an off-list scan).
+export type ScanToBuyOutcome = 'upgraded' | 'checked' | 'impulse'
+
+export type ScanToBuyResult = {
+  item: ShoppingListItem
+  outcome: ScanToBuyOutcome
+}
+
+export async function apiScanToBuyShoppingListItem(productId: number): Promise<ScanToBuyResult> {
+  const res = await fetch('/api/shopping-list/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId }),
+  })
+
+  if (!res.ok) throw new Error('Failed to scan shopping list item')
+  const raw: { item: RawShoppingListItem; outcome: ScanToBuyOutcome } = await res.json()
+  return { item: parseShoppingListItem(raw.item), outcome: raw.outcome }
+}
+
 export async function apiDeleteShoppingListItem(id: number): Promise<void> {
   const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')

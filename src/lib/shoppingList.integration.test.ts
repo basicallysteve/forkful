@@ -17,6 +17,7 @@ import {
   getOrCreateActiveShoppingList,
   purgeEmptyArchivedShoppingLists,
   getShoppingListItems,
+  scanToBuyShoppingListItem,
   splitShoppingListItem,
   updateShoppingListItemDetails,
   updateShoppingListItemStatus,
@@ -971,6 +972,119 @@ describe('shopping list data layer (integration)', () => {
       expect(remaining.rows).toHaveLength(1)
       expect(remaining.rows[0].id).toBe(kept.id)
       expect(await getArchivedShoppingListById(kept.id, user.id)).not.toBeNull()
+    })
+  })
+
+  describe('scan-to-buy (ADR-0021)', () => {
+    it('upgrades a planned food line to the scanned product in place and marks it bought', async () => {
+      const user = await createTestUser('scan-upgrade')
+      const food = await createTestFood('TestShopping Milk')
+      const product = await createProduct({
+        name: 'TestShopping Lucerne 2% Milk',
+        barcode: '0001112223334',
+        parentFoodId: food.id,
+        calories: 120, protein: 8, carbs: 12, fat: 5, fiber: 0,
+        servingSize: 1, servingUnit: 'carton', measurements: [{ unit: 'carton' }],
+      })
+
+      const planned = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+
+      const result = await scanToBuyShoppingListItem(user.id, product.id)
+
+      expect(result).not.toBeNull()
+      expect(result!.outcome).toBe('upgraded')
+      // Same line, mutated in place — the id is preserved.
+      expect(result!.item.id).toBe(planned.id)
+      expect(result!.item.sourceType).toBe('product')
+      expect(result!.item.status).toBe('bought')
+      expect(result!.item.product?.id).toBe(product.id)
+      // The planned quantity/unit is preserved through the upgrade.
+      expect(result!.item.amount).toBe(2)
+      expect(result!.item.unit).toBe('g')
+
+      // No duplicate line was created; the one line is now the upgraded product line.
+      const items = await getShoppingListItems(user.id)
+      expect(items).toHaveLength(1)
+      expect(items[0].id).toBe(planned.id)
+      expect(items[0].sourceType).toBe('product')
+    })
+
+    it('adds a new already-bought product line for an off-list scan (impulse buy)', async () => {
+      const user = await createTestUser('scan-impulse')
+      const food = await createTestFood('TestShopping Bread')
+      const product = await createProduct({
+        name: 'TestShopping Artisan Loaf',
+        barcode: '0002223334445',
+        parentFoodId: food.id,
+        calories: 90, protein: 3, carbs: 18, fat: 1, fiber: 1,
+        servingSize: 1, servingUnit: 'loaf', measurements: [{ unit: 'loaf' }],
+      })
+
+      const result = await scanToBuyShoppingListItem(user.id, product.id)
+
+      expect(result!.outcome).toBe('impulse')
+      expect(result!.item.sourceType).toBe('product')
+      expect(result!.item.status).toBe('bought')
+      expect(result!.item.product?.id).toBe(product.id)
+      expect(result!.item.amount).toBe(1)
+      expect(result!.item.unit).toBe('loaf')
+
+      const items = await getShoppingListItems(user.id)
+      expect(items).toHaveLength(1)
+    })
+
+    it('checks off a planned product line for the same product without duplicating it', async () => {
+      const user = await createTestUser('scan-checked')
+      const product = await createProduct({
+        name: 'TestShopping Cola',
+        barcode: '0003334445556',
+        calories: 140, protein: 0, carbs: 39, fat: 0, fiber: 0,
+        servingSize: 1, servingUnit: 'can', measurements: [{ unit: 'can' }],
+      })
+
+      const planned = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 3, unit: 'can' })
+
+      const result = await scanToBuyShoppingListItem(user.id, product.id)
+
+      expect(result!.outcome).toBe('checked')
+      expect(result!.item.id).toBe(planned.id)
+      expect(result!.item.status).toBe('bought')
+      // The quantity is untouched — a scan check-off doesn't change what was planned.
+      expect(result!.item.amount).toBe(3)
+
+      const items = await getShoppingListItems(user.id)
+      expect(items).toHaveLength(1)
+    })
+
+    it('returns null for a product that does not exist', async () => {
+      const user = await createTestUser('scan-missing')
+      expect(await scanToBuyShoppingListItem(user.id, 999_999_999)).toBeNull()
+    })
+
+    it('keeps the upgraded product reference when the line is later un-checked', async () => {
+      const user = await createTestUser('scan-uncheck')
+      const food = await createTestFood('TestShopping Yogurt')
+      const product = await createProduct({
+        name: 'TestShopping Chobani Yogurt',
+        barcode: '0004445556667',
+        parentFoodId: food.id,
+        calories: 100, protein: 12, carbs: 6, fat: 0, fiber: 0,
+        servingSize: 1, servingUnit: 'cup', measurements: [{ unit: 'cup' }],
+      })
+
+      const planned = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
+      const upgraded = await scanToBuyShoppingListItem(user.id, product.id)
+      expect(upgraded!.outcome).toBe('upgraded')
+
+      // Un-checking is non-destructive: the line stays a Product line (no revert to Food).
+      await updateShoppingListItemStatus(planned.id, user.id, 'to_buy')
+
+      const items = await getShoppingListItems(user.id)
+      expect(items).toHaveLength(1)
+      expect(items[0].id).toBe(planned.id)
+      expect(items[0].sourceType).toBe('product')
+      expect(items[0].status).toBe('to_buy')
+      expect(items[0].product?.id).toBe(product.id)
     })
   })
 })

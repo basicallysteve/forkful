@@ -544,8 +544,28 @@
   }
 }
 
-// The Price & expiration dialog also portals to <body>, so it is styled here at the top level.
-.item-details-dialog {
+// These dialogs portal to <body>, so they are styled here at the top level rather than under
+// .shopping-list. The Scan-to-Buy modal shares the footer / primary-button / error styling below.
+.item-details-dialog,
+.scan-to-buy-dialog {
+  // Scan-to-Buy modal body: the running confirmation banner sits above the scanner.
+  .scan-to-buy-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scan-to-buy-result {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
   .item-details-form {
     display: flex;
     flex-direction: column;
