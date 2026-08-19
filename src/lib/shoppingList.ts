@@ -996,10 +996,12 @@ export async function completeShoppingTrip(
 }
 
 // The archived-lists index (price-history browse — see CONTEXT.md). Every archived Shopping List the
-// user owns, most recent first, each summarised by its bought-line count and total spent (the sum of
-// those lines' Line Prices, an unpriced line contributing 0). The per-list aggregate is computed from a
-// single batched read of all the lists' bought lines rather than one query per list, so the index costs
-// two round-trips regardless of how many trips the user has completed.
+// user owns that has at least one *bought* line, most recent first, each summarised by its bought-line
+// count and total spent (the sum of those lines' Line Prices, an unpriced line contributing 0). Archived
+// lists with nothing bought — a trip completed with only dropped/unavailable lines — are omitted: they
+// carry no price history, so surfacing them would just be empty noise. The per-list aggregate is computed
+// from a single batched read of all the lists' bought lines rather than one query per list, so the index
+// costs two round-trips regardless of how many trips the user has completed.
 export async function getArchivedShoppingLists(userId: number): Promise<ArchivedShoppingListSummary[]> {
   const lists = await db
     .select()
@@ -1026,15 +1028,18 @@ export async function getArchivedShoppingLists(userId: number): Promise<Archived
     aggByList.set(row.shoppingListId, agg)
   }
 
-  return lists.map((list) => {
+  // Only lists that actually had a bought line reach the index; a list with no bought rows has no entry
+  // in aggByList and is dropped here (flatMap over an empty array).
+  return lists.flatMap((list) => {
     const agg = aggByList.get(list.id)
-    return {
+    if (!agg) return []
+    return [{
       id: list.id,
       dateAdded: list.dateAdded ?? new Date(),
-      boughtItemCount: agg?.count ?? 0,
-      pricedItemCount: agg?.priced ?? 0,
-      totalSpent: agg?.total ?? 0,
-    }
+      boughtItemCount: agg.count,
+      pricedItemCount: agg.priced,
+      totalSpent: agg.total,
+    }]
   })
 }
 

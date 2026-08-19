@@ -889,6 +889,25 @@ describe('shopping list data layer (integration)', () => {
       expect(detail?.totalSpent).toBe(4.5)
     })
 
+    it('omits an archived list that has no bought lines from the index', async () => {
+      const user = await createTestUser('archEmpty')
+      const food = await createTestFood('TestShopping ArchEmptyFood')
+
+      // First trip: a real bought line, so this archived list should appear.
+      const bought = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'oz' })
+      await updateShoppingListItemStatus(bought.id, user.id, 'bought')
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      // Second trip: a line was added but never bought, then dropped on completion — nothing bought, so
+      // this archived list carries no price history and must not show up in the index.
+      await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
+      await completeShoppingTrip(user.id, { keepUnbought: false })
+
+      const lists = await getArchivedShoppingLists(user.id)
+      expect(lists).toHaveLength(1)
+      expect(lists[0].boughtItemCount).toBe(1)
+    })
+
     it('returns null for an active list, another user’s list, or a missing id', async () => {
       const owner = await createTestUser('archOwner')
       const other = await createTestUser('archOther')
