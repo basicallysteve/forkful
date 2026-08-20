@@ -1,5 +1,6 @@
 import convert from 'convert-units'
 import pluralize from 'pluralize'
+import type { Food } from '@/types/Food'
 
 /**
  * The synthetic, app-wide count unit meaning "one item / one package" (see ADR-0022). It is an
@@ -200,6 +201,15 @@ export function servingScaleFactor({
   const convertedAmount = convertUnit({ value: targetAmount, fromUnit: targetUnit, toUnit: baseServingUnit, density })
   if (convertedAmount === null) return null
   return convertedAmount / baseServingSize
+}
+
+// The units a Food may be logged in: its own Measurements, always including its base serving unit
+// (falling back to 'serving' when a Food defines neither). Shared by the client unit picker and the
+// server-side reject check so the two can never disagree on what's valid.
+export function allowedUnitsForFood(food: Pick<Food, 'measurements' | 'servingUnit'>): string[] {
+  const units = food.measurements.map((m) => m.unit).filter(Boolean)
+  if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
+  return units.length > 0 ? units : ['serving']
 }
 
 export function getUnitLabel(unit: string): string {

@@ -1,22 +1,10 @@
 import { create } from 'zustand'
 import type { DailyLog, FoodLogEntry, Macros } from '@/types/FoodLogEntry'
-import { round2 } from '@/utils/number'
+// Re-exported so existing consumers (the Log view, tests) keep importing `sumMacros` from the store,
+// while the one canonical implementation lives in a db-free util shared with the server data layer.
+import { sumMacros } from '@/utils/macros'
 
-const ZERO_MACROS: Macros = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
-
-// Sum the five frozen macros across entries. The Daily Log total is always derived, never stored.
-export function sumMacros(entries: FoodLogEntry[]): Macros {
-  return entries.reduce<Macros>(
-    (acc, e) => ({
-      calories: round2(acc.calories + e.calories),
-      protein: round2(acc.protein + e.protein),
-      carbs: round2(acc.carbs + e.carbs),
-      fat: round2(acc.fat + e.fat),
-      fiber: round2(acc.fiber + e.fiber),
-    }),
-    { ...ZERO_MACROS }
-  )
-}
+export { sumMacros }
 
 type FoodLogStore = {
   // The calendar day the loaded entries belong to (YYYY-MM-DD), or null before first load.

@@ -7,23 +7,10 @@ import { Dropdown } from 'primereact/dropdown'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { useFoodStore } from '@/stores/food'
 import { useFoodLogStore, sumMacros } from '@/stores/foodLog'
-import { apiFetchFoods } from '@/lib/api/foods'
 import { apiFetchDailyLog, apiCreateFoodLogEntry } from '@/lib/api/foodLog'
 import { getTodayDateString, formatDisplayDate } from '@/utils/dateHelpers'
-import { getUnitLabel } from '@/utils/unitConversion'
+import { getUnitLabel, allowedUnitsForFood } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
-
-// The user-local calendar day for a write — derived on the client, never from UTC (see ADR-0025).
-function localTodayString(): string {
-  return getTodayDateString()
-}
-
-// The units a Food may be logged in: its own Measurements, always including its base serving unit.
-function allowedUnits(food: Food): string[] {
-  const units = food.measurements.map((m) => m.unit).filter(Boolean)
-  if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
-  return units.length > 0 ? units : ['serving']
-}
 
 const MACRO_FIELDS = [
   { key: 'calories', label: 'Calories', unit: '' },
@@ -34,13 +21,14 @@ const MACRO_FIELDS = [
 ] as const
 
 export default function Log() {
+  // Seeds FoodSearch's instant local ranking from whatever the shared food store already holds; this
+  // view no longer eagerly fetches the full catalog (FoodSearch queries the server per keystroke).
   const foods = useFoodStore((state) => state.foods)
-  const setFoods = useFoodStore((state) => state.setFoods)
   const entries = useFoodLogStore((state) => state.entries)
   const setDailyLog = useFoodLogStore((state) => state.setDailyLog)
   const addEntry = useFoodLogStore((state) => state.addEntry)
 
-  const [today] = useState<string>(() => localTodayString())
+  const [today] = useState<string>(() => getTodayDateString())
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
 
@@ -52,10 +40,6 @@ export default function Log() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiFetchFoods().then(setFoods).catch(() => {})
-  }, [setFoods])
-
-  useEffect(() => {
     apiFetchDailyLog(today)
       .then(setDailyLog)
       .catch(() => setFetchError(true))
@@ -64,14 +48,14 @@ export default function Log() {
 
   const total = useMemo(() => sumMacros(entries), [entries])
   const unitOptions = useMemo(
-    () => (selectedFood ? allowedUnits(selectedFood).map((u) => ({ label: getUnitLabel(u), value: u })) : []),
+    () => (selectedFood ? allowedUnitsForFood(selectedFood).map((u) => ({ label: getUnitLabel(u), value: u })) : []),
     [selectedFood]
   )
 
   function handleSelectFood(food: Food) {
     setSelectedFood(food)
     setFoodName(food.name)
-    const units = allowedUnits(food)
+    const units = allowedUnitsForFood(food)
     setUnit(units[0])
     setSaveError(null)
   }
@@ -118,14 +102,18 @@ export default function Log() {
           <p className="daily-log-date">{formatDisplayDate(new Date(`${today}T00:00:00`))}</p>
         </div>
 
-        <div className="daily-log-total" aria-label="Today's total">
-          {MACRO_FIELDS.map((m) => (
-            <div key={m.key} className="macro-stat">
-              <span className="macro-stat-value">{total[m.key]}{m.unit}</span>
-              <span className="macro-stat-label">{m.label}</span>
-            </div>
-          ))}
-        </div>
+        {/* Gated on a resolved fetch (like the entries table below) so the singleton store can't flash
+            a previous day's or previous user's totals before today's Daily Log loads. */}
+        {!loading && !fetchError && (
+          <div className="daily-log-total" aria-label="Today's total">
+            {MACRO_FIELDS.map((m) => (
+              <div key={m.key} className="macro-stat">
+                <span className="macro-stat-value">{total[m.key]}{m.unit}</span>
+                <span className="macro-stat-label">{m.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="daily-log-form">
           <div className="log-field log-field--food">

@@ -1,31 +1,12 @@
 import { eq, and, isNull, asc } from 'drizzle-orm'
 import { db } from '@/db'
 import { foodLogEntries, foods } from '@/db/schema'
-import type { Food, Measurement } from '@/types/Food'
+import type { Food } from '@/types/Food'
 import type { DailyLog, FoodLogEntry, Macros } from '@/types/FoodLogEntry'
-import { servingScaleFactor } from '@/utils/unitConversion'
+import { mapFood } from '@/lib/foods'
+import { servingScaleFactor, allowedUnitsForFood } from '@/utils/unitConversion'
+import { ZERO_MACROS, sumMacros } from '@/utils/macros'
 import { round2 } from '@/utils/number'
-
-function parseMeasurements(raw: unknown): Measurement[] {
-  if (!Array.isArray(raw)) return []
-  return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
-}
-
-function mapFood(row: typeof foods.$inferSelect): Food {
-  return {
-    id: row.id,
-    name: row.name,
-    calories: row.calories,
-    protein: Number(row.protein ?? 0),
-    carbs: Number(row.carbs ?? 0),
-    fat: Number(row.fat ?? 0),
-    fiber: Number(row.fiber ?? 0),
-    servingSize: Number(row.servingSize ?? 1),
-    servingUnit: row.servingUnit ?? 'g',
-    measurements: parseMeasurements(row.measurements),
-    density: row.density != null ? Number(row.density) : undefined,
-  }
-}
 
 function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): FoodLogEntry {
   return {
@@ -44,8 +25,6 @@ function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): F
     dateAdded: row.dateAdded,
   }
 }
-
-const ZERO_MACROS: Macros = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
 
 /**
  * Compute the five frozen macros for logging `amount` of `unit` of a Food, by scaling the Food's
@@ -71,14 +50,6 @@ export function computeFrozenMacros(food: Food, amount: number, unit: string): M
     fat: round2(food.fat * factor),
     fiber: round2(food.fiber * factor),
   }
-}
-
-// The units a Food may be logged in: its own Measurements, always including its base serving unit —
-// mirrors the client's unit picker so the write path can reject a unit that isn't offered.
-export function allowedUnitsForFood(food: Food): string[] {
-  const units = food.measurements.map((m) => m.unit).filter(Boolean)
-  if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
-  return units
 }
 
 export type CreateFoodLogEntryData = {
@@ -126,19 +97,6 @@ export async function createFoodLogEntry(data: CreateFoodLogEntryData): Promise<
     .returning()
 
   return mapEntry(row, food)
-}
-
-function sumMacros(entries: FoodLogEntry[]): Macros {
-  return entries.reduce<Macros>(
-    (acc, e) => ({
-      calories: round2(acc.calories + e.calories),
-      protein: round2(acc.protein + e.protein),
-      carbs: round2(acc.carbs + e.carbs),
-      fat: round2(acc.fat + e.fat),
-      fiber: round2(acc.fiber + e.fiber),
-    }),
-    { ...ZERO_MACROS }
-  )
 }
 
 /**
