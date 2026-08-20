@@ -35,30 +35,42 @@
     grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     margin-bottom: 24px;
+  }
 
-    .macro-stat {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 14px 8px;
-      border-radius: 10px;
-      border: 1px solid var(--vscode-border);
-      background: var(--vscode-panel);
-    }
+  // The mobile swipeable variant of the totals (PrimeReact Carousel).
+  .daily-log-total-carousel {
+    margin-bottom: 24px;
 
-    .macro-stat-value {
-      font-size: 22px;
-      font-weight: 600;
-      color: var(--vscode-accent);
+    .p-carousel-item {
+      padding: 0 4px;
     }
+  }
 
-    .macro-stat-label {
-      margin-top: 4px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--vscode-text-muted, #9aa0a6);
-    }
+  // Shared by the desktop grid cells and the carousel slides.
+  .macro-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+  }
+
+  .macro-stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--vscode-accent);
+  }
+
+  .macro-stat-label {
+    margin-top: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--vscode-text-muted, #9aa0a6);
   }
 
   .daily-log-meals {
