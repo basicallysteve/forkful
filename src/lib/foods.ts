@@ -10,12 +10,12 @@ export type FoodQueryOptions = {
   sortDir?: 'asc' | 'desc'
 }
 
-function parseMeasurements(raw: unknown): Measurement[] {
+export function parseMeasurements(raw: unknown): Measurement[] {
   if (!Array.isArray(raw)) return []
   return raw.map((m) => (typeof m === 'string' ? { unit: m } : m as Measurement))
 }
 
-function mapFood(row: typeof foods.$inferSelect): Food {
+export function mapFood(row: typeof foods.$inferSelect): Food {
   return {
     id: row.id,
     name: row.name,

@@ -1,0 +1,339 @@
+.daily-log {
+  padding: 24px;
+
+  .daily-log-content {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .daily-log-header {
+    margin-bottom: 20px;
+  }
+
+  .daily-log-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    color: var(--vscode-text-muted, #9aa0a6);
+    margin: 0;
+  }
+
+  .daily-log-title {
+    margin: 4px 0;
+    font-size: 28px;
+    color: var(--vscode-text);
+  }
+
+  .daily-log-date {
+    margin: 0;
+    color: var(--vscode-text-muted, #9aa0a6);
+    font-size: 14px;
+  }
+
+  .daily-log-total {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  // The mobile swipeable variant of the totals (PrimeReact Carousel).
+  .daily-log-total-carousel {
+    margin-bottom: 24px;
+
+    .p-carousel-item {
+      padding: 0 4px;
+    }
+  }
+
+  // Shared by the desktop grid cells and the carousel slides.
+  .macro-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+  }
+
+  .macro-stat-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--vscode-accent);
+  }
+
+  .macro-stat-label {
+    margin-top: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--vscode-text-muted, #9aa0a6);
+  }
+
+  .daily-log-meals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+
+    .daily-log-meal {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--vscode-border);
+      background: var(--vscode-panel);
+    }
+
+    .daily-log-meal-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--vscode-text);
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .daily-log-meal-title {
+      margin: 0;
+      font-size: 16px;
+      color: var(--vscode-text);
+    }
+
+    .daily-log-meal-chevron {
+      font-size: 12px;
+      color: var(--vscode-text-muted, #9aa0a6);
+    }
+
+    .daily-log-meal-body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .daily-log-meal-add {
+      align-self: flex-start;
+      border-radius: 8px;
+      border: 1px dashed var(--vscode-accent);
+      background: transparent;
+      color: var(--vscode-accent);
+      padding: 8px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 120ms ease;
+
+      &:hover {
+        background: var(--accent-hover, rgba(59, 130, 246, 0.1));
+      }
+    }
+  }
+
+  .daily-log-error {
+    color: #ef4444;
+    margin: 8px 0 0;
+    font-size: 14px;
+  }
+
+  .daily-log-entries {
+    margin-top: 24px;
+  }
+
+  .daily-log-entries-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: var(--vscode-text);
+  }
+
+  .daily-log-empty {
+    color: var(--vscode-text-muted, #9aa0a6);
+    padding: 24px;
+    text-align: center;
+    border: 1px dashed var(--vscode-border);
+    border-radius: 12px;
+  }
+
+  .daily-log-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      color: var(--vscode-text);
+    }
+
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--vscode-text-muted, #9aa0a6);
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 16px;
+
+    .daily-log-total {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .daily-log-meals {
+      grid-template-columns: 1fr;
+    }
+
+    .daily-log-table {
+      display: block;
+      overflow-x: auto;
+    }
+  }
+}
+
+// The log dialog is portaled to <body> by PrimeReact, outside the `.daily-log` tree, so its styles
+// live at the top level rather than nested under `.daily-log`.
+.log-food-dialog {
+  .log-food-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .log-food-search {
+    width: 100%;
+  }
+
+  .log-food-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    padding: 12px;
+    border: none;
+    border-bottom: 1px solid var(--vscode-border);
+    background: transparent;
+    color: var(--vscode-text);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--accent-hover, rgba(59, 130, 246, 0.1));
+    }
+  }
+
+  .log-food-item-name {
+    font-size: 15px;
+  }
+
+  .log-food-item-macros {
+    font-size: 12px;
+    color: var(--vscode-text-muted, #9aa0a6);
+  }
+
+  .log-food-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .daily-log-error {
+    color: #ef4444;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .log-food-back {
+    align-self: flex-start;
+    border: none;
+    background: transparent;
+    color: var(--vscode-accent);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .log-food-selected {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--vscode-text);
+  }
+
+  .log-food-fields {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+
+    .log-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 0;
+
+      span {
+        font-size: 12px;
+        color: var(--vscode-text-muted, #9aa0a6);
+      }
+
+      // Match Amount (InputNumber) and Unit (Dropdown) heights — same pattern as shoppingList.scss.
+      .p-inputnumber,
+      .p-dropdown {
+        width: 100%;
+      }
+
+      .p-inputnumber-input,
+      .p-dropdown .p-dropdown-label {
+        font-size: 14px;
+        line-height: normal;
+        padding: 10px 12px;
+      }
+
+      .p-dropdown {
+        padding: 0;
+      }
+    }
+  }
+
+  .log-food-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .log-food-cancel,
+  .log-food-submit {
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .log-food-cancel {
+    border: 1px solid var(--vscode-border);
+    background: transparent;
+    color: var(--vscode-text);
+  }
+
+  .log-food-submit {
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    color: #fff;
+  }
+}

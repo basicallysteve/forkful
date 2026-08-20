@@ -1,0 +1,125 @@
+import { eq, and, isNull, asc } from 'drizzle-orm'
+import { db } from '@/db'
+import { foodLogEntries, foods } from '@/db/schema'
+import type { Food } from '@/types/Food'
+import type { DailyLog, FoodLogEntry, Macros } from '@/types/FoodLogEntry'
+import { mapFood } from '@/lib/foods'
+import { servingScaleFactor, allowedUnitsForFood } from '@/utils/unitConversion'
+import { ZERO_MACROS, sumMacros } from '@/utils/macros'
+import { round2 } from '@/utils/number'
+
+function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): FoodLogEntry {
+  return {
+    id: row.id,
+    sourceType: row.sourceType,
+    foodId: row.foodId ?? null,
+    food,
+    amount: Number(row.amount),
+    unit: row.unit ?? null,
+    calories: Number(row.calories),
+    protein: Number(row.protein),
+    carbs: Number(row.carbs),
+    fat: Number(row.fat),
+    fiber: Number(row.fiber),
+    logDate: row.logDate,
+    dateAdded: row.dateAdded,
+  }
+}
+
+/**
+ * Compute the five frozen macros for logging `amount` of `unit` of a Food, by scaling the Food's
+ * per-serving nutrition uniformly (see ADR-0025 Decision 2). Returns all-zero macros when the amount
+ * can't be resolved to the Food's serving unit — logging never blocks on an uncalibrated unit, it
+ * records zero (the flow is expected to offer calibration before reaching this point).
+ */
+export function computeFrozenMacros(food: Food, amount: number, unit: string): Macros {
+  const gramsPerUnit = food.measurements.find((m) => m.unit === unit)?.gramsPerUnit
+  const factor = servingScaleFactor({
+    baseServingSize: food.servingSize,
+    baseServingUnit: food.servingUnit,
+    targetAmount: amount,
+    targetUnit: unit,
+    gramsPerUnit,
+    density: food.density,
+  })
+  if (factor === null) return { ...ZERO_MACROS }
+  return {
+    calories: round2(food.calories * factor),
+    protein: round2(food.protein * factor),
+    carbs: round2(food.carbs * factor),
+    fat: round2(food.fat * factor),
+    fiber: round2(food.fiber * factor),
+  }
+}
+
+export type CreateFoodLogEntryData = {
+  userId: number
+  foodId: number
+  amount: number
+  unit: string
+  // The user-local calendar day (YYYY-MM-DD), derived on the client and sent with the write.
+  logDate: string
+}
+
+export async function createFoodLogEntry(data: CreateFoodLogEntryData): Promise<FoodLogEntry> {
+  const [foodRow] = await db
+    .select()
+    .from(foods)
+    .where(and(eq(foods.id, data.foodId), isNull(foods.dateDeleted)))
+  if (!foodRow) throw new Error('Food not found')
+
+  const food = mapFood(foodRow)
+
+  // Reject a unit the Food doesn't offer. An offered-but-uncalibrated custom unit still logs (zero
+  // macros, per ADR-0025 — logging is never a dead end); an entirely unknown unit is a bad request.
+  const allowed = allowedUnitsForFood(food)
+  if (allowed.length > 0 && !allowed.includes(data.unit)) {
+    throw new Error('Invalid unit')
+  }
+
+  const macros = computeFrozenMacros(food, data.amount, data.unit)
+
+  const [row] = await db
+    .insert(foodLogEntries)
+    .values({
+      userId: data.userId,
+      sourceType: 'food',
+      foodId: data.foodId,
+      amount: String(data.amount),
+      unit: data.unit,
+      calories: String(macros.calories),
+      protein: String(macros.protein),
+      carbs: String(macros.carbs),
+      fat: String(macros.fat),
+      fiber: String(macros.fiber),
+      logDate: data.logDate,
+    })
+    .returning()
+
+  return mapEntry(row, food)
+}
+
+/**
+ * The Daily Log for a single user-local day — a derived view (no daily_logs table). Returns the day's
+ * live (non-deleted) entries oldest-first plus their summed macro total, computed on the fly from each
+ * entry's frozen macros.
+ */
+export async function getDailyLog(userId: number, logDate: string): Promise<DailyLog> {
+  const rows = await db
+    .select()
+    .from(foodLogEntries)
+    .leftJoin(foods, eq(foodLogEntries.foodId, foods.id))
+    .where(and(
+      eq(foodLogEntries.userId, userId),
+      eq(foodLogEntries.logDate, logDate),
+      isNull(foodLogEntries.dateDeleted),
+    ))
+    .orderBy(asc(foodLogEntries.dateAdded), asc(foodLogEntries.id))
+
+  // A soft-deleted referent (dateDeleted set) is treated as absent: the entry stands on its frozen
+  // macros with food = null, per the FoodLogEntry contract — never leak a hidden Food into the UI.
+  const entries = rows.map((r) =>
+    mapEntry(r.food_log_entries, r.foods && !r.foods.dateDeleted ? mapFood(r.foods) : null)
+  )
+  return { logDate, entries, total: sumMacros(entries) }
+}

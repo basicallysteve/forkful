@@ -225,6 +225,13 @@
       "when": 1783684274555,
       "tag": "0031_motionless_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787182359533,
+      "tag": "0032_tearful_kang",
+      "breakpoints": true
     }
   ]
 }
