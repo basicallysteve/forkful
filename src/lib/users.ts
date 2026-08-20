@@ -5,6 +5,7 @@ import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from 
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { sendGoodbyeEmail, sendDeactivationExpiryWarningEmail } from '@/lib/email'
+import { defaultMealSlots } from '@/constants/userPreferences'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 
@@ -16,6 +17,8 @@ function mapUser(row: typeof users.$inferSelect): User {
     hasPassword: !!row.password,
     cuisinePreferences: row.cuisinePreferences,
     dietaryRestrictions: row.dietaryRestrictions,
+    // Users created before this field default to the seeded slots.
+    mealSlots: row.mealSlots ?? [...defaultMealSlots],
     avatarUrl: row.avatarUrl ?? null,
     marketingEmailOptIn: row.marketingEmailOptIn,
     recipeSuggestionFrequency: row.recipeSuggestionFrequency as RecipeSuggestionFrequency,
@@ -247,6 +250,10 @@ export async function updateUserPreferences(userId: number, data: { cuisinePrefe
         cuisinePreferences: data.cuisinePreferences,
         dietaryRestrictions: data.dietaryRestrictions,
     }).where(eq(users.id, userId))
+}
+
+export async function updateMealSlots(userId: number, mealSlots: string[]): Promise<void> {
+    await db.update(users).set({ mealSlots }).where(eq(users.id, userId))
 }
 
 export async function updateUserEmail(userId: number, newEmail: string): Promise<void> {

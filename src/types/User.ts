@@ -9,6 +9,7 @@ export type User = {
   hasPassword: boolean
   cuisinePreferences: string[] | null
   dietaryRestrictions: string[] | null
+  mealSlots: string[] | null
   avatarUrl?: string | null
   marketingEmailOptIn: boolean
   recipeSuggestionFrequency: RecipeSuggestionFrequency

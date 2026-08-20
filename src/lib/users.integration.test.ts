@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { signUp, login, trackLoginAttempt } from './users'
+import { signUp, login, trackLoginAttempt, getUser, updateMealSlots } from './users'
+import { defaultMealSlots } from '@/constants/userPreferences'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
@@ -95,6 +96,31 @@ describe('users integration tests', () => {
         const newUser = await signUp(user)
         expect(newUser.cuisinePreferences).toEqual(user.cuisinePreferences)
         expect(newUser.dietaryRestrictions).toEqual(user.dietaryRestrictions)
+    })
+
+    it('should seed the four default meal slots on account creation', async () => {
+        const newUser = await signUp({
+            username: 'testuser',
+            email: 'testUser@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        expect(newUser.mealSlots).toEqual(defaultMealSlots)
+    })
+
+    it('should round-trip meal slots in their configured order', async () => {
+        const newUser = await signUp({
+            username: 'testuser',
+            email: 'testUser@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        const reordered = ['Dinner', 'Breakfast', 'Second Breakfast', 'Lunch']
+        await updateMealSlots(Number(newUser.id), reordered)
+        const fetched = await getUser(Number(newUser.id))
+        expect(fetched?.mealSlots).toEqual(reordered)
     })
 
     it('should login a user successfully', async () => {

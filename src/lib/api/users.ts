@@ -53,6 +53,22 @@ export async function apiUpdatePreferences({ userId, cuisinePreferences, dietary
   return patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
 }
 
+export async function apiUpdateMealSlots(userId: string | number, mealSlots: string[]): Promise<string[]> {
+  const res = await fetch(`/api/users/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'mealSlots', mealSlots }),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error ?? 'Update failed')
+  }
+  // The server trims/de-dupes; echo its normalized list back so the UI stays in sync.
+  const data = await res.json().catch(() => ({}))
+  return Array.isArray(data.mealSlots) ? data.mealSlots : mealSlots
+}
+
 export async function apiUpdateUsername(userId: string | number, username: string): Promise<void> {
   return patchUser(userId, { action: 'username', username })
 }

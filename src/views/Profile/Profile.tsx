@@ -8,9 +8,10 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
-import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
+import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
+  apiUpdateMealSlots,
   apiUpdateEmail,
   apiUpdatePassword,
   apiUploadAvatar,
@@ -167,6 +168,62 @@ export default function Profile({ user }: ProfileProps) {
       setPrefError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setPrefSaving(false)
+    }
+  }
+
+  // Meal slots
+  const [mealSlots, setMealSlots] = useState<string[]>(user.mealSlots ?? [...defaultMealSlots])
+  const [newSlot, setNewSlot] = useState('')
+  const [mealSlotsSaving, setMealSlotsSaving] = useState(false)
+  const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
+  const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
+
+  function renameSlot(index: number, value: string) {
+    setMealSlots(prev => prev.map((s, i) => (i === index ? value : s)))
+    setMealSlotsSuccess(false)
+  }
+
+  function removeSlot(index: number) {
+    setMealSlots(prev => prev.filter((_, i) => i !== index))
+    setMealSlotsSuccess(false)
+  }
+
+  function moveSlot(index: number, direction: -1 | 1) {
+    const target = index + direction
+    setMealSlots(prev => {
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+    setMealSlotsSuccess(false)
+  }
+
+  function addSlot() {
+    const trimmed = newSlot.trim()
+    if (!trimmed) return
+    if (mealSlots.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+      setMealSlotsError('That meal slot already exists')
+      return
+    }
+    setMealSlots(prev => [...prev, trimmed])
+    setNewSlot('')
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+  }
+
+  async function saveMealSlots() {
+    setMealSlotsSaving(true)
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+    try {
+      const saved = await apiUpdateMealSlots(user.id!, mealSlots)
+      setMealSlots(saved)
+      setMealSlotsSuccess(true)
+    } catch (err) {
+      setMealSlotsError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setMealSlotsSaving(false)
     }
   }
 
@@ -412,6 +469,84 @@ export default function Profile({ user }: ProfileProps) {
               {prefError && <span className="field-error" role="alert">{prefError}</span>}
               <button className="primary-button" onClick={savePreferences} disabled={prefSaving}>
                 {prefSaving ? 'Saving…' : 'Save Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Meal slots */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Meal Slots</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <small className="field-hint">
+              The buckets your daily food log groups into. Reorder, rename, remove, or add your own —
+              a one-meal-a-day day and a five-slot day each look how you want.
+            </small>
+            <ul className="meal-slot-list">
+              {mealSlots.map((slot, index) => (
+                <li key={index} className="meal-slot-row">
+                  <div className="meal-slot-reorder">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${slot || `slot ${index + 1}`} up`}
+                      disabled={index === 0}
+                      onClick={() => moveSlot(index, -1)}
+                    >
+                      <i className="pi pi-chevron-up" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${slot || `slot ${index + 1}`} down`}
+                      disabled={index === mealSlots.length - 1}
+                      onClick={() => moveSlot(index, 1)}
+                    >
+                      <i className="pi pi-chevron-down" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <InputText
+                    value={slot}
+                    aria-label={`Meal slot ${index + 1} name`}
+                    onChange={e => renameSlot(index, e.target.value)}
+                    className="meal-slot-input"
+                  />
+                  <button
+                    type="button"
+                    className="icon-button icon-button--danger"
+                    aria-label={`Remove ${slot || `slot ${index + 1}`}`}
+                    onClick={() => removeSlot(index)}
+                  >
+                    <i className="pi pi-trash" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+              {mealSlots.length === 0 && (
+                <li className="meal-slot-empty">No meal slots yet — add one below.</li>
+              )}
+            </ul>
+            <div className="meal-slot-add">
+              <InputText
+                value={newSlot}
+                placeholder="Add a meal slot…"
+                aria-label="New meal slot name"
+                onChange={e => { setNewSlot(e.target.value); setMealSlotsError(null) }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSlot() } }}
+                className="meal-slot-input"
+              />
+              <button type="button" className="secondary-button" onClick={addSlot} disabled={!newSlot.trim()}>
+                Add
+              </button>
+            </div>
+            <div className="panel-footer">
+              {mealSlotsSuccess && <span className="success-text">Saved!</span>}
+              {mealSlotsError && <span className="field-error" role="alert">{mealSlotsError}</span>}
+              <button className="primary-button" onClick={saveMealSlots} disabled={mealSlotsSaving}>
+                {mealSlotsSaving ? 'Saving…' : 'Save Meal Slots'}
               </button>
             </div>
           </div>
