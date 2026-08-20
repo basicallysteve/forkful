@@ -76,10 +76,34 @@
       background: var(--vscode-panel);
     }
 
+    .daily-log-meal-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--vscode-text);
+      font-family: inherit;
+      cursor: pointer;
+    }
+
     .daily-log-meal-title {
       margin: 0;
       font-size: 16px;
       color: var(--vscode-text);
+    }
+
+    .daily-log-meal-chevron {
+      font-size: 12px;
+      color: var(--vscode-text-muted, #9aa0a6);
+    }
+
+    .daily-log-meal-body {
+      display: flex;
+      flex-direction: column;
     }
 
     .daily-log-meal-add {
@@ -237,15 +261,34 @@
   .log-food-fields {
     display: flex;
     gap: 12px;
+    align-items: flex-end;
 
     .log-field {
       display: flex;
       flex-direction: column;
       gap: 6px;
+      flex: 1 1 0;
 
       span {
         font-size: 12px;
         color: var(--vscode-text-muted, #9aa0a6);
+      }
+
+      // Match Amount (InputNumber) and Unit (Dropdown) heights — same pattern as shoppingList.scss.
+      .p-inputnumber,
+      .p-dropdown {
+        width: 100%;
+      }
+
+      .p-inputnumber-input,
+      .p-dropdown .p-dropdown-label {
+        font-size: 14px;
+        line-height: normal;
+        padding: 10px 12px;
+      }
+
+      .p-dropdown {
+        padding: 0;
       }
     }
   }

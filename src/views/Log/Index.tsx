@@ -37,6 +37,12 @@ export default function Log() {
   const [fetchError, setFetchError] = useState(false)
   // The meal section whose log dialog is open, or null when closed.
   const [dialogMeal, setDialogMeal] = useState<string | null>(null)
+  // Meal sections are collapsible so the mobile stack stays scannable; all start expanded.
+  const [collapsedMeals, setCollapsedMeals] = useState<Record<string, boolean>>({})
+
+  function toggleMeal(meal: string) {
+    setCollapsedMeals((prev) => ({ ...prev, [meal]: !prev[meal] }))
+  }
 
   useEffect(() => {
     apiFetchDailyLog(today)
@@ -74,18 +80,33 @@ export default function Log() {
         )}
 
         <div className="daily-log-meals">
-          {MEAL_SECTIONS.map((meal) => (
-            <section key={meal} className="daily-log-meal">
-              <h2 className="daily-log-meal-title">{meal}</h2>
-              <button
-                type="button"
-                className="daily-log-meal-add"
-                onClick={() => setDialogMeal(meal)}
-              >
-                + Log food
-              </button>
-            </section>
-          ))}
+          {MEAL_SECTIONS.map((meal) => {
+            const collapsed = !!collapsedMeals[meal]
+            return (
+              <section key={meal} className={`daily-log-meal${collapsed ? ' daily-log-meal--collapsed' : ''}`}>
+                <button
+                  type="button"
+                  className="daily-log-meal-toggle"
+                  aria-expanded={!collapsed}
+                  onClick={() => toggleMeal(meal)}
+                >
+                  <span className="daily-log-meal-title">{meal}</span>
+                  <span className="daily-log-meal-chevron" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>
+                </button>
+                {!collapsed && (
+                  <div className="daily-log-meal-body">
+                    <button
+                      type="button"
+                      className="daily-log-meal-add"
+                      onClick={() => setDialogMeal(meal)}
+                    >
+                      + Log food
+                    </button>
+                  </div>
+                )}
+              </section>
+            )
+          })}
         </div>
 
         <div className="daily-log-entries">

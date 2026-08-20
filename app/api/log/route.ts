@@ -67,6 +67,18 @@ export async function POST(request: Request) {
     if (err instanceof Error && err.message === 'Invalid unit') {
       return NextResponse.json({ error: 'unit is not one of the food\'s measurements' }, { status: 400 })
     }
-    throw err
+    // A user_id FK violation (Postgres 23503) means the session points at a user row that no longer
+    // exists — a stale JWT after the account/DB was reseeded. Surface it as an auth problem with a
+    // clear action, not a 500 that leaks the SQL.
+    const cause = (err as { cause?: { code?: string; constraint_name?: string } }).cause
+    if (cause?.code === '23503' && cause.constraint_name?.includes('user_id')) {
+      return NextResponse.json(
+        { error: 'Your session is out of date. Please sign out and sign back in.' },
+        { status: 401 }
+      )
+    }
+    // Never leak the raw query/driver message to the client; log server-side and return a clean 500.
+    console.error('Failed to create food log entry', err)
+    return NextResponse.json({ error: 'Could not save the log entry. Please try again.' }, { status: 500 })
   }
 }
