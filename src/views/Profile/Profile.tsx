@@ -171,15 +171,18 @@ export default function Profile({ user }: ProfileProps) {
     }
   }
 
-  // Meal slots
-  const [mealSlots, setMealSlots] = useState<string[]>(user.mealSlots ?? [...defaultMealSlots])
+  // Meal slots — each row carries a stable id so reorder/remove keep React identity
+  // tied to the slot rather than its position (index-as-key would misplace focus).
+  const slotIdRef = useRef(0)
+  const toSlots = (names: string[]) => names.map(name => ({ id: slotIdRef.current++, name }))
+  const [mealSlots, setMealSlots] = useState(() => toSlots(user.mealSlots ?? [...defaultMealSlots]))
   const [newSlot, setNewSlot] = useState('')
   const [mealSlotsSaving, setMealSlotsSaving] = useState(false)
   const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
   const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
 
   function renameSlot(index: number, value: string) {
-    setMealSlots(prev => prev.map((s, i) => (i === index ? value : s)))
+    setMealSlots(prev => prev.map((s, i) => (i === index ? { ...s, name: value } : s)))
     setMealSlotsSuccess(false)
   }
 
@@ -191,7 +194,6 @@ export default function Profile({ user }: ProfileProps) {
   function moveSlot(index: number, direction: -1 | 1) {
     const target = index + direction
     setMealSlots(prev => {
-      if (target < 0 || target >= prev.length) return prev
       const next = [...prev]
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
@@ -202,23 +204,34 @@ export default function Profile({ user }: ProfileProps) {
   function addSlot() {
     const trimmed = newSlot.trim()
     if (!trimmed) return
-    if (mealSlots.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+    if (mealSlots.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
       setMealSlotsError('That meal slot already exists')
       return
     }
-    setMealSlots(prev => [...prev, trimmed])
+    setMealSlots(prev => [...prev, { id: slotIdRef.current++, name: trimmed }])
     setNewSlot('')
     setMealSlotsError(null)
     setMealSlotsSuccess(false)
   }
 
   async function saveMealSlots() {
+    // Guard before saving: blank or duplicate names would be silently dropped/collapsed
+    // by the server's normalization, losing a slot the user didn't mean to delete.
+    const names = mealSlots.map(s => s.name.trim())
+    if (names.some(n => !n)) {
+      setMealSlotsError('Meal slot names can’t be blank')
+      return
+    }
+    if (new Set(names.map(n => n.toLowerCase())).size !== names.length) {
+      setMealSlotsError('Meal slot names must be unique')
+      return
+    }
     setMealSlotsSaving(true)
     setMealSlotsError(null)
     setMealSlotsSuccess(false)
     try {
-      const saved = await apiUpdateMealSlots(user.id!, mealSlots)
-      setMealSlots(saved)
+      const saved = await apiUpdateMealSlots(user.id!, names)
+      setMealSlots(toSlots(saved))
       setMealSlotsSuccess(true)
     } catch (err) {
       setMealSlotsError(err instanceof Error ? err.message : 'Save failed')
@@ -488,12 +501,12 @@ export default function Profile({ user }: ProfileProps) {
             </small>
             <ul className="meal-slot-list">
               {mealSlots.map((slot, index) => (
-                <li key={index} className="meal-slot-row">
+                <li key={slot.id} className="meal-slot-row">
                   <div className="meal-slot-reorder">
                     <button
                       type="button"
                       className="icon-button"
-                      aria-label={`Move ${slot || `slot ${index + 1}`} up`}
+                      aria-label={`Move ${slot.name || `slot ${index + 1}`} up`}
                       disabled={index === 0}
                       onClick={() => moveSlot(index, -1)}
                     >
@@ -502,7 +515,7 @@ export default function Profile({ user }: ProfileProps) {
                     <button
                       type="button"
                       className="icon-button"
-                      aria-label={`Move ${slot || `slot ${index + 1}`} down`}
+                      aria-label={`Move ${slot.name || `slot ${index + 1}`} down`}
                       disabled={index === mealSlots.length - 1}
                       onClick={() => moveSlot(index, 1)}
                     >
@@ -510,7 +523,7 @@ export default function Profile({ user }: ProfileProps) {
                     </button>
                   </div>
                   <InputText
-                    value={slot}
+                    value={slot.name}
                     aria-label={`Meal slot ${index + 1} name`}
                     onChange={e => renameSlot(index, e.target.value)}
                     className="meal-slot-input"
@@ -518,7 +531,7 @@ export default function Profile({ user }: ProfileProps) {
                   <button
                     type="button"
                     className="icon-button icon-button--danger"
-                    aria-label={`Remove ${slot || `slot ${index + 1}`}`}
+                    aria-label={`Remove ${slot.name || `slot ${index + 1}`}`}
                     onClick={() => removeSlot(index)}
                   >
                     <i className="pi pi-trash" aria-hidden="true" />
