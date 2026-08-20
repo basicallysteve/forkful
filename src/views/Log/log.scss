@@ -61,43 +61,41 @@
     }
   }
 
-  .daily-log-form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
+  .daily-log-meals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid var(--vscode-border);
-    background: var(--vscode-panel);
 
-    .log-field {
+    .daily-log-meal {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-
-      label {
-        font-size: 12px;
-        color: var(--vscode-text-muted, #9aa0a6);
-      }
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--vscode-border);
+      background: var(--vscode-panel);
     }
 
-    .log-field--food { flex: 1 1 240px; }
-    .log-field--amount { flex: 0 0 120px; }
-    .log-field--unit { flex: 0 0 160px; }
+    .daily-log-meal-title {
+      margin: 0;
+      font-size: 16px;
+      color: var(--vscode-text);
+    }
 
-    .log-submit {
+    .daily-log-meal-add {
+      align-self: flex-start;
       border-radius: 8px;
-      border: 1px solid var(--vscode-accent);
-      background: var(--vscode-accent);
-      color: #fff;
-      padding: 10px 16px;
+      border: 1px dashed var(--vscode-accent);
+      background: transparent;
+      color: var(--vscode-accent);
+      padding: 8px 14px;
       font-size: 14px;
+      font-family: inherit;
       cursor: pointer;
+      transition: background-color 120ms ease;
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+      &:hover {
+        background: var(--accent-hover, rgba(59, 130, 246, 0.1));
       }
     }
   }
@@ -110,6 +108,12 @@
 
   .daily-log-entries {
     margin-top: 24px;
+  }
+
+  .daily-log-entries-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: var(--vscode-text);
   }
 
   .daily-log-empty {
@@ -147,9 +151,134 @@
       grid-template-columns: repeat(3, 1fr);
     }
 
+    .daily-log-meals {
+      grid-template-columns: 1fr;
+    }
+
     .daily-log-table {
       display: block;
       overflow-x: auto;
     }
+  }
+}
+
+// The log dialog is portaled to <body> by PrimeReact, outside the `.daily-log` tree, so its styles
+// live at the top level rather than nested under `.daily-log`.
+.log-food-dialog {
+  .log-food-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .log-food-search {
+    width: 100%;
+  }
+
+  .log-food-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    padding: 12px;
+    border: none;
+    border-bottom: 1px solid var(--vscode-border);
+    background: transparent;
+    color: var(--vscode-text);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--accent-hover, rgba(59, 130, 246, 0.1));
+    }
+  }
+
+  .log-food-item-name {
+    font-size: 15px;
+  }
+
+  .log-food-item-macros {
+    font-size: 12px;
+    color: var(--vscode-text-muted, #9aa0a6);
+  }
+
+  .log-food-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .daily-log-error {
+    color: #ef4444;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .log-food-back {
+    align-self: flex-start;
+    border: none;
+    background: transparent;
+    color: var(--vscode-accent);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .log-food-selected {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--vscode-text);
+  }
+
+  .log-food-fields {
+    display: flex;
+    gap: 12px;
+
+    .log-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      span {
+        font-size: 12px;
+        color: var(--vscode-text-muted, #9aa0a6);
+      }
+    }
+  }
+
+  .log-food-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .log-food-cancel,
+  .log-food-submit {
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .log-food-cancel {
+    border: 1px solid var(--vscode-border);
+    background: transparent;
+    color: var(--vscode-text);
+  }
+
+  .log-food-submit {
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    color: #fff;
   }
 }

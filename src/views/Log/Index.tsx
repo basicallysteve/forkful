@@ -1,16 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { InputNumber } from 'primereact/inputnumber'
-import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
-import { Dropdown } from 'primereact/dropdown'
-import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { useFoodStore } from '@/stores/food'
 import { useFoodLogStore, sumMacros } from '@/stores/foodLog'
-import { apiFetchDailyLog, apiCreateFoodLogEntry } from '@/lib/api/foodLog'
+import { apiFetchDailyLog } from '@/lib/api/foodLog'
 import { getTodayDateString, formatDisplayDate } from '@/utils/dateHelpers'
-import { getUnitLabel, allowedUnitsForFood } from '@/utils/unitConversion'
-import type { Food } from '@/types/Food'
+import { getUnitLabel } from '@/utils/unitConversion'
+import type { FoodLogEntry } from '@/types/FoodLogEntry'
+import LogFoodDialog from './LogFoodDialog'
 
 const MACRO_FIELDS = [
   { key: 'calories', label: 'Calories', unit: '' },
@@ -20,9 +17,16 @@ const MACRO_FIELDS = [
   { key: 'fiber', label: 'Fiber', unit: 'g' },
 ] as const
 
+// TODO(meal-slots): "Breakfast/Lunch/Dinner" are hard-coded stubs. A Meal Slot (see CONTEXT.md) is a
+// per-User, editable, ordered set snapshotted onto each Food Log Entry — deferred to a later slice.
+// When that lands: drive these sections from the user's configured slots, tag each created entry with
+// the section it was logged from, and render the day's entries grouped under their slot instead of the
+// single flat "Logged today" list below.
+const MEAL_SECTIONS = ['Breakfast', 'Lunch', 'Dinner'] as const
+
 export default function Log() {
-  // Seeds FoodSearch's instant local ranking from whatever the shared food store already holds; this
-  // view no longer eagerly fetches the full catalog (FoodSearch queries the server per keystroke).
+  // Seeds the log dialog's instant local results from whatever the shared food store already holds;
+  // this view never eagerly fetches the full catalog (the dialog searches the server per keystroke).
   const foods = useFoodStore((state) => state.foods)
   const entries = useFoodLogStore((state) => state.entries)
   const setDailyLog = useFoodLogStore((state) => state.setDailyLog)
@@ -31,13 +35,8 @@ export default function Log() {
   const [today] = useState<string>(() => getTodayDateString())
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
-
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null)
-  const [foodName, setFoodName] = useState('')
-  const [amount, setAmount] = useState<number>(1)
-  const [unit, setUnit] = useState<string>('')
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  // The meal section whose log dialog is open, or null when closed.
+  const [dialogMeal, setDialogMeal] = useState<string | null>(null)
 
   useEffect(() => {
     apiFetchDailyLog(today)
@@ -47,50 +46,9 @@ export default function Log() {
   }, [today, setDailyLog])
 
   const total = useMemo(() => sumMacros(entries), [entries])
-  const unitOptions = useMemo(
-    () => (selectedFood ? allowedUnitsForFood(selectedFood).map((u) => ({ label: getUnitLabel(u), value: u })) : []),
-    [selectedFood]
-  )
 
-  function handleSelectFood(food: Food) {
-    setSelectedFood(food)
-    setFoodName(food.name)
-    const units = allowedUnitsForFood(food)
-    setUnit(units[0])
-    setSaveError(null)
-  }
-
-  function handleFoodInputChange(value: string) {
-    setFoodName(value)
-    // Editing the text invalidates a previously chosen food, so a stale selection can't be logged.
-    if (selectedFood) setSelectedFood(null)
-  }
-
-  async function handleLog() {
-    if (!selectedFood || !unit || !amount || amount <= 0) {
-      setSaveError('Pick a food, amount, and unit first.')
-      return
-    }
-    setSaving(true)
-    setSaveError(null)
-    try {
-      const entry = await apiCreateFoodLogEntry({
-        foodId: selectedFood.id,
-        amount,
-        unit,
-        logDate: today,
-      })
-      addEntry(entry)
-      // Reset the form for the next entry.
-      setSelectedFood(null)
-      setFoodName('')
-      setAmount(1)
-      setUnit('')
-    } catch {
-      setSaveError('Could not log that. Please try again.')
-    } finally {
-      setSaving(false)
-    }
+  function handleLogged(entry: FoodLogEntry) {
+    addEntry(entry)
   }
 
   return (
@@ -115,59 +73,29 @@ export default function Log() {
           </div>
         )}
 
-        <div className="daily-log-form">
-          <div className="log-field log-field--food">
-            <label>Food</label>
-            <FoodSearch
-              value={foodName}
-              localFoods={foods}
-              onChange={handleSelectFood}
-              onInputChange={handleFoodInputChange}
-              placeholder="Search a food to log…"
-              inputAriaLabel="Search a food to log"
-            />
-          </div>
-          <div className="log-field log-field--amount">
-            <label htmlFor="log-amount">Amount</label>
-            <InputNumber
-              inputId="log-amount"
-              value={amount}
-              onValueChange={(e: InputNumberValueChangeEvent) => setAmount(e.value ?? 0)}
-              min={0}
-              minFractionDigits={0}
-              maxFractionDigits={2}
-              inputClassName="text-input"
-            />
-          </div>
-          <div className="log-field log-field--unit">
-            <label htmlFor="log-unit">Unit</label>
-            <Dropdown
-              inputId="log-unit"
-              value={unit}
-              options={unitOptions}
-              onChange={(e) => setUnit(e.value)}
-              placeholder="Unit"
-              disabled={!selectedFood}
-            />
-          </div>
-          <button
-            type="button"
-            className="primary-button log-submit"
-            onClick={handleLog}
-            disabled={saving || !selectedFood}
-          >
-            {saving ? 'Logging…' : 'Log food'}
-          </button>
+        <div className="daily-log-meals">
+          {MEAL_SECTIONS.map((meal) => (
+            <section key={meal} className="daily-log-meal">
+              <h2 className="daily-log-meal-title">{meal}</h2>
+              <button
+                type="button"
+                className="daily-log-meal-add"
+                onClick={() => setDialogMeal(meal)}
+              >
+                + Log food
+              </button>
+            </section>
+          ))}
         </div>
-        {saveError && <p className="daily-log-error" role="alert">{saveError}</p>}
 
         <div className="daily-log-entries">
+          <h2 className="daily-log-entries-title">Logged today</h2>
           {loading ? (
             <p className="daily-log-empty">Loading today&apos;s log…</p>
           ) : fetchError ? (
             <p className="daily-log-empty">Could not load today&apos;s log.</p>
           ) : entries.length === 0 ? (
-            <p className="daily-log-empty">Nothing logged yet today. Search a food above to start.</p>
+            <p className="daily-log-empty">Nothing logged yet today. Use “+ Log food” above to start.</p>
           ) : (
             <table className="daily-log-table">
               <thead>
@@ -198,6 +126,15 @@ export default function Log() {
           )}
         </div>
       </div>
+
+      <LogFoodDialog
+        visible={dialogMeal !== null}
+        meal={dialogMeal ?? ''}
+        logDate={today}
+        seedFoods={foods}
+        onHide={() => setDialogMeal(null)}
+        onLogged={handleLogged}
+      />
     </div>
   )
 }
