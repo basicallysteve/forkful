@@ -484,7 +484,7 @@ export default function Profile({ user }: ProfileProps) {
           <div className="panel-content">
             <small className="field-hint">
               The buckets your daily food log groups into. Reorder, rename, remove, or add your own —
-              a one-meal-a-day day and a five-slot day each look how you want.
+              whether you eat one meal a day or five, shape the slots how you want.
             </small>
             <ul className="meal-slot-list">
               {mealSlots.map((slot, index) => (
