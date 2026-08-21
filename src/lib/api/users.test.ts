@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences } from './users'
+import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences, apiUpdateNutritionGoal } from './users'
 
 const mockUser = {
   id: '1',
@@ -107,6 +107,33 @@ describe('apiUpdateShoppingPreferences', () => {
         body: JSON.stringify({ action: 'shoppingPreferences', enableShoppingListPricingCollection: false }),
       })
     )
+  })
+})
+
+describe('apiUpdateNutritionGoal', () => {
+  it('sends PATCH with the nutritionGoal action and the goal fields', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
+
+    await apiUpdateNutritionGoal(42, { calories: 2000, protein: 150, carbs: null, fat: 60, fiber: null })
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/42',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'nutritionGoal', calories: 2000, protein: 150, carbs: null, fat: 60, fiber: null }),
+      })
+    )
+  })
+
+  it('throws with server error message on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Nutrition goal values must be non-negative numbers or blank' }),
+    } as Response)
+
+    await expect(
+      apiUpdateNutritionGoal(42, { calories: -1, protein: null, carbs: null, fat: null, fiber: null })
+    ).rejects.toThrow('Nutrition goal values must be non-negative numbers or blank')
   })
 })
 

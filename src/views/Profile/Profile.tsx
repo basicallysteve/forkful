@@ -17,11 +17,12 @@ import {
   apiUpdateUsername,
   apiUpdateEmailPreferences,
   apiUpdateShoppingPreferences,
+  apiUpdateNutritionGoal,
   apiDeactivateAccount,
   apiDeleteAccount,
   apiSubmitAccountFeedback,
 } from '@/lib/api/users'
-import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 import './profile.scss'
 
 const commonPasswords = [
@@ -54,6 +55,36 @@ const PANTRY_FREQUENCY_OPTIONS = [
   { label: 'Daily', value: 'daily' },
   { label: 'Weekly', value: 'weekly' },
 ]
+
+// The Nutrition Goal fields, in display order, with the unit shown next to each input.
+const NUTRITION_GOAL_FIELDS: { key: keyof NutritionGoal; label: string; unit: string }[] = [
+  { key: 'calories', label: 'Daily calories', unit: 'kcal' },
+  { key: 'protein', label: 'Protein', unit: 'g' },
+  { key: 'carbs', label: 'Carbs', unit: 'g' },
+  { key: 'fat', label: 'Fat', unit: 'g' },
+  { key: 'fiber', label: 'Fiber', unit: 'g' },
+]
+
+type NutritionGoalForm = Record<keyof NutritionGoal, string>
+
+// The goal is stored as nullable numbers but edited as text — blank means "unset". These convert
+// between the two: null <-> '' , number <-> its string form.
+function goalToForm(goal: NutritionGoal): NutritionGoalForm {
+  return {
+    calories: goal.calories !== null ? String(goal.calories) : '',
+    protein: goal.protein !== null ? String(goal.protein) : '',
+    carbs: goal.carbs !== null ? String(goal.carbs) : '',
+    fat: goal.fat !== null ? String(goal.fat) : '',
+    fiber: goal.fiber !== null ? String(goal.fiber) : '',
+  }
+}
+
+// A single field is valid when blank (unset) or a non-negative finite number.
+function isValidGoalInput(value: string): boolean {
+  if (value.trim() === '') return true
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0
+}
 
 interface PasswordValidation {
   hasMinLength: boolean
@@ -213,6 +244,41 @@ export default function Profile({ user }: ProfileProps) {
       setShoppingPrefError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setShoppingPrefSaving(false)
+    }
+  }
+
+  // Nutrition Goal
+  const [goalForm, setGoalForm] = useState<NutritionGoalForm>(() => goalToForm(user.nutritionGoal))
+  const [goalSaving, setGoalSaving] = useState(false)
+  const [goalError, setGoalError] = useState<string | null>(null)
+  const [goalSuccess, setGoalSuccess] = useState(false)
+  const goalFieldsValid = useMemo(
+    () => NUTRITION_GOAL_FIELDS.every(({ key }) => isValidGoalInput(goalForm[key])),
+    [goalForm],
+  )
+
+  function setGoalField(key: keyof NutritionGoal, value: string) {
+    setGoalForm(prev => ({ ...prev, [key]: value }))
+    setGoalSuccess(false)
+  }
+
+  async function saveNutritionGoal() {
+    if (!goalFieldsValid) return
+    setGoalSaving(true)
+    setGoalError(null)
+    setGoalSuccess(false)
+    try {
+      const goal = NUTRITION_GOAL_FIELDS.reduce((acc, { key }) => {
+        const raw = goalForm[key].trim()
+        acc[key] = raw === '' ? null : Number(raw)
+        return acc
+      }, {} as NutritionGoal)
+      await apiUpdateNutritionGoal(user.id!, goal)
+      setGoalSuccess(true)
+    } catch (err) {
+      setGoalError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setGoalSaving(false)
     }
   }
 
@@ -479,6 +545,48 @@ export default function Profile({ user }: ProfileProps) {
               {shoppingPrefError && <span className="field-error" role="alert">{shoppingPrefError}</span>}
               <button className="primary-button" onClick={saveShoppingPreferences} disabled={shoppingPrefSaving}>
                 {shoppingPrefSaving ? 'Saving…' : 'Save Shopping List Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Nutrition goal */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Nutrition Goal</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <p className="field-hint">Set your daily targets. Leave a field blank for no target.</p>
+            <div className="nutrition-goal-grid">
+              {NUTRITION_GOAL_FIELDS.map(({ key, label, unit }) => {
+                const invalid = !isValidGoalInput(goalForm[key])
+                return (
+                  <label key={key} className={`form-field ${invalid ? 'has-error' : ''}`}>
+                    <span className="field-label">{label}</span>
+                    <div className="nutrition-goal-input">
+                      <InputText
+                        value={goalForm[key]}
+                        onChange={e => setGoalField(key, e.target.value)}
+                        inputMode="decimal"
+                        placeholder="—"
+                        aria-label={label}
+                      />
+                      <span className="nutrition-goal-unit">{unit}</span>
+                    </div>
+                    {invalid && (
+                      <span className="field-error" role="alert">Enter a non-negative number.</span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+            <div className="panel-footer">
+              {goalSuccess && <span className="success-text">Saved!</span>}
+              {goalError && <span className="field-error" role="alert">{goalError}</span>}
+              <button className="primary-button" onClick={saveNutritionGoal} disabled={goalSaving || !goalFieldsValid}>
+                {goalSaving ? 'Saving…' : 'Save Nutrition Goal'}
               </button>
             </div>
           </div>

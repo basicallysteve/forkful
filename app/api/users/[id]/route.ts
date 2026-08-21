@@ -7,16 +7,23 @@ import {
   updateUsername,
   updateEmailPreferences,
   updateShoppingPreferences,
+  updateNutritionGoal,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
-import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 const RECIPE_FREQUENCIES = new Set<string>(['never', 'weekly', 'monthly'])
 const PANTRY_FREQUENCIES = new Set<string>(['never', 'daily', 'weekly'])
+const NUTRITION_GOAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber'] as const
+
+// A Nutrition Goal field is valid when it is null (unset) or a non-negative finite number.
+function isValidGoalField(value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0)
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await getSessionUser()
@@ -81,6 +88,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await taskRunner.run(() => updateShoppingPreferences(targetId, {
         enableShoppingListPricingCollection: body.enableShoppingListPricingCollection,
       }))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'nutritionGoal') {
+      if (!NUTRITION_GOAL_FIELDS.every((field) => isValidGoalField(body[field]))) {
+        return NextResponse.json({ error: 'Nutrition goal values must be non-negative numbers or blank' }, { status: 400 })
+      }
+      const goal: NutritionGoal = {
+        calories: body.calories,
+        protein: body.protein,
+        carbs: body.carbs,
+        fat: body.fat,
+        fiber: body.fiber,
+      }
+      await taskRunner.run(() => updateNutritionGoal(targetId, goal))
       return NextResponse.json({ ok: true })
     }
 

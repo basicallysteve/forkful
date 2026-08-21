@@ -1,4 +1,4 @@
-import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 
 export type SignUpData = {
   username: string
@@ -69,6 +69,10 @@ export async function apiUpdateShoppingPreferences(userId: string | number, data
   enableShoppingListPricingCollection: boolean
 }): Promise<void> {
   return patchUser(userId, { action: 'shoppingPreferences', ...data })
+}
+
+export async function apiUpdateNutritionGoal(userId: string | number, goal: NutritionGoal): Promise<void> {
+  return patchUser(userId, { action: 'nutritionGoal', ...goal })
 }
 
 export async function apiUpdateEmail(userId: string | number, email: string): Promise<void> {

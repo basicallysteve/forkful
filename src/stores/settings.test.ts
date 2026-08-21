@@ -13,6 +13,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   recipeSuggestionFrequency: 'weekly',
   pantryExpirationFrequency: 'weekly',
   enableShoppingListPricingCollection: true,
+  nutritionGoal: { calories: null, protein: null, carbs: null, fat: null, fiber: null },
   dateAdded: new Date('2024-01-01'),
   dateDeleted: null,
   ...overrides,

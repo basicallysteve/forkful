@@ -232,6 +232,13 @@
       "when": 1787182359533,
       "tag": "0032_tearful_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1787348102513,
+      "tag": "0033_noisy_hawkeye",
+      "breakpoints": true
     }
   ]
 }
