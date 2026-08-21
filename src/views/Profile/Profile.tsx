@@ -8,6 +8,7 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
+import { OrderList } from 'primereact/orderlist'
 import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
@@ -181,23 +182,18 @@ export default function Profile({ user }: ProfileProps) {
   const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
   const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
 
-  function renameSlot(index: number, value: string) {
-    setMealSlots(prev => prev.map((s, i) => (i === index ? { ...s, name: value } : s)))
+  function renameSlot(id: number, value: string) {
+    setMealSlots(prev => prev.map(s => (s.id === id ? { ...s, name: value } : s)))
     setMealSlotsSuccess(false)
   }
 
-  function removeSlot(index: number) {
-    setMealSlots(prev => prev.filter((_, i) => i !== index))
+  function removeSlot(id: number) {
+    setMealSlots(prev => prev.filter(s => s.id !== id))
     setMealSlotsSuccess(false)
   }
 
-  function moveSlot(index: number, direction: -1 | 1) {
-    const target = index + direction
-    setMealSlots(prev => {
-      const next = [...prev]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
+  function reorderSlots(value: { id: number; name: string }[]) {
+    setMealSlots(value)
     setMealSlotsSuccess(false)
   }
 
@@ -496,52 +492,9 @@ export default function Profile({ user }: ProfileProps) {
           </div>
           <div className="panel-content">
             <small className="field-hint">
-              The buckets your daily food log groups into. Reorder, rename, remove, or add your own —
-              whether you eat one meal a day or five, shape the slots how you want.
+              The buckets your daily food log groups into. Add your own, rename in place, remove, or
+              drag to reorder — whether you eat one meal a day or five, shape the slots how you want.
             </small>
-            <ul className="meal-slot-list">
-              {mealSlots.map((slot, index) => (
-                <li key={slot.id} className="meal-slot-row">
-                  <div className="meal-slot-reorder">
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Move ${slot.name || `slot ${index + 1}`} up`}
-                      disabled={index === 0}
-                      onClick={() => moveSlot(index, -1)}
-                    >
-                      <i className="pi pi-chevron-up" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Move ${slot.name || `slot ${index + 1}`} down`}
-                      disabled={index === mealSlots.length - 1}
-                      onClick={() => moveSlot(index, 1)}
-                    >
-                      <i className="pi pi-chevron-down" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <InputText
-                    value={slot.name}
-                    aria-label={`Meal slot ${index + 1} name`}
-                    onChange={e => renameSlot(index, e.target.value)}
-                    className="meal-slot-input"
-                  />
-                  <button
-                    type="button"
-                    className="icon-button icon-button--danger"
-                    aria-label={`Remove ${slot.name || `slot ${index + 1}`}`}
-                    onClick={() => removeSlot(index)}
-                  >
-                    <i className="pi pi-trash" aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-              {mealSlots.length === 0 && (
-                <li className="meal-slot-empty">No meal slots yet — add one below.</li>
-              )}
-            </ul>
             <div className="meal-slot-add">
               <InputText
                 value={newSlot}
@@ -555,6 +508,41 @@ export default function Profile({ user }: ProfileProps) {
                 Add
               </button>
             </div>
+            <hr className="section-divider" />
+            {mealSlots.length === 0 ? (
+              <p className="meal-slot-empty">No meal slots yet — add one above.</p>
+            ) : (
+              <OrderList
+                className="meal-slot-orderlist"
+                dataKey="id"
+                value={mealSlots}
+                onChange={e => reorderSlots(e.value)}
+                dragdrop
+                itemTemplate={(slot: { id: number; name: string }) => {
+                  const position = mealSlots.findIndex(s => s.id === slot.id) + 1
+                  return (
+                    <div className="meal-slot-row">
+                      <InputText
+                        value={slot.name}
+                        aria-label={`Meal slot ${position} name`}
+                        onChange={e => renameSlot(slot.id, e.target.value)}
+                        onMouseDown={e => e.stopPropagation()}
+                        className="meal-slot-input"
+                      />
+                      <button
+                        type="button"
+                        className="icon-button icon-button--danger"
+                        aria-label={`Remove ${slot.name || `slot ${position}`}`}
+                        onClick={() => removeSlot(slot.id)}
+                        onMouseDown={e => e.stopPropagation()}
+                      >
+                        <i className="pi pi-trash" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )
+                }}
+              />
+            )}
             <div className="panel-footer">
               {mealSlotsSuccess && <span className="success-text">Saved!</span>}
               {mealSlotsError && <span className="field-error" role="alert">{mealSlotsError}</span>}

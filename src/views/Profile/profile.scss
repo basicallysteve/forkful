@@ -218,13 +218,30 @@
     line-height: 1.5;
   }
 
-  .meal-slot-list {
-    list-style: none;
-    margin: 12px 0 0;
-    padding: 0;
+  .meal-slot-add {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
+    margin-top: 12px;
+
+    .meal-slot-input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // The reorderable list itself is PrimeReact's OrderList; each row template
+  // holds an editable name plus a remove control.
+  .meal-slot-orderlist {
+    .p-orderlist-list {
+      min-height: auto;
+    }
+
+    // The whole item is a drag/select target; keep the row inert-looking and
+    // let the inner input/button carry their own affordances.
+    .p-orderlist-item {
+      padding: 6px 8px;
+    }
   }
 
   .meal-slot-row {
@@ -238,24 +255,18 @@
     }
   }
 
-  .meal-slot-reorder {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
   .icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 22px;
+    width: 30px;
+    height: 30px;
     border-radius: 6px;
     border: 1px solid var(--vscode-border);
     background: var(--vscode-panel-strong);
     color: var(--vscode-text);
     cursor: pointer;
-    font-size: 11px;
+    font-size: 13px;
     transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
 
     &:hover:not(:disabled) {
@@ -267,15 +278,9 @@
       opacity: 0.4;
     }
 
-    &--danger {
-      width: 30px;
-      height: 30px;
-      font-size: 13px;
-
-      &:hover:not(:disabled) {
-        border-color: var(--vscode-danger, #ef4444);
-        color: var(--vscode-danger, #ef4444);
-      }
+    &--danger:hover:not(:disabled) {
+      border-color: var(--vscode-danger, #ef4444);
+      color: var(--vscode-danger, #ef4444);
     }
   }
 
@@ -283,18 +288,7 @@
     font-size: 13px;
     color: var(--vscode-muted);
     padding: 4px 0;
-  }
-
-  .meal-slot-add {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-
-    .meal-slot-input {
-      flex: 1;
-      min-width: 0;
-    }
+    margin: 0;
   }
 
   .account-form {
