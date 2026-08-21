@@ -3,6 +3,7 @@ import { PATCH } from './route'
 import { getSessionUser } from '@/lib/auth'
 import {
   updateUserPreferences,
+  updateMealSlots,
   updateUserEmail,
   updateUserPassword,
   updateUsername,
@@ -16,6 +17,7 @@ import {
 vi.mock('@/lib/auth', () => ({ getSessionUser: vi.fn() }))
 vi.mock('@/lib/users', () => ({
   updateUserPreferences: vi.fn(),
+  updateMealSlots: vi.fn(),
   updateUserEmail: vi.fn(),
   updateUserPassword: vi.fn(),
   updateUsername: vi.fn(),
@@ -142,6 +144,86 @@ describe('PATCH /api/users/[id] — preferences', () => {
 
     expect(res.status).toBe(200)
     expect(updateUserPreferences).toHaveBeenCalledWith(42, { cuisinePreferences: [], dietaryRestrictions: [] })
+  })
+})
+
+describe('PATCH /api/users/[id] — mealSlots', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('saves meal slots and echoes the normalized list', async () => {
+    (updateMealSlots as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'mealSlots',
+      mealSlots: ['Breakfast', 'Lunch', 'Dinner'],
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, mealSlots: ['Breakfast', 'Lunch', 'Dinner'] })
+    expect(updateMealSlots).toHaveBeenCalledWith(42, ['Breakfast', 'Lunch', 'Dinner'])
+  })
+
+  it('trims, drops blanks, and de-duplicates case-insensitively while preserving order', async () => {
+    (updateMealSlots as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'mealSlots',
+      mealSlots: ['  Breakfast ', '', 'lunch', 'Lunch', 'Dinner'],
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateMealSlots).toHaveBeenCalledWith(42, ['Breakfast', 'lunch', 'Dinner'])
+  })
+
+  it('accepts an empty list (a user may clear all slots)', async () => {
+    (updateMealSlots as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'mealSlots', mealSlots: [] })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateMealSlots).toHaveBeenCalledWith(42, [])
+  })
+
+  it('returns 400 when mealSlots is not an array', async () => {
+    const { request, params } = makeRequest('42', { action: 'mealSlots', mealSlots: 'Breakfast' })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateMealSlots).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when mealSlots contains non-string values', async () => {
+    const { request, params } = makeRequest('42', { action: 'mealSlots', mealSlots: ['Breakfast', 42] })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateMealSlots).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when there are more than 20 slots', async () => {
+    const many = Array.from({ length: 21 }, (_, i) => `Slot ${i}`)
+    const { request, params } = makeRequest('42', { action: 'mealSlots', mealSlots: many })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateMealSlots).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a slot name exceeds 50 characters', async () => {
+    const { request, params } = makeRequest('42', { action: 'mealSlots', mealSlots: ['a'.repeat(51)] })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateMealSlots).not.toHaveBeenCalled()
   })
 })
 

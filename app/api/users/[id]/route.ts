@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import {
   updateUserPreferences,
+  updateMealSlots,
   updateUserEmail,
   updateUserPassword,
   updateUsername,
@@ -55,6 +56,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         dietaryRestrictions: body.dietaryRestrictions,
       }))
       return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'mealSlots') {
+      if (
+        !Array.isArray(body.mealSlots) ||
+        body.mealSlots.some((v: unknown) => typeof v !== 'string')
+      ) {
+        return NextResponse.json({ error: 'Invalid meal slots data' }, { status: 400 })
+      }
+      // Trim, drop blanks, and de-duplicate (case-insensitive) while preserving order.
+      const seen = new Set<string>()
+      const mealSlots: string[] = []
+      for (const raw of body.mealSlots as string[]) {
+        const trimmed = raw.trim()
+        if (!trimmed) continue
+        const key = trimmed.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        mealSlots.push(trimmed)
+      }
+      if (mealSlots.length > 20) {
+        return NextResponse.json({ error: 'You can have at most 20 meal slots' }, { status: 400 })
+      }
+      if (mealSlots.some(s => s.length > 50)) {
+        return NextResponse.json({ error: 'Meal slot names must be 50 characters or fewer' }, { status: 400 })
+      }
+      await taskRunner.run(() => updateMealSlots(targetId, mealSlots))
+      return NextResponse.json({ ok: true, mealSlots })
     }
 
     if (body.action === 'username') {

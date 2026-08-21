@@ -17,3 +17,7 @@ export const dietaryOptions = [
   "Keto",
   "Low-Carb",
 ]
+
+// Meal Slots seeded on every new account. Unlike cuisine/dietary options above,
+// this is only a starting point — the set is per-User and fully editable in profile.
+export const defaultMealSlots = ["Breakfast", "Lunch", "Dinner", "Snack"]

@@ -13,6 +13,7 @@ vi.mock('next-auth/react', () => ({
 
 vi.mock('@/lib/api/users', () => ({
   apiUpdatePreferences: vi.fn().mockResolvedValue(undefined),
+  apiUpdateMealSlots: vi.fn(),
   apiUpdateEmail: vi.fn().mockResolvedValue(undefined),
   apiUpdatePassword: vi.fn().mockResolvedValue(undefined),
   apiUploadAvatar: vi.fn().mockResolvedValue({ url: 'https://example.com/new-avatar.jpg' }),
@@ -27,6 +28,7 @@ vi.mock('@/lib/api/users', () => ({
 
 import {
   apiUpdatePreferences,
+  apiUpdateMealSlots,
   apiUpdateEmail,
   apiUpdateUsername,
   apiUpdateEmailPreferences,
@@ -43,6 +45,7 @@ const mockUser: User = {
   hasPassword: true,
   cuisinePreferences: ['Italian'],
   dietaryRestrictions: ['Vegan'],
+  mealSlots: ['Breakfast', 'Lunch', 'Dinner', 'Snack'],
   avatarUrl: null,
   marketingEmailOptIn: true,
   recipeSuggestionFrequency: 'weekly',
@@ -56,6 +59,7 @@ const mockUser: User = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(apiUpdatePreferences).mockResolvedValue(undefined)
+  vi.mocked(apiUpdateMealSlots).mockImplementation(async (_id, slots) => slots)
   vi.mocked(apiUpdateEmail).mockResolvedValue(undefined)
   vi.mocked(apiUpdateUsername).mockResolvedValue(undefined)
   vi.mocked(apiUpdateEmailPreferences).mockResolvedValue(undefined)
@@ -258,6 +262,68 @@ describe('Profile', () => {
       const user = userEvent.setup()
       render(<Profile user={mockUser} />)
       await user.click(screen.getByRole('button', { name: /save preferences/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Server error')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('meal slots', () => {
+    it('renders the seeded meal slots as read-only rows', () => {
+      render(<Profile user={mockUser} />)
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Lunch')).toBeInTheDocument()
+      expect(screen.getByText('Dinner')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
+      // Read-only: names are not editable text inputs.
+      expect(screen.queryByLabelText('Meal slot 1 name')).not.toBeInTheDocument()
+    })
+
+    it('defaults to the four seeded slots when the user has none', () => {
+      render(<Profile user={{ ...mockUser, mealSlots: null }} />)
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
+    })
+
+    it('adds a new slot', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.type(screen.getByLabelText('New meal slot name'), 'Dessert')
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+      expect(screen.getByText('Dessert')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Dessert' })).toBeInTheDocument()
+    })
+
+    it('rejects a duplicate slot (case-insensitive)', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.type(screen.getByLabelText('New meal slot name'), 'breakfast')
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+      expect(screen.getByText('That meal slot already exists')).toBeInTheDocument()
+      expect(screen.queryByText('breakfast')).not.toBeInTheDocument()
+    })
+
+    it('removes a slot', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: 'Remove Snack' }))
+      expect(screen.queryByText('Snack')).not.toBeInTheDocument()
+    })
+
+    it('saves the current slots in order', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+      await waitFor(() => {
+        expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+    })
+
+    it('shows an error message when saving meal slots fails', async () => {
+      vi.mocked(apiUpdateMealSlots).mockRejectedValueOnce(new Error('Server error'))
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
       await waitFor(() => {
         expect(screen.getByText('Server error')).toBeInTheDocument()
       })

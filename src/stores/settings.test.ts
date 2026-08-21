@@ -9,6 +9,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
   hasPassword: true,
   cuisinePreferences: [],
   dietaryRestrictions: [],
+  mealSlots: ['Breakfast', 'Lunch', 'Dinner', 'Snack'],
   marketingEmailOptIn: false,
   recipeSuggestionFrequency: 'weekly',
   pantryExpirationFrequency: 'weekly',

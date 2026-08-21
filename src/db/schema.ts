@@ -108,6 +108,8 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  // Ordered, user-defined Meal Slots — seeded with the four defaults; editable in profile.
+  mealSlots: jsonb('meal_slots').$type<string[]>().default(['Breakfast', 'Lunch', 'Dinner', 'Snack']),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
   passwordChangedAt: timestamp('password_changed_at'),

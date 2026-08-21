@@ -8,9 +8,11 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
-import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
+import { OrderList } from 'primereact/orderlist'
+import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
+  apiUpdateMealSlots,
   apiUpdateEmail,
   apiUpdatePassword,
   apiUploadAvatar,
@@ -200,6 +202,58 @@ export default function Profile({ user }: ProfileProps) {
       setPrefError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setPrefSaving(false)
+    }
+  }
+
+  // Meal slots — each row carries a stable id so reorder/remove keep React identity
+  // tied to the slot rather than its position. Names are set once on add and are
+  // read-only thereafter; the only edits are create, delete, and reorder.
+  const slotIdRef = useRef(0)
+  const toSlots = (names: string[]) => names.map(name => ({ id: slotIdRef.current++, name }))
+  const [mealSlots, setMealSlots] = useState(() => toSlots(user.mealSlots ?? [...defaultMealSlots]))
+  const [newSlot, setNewSlot] = useState('')
+  const [mealSlotsSaving, setMealSlotsSaving] = useState(false)
+  const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
+  const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
+
+  function removeSlot(id: number) {
+    setMealSlots(prev => prev.filter(s => s.id !== id))
+    setMealSlotsSuccess(false)
+  }
+
+  function reorderSlots(value: { id: number; name: string }[]) {
+    setMealSlots(value)
+    setMealSlotsSuccess(false)
+  }
+
+  function addSlot() {
+    const trimmed = newSlot.trim()
+    if (!trimmed) return
+    if (mealSlots.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+      setMealSlotsError('That meal slot already exists')
+      return
+    }
+    setMealSlots(prev => [...prev, { id: slotIdRef.current++, name: trimmed }])
+    setNewSlot('')
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+  }
+
+  async function saveMealSlots() {
+    // Names are always trimmed, non-blank, and unique by construction (add-time
+    // guard + read-only rows), so we can persist the current order as-is.
+    const names = mealSlots.map(s => s.name)
+    setMealSlotsSaving(true)
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+    try {
+      const saved = await apiUpdateMealSlots(user.id!, names)
+      setMealSlots(toSlots(saved))
+      setMealSlotsSuccess(true)
+    } catch (err) {
+      setMealSlotsError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setMealSlotsSaving(false)
     }
   }
 
@@ -480,6 +534,69 @@ export default function Profile({ user }: ProfileProps) {
               {prefError && <span className="field-error" role="alert">{prefError}</span>}
               <button className="primary-button" onClick={savePreferences} disabled={prefSaving}>
                 {prefSaving ? 'Saving…' : 'Save Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Meal slots */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Meal Slots</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <small className="field-hint">
+              The buckets your daily food log groups into. Add a slot, remove one, or drag to reorder —
+              whether you eat one meal a day or five, shape the slots how you want.
+            </small>
+            <div className="meal-slot-add">
+              <InputText
+                value={newSlot}
+                placeholder="Add a meal slot…"
+                aria-label="New meal slot name"
+                onChange={e => { setNewSlot(e.target.value); setMealSlotsError(null) }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSlot() } }}
+                className="meal-slot-input"
+              />
+              <button type="button" className="secondary-button" onClick={addSlot} disabled={!newSlot.trim()}>
+                Add
+              </button>
+            </div>
+            <hr className="section-divider" />
+            {mealSlots.length === 0 ? (
+              <p className="meal-slot-empty">No meal slots yet — add one above.</p>
+            ) : (
+              <OrderList
+                className="meal-slot-orderlist"
+                dataKey="id"
+                value={mealSlots}
+                onChange={e => reorderSlots(e.value)}
+                dragdrop
+                itemTemplate={(slot: { id: number; name: string }) => {
+                  return (
+                    <div className="meal-slot-row">
+                      <span className="meal-slot-name">{slot.name}</span>
+                      <button
+                        type="button"
+                        className="icon-button icon-button--danger"
+                        aria-label={`Remove ${slot.name}`}
+                        onClick={() => removeSlot(slot.id)}
+                        onMouseDown={e => e.stopPropagation()}
+                      >
+                        <i className="pi pi-trash" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )
+                }}
+              />
+            )}
+            <div className="panel-footer">
+              {mealSlotsSuccess && <span className="success-text">Saved!</span>}
+              {mealSlotsError && <span className="field-error" role="alert">{mealSlotsError}</span>}
+              <button className="primary-button" onClick={saveMealSlots} disabled={mealSlotsSaving}>
+                {mealSlotsSaving ? 'Saving…' : 'Save Meal Slots'}
               </button>
             </div>
           </div>
