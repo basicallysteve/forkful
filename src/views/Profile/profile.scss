@@ -230,17 +230,51 @@
     }
   }
 
-  // The reorderable list itself is PrimeReact's OrderList; each row template
-  // holds an editable name plus a remove control.
+  // PrimeReact's OrderList, stripped of its default chrome so it reads as part
+  // of this panel: drag-and-drop only (no move-button column), and each row is a
+  // read-only card. Names are create/delete only — not edited in place.
   .meal-slot-orderlist {
-    .p-orderlist-list {
-      min-height: auto;
+    // Reordering is drag-only; hide the move-button control column entirely.
+    .p-orderlist-controls {
+      display: none;
     }
 
-    // The whole item is a drag/select target; keep the row inert-looking and
-    // let the inner input/button carry their own affordances.
+    .p-orderlist-list-container {
+      border: none;
+      background: transparent;
+    }
+
+    .p-orderlist-list {
+      min-height: auto;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+
+    // The <li> is only a drag wrapper; the visible card is .meal-slot-row.
     .p-orderlist-item {
-      padding: 6px 8px;
+      padding: 0;
+      margin-bottom: 8px;
+      background: transparent;
+      border-radius: 8px;
+      transition: none;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      // Neutralise PrimeReact's blue selection/hover so it matches the theme.
+      &.p-highlight,
+      &.p-focus,
+      &:hover {
+        background: transparent;
+        color: inherit;
+        box-shadow: none;
+      }
+
+      &.p-highlight .meal-slot-row {
+        border-color: var(--vscode-accent);
+      }
     }
   }
 
@@ -248,10 +282,20 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+    cursor: grab;
 
-    .meal-slot-input {
+    .meal-slot-name {
       flex: 1;
       min-width: 0;
+      font-size: 14px;
+      color: var(--vscode-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 

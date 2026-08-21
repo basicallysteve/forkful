@@ -173,7 +173,8 @@ export default function Profile({ user }: ProfileProps) {
   }
 
   // Meal slots — each row carries a stable id so reorder/remove keep React identity
-  // tied to the slot rather than its position (index-as-key would misplace focus).
+  // tied to the slot rather than its position. Names are set once on add and are
+  // read-only thereafter; the only edits are create, delete, and reorder.
   const slotIdRef = useRef(0)
   const toSlots = (names: string[]) => names.map(name => ({ id: slotIdRef.current++, name }))
   const [mealSlots, setMealSlots] = useState(() => toSlots(user.mealSlots ?? [...defaultMealSlots]))
@@ -181,11 +182,6 @@ export default function Profile({ user }: ProfileProps) {
   const [mealSlotsSaving, setMealSlotsSaving] = useState(false)
   const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
   const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
-
-  function renameSlot(id: number, value: string) {
-    setMealSlots(prev => prev.map(s => (s.id === id ? { ...s, name: value } : s)))
-    setMealSlotsSuccess(false)
-  }
 
   function removeSlot(id: number) {
     setMealSlots(prev => prev.filter(s => s.id !== id))
@@ -211,17 +207,9 @@ export default function Profile({ user }: ProfileProps) {
   }
 
   async function saveMealSlots() {
-    // Guard before saving: blank or duplicate names would be silently dropped/collapsed
-    // by the server's normalization, losing a slot the user didn't mean to delete.
-    const names = mealSlots.map(s => s.name.trim())
-    if (names.some(n => !n)) {
-      setMealSlotsError('Meal slot names can’t be blank')
-      return
-    }
-    if (new Set(names.map(n => n.toLowerCase())).size !== names.length) {
-      setMealSlotsError('Meal slot names must be unique')
-      return
-    }
+    // Names are always trimmed, non-blank, and unique by construction (add-time
+    // guard + read-only rows), so we can persist the current order as-is.
+    const names = mealSlots.map(s => s.name)
     setMealSlotsSaving(true)
     setMealSlotsError(null)
     setMealSlotsSuccess(false)
@@ -492,8 +480,8 @@ export default function Profile({ user }: ProfileProps) {
           </div>
           <div className="panel-content">
             <small className="field-hint">
-              The buckets your daily food log groups into. Add your own, rename in place, remove, or
-              drag to reorder — whether you eat one meal a day or five, shape the slots how you want.
+              The buckets your daily food log groups into. Add a slot, remove one, or drag to reorder —
+              whether you eat one meal a day or five, shape the slots how you want.
             </small>
             <div className="meal-slot-add">
               <InputText
@@ -519,20 +507,13 @@ export default function Profile({ user }: ProfileProps) {
                 onChange={e => reorderSlots(e.value)}
                 dragdrop
                 itemTemplate={(slot: { id: number; name: string }) => {
-                  const position = mealSlots.findIndex(s => s.id === slot.id) + 1
                   return (
                     <div className="meal-slot-row">
-                      <InputText
-                        value={slot.name}
-                        aria-label={`Meal slot ${position} name`}
-                        onChange={e => renameSlot(slot.id, e.target.value)}
-                        onMouseDown={e => e.stopPropagation()}
-                        className="meal-slot-input"
-                      />
+                      <span className="meal-slot-name">{slot.name}</span>
                       <button
                         type="button"
                         className="icon-button icon-button--danger"
-                        aria-label={`Remove ${slot.name || `slot ${position}`}`}
+                        aria-label={`Remove ${slot.name}`}
                         onClick={() => removeSlot(slot.id)}
                         onMouseDown={e => e.stopPropagation()}
                       >

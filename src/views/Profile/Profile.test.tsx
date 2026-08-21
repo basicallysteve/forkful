@@ -264,18 +264,20 @@ describe('Profile', () => {
   })
 
   describe('meal slots', () => {
-    it('renders the seeded meal slots as editable inputs', () => {
+    it('renders the seeded meal slots as read-only rows', () => {
       render(<Profile user={mockUser} />)
-      expect(screen.getByLabelText('Meal slot 1 name')).toHaveValue('Breakfast')
-      expect(screen.getByLabelText('Meal slot 2 name')).toHaveValue('Lunch')
-      expect(screen.getByLabelText('Meal slot 3 name')).toHaveValue('Dinner')
-      expect(screen.getByLabelText('Meal slot 4 name')).toHaveValue('Snack')
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Lunch')).toBeInTheDocument()
+      expect(screen.getByText('Dinner')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
+      // Read-only: names are not editable text inputs.
+      expect(screen.queryByLabelText('Meal slot 1 name')).not.toBeInTheDocument()
     })
 
     it('defaults to the four seeded slots when the user has none', () => {
       render(<Profile user={{ ...mockUser, mealSlots: null }} />)
-      expect(screen.getByLabelText('Meal slot 1 name')).toHaveValue('Breakfast')
-      expect(screen.getByLabelText('Meal slot 4 name')).toHaveValue('Snack')
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
     })
 
     it('adds a new slot', async () => {
@@ -283,7 +285,8 @@ describe('Profile', () => {
       render(<Profile user={mockUser} />)
       await user.type(screen.getByLabelText('New meal slot name'), 'Dessert')
       await user.click(screen.getByRole('button', { name: 'Add' }))
-      expect(screen.getByLabelText('Meal slot 5 name')).toHaveValue('Dessert')
+      expect(screen.getByText('Dessert')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Dessert' })).toBeInTheDocument()
     })
 
     it('rejects a duplicate slot (case-insensitive)', async () => {
@@ -292,30 +295,14 @@ describe('Profile', () => {
       await user.type(screen.getByLabelText('New meal slot name'), 'breakfast')
       await user.click(screen.getByRole('button', { name: 'Add' }))
       expect(screen.getByText('That meal slot already exists')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Meal slot 5 name')).not.toBeInTheDocument()
-    })
-
-    it('renames a slot in place', async () => {
-      const user = userEvent.setup()
-      render(<Profile user={mockUser} />)
-      const input = screen.getByLabelText('Meal slot 1 name')
-      await user.clear(input)
-      await user.type(input, 'Brunch')
-      expect(input).toHaveValue('Brunch')
+      expect(screen.queryByText('breakfast')).not.toBeInTheDocument()
     })
 
     it('removes a slot', async () => {
       const user = userEvent.setup()
       render(<Profile user={mockUser} />)
       await user.click(screen.getByRole('button', { name: 'Remove Snack' }))
-      expect(screen.queryByLabelText('Meal slot 4 name')).not.toBeInTheDocument()
-    })
-
-    it('renders the OrderList reorder controls', () => {
-      render(<Profile user={mockUser} />)
-      // Reordering is handled by PrimeReact's OrderList (drag + move buttons).
-      expect(screen.getByRole('button', { name: /move down/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /move up/i })).toBeInTheDocument()
+      expect(screen.queryByText('Snack')).not.toBeInTheDocument()
     })
 
     it('saves the current slots in order', async () => {
@@ -325,26 +312,6 @@ describe('Profile', () => {
       await waitFor(() => {
         expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Dinner', 'Snack'])
       })
-    })
-
-    it('blocks save when a slot name is blank', async () => {
-      const user = userEvent.setup()
-      render(<Profile user={mockUser} />)
-      await user.clear(screen.getByLabelText('Meal slot 1 name'))
-      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
-      expect(screen.getByText(/blank/i)).toBeInTheDocument()
-      expect(apiUpdateMealSlots).not.toHaveBeenCalled()
-    })
-
-    it('blocks save when two slots collide after rename', async () => {
-      const user = userEvent.setup()
-      render(<Profile user={mockUser} />)
-      const second = screen.getByLabelText('Meal slot 2 name')
-      await user.clear(second)
-      await user.type(second, 'Breakfast')
-      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
-      expect(screen.getByText(/unique/i)).toBeInTheDocument()
-      expect(apiUpdateMealSlots).not.toHaveBeenCalled()
     })
 
     it('shows an error message when saving meal slots fails', async () => {
