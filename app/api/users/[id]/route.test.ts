@@ -469,6 +469,57 @@ describe('PATCH /api/users/[id] — nutritionGoal', () => {
     expect(res.status).toBe(400)
     expect(updateNutritionGoal).not.toHaveBeenCalled()
   })
+
+  it('returns 400 when calories is not a whole number (integer column)', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 2000.5, protein: null, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a macro has more than two decimal places', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: null, protein: 1.234, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a value exceeds the storable maximum', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: null, protein: 100_000_000, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('accepts a macro with exactly two decimal places', async () => {
+    (updateNutritionGoal as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 2000, protein: 165.25, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateNutritionGoal).toHaveBeenCalledWith(42, {
+      calories: 2000, protein: 165.25, carbs: null, fat: null, fiber: null,
+    })
+  })
 })
 
 describe('PATCH /api/users/[id] — deactivate', () => {

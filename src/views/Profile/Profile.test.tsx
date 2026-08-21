@@ -447,7 +447,29 @@ describe('Profile', () => {
 
       await user.type(screen.getByLabelText('Protein'), '-5')
 
-      expect(screen.getByText('Enter a non-negative number.')).toBeInTheDocument()
+      expect(screen.getByText('Enter a non-negative number (up to 2 decimals).')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
+      expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
+    })
+
+    it('rejects a fractional calorie value (integer column)', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Daily calories'), '2000.5')
+
+      expect(screen.getByText('Enter a non-negative whole number.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
+      expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
+    })
+
+    it('rejects a macro value with more than two decimals', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Fat'), '1.234')
+
+      expect(screen.getByText('Enter a non-negative number (up to 2 decimals).')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
       expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
     })

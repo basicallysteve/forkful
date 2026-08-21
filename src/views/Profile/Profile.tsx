@@ -23,6 +23,7 @@ import {
   apiSubmitAccountFeedback,
 } from '@/lib/api/users'
 import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
+import { isValidGoalValue } from '@/types/User'
 import './profile.scss'
 
 const commonPasswords = [
@@ -79,11 +80,12 @@ function goalToForm(goal: NutritionGoal): NutritionGoalForm {
   }
 }
 
-// A single field is valid when blank (unset) or a non-negative finite number.
-function isValidGoalInput(value: string): boolean {
+// A single field is valid when blank (unset) or a value its column can store without rounding
+// (whole numbers for calories, up to 2 decimals for macros — see isValidGoalValue).
+function isValidGoalInput(key: keyof NutritionGoal, value: string): boolean {
   if (value.trim() === '') return true
   const n = Number(value)
-  return Number.isFinite(n) && n >= 0
+  return isValidGoalValue(key, n)
 }
 
 interface PasswordValidation {
@@ -253,7 +255,7 @@ export default function Profile({ user }: ProfileProps) {
   const [goalError, setGoalError] = useState<string | null>(null)
   const [goalSuccess, setGoalSuccess] = useState(false)
   const goalFieldsValid = useMemo(
-    () => NUTRITION_GOAL_FIELDS.every(({ key }) => isValidGoalInput(goalForm[key])),
+    () => NUTRITION_GOAL_FIELDS.every(({ key }) => isValidGoalInput(key, goalForm[key])),
     [goalForm],
   )
 
@@ -561,7 +563,7 @@ export default function Profile({ user }: ProfileProps) {
             <p className="field-hint">Set your daily targets. Leave a field blank for no target.</p>
             <div className="nutrition-goal-grid">
               {NUTRITION_GOAL_FIELDS.map(({ key, label, unit }) => {
-                const invalid = !isValidGoalInput(goalForm[key])
+                const invalid = !isValidGoalInput(key, goalForm[key])
                 return (
                   <label key={key} className={`form-field ${invalid ? 'has-error' : ''}`}>
                     <span className="field-label">{label}</span>
@@ -569,14 +571,16 @@ export default function Profile({ user }: ProfileProps) {
                       <InputText
                         value={goalForm[key]}
                         onChange={e => setGoalField(key, e.target.value)}
-                        inputMode="decimal"
+                        inputMode={key === 'calories' ? 'numeric' : 'decimal'}
                         placeholder="—"
                         aria-label={label}
                       />
                       <span className="nutrition-goal-unit">{unit}</span>
                     </div>
                     {invalid && (
-                      <span className="field-error" role="alert">Enter a non-negative number.</span>
+                      <span className="field-error" role="alert">
+                        {key === 'calories' ? 'Enter a non-negative whole number.' : 'Enter a non-negative number (up to 2 decimals).'}
+                      </span>
                     )}
                   </label>
                 )

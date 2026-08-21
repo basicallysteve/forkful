@@ -13,6 +13,7 @@ import {
 } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
 import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
+import { isValidGoalValue } from '@/types/User'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
@@ -20,9 +21,10 @@ const RECIPE_FREQUENCIES = new Set<string>(['never', 'weekly', 'monthly'])
 const PANTRY_FREQUENCIES = new Set<string>(['never', 'daily', 'weekly'])
 const NUTRITION_GOAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber'] as const
 
-// A Nutrition Goal field is valid when it is null (unset) or a non-negative finite number.
-function isValidGoalField(value: unknown): value is number | null {
-  return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0)
+// A Nutrition Goal field is valid when it is null (unset) or a number storable in its column
+// (see isValidGoalValue: whole numbers for calories, ≤2 decimals for macros, both bounded).
+function isValidGoalField(field: (typeof NUTRITION_GOAL_FIELDS)[number], value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && isValidGoalValue(field, value))
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -92,8 +94,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     if (body.action === 'nutritionGoal') {
-      if (!NUTRITION_GOAL_FIELDS.every((field) => isValidGoalField(body[field]))) {
-        return NextResponse.json({ error: 'Nutrition goal values must be non-negative numbers or blank' }, { status: 400 })
+      if (!NUTRITION_GOAL_FIELDS.every((field) => isValidGoalField(field, body[field]))) {
+        return NextResponse.json({ error: 'Nutrition goal values must be non-negative numbers or blank (whole numbers for calories)' }, { status: 400 })
       }
       const goal: NutritionGoal = {
         calories: body.calories,
