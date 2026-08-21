@@ -211,6 +211,130 @@
     flex-shrink: 0;
   }
 
+  .field-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--vscode-muted);
+    line-height: 1.5;
+  }
+
+  .meal-slot-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+
+    .meal-slot-input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  // PrimeReact's OrderList, stripped of its default chrome so it reads as part
+  // of this panel: drag-and-drop only (no move-button column), and each row is a
+  // read-only card. Names are create/delete only — not edited in place.
+  .meal-slot-orderlist {
+    // Reordering is drag-only; hide the move-button control column entirely.
+    .p-orderlist-controls {
+      display: none;
+    }
+
+    .p-orderlist-list-container {
+      border: none;
+      background: transparent;
+    }
+
+    .p-orderlist-list {
+      min-height: auto;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+
+    // The <li> is only a drag wrapper; the visible card is .meal-slot-row.
+    .p-orderlist-item {
+      padding: 0;
+      margin-bottom: 8px;
+      background: transparent;
+      border-radius: 8px;
+      transition: none;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      // Neutralise PrimeReact's blue selection/hover so it matches the theme.
+      &.p-highlight,
+      &.p-focus,
+      &:hover {
+        background: transparent;
+        color: inherit;
+        box-shadow: none;
+      }
+
+      &.p-highlight .meal-slot-row {
+        border-color: var(--vscode-accent);
+      }
+    }
+  }
+
+  .meal-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+    background: var(--vscode-panel-strong);
+    cursor: grab;
+
+    .meal-slot-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      color: var(--vscode-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+    color: var(--vscode-text);
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+
+    &:hover:not(:disabled) {
+      border-color: var(--vscode-accent);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+
+    &--danger:hover:not(:disabled) {
+      border-color: var(--vscode-danger, #ef4444);
+      color: var(--vscode-danger, #ef4444);
+    }
+  }
+
+  .meal-slot-empty {
+    font-size: 13px;
+    color: var(--vscode-muted);
+    padding: 4px 0;
+    margin: 0;
+  }
+
   .account-form {
     display: flex;
     flex-direction: column;

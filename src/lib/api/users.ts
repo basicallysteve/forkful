@@ -36,25 +36,32 @@ export async function apiLogout(): Promise<void> {
   })
 }
 
-async function patchUser(userId: string | number, body: object): Promise<void> {
+async function patchUser(userId: string | number, body: object): Promise<Record<string, unknown>> {
   const res = await fetch(`/api/users/${userId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     credentials: 'same-origin',
   })
+  const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error ?? 'Update failed')
+    throw new Error((data as { error?: string }).error ?? 'Update failed')
   }
+  return data as Record<string, unknown>
 }
 
 export async function apiUpdatePreferences({ userId, cuisinePreferences, dietaryRestrictions }: { userId: string | number; cuisinePreferences: string[]; dietaryRestrictions: string[] }): Promise<void> {
-  return patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
+  await patchUser(userId, { action: 'preferences', cuisinePreferences, dietaryRestrictions })
+}
+
+export async function apiUpdateMealSlots(userId: string | number, mealSlots: string[]): Promise<string[]> {
+  const data = await patchUser(userId, { action: 'mealSlots', mealSlots })
+  // The server trims/de-dupes; echo its normalized list back so the UI stays in sync.
+  return Array.isArray(data.mealSlots) ? (data.mealSlots as string[]) : mealSlots
 }
 
 export async function apiUpdateUsername(userId: string | number, username: string): Promise<void> {
-  return patchUser(userId, { action: 'username', username })
+  await patchUser(userId, { action: 'username', username })
 }
 
 export async function apiUpdateEmailPreferences(userId: string | number, data: {
@@ -62,29 +69,29 @@ export async function apiUpdateEmailPreferences(userId: string | number, data: {
   recipeSuggestionFrequency: RecipeSuggestionFrequency
   pantryExpirationFrequency: PantryExpirationFrequency
 }): Promise<void> {
-  return patchUser(userId, { action: 'emailPreferences', ...data })
+  await patchUser(userId, { action: 'emailPreferences', ...data })
 }
 
 export async function apiUpdateShoppingPreferences(userId: string | number, data: {
   enableShoppingListPricingCollection: boolean
 }): Promise<void> {
-  return patchUser(userId, { action: 'shoppingPreferences', ...data })
+  await patchUser(userId, { action: 'shoppingPreferences', ...data })
 }
 
 export async function apiUpdateEmail(userId: string | number, email: string): Promise<void> {
-  return patchUser(userId, { action: 'email', email })
+  await patchUser(userId, { action: 'email', email })
 }
 
 export async function apiUpdatePassword({ userId, currentPassword, newPassword }: { userId: string | number; currentPassword: string; newPassword: string }): Promise<void> {
-  return patchUser(userId, { action: 'password', currentPassword, newPassword })
+  await patchUser(userId, { action: 'password', currentPassword, newPassword })
 }
 
 export async function apiDeactivateAccount(userId: string | number): Promise<void> {
-  return patchUser(userId, { action: 'deactivate' })
+  await patchUser(userId, { action: 'deactivate' })
 }
 
 export async function apiDeleteAccount(userId: string | number): Promise<void> {
-  return patchUser(userId, { action: 'delete' })
+  await patchUser(userId, { action: 'delete' })
 }
 
 export async function apiSubmitAccountFeedback(userId: string | number, data: {
