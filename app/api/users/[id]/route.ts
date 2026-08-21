@@ -8,16 +8,25 @@ import {
   updateUsername,
   updateEmailPreferences,
   updateShoppingPreferences,
+  updateNutritionGoal,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
-import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
+import { isValidGoalValue } from '@/types/User'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 const RECIPE_FREQUENCIES = new Set<string>(['never', 'weekly', 'monthly'])
 const PANTRY_FREQUENCIES = new Set<string>(['never', 'daily', 'weekly'])
+const NUTRITION_GOAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber'] as const
+
+// A Nutrition Goal field is valid when it is null (unset) or a number storable in its column
+// (see isValidGoalValue: whole numbers for calories, ≤2 decimals for macros, both bounded).
+function isValidGoalField(field: (typeof NUTRITION_GOAL_FIELDS)[number], value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && isValidGoalValue(field, value))
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await getSessionUser()
@@ -110,6 +119,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await taskRunner.run(() => updateShoppingPreferences(targetId, {
         enableShoppingListPricingCollection: body.enableShoppingListPricingCollection,
       }))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'nutritionGoal') {
+      if (!NUTRITION_GOAL_FIELDS.every((field) => isValidGoalField(field, body[field]))) {
+        return NextResponse.json({ error: 'Nutrition goal values must be non-negative numbers or blank (whole numbers for calories)' }, { status: 400 })
+      }
+      const goal: NutritionGoal = {
+        calories: body.calories,
+        protein: body.protein,
+        carbs: body.carbs,
+        fat: body.fat,
+        fiber: body.fiber,
+      }
+      await taskRunner.run(() => updateNutritionGoal(targetId, goal))
       return NextResponse.json({ ok: true })
     }
 

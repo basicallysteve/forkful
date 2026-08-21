@@ -118,6 +118,14 @@ export const users = pgTable('users', {
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
   // When off, the shopping list stops prompting for (and hides manual entry of) Line Price & expiration.
   enableShoppingListPricingCollection: boolean('enable_shopping_list_pricing_collection').notNull().default(true),
+  // Nutrition Goal (see CONTEXT.md): a manually-set daily calorie target plus optional per-macro
+  // targets. Every column is nullable — null means that field has no target. No goal is ever computed
+  // from biometrics/activity. Calories are whole numbers; macros mirror the numeric(10,2) macro columns.
+  calorieGoal: integer('calorie_goal'),
+  proteinGoal: numeric('protein_goal', { precision: 10, scale: 2 }),
+  carbsGoal: numeric('carbs_goal', { precision: 10, scale: 2 }),
+  fatGoal: numeric('fat_goal', { precision: 10, scale: 2 }),
+  fiberGoal: numeric('fiber_goal', { precision: 10, scale: 2 }),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),

@@ -9,6 +9,7 @@ import {
   updateUsername,
   updateEmailPreferences,
   updateShoppingPreferences,
+  updateNutritionGoal,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
@@ -22,6 +23,7 @@ vi.mock('@/lib/users', () => ({
   updateUsername: vi.fn(),
   updateEmailPreferences: vi.fn(),
   updateShoppingPreferences: vi.fn(),
+  updateNutritionGoal: vi.fn(),
   deactivateAccount: vi.fn(),
   deleteAccount: vi.fn(),
 }))
@@ -464,6 +466,141 @@ describe('PATCH /api/users/[id] — emailPreferences', () => {
 
     expect(res.status).toBe(400)
     expect(updateEmailPreferences).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/users/[id] — nutritionGoal', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('saves a full nutrition goal and returns ok', async () => {
+    (updateNutritionGoal as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 2000,
+      protein: 150,
+      carbs: 200,
+      fat: 60,
+      fiber: 30,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(updateNutritionGoal).toHaveBeenCalledWith(42, {
+      calories: 2000, protein: 150, carbs: 200, fat: 60, fiber: 30,
+    })
+  })
+
+  it('accepts null (unset) for each field independently', async () => {
+    (updateNutritionGoal as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 1800,
+      protein: null,
+      carbs: null,
+      fat: null,
+      fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateNutritionGoal).toHaveBeenCalledWith(42, {
+      calories: 1800, protein: null, carbs: null, fat: null, fiber: null,
+    })
+  })
+
+  it('accepts an all-null goal (fully cleared)', async () => {
+    (updateNutritionGoal as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: null, protein: null, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateNutritionGoal).toHaveBeenCalledWith(42, {
+      calories: null, protein: null, carbs: null, fat: null, fiber: null,
+    })
+  })
+
+  it('returns 400 when a field is negative', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: -100, protein: null, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a field is not a number', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: '2000', protein: null, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when calories is not a whole number (integer column)', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 2000.5, protein: null, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a macro has more than two decimal places', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: null, protein: 1.234, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a value exceeds the storable maximum', async () => {
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: null, protein: 100_000_000, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(400)
+    expect(updateNutritionGoal).not.toHaveBeenCalled()
+  })
+
+  it('accepts a macro with exactly two decimal places', async () => {
+    (updateNutritionGoal as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', {
+      action: 'nutritionGoal',
+      calories: 2000, protein: 165.25, carbs: null, fat: null, fiber: null,
+    })
+
+    const res = await PATCH(request, { params })
+
+    expect(res.status).toBe(200)
+    expect(updateNutritionGoal).toHaveBeenCalledWith(42, {
+      calories: 2000, protein: 165.25, carbs: null, fat: null, fiber: null,
+    })
   })
 })
 

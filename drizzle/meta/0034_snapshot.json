@@ -1,6 +1,6 @@
 {
-  "id": "12e6a0ed-b824-4b52-b3e1-a1b541a8b6e7",
-  "prevId": "5cc62246-36ca-4d51-8d38-96108bd36a0d",
+  "id": "41899543-0048-4121-9443-9c6a70c4ea72",
+  "prevId": "12e6a0ed-b824-4b52-b3e1-a1b541a8b6e7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1925,6 +1925,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'[]'::jsonb"
+        },
+        "meal_slots": {
+          "name": "meal_slots",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[\"Breakfast\",\"Lunch\",\"Dinner\",\"Snack\"]'::jsonb"
         },
         "avatar_url": {
           "name": "avatar_url",

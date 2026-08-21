@@ -1,7 +1,7 @@
 import { eq, and, gt, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedback, recipes } from '@/db/schema'
-import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { sendGoodbyeEmail, sendDeactivationExpiryWarningEmail } from '@/lib/email'
@@ -24,6 +24,13 @@ function mapUser(row: typeof users.$inferSelect): User {
     recipeSuggestionFrequency: row.recipeSuggestionFrequency as RecipeSuggestionFrequency,
     pantryExpirationFrequency: row.pantryExpirationFrequency as PantryExpirationFrequency,
     enableShoppingListPricingCollection: row.enableShoppingListPricingCollection,
+    nutritionGoal: {
+      calories: row.calorieGoal,
+      protein: row.proteinGoal !== null ? Number(row.proteinGoal) : null,
+      carbs: row.carbsGoal !== null ? Number(row.carbsGoal) : null,
+      fat: row.fatGoal !== null ? Number(row.fatGoal) : null,
+      fiber: row.fiberGoal !== null ? Number(row.fiberGoal) : null,
+    },
     dateAdded: row.dateAdded!,
     dateDeleted: row.dateDeleted,
   }
@@ -305,6 +312,19 @@ export async function updateShoppingPreferences(userId: number, data: {
     enableShoppingListPricingCollection: boolean
 }): Promise<void> {
     await db.update(users).set(data).where(eq(users.id, userId))
+}
+
+// Set/clear the User's Nutrition Goal. Each field is independently nullable — a null clears that
+// target while leaving the others intact. Macros are written as strings to the numeric columns
+// (same convention as the food macro columns).
+export async function updateNutritionGoal(userId: number, goal: NutritionGoal): Promise<void> {
+    await db.update(users).set({
+        calorieGoal: goal.calories,
+        proteinGoal: goal.protein !== null ? String(goal.protein) : null,
+        carbsGoal: goal.carbs !== null ? String(goal.carbs) : null,
+        fatGoal: goal.fat !== null ? String(goal.fat) : null,
+        fiberGoal: goal.fiber !== null ? String(goal.fiber) : null,
+    }).where(eq(users.id, userId))
 }
 
 export async function deactivateAccount(userId: number): Promise<void> {
