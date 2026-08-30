@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 · Expectation & Variance</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+  <div class="course-tag">Statistics for Machine Learning</div>
+  <div class="lesson-no">Lesson 01</div>
+  <h1>Expectation &amp; Variance: from <em>data you have</em> to <em>randomness you model</em></h1>
+
+  <p>You already compute a mean and a variance from a column of numbers. This
+  lesson upgrades those two familiar quantities into their <em>probabilistic</em>
+  form — <b>expectation</b> and <b>variance of a random variable</b> — which is
+  the language your ML course will actually speak. This one shift is the bridge
+  from the descriptive statistics you know to the theory you said felt shaky.</p>
+
+  <div class="mission">
+    <b>Why this is lesson one.</b> In machine learning, a loss function is an
+    <em>expectation</em> (average loss over data you'll see), and a model's
+    instability is a <em>variance</em>. Get these two right and the words
+    "expected loss", "bias–variance", and "estimator" stop being jargon.
+  </div>
+
+  <h2>1. A random variable, in one breath</h2>
+  <p>A <b>random variable</b> <span class="var">X</span> is just a number produced
+  by a random process — a dice roll, tomorrow's temperature, whether an email is
+  spam (1) or not (0). We don't know the next value, but we know how the values
+  are <em>distributed</em>. Everything below is a property of that distribution,
+  not of any one sample.<sup class="ref"><a href="#c1">1</a></sup></p>
+
+  <h2>2. Expectation = the probability-weighted average</h2>
+  <p>The <b>expected value</b> <span class="var">E[X]</span> (also written
+  <span class="var">μ</span>) is what the average <em>converges to</em> if you
+  could sample forever. For a discrete <span class="var">X</span>:</p>
+  <div class="math">E[X] = Σ<sub>x</sub> &nbsp;x · P(X = x)</div>
+  <p>Each outcome weighted by how often it happens. For a fair die that's
+  <span class="var">1·⅙ + 2·⅙ + … + 6·⅙ = 3.5</span> — note the "expected" value
+  is a value the die never even shows.</p>
+
+  <div class="keyidea">
+    <div class="label">Key idea — the bridge</div>
+    The <b>sample mean</b> <span class="var">x̄</span> you already know is an
+    <em>estimate</em> of <span class="var">E[X]</span>. More data → the estimate
+    homes in on the truth. That is the <b>Law of Large Numbers</b>, and it is why
+    training on more data works.
+  </div>
+
+  <pre><code>import numpy as np
+rng = np.random.default_rng(0)
+
+# Roll a fair die more and more times; watch x̄ approach E[X] = 3.5
+for n in [10, 1_000, 1_000_000]:
+    rolls = rng.integers(1, 7, size=n)
+    print(f"n={n:>9,}  sample mean = {rolls.mean():.4f}")
+
+<span class="out"># n=       10  sample mean = 2.8000     &larr; noisy with little data
+# n=    1,000  sample mean = 3.6020
+# n=1,000,000  sample mean = 3.5022     &larr; converging on E[X]=3.5</span></code></pre>
+
+  <h3>The one property ML uses constantly: linearity</h3>
+  <p>Expectation passes straight through sums and scaling:</p>
+  <div class="math">E[aX + b] = a·E[X] + b &nbsp;&nbsp;&nbsp; and &nbsp;&nbsp;&nbsp; E[X + Y] = E[X] + E[Y]</div>
+  <p>The second holds <em>even when X and Y are dependent</em> — a small fact that
+  quietly powers a lot of ML derivations.<sup class="ref"><a href="#c2">2</a></sup></p>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">If <span class="var">E[X] = 5</span>, what is <span class="var">E[2X + 3]</span>?</div>
+    <button class="opt">13</button>
+    <button class="opt">10</button>
+    <button class="opt">16</button>
+    <button class="opt">23</button>
+    <div class="fb" data-correct="Yes — linearity: 2·5 + 3 = 13." data-wrong="Use E[aX+b]=a·E[X]+b → 2·5+3 = 13."></div>
+  </div>
+
+  <h2>3. Variance = expected squared distance from the mean</h2>
+  <p><b>Variance</b> measures spread as the average squared gap between
+  <span class="var">X</span> and its own mean:</p>
+  <div class="math">Var(X) = E[(X − μ)²] &nbsp;=&nbsp; E[X²] − (E[X])²</div>
+  <p>The right-hand form ("mean of the square minus square of the mean") is the
+  one you'll actually compute. <b>Standard deviation</b>
+  <span class="var">σ = √Var(X)</span> puts the spread back into the variable's
+  units. Two rules worth memorizing:</p>
+  <div class="math">Var(aX + b) = a²·Var(X) &nbsp;&nbsp;&nbsp; Var(X + Y) = Var(X) + Var(Y) &nbsp;<span class="cite">(only if independent)</span></div>
+  <p>Scaling hits variance by <em>a²</em> (not <em>a</em>), and adding a constant
+  <span class="var">b</span> shifts data without changing spread.</p>
+
+  <pre><code>import numpy as np
+rng = np.random.default_rng(1)
+x = rng.normal(loc=10, scale=2, size=100_000)   # true μ=10, σ=2, so Var=4
+
+print(x.var())                       # <span class="out">3.972  &larr; estimate of Var(X)=4</span>
+print((x**2).mean() - x.mean()**2)   # <span class="out">3.972  &larr; same, via E[X²]-E[X]²</span>
+print((3*x).var(), 9*x.var())        # <span class="out">35.8 35.8 &larr; Var(3X)=9·Var(X)</span></code></pre>
+
+  <div class="mission">
+    <b>numpy footnote you'll want later.</b> <code>np.var</code> divides by
+    <span class="var">n</span>. The unbiased <em>sample</em> variance divides by
+    <span class="var">n−1</span> — pass <code>ddof=1</code>. Why the correction
+    exists is a whole lesson (estimators &amp; bias); for now just know the knob is there.
+  </div>
+
+  <div class="quiz" data-answer="0">
+    <div class="q">The sample mean <span class="var">x̄</span> computed from data is best described as…</div>
+    <button class="opt">an estimate of the expectation</button>
+    <button class="opt">the true value of expectation</button>
+    <button class="opt">always equal to the median</button>
+    <button class="opt">a fixed population parameter</button>
+    <div class="fb" data-correct="Right — x̄ estimates E[X]; more data shrinks the error." data-wrong="x̄ is computed from a sample, so it estimates E[X] — it isn't the exact truth."></div>
+  </div>
+
+  <h2>Your win</h2>
+  <p>You can now read <span class="var">E[X]</span> and <span class="var">Var(X)</span>
+  as properties of a distribution, connect them to the sample mean and variance you
+  already compute, and use linearity and the scaling rules. That vocabulary is the
+  spine of nearly every ML formula you'll meet next.</p>
+
+  <hr class="soft">
+  <p class="cite" id="cites"><b>Watch / read this first (primary source):</b>
+  ⭐ StatQuest, <a href="https://statquest.org/expected-values-clearly-explained/">"Expected Values, Clearly Explained"</a>
+  — ~10 min, the clearest possible intuition. Then, for depth,
+  MIT 6.041 lectures on discrete random variables &amp; expectation
+  (<a href="https://ocw.mit.edu/courses/res-6-012-introduction-to-probability-spring-2018/">MIT OCW</a>).</p>
+  <ol class="cite">
+    <li id="c1">Deisenroth et&nbsp;al., <a href="https://mml-book.github.io/">Mathematics for Machine Learning</a>, Ch. 6 (Probability &amp; Distributions).</li>
+    <li id="c2">Bertsekas &amp; Tsitsiklis, <a href="https://ocw.mit.edu/courses/res-6-012-introduction-to-probability-spring-2018/">Introduction to Probability</a> — linearity of expectation.</li>
+  </ol>
+
+  <div class="ask">
+    <b>I'm your teacher — ask me anything.</b> Stuck on why <span class="var">n−1</span>?
+    Want the continuous-integral version of <span class="var">E[X]</span>? Curious how
+    "expected loss" uses this? Just ask, and I'll build the next lesson around where
+    you feel shaky.
+  </div>
+
+  <div class="nav">
+    <span><a href="../reference/glossary.html">📖 Glossary</a></span>
+    <span>Next → <em>Distributions ML actually uses</em> (lesson 2, on request)</span>
+  </div>
+
+  <script src="../assets/quiz.js"></script>
+</body>
+</html>
