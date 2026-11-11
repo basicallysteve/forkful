@@ -4,12 +4,14 @@
  * No DB or network access here; those are injected so tests can mock them.
  */
 
+import { Models, AIBudgetExhaustedError } from '@/lib/ai'
+
 export type Candidate = { id: number; name: string }
 
 export const MAX_CANDIDATES = 5
 
-/** Default model; override with LINK_PRODUCT_FOODS_MODEL. */
-export const DEFAULT_LINK_MODEL = 'claude-haiku-4-5-20251001'
+/** Default model (the canonical Haiku in src/lib/ai.ts); override with LINK_PRODUCT_FOODS_MODEL. */
+export const DEFAULT_LINK_MODEL = Models.anthropicHaiku.model
 
 export function resolveLinkModel(env: Record<string, string | undefined>): string {
   return env.LINK_PRODUCT_FOODS_MODEL?.trim() || DEFAULT_LINK_MODEL
@@ -97,4 +99,43 @@ export async function pickBestFood(
     userMessage: buildUserMessage(productName, candidates),
   })
   return parseChoice(response, candidates)
+}
+
+/**
+ * Parse an integer CLI flag. Returns null when `raw` is not an integer >= min.
+ * Used for --limit/--concurrency (min 1) and --after-id (min 0).
+ */
+export function parseIntFlag(raw: string, min: number): number | null {
+  if (!/^\d+$/.test(raw.trim())) return null
+  const n = Number(raw)
+  return Number.isSafeInteger(n) && n >= min ? n : null
+}
+
+export type SettledBatch<R> = {
+  /** Results of every item that completed (already paid for), in input order. */
+  results: R[]
+  /** Number of leading items that all completed; the cursor is the id of item `prefix - 1`. */
+  prefix: number
+  /** True when any item failed because the AI budget ran out. */
+  budgetExhausted: boolean
+  /** A non-budget failure to rethrow after the completed results are saved. */
+  otherError: unknown
+}
+
+/** Split Promise.allSettled output so completed work is kept when a sibling hits the budget limit. */
+export function settleBatch<R>(settled: PromiseSettledResult<R>[]): SettledBatch<R> {
+  const results: R[] = []
+  let prefix = -1
+  let budgetExhausted = false
+  let otherError: unknown = undefined
+  settled.forEach((s, i) => {
+    if (s.status === 'fulfilled') {
+      results.push(s.value)
+      return
+    }
+    if (prefix < 0) prefix = i
+    if (s.reason instanceof AIBudgetExhaustedError) budgetExhausted = true
+    else if (otherError === undefined) otherError = s.reason
+  })
+  return { results, prefix: prefix < 0 ? settled.length : prefix, budgetExhausted, otherError }
 }

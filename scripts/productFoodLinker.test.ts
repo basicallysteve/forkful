@@ -1,8 +1,9 @@
+import { AIBudgetExhaustedError, Models } from '@/lib/ai'
 import { describe, it, expect, vi } from 'vitest'
 import {
   preprocessName, escapeLike, candidateSearchTerms, selectCandidates, buildUserMessage,
   parseChoice, pickBestFood, resolveLinkModel, DEFAULT_LINK_MODEL, MAX_CANDIDATES,
-  type CompleteFn,
+  parseIntFlag, settleBatch, type CompleteFn,
 } from './productFoodLinker'
 
 const cands = [{ id: 42, name: 'Chicken Breast' }, { id: 7, name: 'Chicken Thigh' }]
@@ -59,6 +60,40 @@ describe('pickBestFood', () => {
 describe('resolveLinkModel', () => {
   it('defaults and honours the env override', () => {
     expect(resolveLinkModel({})).toBe(DEFAULT_LINK_MODEL)
+    expect(DEFAULT_LINK_MODEL).toBe(Models.anthropicHaiku.model)
     expect(resolveLinkModel({ LINK_PRODUCT_FOODS_MODEL: 'claude-x' })).toBe('claude-x')
+  })
+})
+
+describe('parseIntFlag', () => {
+  it('validates integers against a minimum', () => {
+    expect(parseIntFlag('10', 1)).toBe(10)
+    expect(parseIntFlag('0', 0)).toBe(0)
+    expect(parseIntFlag('0', 1)).toBeNull()
+    expect(parseIntFlag('-3', 0)).toBeNull()
+    expect(parseIntFlag('1.5', 1)).toBeNull()
+    expect(parseIntFlag('abc', 0)).toBeNull()
+  })
+})
+
+describe('settleBatch', () => {
+  const ok = (v: string): PromiseFulfilledResult<string> => ({ status: 'fulfilled', value: v })
+  const fail = (reason: unknown): PromiseRejectedResult => ({ status: 'rejected', reason })
+
+  it('keeps all results when nothing failed', () => {
+    expect(settleBatch([ok('a'), ok('b')])).toEqual({ results: ['a', 'b'], prefix: 2, budgetExhausted: false, otherError: undefined })
+  })
+  it('keeps completed siblings of a budget failure and reports the contiguous prefix', () => {
+    const r = settleBatch([ok('a'), fail(new AIBudgetExhaustedError()), ok('c')])
+    expect(r.results).toEqual(['a', 'c'])
+    expect(r.prefix).toBe(1)
+    expect(r.budgetExhausted).toBe(true)
+    expect(r.otherError).toBeUndefined()
+  })
+  it('surfaces other errors', () => {
+    const boom = new Error('boom')
+    const r = settleBatch([fail(boom), ok('b')])
+    expect(r.budgetExhausted).toBe(false)
+    expect(r.otherError).toBe(boom)
   })
 })
