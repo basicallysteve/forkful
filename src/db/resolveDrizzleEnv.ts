@@ -16,10 +16,10 @@ export interface ResolveDrizzleEnvOptions {
 
 export interface ResolvedDrizzleEnv {
   url: string
-  source: '.env.local' | '.env.production' | 'platform'
+  source: '.env.local' | '.env.production' | 'platform' | 'ci'
 }
 
-const URL_KEYS = ['POSTGRES_URL', 'DATABASE_URL', 'DATABASE_POSTGRES_URL'] as const
+const URL_KEYS = ['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL'] as const
 
 export function parseEnvFile(contents: string): Record<string, string> {
   const out: Record<string, string> = {}
@@ -53,6 +53,18 @@ export function resolveDrizzleEnv({ env, readFile }: ResolveDrizzleEnvOptions): 
     const url = pickUrl(env)
     if (!url) throw new Error('Drizzle config: no database URL found in the Vercel environment.')
     return { url, source: 'platform' }
+  }
+
+  // Explicit opt-in for CI: URL comes from process.env, no .env.local needed.
+  if (env.DRIZZLE_ENV === 'ci') {
+    const url = pickUrl(env)
+    if (!url) throw new Error('Drizzle config: DRIZZLE_ENV=ci but no database URL is set in the environment.')
+    const prodContents = readFile('.env.production')
+    const prodUrl = prodContents === undefined ? undefined : pickUrl(parseEnvFile(prodContents))
+    if (prodUrl && prodUrl === url) {
+      throw new Error('Drizzle config: DRIZZLE_ENV=ci but the URL is the production database. Refusing.')
+    }
+    return { url, source: 'ci' }
   }
 
   const wantsProduction = env.DRIZZLE_ENV === 'production'

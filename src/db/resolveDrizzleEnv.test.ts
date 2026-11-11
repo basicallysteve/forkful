@@ -60,6 +60,42 @@ describe('resolveDrizzleEnv', () => {
   })
 })
 
+describe('resolveDrizzleEnv ci and precedence', () => {
+  it('Vercel platform env wins over an existing .env.local', () => {
+    const r = resolveDrizzleEnv({
+      env: { VERCEL: '1', DATABASE_URL: PROD },
+      readFile: files({ '.env.local': `DATABASE_URL=${DEV}` }),
+    })
+    expect(r).toEqual({ url: PROD, source: 'platform' })
+  })
+
+  it('prefers DATABASE_URL over POSTGRES_URL like src/db/index.ts', () => {
+    const r = resolveDrizzleEnv({ env: { VERCEL: '1', DATABASE_URL: DEV, POSTGRES_URL: PROD }, readFile: files({}) })
+    expect(r.url).toBe(DEV)
+  })
+
+  it('ci mode uses process.env and ignores .env.local', () => {
+    const r = resolveDrizzleEnv({
+      env: { DRIZZLE_ENV: 'ci', POSTGRES_URL: DEV },
+      readFile: files({ '.env.local': `DATABASE_URL=${PROD}` }),
+    })
+    expect(r).toEqual({ url: DEV, source: 'ci' })
+  })
+
+  it('ci mode throws without a URL', () => {
+    expect(() => resolveDrizzleEnv({ env: { DRIZZLE_ENV: 'ci' }, readFile: files({}) })).toThrow(/DRIZZLE_ENV=ci/)
+  })
+
+  it('ci mode refuses the production URL when .env.production exists', () => {
+    expect(() =>
+      resolveDrizzleEnv({
+        env: { DRIZZLE_ENV: 'ci', DATABASE_URL: PROD },
+        readFile: files({ '.env.production': `DATABASE_URL=${PROD}` }),
+      }),
+    ).toThrow(/production database/)
+  })
+})
+
 describe('parseEnvFile', () => {
   it('handles comments, quotes, export and inline comments', () => {
     expect(parseEnvFile('# c\nexport A="x y"\nB=\'z\'\nC=plain # note\n\nbad line')).toEqual({
