@@ -15,6 +15,7 @@ import { apiCreateRecipe } from "@/lib/api/recipes"
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
+import { Button } from 'primereact/button'
 import { RadioButton } from 'primereact/radiobutton'
 import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
@@ -45,7 +46,10 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   // only the blank "new ingredient" row keeps local draft state.
   const [draftIngredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
   const ingredient = storedIngredient ?? draftIngredient
-  const [draftName, setIngredientName] = useState<string>(draftIngredient ? draftIngredient.food.name : "")
+  // The add row starts blank: no food is chosen until the user picks one.
+  const [draftName, setIngredientName] = useState<string>("")
+  const [foodChosen, setFoodChosen] = useState<boolean>(false)
+  const blank = !isStored && !foodChosen
   const ingredientName = storedIngredient ? storedIngredient.food.name : draftName
   const [missingFood, setMissingFood] = useState<boolean>(false)
 
@@ -56,10 +60,14 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   }
 
   function handleAdd() {
-    if (!ingredient || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
+    if (!ingredient || !foodChosen || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
       return
     }
     onAdd?.(ingredient)
+    // Reset the add row to blank
+    setIngredientName("")
+    setFoodChosen(false)
+    setMissingFood(false)
     if (defaultFood) {
       setIngredient({ 
         food: defaultFood, 
@@ -72,6 +80,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
 
   function handleFoodSelect(food: Food) {
     if (!ingredient) return
+    setFoodChosen(true)
     setIngredient({
       ...ingredient,
       food: food,
@@ -142,7 +151,8 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   if (!ingredient) return null
 
   return (
-    <div className="ingredient-input">
+    <div className={`ingredient-input ${isStored ? 'ingredient-input--stored' : 'ingredient-input--new'}`} role="group" aria-label={isStored ? `Ingredient ${ingredient.food.name}` : 'Add an ingredient'}>
+      {!isStored && <span className="ingredient-input-title">Add an ingredient</span>}
         <label className={`form-field ${missingFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
@@ -158,7 +168,8 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
                   setMissingFood(false)
                   handleFoodSelect(food)
                 } else {
-                  setMissingFood(true)
+                  setFoodChosen(false)
+                  setMissingFood(next.trim() !== "")
                 }
               }}
               onSelect={(food) => {
@@ -181,7 +192,8 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         <InputNumber
           className="ingredient-quantity-input"
           min={0}
-          value={ingredient.quantity}
+          value={blank ? null : ingredient.quantity}
+          disabled={blank}
           onValueChange={(e) => setIngredientQuantity(e.value)}
           aria-label="Quantity"
         />
@@ -190,7 +202,9 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         <span className="field-label">Unit</span>
         <Dropdown
           className="ingredient-unit-select"
-          value={ingredient.servingUnit}
+          value={blank ? null : ingredient.servingUnit}
+          placeholder="Unit"
+          disabled={blank}
           onChange={(e) => handleUnitChange(e.value)}
           options={(() => {
             const food = ingredient.food
@@ -212,18 +226,19 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         <InputNumber
             className="ingredient-calories-input"
             min={0}
-            value={ingredient.calories}
+            value={blank ? null : ingredient.calories}
+            disabled={blank}
             onValueChange={(e) =>
             updateIngredient({ ...ingredient, calories: e.value ?? 0 })
             }
             aria-label="Calories"
         />
         </label>
-      {isStored ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
-        -
-      </button> :  <button type="button" className="primary-button ingredient-action-button" onClick={handleAdd}>
-        +
-      </button>}
+      {isStored ? (
+        <Button type="button" icon="pi pi-trash" severity="danger" outlined className="ingredient-action-button" aria-label={`Remove ${ingredient.food.name}`} tooltip="Remove" tooltipOptions={{ position: 'top' }} onClick={onRemove} />
+      ) : (
+        <Button type="button" icon="pi pi-plus" label="Add" className="ingredient-action-button" aria-label="Add ingredient" disabled={blank} onClick={handleAdd} />
+      )}
     </div>
   )
 }
@@ -488,7 +503,7 @@ function Store() {
           </div>
           <div className="store-meta">
             <span className="pill pill-primary">Draft</span>
-            <span className="pill pill-ghost">{ingredientCount} ingredients</span>
+            <span className="pill pill-ghost">{ingredientCount} {ingredientCount === 1 ? "ingredient" : "ingredients"}</span>
           </div>
         </header>
 

@@ -122,7 +122,7 @@ describe('Store Page - Recipe Creation', () => {
       await user.clear(quantityInput)
       await user.type(quantityInput, '2')
 
-      const addButton = screen.getByRole('button', { name: '+' })
+      const addButton = screen.getByRole('button', { name: /add ingredient/i })
       await user.click(addButton)
 
       // Add another matching ingredient - select Cheese
@@ -157,7 +157,7 @@ describe('Store Page - Recipe Creation', () => {
 
       // Input already defaults to unique food (the only food in list)
       // Just click add button
-      const addButton = screen.getByRole('button', { name: '+' })
+      const addButton = screen.getByRole('button', { name: /add ingredient/i })
       await user.click(addButton)
 
       // Should not see any suggestion alert (no existing recipes to match against)
@@ -184,7 +184,7 @@ describe('Store Page - Recipe Creation', () => {
       await user.clear(quantityInput)
       await user.type(quantityInput, '2')
 
-      const addButton = screen.getByRole('button', { name: '+' })
+      const addButton = screen.getByRole('button', { name: /add ingredient/i })
       await user.click(addButton)
 
       await user.clear(ingredientNameInput)
@@ -314,7 +314,7 @@ describe('Store Page - Recipe Creation', () => {
       await user.type(ingredientNameInput, 'Test Ingredient')
       await user.click(await screen.findByRole('option', { name: /test ingredient/i }))
 
-      const addButton = screen.getByRole('button', { name: '+' })
+      const addButton = screen.getByRole('button', { name: /add ingredient/i })
       await user.click(addButton)
 
       // Switch back to details tab to access publish button
@@ -417,7 +417,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Ham')
     await user.click(await screen.findByRole('option', { name: /^Ham/i }))
-    await user.click(screen.getByRole('button', { name: '+' }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
   }
 
   it('lets the user change the quantity of an added ingredient', async () => {
@@ -471,10 +471,10 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.clear(newRowQuantity)
     await user.type(newRowQuantity, '2')
     await user.tab()
-    await user.click(screen.getByRole('button', { name: '+' }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
     // Remove the first stored Ham row
-    await user.click(screen.getAllByRole('button', { name: '-' })[0])
+    await user.click(screen.getAllByRole('button', { name: /remove/i })[0])
 
     const quantities = screen.getAllByRole('spinbutton', { name: /quantity/i })
     expect(quantities).toHaveLength(2) // new row + survivor
@@ -494,6 +494,38 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     const saved = vi.mocked(apiCreateRecipe).mock.calls.at(-1)![0]
     expect(saved.ingredients).toHaveLength(1)
     expect(saved.ingredients[0]).toMatchObject({ quantity: 3, calories: 225 })
+  })
+
+  it('resets the add row to blank after a successful add', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+
+    // Starts blank and cannot be added
+    expect(screen.getAllByPlaceholderText('Select food')[0]).toHaveValue('')
+    expect(screen.getByRole('button', { name: /add ingredient/i })).toBeDisabled()
+
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Ham')
+    await user.click(await screen.findByRole('option', { name: /^Ham/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+
+    expect(screen.getAllByPlaceholderText('Select food')[0]).toHaveValue('')
+    expect(screen.getAllByRole('spinbutton', { name: /quantity/i })[0]).toHaveValue('')
+    expect(screen.getAllByRole('spinbutton', { name: /quantity/i })[0]).toBeDisabled()
+    expect(screen.getByRole('button', { name: /add ingredient/i })).toBeDisabled()
+  })
+
+  it('labels the row buttons and pluralises the ingredient count', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    expect(screen.getByText('0 ingredients')).toBeInTheDocument()
+    await addHam(user)
+    expect(screen.getByText('1 ingredient')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Ham' })).toBeInTheDocument()
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Cheese')
+    await user.click(await screen.findByRole('option', { name: /^Cheese/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    expect(screen.getByText('2 ingredients')).toBeInTheDocument()
   })
 
   it('lets the user change the unit of an added ingredient', async () => {
