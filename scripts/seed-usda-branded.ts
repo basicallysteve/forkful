@@ -27,7 +27,7 @@ import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
-  parseServingSize, indexBrandedByExternalId, BRANDED_SOURCE,
+  parseServingSize, servingScale, uniqueSlug, indexBrandedByExternalId, BRANDED_SOURCE,
 } from './usdaBranded'
 
 // ── Nutrient IDs (FDC standard) ───────────────────────────────────────────────
@@ -276,6 +276,7 @@ const nutrientByFood = new Map<string, Map<string, number>>()
 const wantedNids = new Set<string>(Object.values(NID))
 let totalNutrientRows = 0
 let keptNutrientRows = 0
+let skippedNonFinite = 0
 
 for await (const row of streamCSVRows(join(dir, 'food_nutrient.csv'))) {
   totalNutrientRows++
@@ -285,7 +286,7 @@ for await (const row of streamCSVRows(join(dir, 'food_nutrient.csv'))) {
   if (!targetBranded.has(row.fdc_id)) continue
   if (!wantedNids.has(row.nutrient_id)) continue
   const amount = parseFloat(row.amount)
-  if (isNaN(amount)) continue
+  if (!Number.isFinite(amount)) { skippedNonFinite++; continue }
   keptNutrientRows++
   if (!nutrientByFood.has(row.fdc_id)) nutrientByFood.set(row.fdc_id, new Map())
   nutrientByFood.get(row.fdc_id)!.set(row.nutrient_id, amount)
@@ -320,16 +321,14 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
   const name = rawName.length > 255 ? rawName.slice(0, 252) + '…' : rawName
   const portions = portionsByFood.get(fdcId) ?? []
 
-  // Scale macros from per-100g to per serving when the serving unit is grams
-  const isGramBased = /^g$/i.test(meta.servingUnit)
-  const scale = isGramBased ? meta.servingSize / 100 : 1
+  // USDA values are per 100 g; products store them per serving (see servingScale)
+  const density = densityByFood.get(fdcId)
+  const scale = servingScale(meta.servingSize, meta.servingUnit, density)
 
   // slug: leave room for -fdcId suffix (fdcIds up to 8 digits + hyphen = 9 chars)
   const baseSlug = toSlug(name).slice(0, 245)
-  const slug = takenSlugs.has(baseSlug) ? `${baseSlug}-${fdcId}` : baseSlug
+  const slug = uniqueSlug(baseSlug, fdcId, takenSlugs)
   // takenSlugs.add() is intentionally omitted here — caller reserves the slug only for inserts
-
-  const density = densityByFood.get(fdcId)
 
   return {
     name,
@@ -411,6 +410,7 @@ console.log('\n─────────────────────�
 console.log(`  Inserted:      ${inserted.toLocaleString()}`)
 console.log(`  Updated:       ${updated.toLocaleString()}`)
 console.log(`  Skipped:       ${skippedDeleted} (soft-deleted)`)
+console.log(`  Non-finite nutrient rows skipped: ${skippedNonFinite.toLocaleString()}`)
 console.log(`  Category skip: ${skippedCategory.toLocaleString()}`)
 console.log('─────────────────────────────────────────')
 console.log('Done. Products are imported with no parent Food; linking is a separate pass.\n')

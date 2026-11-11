@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
-  parseServingSize, indexBrandedByExternalId,
+  parseServingSize, servingScale, uniqueSlug, indexBrandedByExternalId,
 } from './usdaBranded'
 
 describe('isAllowedCategory', () => {
@@ -93,5 +93,39 @@ describe('indexBrandedByExternalId', () => {
       row(3, '100', 'open_food_facts'), row(4, '300', 'manual'), row(5, null, 'usda_branded'),
     ])
     expect(m.size).toBe(0)
+  })
+})
+
+describe('servingScale', () => {
+  it('scales gram servings by grams / 100', () => expect(servingScale(30, 'g')).toBeCloseTo(0.3))
+  it('converts other mass units', () => expect(servingScale(1, 'oz')).toBeCloseTo(0.283495))
+  it('scales ml servings using the derived density', () => {
+    expect(servingScale(240, 'ml', 1.03)).toBeCloseTo(2.472)
+  })
+  it('defaults to 1 g/ml when density is missing', () => {
+    expect(servingScale(240, 'ml')).toBeCloseTo(2.4)
+    expect(servingScale(1, 'cup')).toBeCloseTo(2.36588)
+  })
+  it('keeps the 100 g basis for other units or bad sizes', () => {
+    expect(servingScale(2, 'slice')).toBe(1)
+    expect(servingScale(Infinity, 'g')).toBe(1)
+  })
+})
+
+describe('uniqueSlug', () => {
+  it('returns the base when free', () => expect(uniqueSlug('milk', '123', new Set())).toBe('milk'))
+  it('appends the fdcId on collision', () => {
+    expect(uniqueSlug('milk', '123', new Set(['milk']))).toBe('milk-123')
+  })
+  it('handles an existing "Milk 123" slug alongside Milk (fdc 123)', () => {
+    // toSlug('Milk 123') === 'milk-123' already taken, so fall through to a counter
+    expect(uniqueSlug('milk', '123', new Set(['milk', 'milk-123']))).toBe('milk-123-2')
+    expect(uniqueSlug('milk', '123', new Set(['milk', 'milk-123', 'milk-123-2']))).toBe('milk-123-3')
+  })
+  it('stays within 255 chars', () => {
+    const base = 'a'.repeat(255)
+    const slug = uniqueSlug(base, '123', new Set([base]))
+    expect(slug.length).toBeLessThanOrEqual(255)
+    expect(slug.endsWith('-123')).toBe(true)
   })
 })

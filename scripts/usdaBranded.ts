@@ -132,3 +132,33 @@ export function indexBrandedByExternalId(
   }
   return map
 }
+
+const MASS_TO_G: Record<string, number> = { g: 1, mg: 0.001, kg: 1000, oz: 28.3495, lb: 453.592 }
+
+/**
+ * Factor to turn USDA per-100g nutrient values into values for one serving
+ * (products store macros per serving of servingSize servingUnit).
+ * - mass units: grams / 100
+ * - volume units: (ml * density) / 100, density defaulting to 1 g/ml
+ * - anything else (slice, piece, ...): 1, i.e. the 100 g basis is kept
+ */
+export function servingScale(servingSize: number, servingUnit: string, density?: number): number {
+  const unit = normaliseUnit(servingUnit)
+  if (unit === null || !Number.isFinite(servingSize) || servingSize <= 0) return 1
+  if (unit in MASS_TO_G) return (servingSize * MASS_TO_G[unit]) / 100
+  const mlPerUnit = VOLUME_TO_ML[unit.toLowerCase()]
+  if (mlPerUnit === undefined) return 1
+  const d = density !== undefined && Number.isFinite(density) && density > 0 ? density : 1
+  return (servingSize * mlPerUnit * d) / 100
+}
+
+const MAX_SLUG = 255
+
+/** First unused slug: base, then base-fdcId, then base-fdcId-2, -3, ... (all within 255 chars). */
+export function uniqueSlug(base: string, fdcId: string, taken: Set<string>): string {
+  const fit = (suffix: string) => base.slice(0, MAX_SLUG - suffix.length) + suffix
+  if (!taken.has(base.slice(0, MAX_SLUG))) return base.slice(0, MAX_SLUG)
+  let candidate = fit(`-${fdcId}`)
+  for (let n = 2; taken.has(candidate); n++) candidate = fit(`-${fdcId}-${n}`)
+  return candidate
+}
