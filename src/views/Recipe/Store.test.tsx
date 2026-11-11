@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
+import { apiCreateRecipe } from '@/lib/api/recipes'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe } from '@/types/Recipe'
@@ -406,5 +407,69 @@ describe('Recipes List - Card Layout', () => {
     
     expect(cardHeader?.contains(cardTitle!)).toBe(true)
     expect(cardHeader?.contains(cardBadges!)).toBe(true)
+  })
+})
+
+describe('Store Page - editing an added ingredient (#16)', () => {
+  async function addHam(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    const nameInput = screen.getByPlaceholderText('Select food')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Ham')
+    await user.click(await screen.findByRole('option', { name: /^Ham/i }))
+    await user.click(screen.getByRole('button', { name: '+' }))
+  }
+
+  it('lets the user change the quantity of an added ingredient', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    // [0] is the blank "new ingredient" row, [1] is the added Ham row
+    const addedQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[1]
+    expect(addedQuantity).not.toHaveAttribute('readonly')
+    await user.clear(addedQuantity)
+    await user.type(addedQuantity, '4')
+    // 75 cal per slice * 4
+    await user.tab()
+    expect(screen.getAllByRole('spinbutton', { name: /calories/i })[1]).toHaveValue('300')
+  })
+
+  it('saves the edited quantity and calories, not the values at the time of adding', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    const addedQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[1]
+    await user.clear(addedQuantity)
+    await user.type(addedQuantity, '4')
+    await user.tab()
+
+    await user.click(screen.getByRole('button', { name: /details tab/i }))
+    await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Test Ham Plate')
+    await user.click(screen.getByRole('radio', { name: /lunch/i }))
+    await user.type(screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.'), 'desc')
+    await user.click(screen.getByRole('button', { name: /save recipe/i }))
+
+    await waitFor(() => expect(apiCreateRecipe).toHaveBeenCalled())
+    const saved = vi.mocked(apiCreateRecipe).mock.calls.at(-1)![0]
+    expect(saved.ingredients).toHaveLength(1)
+    expect(saved.ingredients[0]).toMatchObject({ quantity: 4, calories: 300, servingUnit: 'slice' })
+  })
+
+  it('lets the user change the unit of an added ingredient', async () => {
+    const user = userEvent.setup()
+    const { container } = renderWithProviders(<Store />)
+    await addHam(user)
+
+    const unitDropdown = () => container.querySelectorAll<HTMLElement>('.ingredient-unit-select')[1]
+    expect(unitDropdown()).not.toHaveClass('p-disabled')
+    // Open with the keyboard, then pick the next unit (slice -> oz)
+    const trigger = unitDropdown().querySelector<HTMLElement>('[aria-haspopup="listbox"]')!
+    trigger.focus()
+    await user.keyboard('{ArrowDown}')
+    await user.click(await screen.findByRole('option', { name: 'oz', hidden: true }))
+
+    expect(unitDropdown()).toHaveTextContent('oz')
   })
 })

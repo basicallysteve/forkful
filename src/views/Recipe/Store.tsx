@@ -24,7 +24,7 @@ import './markdownImport.scss'
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
 
-function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
+function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onChange?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
   const foods = useFoodStore((state) => state.foods)
 
   const defaultFood = foods.length > 0 ? foods[0] : null
@@ -44,6 +44,12 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
   const [ingredientName, setIngredientName] = useState<string>(ingredient ? ingredient.food.name : "")
   const [missingFood, setMissingFood] = useState<boolean>(false)
+
+  // Edits to an already-added ingredient must reach the recipe, not just this row's local state.
+  function updateIngredient(next: Ingredient) {
+    setIngredient(next)
+    if (storedIngredient) onChange?.(next)
+  }
 
   function handleAdd() {
     if (!ingredient || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
@@ -75,7 +81,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     if (!ingredient) return
     const quantity = value ?? 0
     if (quantity < 0) {
-      setIngredient({ ...ingredient, quantity: 0, calories: 0 })
+      updateIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
     const caloriesPerUnit = calculateCalories({
@@ -86,7 +92,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       targetUnit: ingredient.servingUnit,
       density: ingredient.food?.density,
     }) || 0
-    setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
+    updateIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
 
   function handleUnitChange(newUnit: string) {
@@ -112,7 +118,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       ? Math.round(calculatedCalories) 
       : ingredient.calories
     
-    setIngredient({
+    updateIngredient({
       ...ingredient,
       servingUnit: newUnit,
       calories: newCalories,
@@ -173,7 +179,6 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
           min={0}
           value={ingredient.quantity}
           onValueChange={(e) => setIngredientQuantity(e.value)}
-          readOnly={readOnly}
           aria-label="Quantity"
         />
         </label>
@@ -183,7 +188,6 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
           className="ingredient-unit-select"
           value={ingredient.servingUnit}
           onChange={(e) => handleUnitChange(e.value)}
-          disabled={readOnly}
           options={(() => {
             const food = ingredient.food
             const stored = (food?.measurements || []).map((m) => m.unit)
@@ -205,9 +209,8 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
             className="ingredient-calories-input"
             min={0}
             value={ingredient.calories}
-            readOnly={readOnly}
             onValueChange={(e) =>
-            setIngredient({ ...ingredient, calories: e.value ?? 0 })
+            updateIngredient({ ...ingredient, calories: e.value ?? 0 })
             }
             aria-label="Calories"
         />
@@ -298,6 +301,13 @@ function Store() {
         ...recipe,
         ingredients: [...(recipe.ingredients || []), ingredient],
     })
+  }
+
+  function handleUpdateIngredient(index: number, updated: Ingredient) {
+    setRecipe((prev) => ({
+      ...prev,
+      ingredients: (prev.ingredients || []).map((ing, i) => (i === index ? updated : ing)),
+    }))
   }
 
   function handleRemoveIngredient(index: number) {
@@ -433,7 +443,7 @@ function Store() {
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onChange={(updated) => handleUpdateIngredient(index, updated)} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
         ))}
         
         {similarRecipe && (
