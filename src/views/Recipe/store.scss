@@ -232,6 +232,34 @@
     }
   }
 
+  .ingredients-heading {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--vscode-muted);
+  }
+
+  .ingredient-input {
+    // Visible chevron in both themes
+    .p-dropdown .p-dropdown-trigger,
+    .p-dropdown .p-dropdown-trigger-icon {
+      color: var(--vscode-muted);
+    }
+
+    // Disabled Add: clearly a button (border + readable text/icon) but obviously inactive
+    .ingredient-action-button.p-button:disabled {
+      opacity: 1;
+      background: transparent;
+      border: 1px solid var(--vscode-muted);
+      color: var(--vscode-muted);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
   // The blank row reads as "add new"; added rows read as a compact summary
   .ingredient-input--new {
     border-style: dashed;

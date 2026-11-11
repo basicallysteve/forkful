@@ -528,6 +528,27 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(screen.getByText('2 ingredients')).toBeInTheDocument()
   })
 
+  it('keeps Add disabled until a food is picked and the quantity is above zero', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    const addButton = () => screen.getByRole('button', { name: /add ingredient/i })
+    expect(addButton()).toBeDisabled()
+
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Ham')
+    await user.click(await screen.findByRole('option', { name: /^Ham/i }))
+    expect(addButton()).toBeEnabled()
+
+    const quantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[0]
+    await user.clear(quantity)
+    await user.tab()
+    expect(addButton()).toBeDisabled()
+
+    await user.type(quantity, '2')
+    await user.tab()
+    expect(addButton()).toBeEnabled()
+  })
+
   it('lets the user change the unit of an added ingredient', async () => {
     const user = userEvent.setup()
     const { container } = renderWithProviders(<Store />)

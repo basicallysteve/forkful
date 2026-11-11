@@ -237,7 +237,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
       {isStored ? (
         <Button type="button" icon="pi pi-trash" severity="danger" outlined className="ingredient-action-button" aria-label={`Remove ${ingredient.food.name}`} tooltip="Remove" tooltipOptions={{ position: 'top' }} onClick={onRemove} />
       ) : (
-        <Button type="button" icon="pi pi-plus" label="Add" className="ingredient-action-button" aria-label="Add ingredient" disabled={blank} onClick={handleAdd} />
+        <Button type="button" icon="pi pi-plus" label="Add" className="ingredient-action-button" aria-label="Add ingredient" disabled={blank || ingredient.quantity <= 0} onClick={handleAdd} />
       )}
     </div>
   )
@@ -460,9 +460,7 @@ function Store() {
     const ingredientsTabContent = (
     <form className="store-form">
       <div className="form-grid">
-        <label className="form-field form-field-full">
-          <span className="field-label">Ingredients</span>
-        </label>
+        <h3 className="ingredients-heading form-field-full">Ingredients</h3>
         {ingredientCount === 0 && <p className="no-ingredients-text">No ingredients added yet.</p>}
         
         <IngredientInput onAdd={handleAddIngredient} />
