@@ -24,14 +24,14 @@ import './markdownImport.scss'
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
 
-function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onChange?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
+function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onChange?: (ingredient: Ingredient) => void, onRemove?: () => void, storedIngredient?: Ingredient }) {
+  const isStored = !!storedIngredient
   const foods = useFoodStore((state) => state.foods)
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
   // Create initial ingredient state - handle case when no foods are available
   const createInitialIngredient = (): Ingredient | null => {
-    if (storedIngredient) return storedIngredient
     if (!defaultFood) return null
     return {
       food: defaultFood,
@@ -41,14 +41,18 @@ function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient
     }
   }
 
-  const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
-  const [ingredientName, setIngredientName] = useState<string>(ingredient ? ingredient.food.name : "")
+  // Stored rows render straight from the recipe (no local copy, so they can never go stale);
+  // only the blank "new ingredient" row keeps local draft state.
+  const [draftIngredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
+  const ingredient = storedIngredient ?? draftIngredient
+  const [draftName, setIngredientName] = useState<string>(draftIngredient ? draftIngredient.food.name : "")
+  const ingredientName = storedIngredient ? storedIngredient.food.name : draftName
   const [missingFood, setMissingFood] = useState<boolean>(false)
 
   // Edits to an already-added ingredient must reach the recipe, not just this row's local state.
   function updateIngredient(next: Ingredient) {
-    setIngredient(next)
-    if (storedIngredient) onChange?.(next)
+    if (isStored) onChange?.(next)
+    else setIngredient(next)
   }
 
   function handleAdd() {
@@ -126,7 +130,7 @@ function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient
   }
 
   // If no foods available, show a message with link to create food
-  if (!ingredient && !storedIngredient) {
+  if (!ingredient) {
     return (
       <div className="ingredient-input">
         <span className="no-foods-message">No foods available. <Link href="/foods/new">Add a food</Link> first.</span>
@@ -164,7 +168,7 @@ function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient
               }}
               placeholder="Select food"
               inputAriaLabel="Ingredient name"
-              readOnly={readOnly}
+              readOnly={isStored}
               inputClassName={missingFood ? 'input-error' : ''}
               renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
@@ -215,7 +219,7 @@ function IngredientInput({ onAdd, onChange, onRemove, readOnly, storedIngredient
             aria-label="Calories"
         />
         </label>
-      {readOnly ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
+      {isStored ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
         -
       </button> :  <button type="button" className="primary-button ingredient-action-button" onClick={handleAdd}>
         +
@@ -296,7 +300,11 @@ function Store() {
 
   const [activeTab, setActiveTab] = useState<"details" | "ingredients">("details")
   
+  // Stable client-side row keys, parallel to recipe.ingredients (never sent to the API).
+  const [ingredientRowIds, setIngredientRowIds] = useState<string[]>([])
+
   function handleAddIngredient(ingredient: Ingredient) {
+    setIngredientRowIds((ids) => [...ids, crypto.randomUUID()])
     setRecipe({
         ...recipe,
         ingredients: [...(recipe.ingredients || []), ingredient],
@@ -314,6 +322,7 @@ function Store() {
     if (!recipe.ingredients) return
     const updatedIngredients = [...recipe.ingredients]
     updatedIngredients.splice(index, 1)
+    setIngredientRowIds((ids) => ids.filter((_, i) => i !== index))
     setRecipe({
         ...recipe,
         ingredients: updatedIngredients,
@@ -443,7 +452,7 @@ function Store() {
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onChange={(updated) => handleUpdateIngredient(index, updated)} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={ingredientRowIds[index] ?? index} onChange={(updated) => handleUpdateIngredient(index, updated)} onRemove={() => handleRemoveIngredient(index)} />
         ))}
         
         {similarRecipe && (

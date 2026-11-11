@@ -457,6 +457,45 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(saved.ingredients[0]).toMatchObject({ quantity: 4, calories: 300, servingUnit: 'slice' })
   })
 
+  it('keeps the right values when the same food is added twice and the first row is removed', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user) // quantity 1
+
+    // Second Ham with quantity 2
+    const nameInput = screen.getAllByPlaceholderText('Select food')[0]
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Ham')
+    await user.click(await screen.findByRole('option', { name: /^Ham/i }))
+    const newRowQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[0]
+    await user.clear(newRowQuantity)
+    await user.type(newRowQuantity, '2')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: '+' }))
+
+    // Remove the first stored Ham row
+    await user.click(screen.getAllByRole('button', { name: '-' })[0])
+
+    const quantities = screen.getAllByRole('spinbutton', { name: /quantity/i })
+    expect(quantities).toHaveLength(2) // new row + survivor
+    expect(quantities[1]).toHaveValue('2')
+    expect(screen.getAllByRole('spinbutton', { name: /calories/i })[1]).toHaveValue('150')
+
+    // Editing the survivor changes only it, and the saved payload matches
+    await user.clear(quantities[1])
+    await user.type(quantities[1], '3')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: /details tab/i }))
+    await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Test Dup Ham')
+    await user.click(screen.getByRole('radio', { name: /lunch/i }))
+    await user.type(screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.'), 'desc')
+    await user.click(screen.getByRole('button', { name: /save recipe/i }))
+    await waitFor(() => expect(apiCreateRecipe).toHaveBeenCalled())
+    const saved = vi.mocked(apiCreateRecipe).mock.calls.at(-1)![0]
+    expect(saved.ingredients).toHaveLength(1)
+    expect(saved.ingredients[0]).toMatchObject({ quantity: 3, calories: 225 })
+  })
+
   it('lets the user change the unit of an added ingredient', async () => {
     const user = userEvent.setup()
     const { container } = renderWithProviders(<Store />)
