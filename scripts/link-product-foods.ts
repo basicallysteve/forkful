@@ -24,7 +24,7 @@ import { and, asc, eq, gt, ilike, isNull } from 'drizzle-orm'
 import { assertSafeSeedTarget } from './seedGuard'
 import { db } from '@/db'
 import { products, foods } from '@/db/schema'
-import { complete } from '@/lib/ai'
+import { complete, AIBudgetExhaustedError } from '@/lib/ai'
 import {
   preprocessName, escapeLike, selectCandidates, pickBestFood, resolveLinkModel, parseIntFlag, settleBatch, type Candidate,
 } from './productFoodLinker'
