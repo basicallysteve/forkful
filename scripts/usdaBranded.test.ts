@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
-  parseServingSize, servingScale, uniqueSlug, indexBrandedByExternalId,
+  parseServingSize, servingScale, isCustomServingUnit, uniqueSlug, indexBrandedByExternalId,
 } from './usdaBranded'
 
 describe('isAllowedCategory', () => {
@@ -106,9 +106,20 @@ describe('servingScale', () => {
     expect(servingScale(240, 'ml')).toBeCloseTo(2.4)
     expect(servingScale(1, 'cup')).toBeCloseTo(2.36588)
   })
-  it('keeps the 100 g basis for other units or bad sizes', () => {
-    expect(servingScale(2, 'slice')).toBe(1)
+  it('returns 0 for custom units (interim, #156)', () => {
+    expect(servingScale(2, 'slice')).toBe(0)
+    expect(servingScale(1, 'piece')).toBe(0)
+    expect(servingScale(Infinity, 'slice')).toBe(0)
+    expect(isCustomServingUnit('slice')).toBe(true)
+    expect(isCustomServingUnit('ml')).toBe(false)
+  })
+  it('zero scale stores all nutrients as 0, never NaN', () => {
+    const s = servingScale(2, 'piece')
+    expect([clampMacro(12.3 * s), clampSodium(300 * s), clampCalories(250 * s)]).toEqual(['0', '0', 0])
+  })
+  it('keeps the 100 g fallback for invalid sizes with mass/volume units', () => {
     expect(servingScale(Infinity, 'g')).toBe(1)
+    expect(servingScale(0, 'ml')).toBe(1)
   })
 })
 

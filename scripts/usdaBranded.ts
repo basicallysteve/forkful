@@ -140,11 +140,15 @@ const MASS_TO_G: Record<string, number> = { g: 1, mg: 0.001, kg: 1000, oz: 28.34
  * (products store macros per serving of servingSize servingUnit).
  * - mass units: grams / 100
  * - volume units: (ml * density) / 100, density defaulting to 1 g/ml
- * - anything else (slice, piece, ...): 1, i.e. the 100 g basis is kept
+ * - custom/count units (slice, piece, scoop, ...): 0. Interim rule until #156
+ *   (custom serving definitions) lets users set the weight per unit; storing
+ *   per-100g values against "2 slice" would skew calorie maths.
+ * - invalid size with a mass/volume unit: 1 (100 g basis fallback)
  */
 export function servingScale(servingSize: number, servingUnit: string, density?: number): number {
   const unit = normaliseUnit(servingUnit)
-  if (unit === null || !Number.isFinite(servingSize) || servingSize <= 0) return 1
+  if (unit === null) return 0
+  if (!Number.isFinite(servingSize) || servingSize <= 0) return 1
   if (unit in MASS_TO_G) return (servingSize * MASS_TO_G[unit]) / 100
   const mlPerUnit = VOLUME_TO_ML[unit.toLowerCase()]
   if (mlPerUnit === undefined) return 1
@@ -161,4 +165,9 @@ export function uniqueSlug(base: string, fdcId: string, taken: Set<string>): str
   let candidate = fit(`-${fdcId}`)
   for (let n = 2; taken.has(candidate); n++) candidate = fit(`-${fdcId}-${n}`)
   return candidate
+}
+
+/** True when the serving unit is neither mass nor volume (nutrition is stored as 0, see #156). */
+export function isCustomServingUnit(servingUnit: string): boolean {
+  return normaliseUnit(servingUnit) === null
 }

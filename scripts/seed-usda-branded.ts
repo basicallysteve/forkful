@@ -27,7 +27,7 @@ import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
-  parseServingSize, servingScale, uniqueSlug, indexBrandedByExternalId, BRANDED_SOURCE,
+  parseServingSize, servingScale, isCustomServingUnit, uniqueSlug, indexBrandedByExternalId, BRANDED_SOURCE,
 } from './usdaBranded'
 
 // ── Nutrient IDs (FDC standard) ───────────────────────────────────────────────
@@ -277,6 +277,7 @@ const wantedNids = new Set<string>(Object.values(NID))
 let totalNutrientRows = 0
 let keptNutrientRows = 0
 let skippedNonFinite = 0
+let customUnitProducts = 0
 
 for await (const row of streamCSVRows(join(dir, 'food_nutrient.csv'))) {
   totalNutrientRows++
@@ -323,6 +324,7 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
 
   // USDA values are per 100 g; products store them per serving (see servingScale)
   const density = densityByFood.get(fdcId)
+  // Custom units (slice, piece, ...) get 0 nutrition until #156 lands.
   const scale = servingScale(meta.servingSize, meta.servingUnit, density)
 
   // slug: leave room for -fdcId suffix (fdcIds up to 8 digits + hyphen = 9 chars)
@@ -353,6 +355,8 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
     source: BRANDED_SOURCE,
   }
 }
+
+for (const meta of targetBranded.values()) if (isCustomServingUnit(meta.servingUnit)) customUnitProducts++
 
 const toInsert: ProductValues[] = []
 const toUpdate: { id: number; values: Partial<ProductValues> }[] = []
@@ -410,6 +414,7 @@ console.log('\n─────────────────────�
 console.log(`  Inserted:      ${inserted.toLocaleString()}`)
 console.log(`  Updated:       ${updated.toLocaleString()}`)
 console.log(`  Skipped:       ${skippedDeleted} (soft-deleted)`)
+console.log(`  Custom-unit products stored with 0 nutrition (see #156): ${customUnitProducts.toLocaleString()}`)
 console.log(`  Non-finite nutrient rows skipped: ${skippedNonFinite.toLocaleString()}`)
 console.log(`  Category skip: ${skippedCategory.toLocaleString()}`)
 console.log('─────────────────────────────────────────')
