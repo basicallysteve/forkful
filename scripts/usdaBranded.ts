@@ -88,11 +88,13 @@ const MAX_INT = 2147483647
 
 /** numeric(10,2), returned as a string for Drizzle. */
 export function clampMacro(v: number): string {
+  if (!Number.isFinite(v)) return '0'
   return String(Math.min(Math.round(v * 100) / 100, MAX_NUMERIC_10_2))
 }
 
 /** numeric(10,1), returned as a string for Drizzle. */
 export function clampSodium(v: number): string {
+  if (!Number.isFinite(v)) return '0'
   return String(Math.min(Math.round(v * 10) / 10, MAX_NUMERIC_10_1))
 }
 
@@ -103,5 +105,30 @@ export function clampServing(v: number): string {
 
 /** integer column. */
 export function clampCalories(v: number): number {
+  if (!Number.isFinite(v)) return 0
   return Math.min(Math.round(v), MAX_INT)
+}
+
+/** Serving size from a raw CSV value; missing, non-finite or non-positive falls back to 100. */
+export function parseServingSize(raw: string | undefined): number {
+  const n = parseFloat(raw ?? '')
+  return Number.isFinite(n) && n > 0 ? n : 100
+}
+
+export const BRANDED_SOURCE = 'usda_branded'
+
+/**
+ * Index existing products by externalId for upsert. Only rows from the USDA
+ * Branded source are matched, so a product from another source (e.g. Open Food
+ * Facts) sharing an id is never updated or treated as already imported.
+ */
+export function indexBrandedByExternalId(
+  rows: { id: number; externalId: string | null; source: string; dateDeleted: Date | null }[],
+): Map<string, { id: number; isDeleted: boolean }> {
+  const map = new Map<string, { id: number; isDeleted: boolean }>()
+  for (const r of rows) {
+    if (r.source !== BRANDED_SOURCE || !r.externalId) continue
+    map.set(r.externalId, { id: r.id, isDeleted: r.dateDeleted !== null })
+  }
+  return map
 }

@@ -27,6 +27,7 @@ import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
+  parseServingSize, indexBrandedByExternalId, BRANDED_SOURCE,
 } from './usdaBranded'
 
 // ── Nutrient IDs (FDC standard) ───────────────────────────────────────────────
@@ -192,8 +193,7 @@ for await (const row of streamCSVRows(join(dir, 'branded_food.csv'))) {
   const category = row.branded_food_category ?? ''
   if (!isAllowedCategory(category)) { skippedCategory++; continue }
 
-  const rawServingSize = parseFloat(row.serving_size)
-  const servingSize = isNaN(rawServingSize) || rawServingSize <= 0 ? 100 : rawServingSize
+  const servingSize = parseServingSize(row.serving_size)
   const rawUnit = row.serving_size_unit?.trim()
   const servingUnit = normaliseUnit(rawUnit) ?? rawUnit ?? 'g'
 
@@ -297,18 +297,16 @@ console.log(`  ${totalNutrientRows.toLocaleString()} rows scanned, ${keptNutrien
 
 console.log('\nQuerying existing products in database…')
 const allExistingRows = await db
-  .select({ id: products.id, externalId: products.externalId, dateDeleted: products.dateDeleted, slug: products.slug })
+  .select({ id: products.id, externalId: products.externalId, source: products.source, dateDeleted: products.dateDeleted, slug: products.slug })
   .from(products)
 
-const existingByExternalId = new Map(
-  allExistingRows
-    .filter(r => r.externalId)
-    .map(r => [r.externalId!, { id: r.id, isDeleted: r.dateDeleted !== null }])
-)
+// Only usda_branded rows are upsert targets; slugs are unique across ALL sources, so
+// takenSlugs deliberately covers every row.
+const existingByExternalId = indexBrandedByExternalId(allExistingRows)
 const takenSlugs = new Set(allExistingRows.map(r => r.slug).filter(Boolean) as string[])
 
 console.log(`  ${allExistingRows.length.toLocaleString()} products already in DB`)
-console.log(`  ${existingByExternalId.size.toLocaleString()} have externalId`)
+console.log(`  ${existingByExternalId.size.toLocaleString()} are usda_branded with externalId`)
 
 // ── Step 7: Build insert / update lists ──────────────────────────────────────
 
@@ -353,7 +351,7 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
     measurements: portions.length
       ? [{ unit: meta.servingUnit }, ...portions]
       : [{ unit: meta.servingUnit }],
-    source: 'usda_branded',
+    source: BRANDED_SOURCE,
   }
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
+  parseServingSize, indexBrandedByExternalId,
 } from './usdaBranded'
 
 describe('isAllowedCategory', () => {
@@ -55,5 +56,42 @@ describe('numeric clamping', () => {
     expect(clampServing(1e12)).toBe('99999999.99')
     expect(clampSodium(1e12)).toBe('999999999.9')
     expect(clampCalories(1e12)).toBe(2147483647)
+  })
+})
+
+describe('non-finite values', () => {
+  it('clamps Infinity and NaN to 0 instead of "NaN"', () => {
+    for (const v of [Infinity, -Infinity, NaN]) {
+      expect(clampMacro(v)).toBe('0')
+      expect(clampServing(v)).toBe('0')
+      expect(clampSodium(v)).toBe('0')
+      expect(clampCalories(v)).toBe(0)
+    }
+  })
+})
+
+describe('parseServingSize', () => {
+  it('parses valid sizes', () => expect(parseServingSize('28.5')).toBe(28.5))
+  it('falls back to 100 for missing, NaN, Infinity or non-positive', () => {
+    for (const raw of [undefined, '', 'abc', 'Infinity', '-5', '0']) {
+      expect(parseServingSize(raw)).toBe(100)
+    }
+  })
+})
+
+describe('indexBrandedByExternalId', () => {
+  const row = (id: number, externalId: string | null, source: string, dateDeleted: Date | null = null) =>
+    ({ id, externalId, source, dateDeleted })
+
+  it('matches usda_branded rows and flags soft-deleted', () => {
+    const m = indexBrandedByExternalId([row(1, '100', 'usda_branded'), row(2, '200', 'usda_branded', new Date())])
+    expect(m.get('100')).toEqual({ id: 1, isDeleted: false })
+    expect(m.get('200')).toEqual({ id: 2, isDeleted: true })
+  })
+  it('never matches other sources or rows without externalId', () => {
+    const m = indexBrandedByExternalId([
+      row(3, '100', 'open_food_facts'), row(4, '300', 'manual'), row(5, null, 'usda_branded'),
+    ])
+    expect(m.size).toBe(0)
   })
 })
