@@ -1,21 +1,22 @@
 /**
  * Safety guard for seed scripts: refuse to write to the production database
- * (the DATABASE_URL in .env.production) unless explicitly allowed via
+ * (any DB URL in .env.production) unless explicitly allowed via
  * SEED_ALLOW_PRODUCTION=1, which only the `seed:usda:prod` script sets.
  */
+import { parse } from 'dotenv'
 
-export function parseDatabaseUrl(envFileContents: string): string | null {
-  const match = envFileContents.match(/^\s*DATABASE_URL\s*=\s*(.*)$/m)
-  if (!match) return null
-  return match[1].trim().replace(/^(['"])(.*)\1$/, '$2') || null
+/** Same variables and precedence as src/db/index.ts. */
+const URL_VARS = ['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL'] as const
+
+/** All non-empty DB URLs defined in an env file's contents. */
+export function parseDatabaseUrls(envFileContents: string): string[] {
+  const parsed = parse(envFileContents)
+  return URL_VARS.map(name => parsed[name]?.trim()).filter((v): v is string => !!v)
 }
 
-export function isProductionTarget(
-  currentUrl: string | undefined,
-  productionEnvContents: string | null,
-): boolean {
-  if (!currentUrl || !productionEnvContents) return false
-  return parseDatabaseUrl(productionEnvContents) === currentUrl
+/** The URL the seeder will connect with. */
+export function effectiveDatabaseUrl(env: Record<string, string | undefined>): string | undefined {
+  return env.DATABASE_URL || env.POSTGRES_URL || env.DATABASE_POSTGRES_URL || undefined
 }
 
 export function assertSafeSeedTarget(
@@ -23,9 +24,11 @@ export function assertSafeSeedTarget(
   productionEnvContents: string | null,
 ): void {
   if (env.SEED_ALLOW_PRODUCTION === '1') return
-  if (isProductionTarget(env.DATABASE_URL, productionEnvContents)) {
+  const current = effectiveDatabaseUrl(env)
+  if (!current || !productionEnvContents) return
+  if (parseDatabaseUrls(productionEnvContents).includes(current)) {
     throw new Error(
-      'Refusing to seed: DATABASE_URL points at production. Use `bun seed:usda:prod` to seed production deliberately.',
+      'Refusing to seed: the database URL points at production. Use `bun seed:usda:prod` to seed production deliberately.',
     )
   }
 }
