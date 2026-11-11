@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
+import './barcode-scanner.scss'
 
 interface BarcodeScannerProps {
   onDetected: (code: string) => void
+  loading?: boolean
+  detectedCode?: string | null
 }
 
 // BarcodeDetector is not in lib.dom.d.ts yet so we declare it minimally
@@ -13,7 +16,7 @@ declare class BarcodeDetector {
   detect(source: HTMLVideoElement): Promise<Array<{ rawValue: string }>>
 }
 
-export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onDetected, loading = false, detectedCode }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -104,9 +107,16 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
         <div className="barcode-camera-view">
           <video ref={videoRef} className="barcode-video" playsInline muted />
           <div className="barcode-scan-overlay">
-            <div className="barcode-scan-target" />
+            <div className={`barcode-scan-target${loading ? ' barcode-scan-target--detected' : ''}`} />
           </div>
-          <p className="barcode-hint">Point camera at a food barcode</p>
+          {loading && (
+            <div className="barcode-loading-overlay">
+              <i className="pi pi-spin pi-spinner barcode-loading-spinner" />
+              <span className="barcode-loading-label">Looking up barcode…</span>
+              {detectedCode && <span className="barcode-loading-code">{detectedCode}</span>}
+            </div>
+          )}
+          {!loading && <p className="barcode-hint">Point camera at a food barcode</p>}
         </div>
       ) : (
         <p className="barcode-unsupported">

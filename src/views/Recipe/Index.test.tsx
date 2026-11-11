@@ -74,7 +74,7 @@ function renderWithStores(
   useFoodStore.setState((state) => ({ ...state, foods }))
 
   const existingFoods = (ui.props as { foods?: Food[] }).foods
-  const uiWithProps = cloneElement(ui, { foods: existingFoods ?? foods })
+  const uiWithProps = cloneElement(ui as React.ReactElement<{ foods?: Food[] }>, { foods: existingFoods ?? foods })
   return render(uiWithProps)
 }
 
@@ -102,6 +102,26 @@ describe('Recipe View Page', () => {
     it('displays meal category', () => {
       renderWithStores(<Recipe recipe={mockRecipe} />)
       expect(screen.getByText('Lunch')).toBeInTheDocument()
+    })
+
+    it('renders a source attribution link for an imported recipe', () => {
+      const imported = { ...mockRecipe, sourceUrl: 'https://cooking.example.com/r/1', sourceName: 'Example Cooking' }
+      renderWithStores(<Recipe recipe={imported} />)
+      const link = screen.getByRole('link', { name: /example cooking/i })
+      expect(link).toHaveAttribute('href', 'https://cooking.example.com/r/1')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    })
+
+    it('falls back to the hostname when the imported recipe has no source name', () => {
+      const imported = { ...mockRecipe, sourceUrl: 'https://www.example.com/r/1', sourceName: null }
+      renderWithStores(<Recipe recipe={imported} />)
+      expect(screen.getByRole('link', { name: /example\.com/i })).toBeInTheDocument()
+    })
+
+    it('shows no source attribution for a non-imported recipe', () => {
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      expect(screen.queryByText(/^Source:/)).not.toBeInTheDocument()
     })
 
     it('displays ingredient count', () => {
@@ -401,17 +421,29 @@ describe('Recipe View Page', () => {
       })
     })
 
-    it('does not add ingredient when foods list is empty', async () => {
+    it('adds an ingredient row even when the local food catalog is empty', async () => {
       const user = userEvent.setup()
+      // The catalog now loads lazily, so edit mode can begin before any local foods are present.
+      // FoodSearch is server-backed, so the row can still be added and populated.
       renderWithStores(<Recipe recipe={mockRecipe} />, { foods: [] })
 
       await user.click(screen.getByRole('button', { name: /edit/i }))
       await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
-      // Should still only have 2 ingredients since no foods available
-      expect(screen.getByLabelText('Ingredient 1 name')).toBeInTheDocument()
-      expect(screen.getByLabelText('Ingredient 2 name')).toBeInTheDocument()
-      expect(screen.queryByLabelText('Ingredient 3 name')).not.toBeInTheDocument()
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
+    })
+
+    it('does not stack a second empty row while an unpicked placeholder exists', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(await screen.findByLabelText('Ingredient 3 name')).toBeInTheDocument()
+
+      // The row is still an unpicked placeholder (food id 0), so a second add is a no-op.
+      await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+      expect(screen.queryByLabelText('Ingredient 4 name')).not.toBeInTheDocument()
     })
   })
 
@@ -549,6 +581,49 @@ describe('Recipe View Page', () => {
       await waitFor(() => {
         expect(useRecipeStore.getState().recipes.find(r => r.id === mockRecipe.id)?.isPublic).toBe(true)
       })
+    })
+  })
+
+  describe('Signup Wall (gated)', () => {
+    // A summary-only Recipe as produced by getRecipeSummaryByShortId: ingredients
+    // and steps withheld (empty), with ingredientCount kept for the summary header.
+    const gatedRecipe: RecipeType = {
+      id: 3,
+      shortId: 'ccc33333',
+      name: 'Korean Beef Bowls',
+      meal: 'Dinner',
+      description: 'A savoury weeknight favourite.',
+      ingredients: [],
+      ingredientCount: 8,
+      steps: [],
+      isPublic: true,
+      nutritionComplete: true,
+    }
+
+    it('renders the summary and the Signup Wall CTAs', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(screen.getByText('Korean Beef Bowls')).toBeInTheDocument()
+      expect(screen.getByText('Create a free account to see the full recipe')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Sign up free' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
+    })
+
+    it('teases the withheld content without leaking exact counts', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(
+        screen.getByText(/full ingredient list, step-by-step instructions, and nutrition/i),
+      ).toBeInTheDocument()
+    })
+
+    it('does not render the Steps section when gated', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      expect(screen.queryByRole('heading', { name: 'Steps' })).not.toBeInTheDocument()
+    })
+
+    it('points the CTAs back to the current recipe via callbackUrl', () => {
+      renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
+      const signup = screen.getByRole('link', { name: 'Sign up free' })
+      expect(signup).toHaveAttribute('href', expect.stringContaining('callbackUrl='))
     })
   })
 })

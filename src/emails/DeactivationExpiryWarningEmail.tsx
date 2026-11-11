@@ -10,8 +10,8 @@ interface Props {
 export function DeactivationExpiryWarningEmail({ username, deletionDate, reactivateUrl, trackingPixelUrl }: Props) {
   return (
     <BaseEmail
-      subject="Your Forkful account will be deleted soon"
-      previewText={`Your deactivated Forkful account is scheduled for deletion on ${deletionDate}. Log in to keep it.`}
+      subject="Your EatForkful account will be deleted soon"
+      previewText={`Your deactivated EatForkful account is scheduled for deletion on ${deletionDate}. Log in to keep it.`}
       variant="functional"
       trackingPixelUrl={trackingPixelUrl}
     >
@@ -23,7 +23,7 @@ export function DeactivationExpiryWarningEmail({ username, deletionDate, reactiv
       </h1>
 
       <p style={{ margin: '0 0 16px' }}>
-        Your Forkful account has been deactivated for nearly a year. To keep your data safe,
+        Your EatForkful account has been deactivated for nearly a year. To keep your data safe,
         accounts that remain deactivated for 12 months are permanently deleted.
       </p>
 

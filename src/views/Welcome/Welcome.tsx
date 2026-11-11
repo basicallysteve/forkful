@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -56,7 +57,7 @@ export default function Welcome() {
     <div className="welcome">
       <div className="welcome-content">
         <header className="welcome-header">
-          <p className="welcome-label">Welcome to Forkful</p>
+          <p className="welcome-label">Welcome to EatForkful</p>
           <h2 className="welcome-title">Let's personalise your experience</h2>
           <p className="welcome-helper">
             Tell us a bit about your tastes. You can change these anytime in your profile.
@@ -101,12 +102,16 @@ export default function Welcome() {
               className={`checkbox-option${marketingEmailOptIn ? ' is-active' : ''}`}
               onClick={() => setMarketingEmailOptIn(prev => !prev)}
             >
-              Send me news and updates about Forkful (optional)
+              Send me news and updates about EatForkful (optional)
             </label>
           </div>
 
           <div className="welcome-footer">
             {error && <p className="welcome-error" role="alert">{error}</p>}
+            <p className="welcome-terms">
+              By continuing you agree to our{' '}
+              <Link href="/terms">Terms &amp; Conditions</Link>.
+            </p>
             <button
               type="button"
               className="skip-button"

@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { Card } from 'primereact/card'
 import { Checkbox } from 'primereact/checkbox'
-import DOMPurify from 'dompurify'
+import { sanitizeRichText } from '@/lib/sanitize'
 import { toRecipeUrl } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
+import StatusDot from '@/components/StatusLegend/StatusDot'
 import './recipe-card.scss'
 
 interface RecipeCardProps {
@@ -36,22 +37,29 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           />
         </div>
       )}
+      {recipe.meal && <span className="pill pill-ghost card-meal-tag">{recipe.meal}</span>}
       <Link href={toRecipeUrl(recipe.shortId, recipe.name)} className="card-content">
         <div className="card-header">
           <h3 className="card-title">{recipe.name}</h3>
-          <div className="card-badges">
-            {recipe.meal && <span className="pill pill-ghost">{recipe.meal}</span>}
-            {recipe.date_published === null && <span className="pill pill-warning">Unpublished</span>}
-          </div>
+          {recipe.date_published === null && (
+            <div className="card-badges">
+              <StatusDot variant="unpublished" label="Unpublished" />
+            </div>
+          )}
         </div>
         <div
           className="card-description"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(recipe.description) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
         />
         <div className="card-footer">
           <span className="card-meta">
             {recipe.ingredientCount ?? recipe.ingredients.length} {(recipe.ingredientCount ?? recipe.ingredients.length) === 1 ? 'ingredient' : 'ingredients'}
           </span>
+          {recipe.isPublic && (recipe.viewCount ?? 0) > 0 && (
+            <span className="card-meta">
+              {recipe.viewCount} {recipe.viewCount === 1 ? 'view' : 'views'}
+            </span>
+          )}
           <span className="card-meta">{getDaysOld(recipe.date_published)}</span>
         </div>
       </Link>

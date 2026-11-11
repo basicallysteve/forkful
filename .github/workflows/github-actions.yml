@@ -58,6 +58,7 @@ jobs:
       - name: Push Database Schema
         run: bun run db:push
         env:
+          DRIZZLE_ENV: ci
           POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/forkful_test
       - name: Run Integration Tests
         run: |

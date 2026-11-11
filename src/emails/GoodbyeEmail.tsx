@@ -12,10 +12,10 @@ export function GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl
 
   return (
     <BaseEmail
-      subject={isDeactivated ? 'Your Forkful account has been deactivated' : 'Your Forkful account has been deleted'}
+      subject={isDeactivated ? 'Your EatForkful account has been deactivated' : 'Your EatForkful account has been deleted'}
       previewText={isDeactivated
         ? 'Your account is deactivated. You can reactivate it any time by logging back in.'
-        : 'Your Forkful account and data have been permanently deleted.'}
+        : 'Your EatForkful account and data have been permanently deleted.'}
       variant="functional"
       trackingPixelUrl={trackingPixelUrl}
     >
@@ -29,7 +29,7 @@ export function GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl
       {isDeactivated ? (
         <>
           <p style={{ margin: '0 0 16px' }}>
-            Your Forkful account has been <strong>deactivated</strong>. Your recipes, pantry, and
+            Your EatForkful account has been <strong>deactivated</strong>. Your recipes, pantry, and
             preferences are all safely stored — nothing has been deleted.
           </p>
           <p style={{ margin: '0 0 24px' }}>
@@ -53,7 +53,7 @@ export function GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl
                         borderRadius: 8,
                       }}
                     >
-                      Log in to Forkful
+                      Log in to EatForkful
                     </a>
                   </td>
                 </tr>
@@ -64,7 +64,7 @@ export function GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl
       ) : (
         <>
           <p style={{ margin: '0 0 16px' }}>
-            Your Forkful account has been <strong>permanently deleted</strong>. All your private
+            Your EatForkful account has been <strong>permanently deleted</strong>. All your private
             recipes, pantry items, and personal data have been removed.
           </p>
           <p style={{ margin: '0 0 24px' }}>
@@ -79,7 +79,7 @@ export function GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl
       )}
 
       <p style={{ margin: 0, fontSize: 13, color: '#71717a' }}>
-        Thanks for being part of Forkful. We hope to see you again.
+        Thanks for being part of EatForkful. We hope to see you again.
       </p>
     </BaseEmail>
   )

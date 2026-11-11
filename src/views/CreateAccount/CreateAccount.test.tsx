@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRouter } from 'next/navigation'
 import CreateAccount from './CreateAccount'
 
 vi.mock('@/lib/api/users', () => ({
@@ -398,7 +399,10 @@ describe('CreateAccount Page', () => {
     })
 
     it('redirects to login page after successful account creation', async () => {
-      vi.stubGlobal('location', { href: '/' })
+      const mockPush = vi.fn()
+      vi.mocked(useRouter).mockReturnValue({
+        push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
+      })
 
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
@@ -411,10 +415,8 @@ describe('CreateAccount Page', () => {
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
       await waitFor(() => {
-        expect(window.location.href).toBe('/login')
+        expect(mockPush).toHaveBeenCalledWith('/login')
       })
-
-      vi.unstubAllGlobals()
     })
   })
 

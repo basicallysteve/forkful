@@ -1,4 +1,15 @@
 import convert from 'convert-units'
+import pluralize from 'pluralize'
+import type { Food } from '@/types/Food'
+
+/**
+ * The synthetic, app-wide count unit meaning "one item / one package" (see ADR-0022). It is an
+ * Uncalibrated Custom Unit that is never stored in a Food's Measurements; the shopping unit picker
+ * offers it in addition to a Food's own units, and it is the default when a Food has no Custom Unit.
+ * "each" is invariant in the plural, so register it as uncountable to stop "6 eaches".
+ */
+export const EACH_UNIT = 'each'
+pluralize.addUncountableRule(EACH_UNIT)
 
 export type UnitCategory = 'mass' | 'volume' | 'custom'
 
@@ -75,6 +86,47 @@ export function getAllowedUnits(baseUnit: string, density?: number): string[] {
   return [baseUnit, ...CUSTOM_UNITS.filter(u => u !== baseUnit)]
 }
 
+/** True when a unit is neither a standard mass nor volume unit — i.e. a natural "purchase" unit (piece, can, fruit, bunch, …). */
+export function isCustomUnit(unit: string): boolean {
+  return getUnitCategory(unit) === 'custom'
+}
+
+/**
+ * The display form of a unit for a given amount. Custom Units are pluralised to read naturally
+ * (e.g. "6 fruits", "2 loaves", "1 slice"); standard mass/volume symbols are always left unchanged
+ * (e.g. "6 g", never "6 gs"). Pluralisation follows English count rules — singular only at exactly 1.
+ */
+export function formatUnitForAmount(amount: number, unit: string): string {
+  if (!unit || !isCustomUnit(unit)) return unit
+  return pluralize(unit, amount)
+}
+
+/** Order units so Custom Units come first (the natural purchase units), preserving each group's original order. */
+export function sortUnitsCustomFirst(units: string[]): string[] {
+  return [
+    ...units.filter(isCustomUnit),
+    ...units.filter((unit) => !isCustomUnit(unit)),
+  ]
+}
+
+/**
+ * The unit a shopping line defaults to when a Food is selected: the Food's first Custom Unit if it
+ * has one (so you buy "5 limes", not "100 g of limes"), otherwise the Each Count Unit. The Serving
+ * Unit is never used as a shopping default — a bare mass/volume anchor ("6 g") reads unnaturally on
+ * a grocery list, so grams-only Foods fall back to a count ("6 each"). See ADR-0022.
+ */
+export function preferredShoppingUnit(units: string[]): string {
+  return units.find(isCustomUnit) ?? EACH_UNIT
+}
+
+/**
+ * The unit options offered by the shopping list's Advanced picker for a Food: the Food's own
+ * Measurements plus the always-available Each Count Unit, Custom Units first.
+ */
+export function shoppingUnitOptions(foodUnits: string[]): string[] {
+  return sortUnitsCustomFirst([...new Set([...foodUnits, EACH_UNIT])])
+}
+
 export interface CalculateCaloriesParams {
   baseCalories: number
   baseServingSize: number
@@ -112,6 +164,54 @@ export function calculateCalories({
   return (baseCalories / baseServingSize) * convertedAmount
 }
 
+// The factor by which a Food's per-serving nutrition scales to a target amount + unit — i.e. how many
+// base servings the target represents. Mirrors calculateCalories' conversion logic (calories =
+// baseCalories × this factor) but returns the bare factor so all five macros can be scaled uniformly
+// and frozen onto a Food Log Entry (see ADR-0025). Returns null when the target unit can't be resolved
+// to the base serving unit (cross-category with no density, or an uncalibrated custom unit).
+export function servingScaleFactor({
+  baseServingSize,
+  baseServingUnit,
+  targetAmount,
+  targetUnit,
+  gramsPerUnit,
+  density,
+}: {
+  baseServingSize: number
+  baseServingUnit: string
+  targetAmount: number
+  targetUnit: string
+  gramsPerUnit?: number
+  density?: number
+}): number | null {
+  if (baseServingSize <= 0) return null
+
+  if (baseServingUnit === targetUnit) {
+    return targetAmount / baseServingSize
+  }
+
+  if (getUnitCategory(targetUnit) === 'custom') {
+    if (!gramsPerUnit || gramsPerUnit <= 0) return null
+    const gramsAmount = targetAmount * gramsPerUnit
+    const convertedAmount = convertUnit({ value: gramsAmount, fromUnit: 'g', toUnit: baseServingUnit, density })
+    if (convertedAmount === null) return null
+    return convertedAmount / baseServingSize
+  }
+
+  const convertedAmount = convertUnit({ value: targetAmount, fromUnit: targetUnit, toUnit: baseServingUnit, density })
+  if (convertedAmount === null) return null
+  return convertedAmount / baseServingSize
+}
+
+// The units a Food may be logged in: its own Measurements, always including its base serving unit
+// (falling back to 'serving' when a Food defines neither). Shared by the client unit picker and the
+// server-side reject check so the two can never disagree on what's valid.
+export function allowedUnitsForFood(food: Pick<Food, 'measurements' | 'servingUnit'>): string[] {
+  const units = food.measurements.map((m) => m.unit).filter(Boolean)
+  if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
+  return units.length > 0 ? units : ['serving']
+}
+
 export function getUnitLabel(unit: string): string {
   const labels: Record<string, string> = {
     g: 'grams',
@@ -133,6 +233,7 @@ export function getUnitLabel(unit: string): string {
     can: 'cans',
     bottle: 'bottles',
     package: 'packages',
+    each: 'each',
   }
   return labels[unit] || unit
 }

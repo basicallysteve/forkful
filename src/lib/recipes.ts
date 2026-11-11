@@ -1,7 +1,7 @@
-import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not } from 'drizzle-orm'
+import { eq, isNull, isNotNull, and, or, exists, asc, desc, ilike, count, inArray, not, sql, avg } from 'drizzle-orm'
 import { db } from '@/db'
 import type { SQL } from 'drizzle-orm'
-import { recipes, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
+import { recipes, reviews, ingredients, foods, savedRecipes, recipeSteps } from '@/db/schema'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 import type { Ingredient } from '@/types/Ingredient'
@@ -11,6 +11,10 @@ import { nanoid } from 'nanoid'
 import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { calculateCalories } from '@/utils/unitConversion'
+import { scrapeRecipe } from "recipe-scrapers"
+import { mapScrapedRecipe } from '@/lib/recipeScrapeMapper'
+import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES, MAX_REDIRECTS } from '@/lib/urlFetchGuard'
+import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 
 export type RecipeQueryOptions = {
   user_id?: number
@@ -118,8 +122,11 @@ function mapRecipeRow(
     date_published: row.datePublished ?? null,
     userId: row.userId ?? null,
     serves: row.serves ?? null,
+    sourceUrl: row.sourceUrl ?? null,
+    sourceName: row.sourceName ?? null,
     isPublic: row.isPublic === 1,
     nutritionComplete: row.nutritionComplete ?? true,
+    viewCount: row.viewCount ?? 0,
   }
 }
 
@@ -214,6 +221,53 @@ export async function getRecipeByShortId(shortId: string, viewerId?: number): Pr
   return row ? buildRecipe(row) : null
 }
 
+/**
+ * Increment a public Recipe's view count (Recipe View Count). No-op unless the
+ * Recipe is public, published, and undeleted. When `viewerId` is provided, the
+ * Recipe's own author is excluded (`IS DISTINCT FROM` handles anonymised/null
+ * authors). The published guard matches `getTopRecipes`: an unpublished draft
+ * that is still public (Unpublish and privacy are independent toggles) must not
+ * accrue public views. See ADR-0020: this is intentionally decoupled from the
+ * metering middleware.
+ */
+export async function incrementRecipeView(shortId: string, viewerId?: number): Promise<void> {
+  const authorFilter = viewerId !== undefined
+    ? sql`${recipes.userId} IS DISTINCT FROM ${viewerId}`
+    : undefined
+  await db
+    .update(recipes)
+    .set({ viewCount: sql`${recipes.viewCount} + 1` })
+    .where(and(
+      eq(recipes.shortId, shortId),
+      eq(recipes.isPublic, 1),
+      isNotNull(recipes.datePublished),
+      isNull(recipes.dateDeleted),
+      authorFilter,
+    ))
+}
+
+/**
+ * Summary-only fetch for the Signup Wall: returns the Recipe with its Ingredient
+ * list and Recipe Steps deliberately withheld (empty arrays), but with
+ * `ingredientCount` populated for the summary header. The heavy ingredient/step
+ * sub-queries are skipped entirely — the withheld content never enters the
+ * payload. See ADR-0020.
+ */
+export async function getRecipeSummaryByShortId(shortId: string, viewerId?: number): Promise<Recipe | null> {
+  const visibilityFilter = viewerId !== undefined
+    ? or(eq(recipes.isPublic, 1), eq(recipes.userId, viewerId))
+    : eq(recipes.isPublic, 1)
+  const [row] = await db.select().from(recipes).where(
+    and(eq(recipes.shortId, shortId), isNull(recipes.dateDeleted), visibilityFilter)
+  )
+  if (!row) return null
+
+  const [ingredientRows] = await db.select({ total: count() }).from(ingredients)
+    .where(and(eq(ingredients.recipeId, row.id), isNull(ingredients.dateDeleted)))
+
+  return mapRecipeRow(row, [], [], Number(ingredientRows?.total ?? 0))
+}
+
 export async function getRecipeById(id: number): Promise<Recipe | null> {
   const [row] = await db.select().from(recipes).where(and(eq(recipes.id, id), isNull(recipes.dateDeleted)))
   return row ? buildRecipe(row) : null
@@ -237,6 +291,8 @@ export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
     cuisineType: data.cuisineType ?? null,
     dietaryTags: data.dietaryTags ?? [],
     serves: data.serves ?? null,
+    sourceUrl: data.sourceUrl ?? null,
+    sourceName: data.sourceName ?? null,
     isPublic: data.isPublic ? 1 : 0,
     nutritionComplete,
     userId: data.userId ?? null,
@@ -344,9 +400,10 @@ export async function getTopRecipes(limit = 3): Promise<Recipe[]> {
       .select({ recipe: recipes, saveCount: count(savedRecipes.id) })
       .from(recipes)
       .leftJoin(savedRecipes, and(eq(savedRecipes.recipeId, recipes.id), isNull(savedRecipes.dateDeleted)))
+      .leftJoin(reviews, and(eq(reviews.recipeId, recipes.id)))
       .where(and(isNull(recipes.dateDeleted), eq(recipes.isPublic, 1), isNotNull(recipes.datePublished)))
       .groupBy(recipes.id)
-      .orderBy(desc(count(savedRecipes.id)), desc(recipes.datePublished))
+      .orderBy(desc(recipes.viewCount), desc(avg(reviews.rating)), desc(count(savedRecipes.id)), desc(recipes.datePublished))
       .limit(limit)
     return buildRecipesBatch(rows.map((r) => r.recipe))
   } catch {
@@ -444,5 +501,92 @@ export async function getForYouRecipes(cuisinePreferences: string[], limit = 5):
     return buildRecipesBatch(rows)
   } catch {
     return []
+  }
+}
+
+// Follow redirects manually, re-running the SSRF guard on every hop. `fetch`'s built-in
+// `redirect: 'follow'` would re-validate nothing, so a public page could 302 us onto an
+// internal target (e.g. the cloud metadata endpoint). See ADR-0023.
+async function guardedFetch(startUrl: URL, signal: AbortSignal): Promise<Response> {
+  let url = startUrl
+
+  const BLACKLISTED_HOSTS = process.env.BLACKLISTED_HOSTS?.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean) ?? []
+  if (BLACKLISTED_HOSTS.includes(url.hostname.toLowerCase())) {
+    throw new Error(`Blocked host: ${url.hostname}`)
+  }
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    // SSRF: `url` is validated by assertFetchableUrl (scheme + host denylist) before this
+    // call and re-validated on every redirect hop below. Residual DNS-rebinding risk is an
+    // accepted trade-off — see ADR-0023. (CodeQL flags this user-derived fetch regardless;
+    // the alert is dismissed in code scanning with that justification.)
+    const res = await fetch(url, { signal, redirect: 'manual' })
+    if (res.status >= 300 && res.status < 400 && res.headers.has('location')) {
+      const location = res.headers.get('location')!
+      // Resolve relative redirects against the current URL, then re-validate scheme + host.
+      url = assertFetchableUrl(new URL(location, url).toString())
+      continue
+    }
+    return res
+  }
+  throw new Error('Too many redirects')
+}
+
+// Read a response body, aborting as soon as it exceeds MAX_RESPONSE_BYTES so a hostile
+// server cannot force us to buffer an unbounded payload into memory.
+async function readCappedBody(res: Response): Promise<string> {
+  const declaredLength = Number(res.headers.get('content-length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    throw new Error('Response too large')
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) return ''
+
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > MAX_RESPONSE_BYTES) {
+      await reader.cancel()
+      throw new Error('Response too large')
+    }
+    chunks.push(value)
+  }
+
+  // Decode with the charset the server declares (older recipe sites still serve latin-1 /
+  // windows-1252), falling back to UTF-8 when it's absent or unsupported by TextDecoder.
+  const charset = res.headers.get('content-type')?.match(/charset=([^;\s]+)/i)?.[1]
+  const body = Buffer.concat(chunks)
+  if (charset) {
+    try {
+      return new TextDecoder(charset).decode(body)
+    } catch {
+      // Unknown/invalid charset label — fall through to UTF-8.
+    }
+  }
+  return new TextDecoder().decode(body)
+}
+
+export async function scrapeRecipeFromUrl(url: string): Promise<ParsedRecipe | null> {
+  try {
+    const safeUrl = assertFetchableUrl(url)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    let html: string
+    try {
+      const res = await guardedFetch(safeUrl, controller.signal)
+      html = await readCappedBody(res)
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    const rawRecipe = await scrapeRecipe(html, safeUrl.toString())
+    return mapScrapedRecipe(rawRecipe, safeUrl.toString())
+  } catch (error) {
+    console.error('Error scraping recipe:', error)
+    return null
   }
 }

@@ -5,7 +5,7 @@
  *                        light grey). Use for password resets, confirmations,
  *                        alerts, etc.
  *
- * variant="marketing"   Branded layout with a Forkful green header. Use for
+ * variant="marketing"   Branded layout with an EatForkful green header. Use for
  *                        newsletters, announcements, and promotional emails.
  *
  * Pass trackingPixelUrl to embed a 1×1 transparent tracking pixel at the
@@ -40,7 +40,7 @@ function FunctionalHeader() {
     <tr>
       <td style={{ padding: '28px 40px 20px', borderBottom: `1px solid ${BORDER_COLOR}` }}>
         <p style={{ margin: 0, fontSize: 12, color: MUTED_TEXT, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Forkful
+          EatForkful
         </p>
       </td>
     </tr>
@@ -52,7 +52,7 @@ function MarketingHeader() {
     <tr>
       <td style={{ padding: '32px 40px', backgroundColor: BRAND_GREEN, borderRadius: '12px 12px 0 0' }}>
         <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px' }}>
-          Forkful
+          EatForkful
         </p>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
           Your personal recipe kitchen
@@ -107,7 +107,7 @@ export function BaseEmail({ subject, previewText, variant, trackingPixelUrl, chi
                     <tr>
                       <td style={{ padding: '20px 40px 32px', borderTop: `1px solid ${BORDER_COLOR}` }}>
                         <p style={{ margin: 0, fontSize: 12, color: FOOTER_TEXT, lineHeight: 1.6 }}>
-                          You received this email because you have a Forkful account.
+                          You received this email because you have an EatForkful account.
                           If you didn&apos;t expect it, you can safely ignore it.
                         </p>
                       </td>

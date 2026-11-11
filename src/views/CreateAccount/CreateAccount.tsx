@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { apiSignUp } from "@/lib/api/users"
+import { getCallbackUrl } from "@/utils/callbackUrl"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -51,6 +53,7 @@ function isPasswordValid(validation: PasswordValidation): boolean {
 }
 
 function CreateAccount() {
+  const router = useRouter()
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -109,7 +112,12 @@ function CreateAccount() {
         marketingEmailOptIn,
       })
     
-      window.location.href = '/login'
+      // Forward the return target through the login step so the new user lands
+      // back on the recipe they were viewing after signing in.
+      const callbackUrl = getCallbackUrl()
+      router.push(callbackUrl !== '/'
+        ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+        : '/login')
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Registration failed')
     } finally {
@@ -125,7 +133,7 @@ function CreateAccount() {
             <p className="account-label">Get Started</p>
             <h2 className="account-name">Create Your Account</h2>
             <p className="account-helper">
-              Join Forkful to save recipes, create meal plans, and discover delicious dishes.
+              Join EatForkful to save recipes, create meal plans, and discover delicious dishes.
             </p>
           </div>
         </header>
@@ -287,7 +295,7 @@ function CreateAccount() {
                     onClick={() => setMarketingEmailOptIn(prev => !prev)}
                   >
                     <span className="checkbox-indicator" />
-                    Send me news and updates about Forkful (optional)
+                    Send me news and updates about EatForkful (optional)
                   </label>
                 </div>
               </div>
@@ -308,6 +316,10 @@ function CreateAccount() {
             <div className="form-links">
               <p>
                 Already have an account? <Link href="/login">Login</Link>
+              </p>
+              <p>
+                By creating an account you agree to our{' '}
+                <Link href="/terms">Terms &amp; Conditions</Link>.
               </p>
             </div>
           </div>

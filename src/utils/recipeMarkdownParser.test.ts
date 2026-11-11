@@ -46,12 +46,69 @@ describe('parseIngredientLine — unit normalisation', () => {
     expect(parseIngredientLine('100 G flour').unit).toBe('g')
   })
 
-  it('preserves unknown units unchanged', () => {
-    expect(parseIngredientLine('1 handful spinach').unit).toBe('handful')
+  it('folds an unrecognised unit token into the food name (see ADR-0024)', () => {
+    // "handful" is not in the narrow unit vocabulary, so it is not treated as a unit.
+    expect(parseIngredientLine('1 handful spinach')).toEqual({
+      raw: '1 handful spinach', quantity: 1, unit: null, foodName: 'handful spinach',
+    })
   })
 
   it('normalises fl-oz regardless of case', () => {
     expect(parseIngredientLine('2 FL-OZ milk').unit).toBe('fl-oz')
+  })
+
+  it('normalises plural units (2 cups flour)', () => {
+    expect(parseIngredientLine('2 cups flour')).toEqual({
+      raw: '2 cups flour', quantity: 2, unit: 'cup', foodName: 'flour',
+    })
+    expect(parseIngredientLine('3 tablespoons sugar').unit).toBe('Tbs')
+    expect(parseIngredientLine('4 slices bread').unit).toBe('slice')
+  })
+})
+
+describe('parseIngredientLine — adjective is not a unit (ADR-0024)', () => {
+  it('keeps a leading adjective in the food name (2 large eggs)', () => {
+    expect(parseIngredientLine('2 large eggs')).toEqual({
+      raw: '2 large eggs', quantity: 2, unit: null, foodName: 'large eggs',
+    })
+  })
+
+  it('keeps a bare count with no unit (3 bananas)', () => {
+    expect(parseIngredientLine('- 3 bananas')).toEqual({
+      raw: '- 3 bananas', quantity: 3, unit: null, foodName: 'bananas',
+    })
+  })
+})
+
+describe('parseIngredientLine — fraction and mixed-number quantities (ADR-0024)', () => {
+  it('parses a simple fraction (1/2 cup sugar)', () => {
+    expect(parseIngredientLine('1/2 cup sugar')).toEqual({
+      raw: '1/2 cup sugar', quantity: 0.5, unit: 'cup', foodName: 'sugar',
+    })
+  })
+
+  it('parses a mixed number (1 1/2 cups flour)', () => {
+    expect(parseIngredientLine('1 1/2 cups flour')).toEqual({
+      raw: '1 1/2 cups flour', quantity: 1.5, unit: 'cup', foodName: 'flour',
+    })
+  })
+
+  it('parses a lone unicode vulgar fraction (½ cup milk)', () => {
+    expect(parseIngredientLine('½ cup milk')).toEqual({
+      raw: '½ cup milk', quantity: 0.5, unit: 'cup', foodName: 'milk',
+    })
+  })
+
+  it('parses a whole number followed by a vulgar fraction (1½ cups oats)', () => {
+    expect(parseIngredientLine('1½ cups oats')).toEqual({
+      raw: '1½ cups oats', quantity: 1.5, unit: 'cup', foodName: 'oats',
+    })
+  })
+
+  it('parses a fraction with no unit (1/4 onion)', () => {
+    expect(parseIngredientLine('1/4 onion')).toEqual({
+      raw: '1/4 onion', quantity: 0.25, unit: null, foodName: 'onion',
+    })
   })
 })
 

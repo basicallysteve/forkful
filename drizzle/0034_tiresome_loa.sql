@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "meal_slots" jsonb DEFAULT '["Breakfast","Lunch","Dinner","Snack"]'::jsonb;

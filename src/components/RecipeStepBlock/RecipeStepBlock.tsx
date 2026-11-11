@@ -1,8 +1,8 @@
 'use client'
 
-import DOMPurify from 'dompurify'
 import { Editor } from 'primereact/editor'
 import { FileUpload, type FileUploadHandlerEvent } from 'primereact/fileupload'
+import { sanitizeRichText } from '@/lib/sanitize'
 import type { RecipeStep } from '@/types/RecipeStep'
 
 interface RecipeStepBlockProps {
@@ -79,7 +79,7 @@ export default function RecipeStepBlock({
       ) : (
         <div
           className="step-content"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(step.content) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(step.content) }}
         />
       )}
     </div>

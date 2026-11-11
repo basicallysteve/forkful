@@ -45,6 +45,16 @@ export async function apiFetchProductByBarcode(barcode: string): Promise<Product
   return res.json()
 }
 
+export async function apiLinkProductToFood(productSlug: string, foodId: number): Promise<void> {
+  const res = await fetch(`/api/products/${productSlug}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parentFoodId: foodId }),
+    credentials: 'same-origin',
+  })
+  if (!res.ok) throw new Error('Failed to link product to food')
+}
+
 export async function apiDeleteProduct(slug: string): Promise<void> {
   const res = await fetch(`/api/products/${slug}`, { method: 'DELETE', credentials: 'same-origin' })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete product')

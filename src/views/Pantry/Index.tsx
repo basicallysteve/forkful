@@ -8,14 +8,24 @@ import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
+import { formatPrice } from '@/utils/currency'
+import { formatDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import StatusDot from '@/components/StatusLegend/StatusDot'
+import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
 type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
+
+function displayUnit(size: number, unit: string | undefined): string {
+  if (!unit) return ''
+  if (unit === 'serving') return size === 1 ? 'serving' : 'servings'
+  return unit
+}
 
 export default function Pantry() {
   const items = usePantryStore((state) => state.items)
@@ -110,11 +120,7 @@ export default function Pantry() {
 
   function formatDate(date: Date | null): string {
     if (!date) return 'No expiration'
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return formatDisplayDate(new Date(date))
   }
 
   function getStatusLabel(status: PantryItemStatus): string {
@@ -172,6 +178,16 @@ export default function Pantry() {
             <span className="stat-value">{expiredCount}</span>
           </div>
         </div>
+
+        <StatusLegend
+          items={[
+            { variant: 'good', label: 'Good' },
+            { variant: 'expiring-soon', label: 'Expiring Soon' },
+            { variant: 'expired', label: 'Expired' },
+            { variant: 'frozen', label: 'Frozen' },
+            { variant: 'prepared', label: 'Prepared' },
+          ]}
+        />
 
         <div className="pantry-panel">
           <div className="panel-toolbar">
@@ -284,6 +300,7 @@ export default function Pantry() {
                     </th>
                     <th>Food Item</th>
                     <th>Size (Orig/Curr)</th>
+                    <th>Price Paid</th>
                     <th>Expiration Date</th>
                     <th>Status</th>
                     <th>Added Date</th>
@@ -297,11 +314,22 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                         />
                       </td>
                       <td>
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          <span className="pantry-item-name">
+                            {item.recipeShortId ? (
+                              <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
+                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              </Link>
+                            ) : (
+                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                            )}
+                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                          </span>
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`}>
                             {item.food.name}
                           </Link>
@@ -309,7 +337,8 @@ export default function Pantry() {
                           <Link href={`/pantry/${item.id}/edit`}>{item.product?.name}</Link>
                         )}
                       </td>
-                      <td>{item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}</td>
+                      <td>{item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}</td>
+                      <td>{item.purchasePrice != null ? formatPrice(item.purchasePrice) : '—'}</td>
                       <td>
                         {item.frozenDate ? (
                           <span className="status-badge status-frozen">Frozen</span>
@@ -369,12 +398,23 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? ''}`}
+                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
                       />
                     </div>
                     <div className="card-content">
                       <div className="card-header">
-                        {item.food ? (
+                        {item.sourceType === 'recipe' ? (
+                          item.recipeShortId ? (
+                            <Link
+                              href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}
+                              className="card-title"
+                            >
+                              {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                            </Link>
+                          ) : (
+                            <span className="card-title">{item.recipeNameSnapshot ?? 'Prepared Meal'}</span>
+                          )
+                        ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
                             {item.food.name}
                           </Link>
@@ -382,12 +422,9 @@ export default function Pantry() {
                           <Link href={`/pantry/${item.id}/edit`} className="card-title">{item.product?.name}</Link>
                         )}
                         <div className="card-badges">
-                          <span className={`status-badge ${getStatusClass(item.status)}`}>
-                            {getStatusLabel(item.status)}
-                          </span>
-                          {item.frozenDate && (
-                            <span className="status-badge status-frozen">Frozen</span>
-                          )}
+                          <StatusDot variant={item.status} label={getStatusLabel(item.status)} />
+                          {item.frozenDate && <StatusDot variant="frozen" label="Frozen" />}
+                          {item.sourceType === 'recipe' && <StatusDot variant="prepared" label="Prepared" />}
                         </div>
                       </div>
 
@@ -395,7 +432,7 @@ export default function Pantry() {
                         <div className="detail-row">
                           <span className="detail-label">Size:</span>
                           <span className="detail-value">
-                            {item.originalSize.size.toFixed(2)} {item.originalSize.unit} / {item.currentSize.size.toFixed(2)} {item.currentSize.unit}
+                            {item.originalSize.size.toFixed(2)} {displayUnit(item.originalSize.size, item.originalSize.unit)} / {item.currentSize.size.toFixed(2)} {displayUnit(item.currentSize.size, item.currentSize.unit)}
                           </span>
                         </div>
                         <div className="detail-row">
@@ -406,6 +443,12 @@ export default function Pantry() {
                             {item.frozenDate ? formatDate(item.frozenDate) : formatDate(item.expirationDate)}
                           </span>
                         </div>
+                        {item.purchasePrice != null && (
+                          <div className="detail-row">
+                            <span className="detail-label">Price paid:</span>
+                            <span className="detail-value">{formatPrice(item.purchasePrice)}</span>
+                          </div>
+                        )}
                         <div className="detail-row">
                           <span className="detail-label">Added:</span>
                           <span className="detail-value">{formatDate(item.addedDate)}</span>

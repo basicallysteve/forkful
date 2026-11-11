@@ -115,7 +115,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                 <Link href="/" className="toolbar-brand">
                     <ThemedLogo size={34} />
                     <div className="toolbar-title">
-                        <span className="toolbar-name">Forkful</span>
+                        <span className="toolbar-name">EatForkful</span>
                         <span className="toolbar-tagline">Recipes worth repeating</span>
                     </div>
                 </Link>

@@ -5,10 +5,10 @@ import styles from './page.module.scss'
 
 export const metadata: Metadata = {
   title: 'Blog',
-  description: 'Updates, ideas, and notes from the Forkful kitchen.',
+  description: 'Updates, ideas, and notes from the EatForkful kitchen.',
   openGraph: {
-    title: 'Forkful Blog',
-    description: 'Updates, ideas, and notes from the Forkful kitchen.',
+    title: 'EatForkful Blog',
+    description: 'Updates, ideas, and notes from the EatForkful kitchen.',
     images: [{ url: '/og-default.png' }],
   },
 }

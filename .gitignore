@@ -31,3 +31,5 @@ backend/.env
 
 
 data/usda/*
+# TypeScript incremental build info
+*.tsbuildinfo

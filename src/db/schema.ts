@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, text, integer, numeric, timestamp, jsonb, boolean, pgEnum, unique, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, serial, varchar, text, integer, numeric, timestamp, date, jsonb, boolean, pgEnum, unique, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import type { Measurement } from '@/types/Food'
 
 export const foodSourceEnum = pgEnum('food_source', ['manual', 'open_food_facts', 'usda']);
@@ -6,6 +7,12 @@ export const productSourceEnum = pgEnum('product_source', ['manual', 'open_food_
 export const recipeSuggestionFrequencyEnum = pgEnum('recipe_suggestion_frequency', ['never', 'weekly', 'monthly']);
 export const pantryExpirationFrequencyEnum = pgEnum('pantry_expiration_frequency', ['never', 'daily', 'weekly']);
 export const accountClosureActionEnum = pgEnum('account_closure_action', ['deactivated', 'deleted']);
+export const shoppingListStatusEnum = pgEnum('shopping_list_status', ['active', 'archived']);
+export const shoppingListItemSourceTypeEnum = pgEnum('shopping_list_item_source_type', ['food', 'product', 'freeform']);
+export const shoppingListItemStatusEnum = pgEnum('shopping_list_item_status', ['to_buy', 'bought', 'unavailable']);
+// Referent discriminator for a Food Log Entry (see ADR-0025). Only 'food' is written in the current
+// slice; 'product' / 'prepared_meal' are seeded now so later slices need no enum migration.
+export const foodLogSourceTypeEnum = pgEnum('food_log_source_type', ['food', 'product', 'prepared_meal']);
 
 export const foods = pgTable('foods', {
   id: serial('id').primaryKey(),
@@ -69,7 +76,10 @@ export const recipes = pgTable('recipes', {
   dietaryTags: jsonb('dietary_tags').$type<string[]>().default([]),
   isPublic: integer('is_public').notNull().default(0),
   serves: integer('serves'),
+  sourceUrl: text('source_url'),
+  sourceName: varchar('source_name', { length: 255 }),
   nutritionComplete: boolean('nutrition_complete').notNull().default(true),
+  viewCount: integer('view_count').notNull().default(0),
   userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
   dateAdded: timestamp('date_added').defaultNow(),
   datePublished: timestamp('date_published'),
@@ -98,12 +108,24 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  // Ordered, user-defined Meal Slots — seeded with the four defaults; editable in profile.
+  mealSlots: jsonb('meal_slots').$type<string[]>().default(['Breakfast', 'Lunch', 'Dinner', 'Snack']),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
   passwordChangedAt: timestamp('password_changed_at'),
   marketingEmailOptIn: boolean('marketing_email_opt_in').notNull().default(false),
   recipeSuggestionFrequency: recipeSuggestionFrequencyEnum('recipe_suggestion_frequency').notNull().default('weekly'),
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
+  // When off, the shopping list stops prompting for (and hides manual entry of) Line Price & expiration.
+  enableShoppingListPricingCollection: boolean('enable_shopping_list_pricing_collection').notNull().default(true),
+  // Nutrition Goal (see CONTEXT.md): a manually-set daily calorie target plus optional per-macro
+  // targets. Every column is nullable — null means that field has no target. No goal is ever computed
+  // from biometrics/activity. Calories are whole numbers; macros mirror the numeric(10,2) macro columns.
+  calorieGoal: integer('calorie_goal'),
+  proteinGoal: numeric('protein_goal', { precision: 10, scale: 2 }),
+  carbsGoal: numeric('carbs_goal', { precision: 10, scale: 2 }),
+  fatGoal: numeric('fat_goal', { precision: 10, scale: 2 }),
+  fiberGoal: numeric('fiber_goal', { precision: 10, scale: 2 }),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),
@@ -119,6 +141,14 @@ export const pantryItems = pgTable('pantry_items', {
     .references(() => foods.id, { onDelete: 'cascade' }),
   productId: integer('product_id')
     .references(() => products.id, { onDelete: 'cascade' }),
+  recipeId: integer('recipe_id')
+    .references(() => recipes.id, { onDelete: 'set null' }),
+  recipeNameSnapshot: varchar('recipe_name_snapshot', { length: 255 }),
+  // Provenance back to the Shopping List Item that produced this Pantry Item on Shopping Trip
+  // Completion (see CONTEXT.md). Null for items created any other way (manual add, Prepared Meal).
+  // `set null` so archiving/removing the source line never deletes the resulting stock.
+  shoppingListItemId: integer('shopping_list_item_id')
+    .references(() => shoppingListItems.id, { onDelete: 'set null' }),
   expirationDate: timestamp('expiration_date'),
   originalSizeAmount: numeric('original_size_amount', { precision: 10, scale: 2 }).notNull(),
   originalSizeUnit: varchar('original_size_unit', { length: 50 }),
@@ -128,6 +158,45 @@ export const pantryItems = pgTable('pantry_items', {
   frozenDate: timestamp('frozen_date'),
   dateDeleted: timestamp('date_deleted'),
 });
+
+export const shoppingLists = pgTable('shopping_lists', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  status: shoppingListStatusEnum('status').notNull().default('active'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  activeListPerUserUnique: uniqueIndex('shopping_lists_user_active_unique').on(t.userId).where(sql`${t.status} = 'active'`),
+}));
+
+export const shoppingListItems = pgTable('shopping_list_items', {
+  id: serial('id').primaryKey(),
+  shoppingListId: integer('shopping_list_id')
+    .notNull()
+    .references(() => shoppingLists.id, { onDelete: 'cascade' }),
+  sourceType: shoppingListItemSourceTypeEnum('source_type').notNull().default('food'),
+  // A line links to at most one of food/product; a freeform line links to neither and carries its
+  // own `name`. Which column is populated is governed by `sourceType`.
+  foodId: integer('food_id')
+    .references(() => foods.id, { onDelete: 'cascade' }),
+  productId: integer('product_id')
+    .references(() => products.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }),
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  // Null for freeform lines that omit a unit; always set for food/product lines.
+  unit: varchar('unit', { length: 50 }),
+  status: shoppingListItemStatusEnum('status').notNull().default('to_buy'),
+  // Total paid for the whole line (not per-unit), in the app's single currency. Optionally recorded
+  // at check-off; per-unit cost is derived as line_price / amount when needed. Null until entered.
+  linePrice: numeric('line_price', { precision: 10, scale: 2 }),
+  // Optionally recorded at check-off; transfers to the resulting Pantry Item's expirationDate on Trip
+  // Completion. Null when the user leaves it blank.
+  expirationDate: timestamp('expiration_date'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  shoppingListIdIdx: index('shopping_list_items_shopping_list_id_idx').on(t.shoppingListId),
+}));
 
 export const oauthAccounts = pgTable('oauth_accounts', {
   id: serial('id').primaryKey(),
@@ -229,6 +298,37 @@ export const reviewLikes = pgTable('review_likes', {
 }, (t) => ({
   userReviewUnique: unique('review_likes_user_review_unique').on(t.userId, t.reviewId),
   reviewIdIdx: index('review_likes_review_id_idx').on(t.reviewId),
+}));
+
+// A Food Log Entry: an independent nutrition ledger row (see ADR-0025 and CONTEXT.md). The five macros
+// are snapshotted (frozen) at create time — never recomputed from the referent on read — so daily
+// totals are stable and survive edits or deletion of the referent Food. `logDate` is the user-local
+// calendar day, derived on the client and sent with the write; UTC is never used for day bucketing.
+export const foodLogEntries = pgTable('food_log_entries', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  sourceType: foodLogSourceTypeEnum('source_type').notNull().default('food'),
+  // Nullable + `set null` so an entry outlives soft/hard deletion of its referent Food, surviving on
+  // its frozen macro snapshot (the same orphan behaviour as a Prepared Meal's recipeNameSnapshot).
+  foodId: integer('food_id').references(() => foods.id, { onDelete: 'set null' }),
+  // Resolved amount + unit at log time, retained for provenance and display. Unit is constrained to
+  // the referent Food's Measurements by the write path.
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
+  unit: varchar('unit', { length: 50 }),
+  // Frozen macros — facts of record, computed once at create time via calculateCalories / convertUnit.
+  calories: numeric('calories', { precision: 10, scale: 2 }).notNull().default('0'),
+  protein: numeric('protein', { precision: 10, scale: 2 }).notNull().default('0'),
+  carbs: numeric('carbs', { precision: 10, scale: 2 }).notNull().default('0'),
+  fat: numeric('fat', { precision: 10, scale: 2 }).notNull().default('0'),
+  fiber: numeric('fiber', { precision: 10, scale: 2 }).notNull().default('0'),
+  // The user-local calendar day this entry is filed under (a plain date, no time-of-day).
+  logDate: date('log_date').notNull(),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+  dateDeleted: timestamp('date_deleted'),
+}, (t) => ({
+  userLogDateIdx: index('food_log_entries_user_log_date_idx').on(t.userId, t.logDate, t.dateDeleted),
 }));
 
 export const reviewReports = pgTable('review_reports', {

@@ -1,0 +1,175 @@
+import type { ScanToBuyOutcome, ScanToBuyResult, ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
+
+type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate' | 'expirationDate'> & {
+  addedDate: string
+  // Serialized over the wire as an ISO string (or null when unset).
+  expirationDate?: string | null
+}
+
+function parseShoppingListItem(raw: RawShoppingListItem): ShoppingListItem {
+  return {
+    ...raw,
+    expirationDate: raw.expirationDate ? new Date(raw.expirationDate) : null,
+    addedDate: new Date(raw.addedDate),
+  }
+}
+
+// One create payload, discriminated by sourceType — mirrors the single POST /api/shopping-list
+// endpoint, which branches on the same field.
+export type CreateShoppingListItemInput =
+  | { sourceType: 'food'; foodId: number; amount: number; unit: string }
+  | { sourceType: 'product'; productId: number; amount: number; unit: string }
+  | { sourceType: 'freeform'; name: string; amount: number; unit?: string | null }
+
+export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
+  const res = await fetch('/api/shopping-list')
+  if (!res.ok) throw new Error('Failed to fetch shopping list items')
+  const raw: RawShoppingListItem[] = await res.json()
+  return raw.map(parseShoppingListItem)
+}
+
+// The outcome of a Pantry-Gap Fill: the Food lines added to (or merged into) the active list for the
+// short ingredients, plus how many ingredients were skipped as already fully stocked.
+export type PantryGapFillResult = {
+  items: ShoppingListItem[]
+  skippedFullyStocked: number
+}
+
+// Pantry-Gap Fill: add only the ingredients a recipe is short on to the active Shopping List. Returns the
+// added/merged lines (parsed to domain objects) and the fully-stocked skip count.
+export async function apiFillPantryGapFromRecipe(recipeShortId: string): Promise<PantryGapFillResult> {
+  const res = await fetch('/api/shopping-list/gap-fill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeShortId }),
+  })
+
+  if (!res.ok) throw new Error('Failed to add missing ingredients to shopping list')
+  const raw: { items: RawShoppingListItem[]; skippedFullyStocked: number } = await res.json()
+  return { items: raw.items.map(parseShoppingListItem), skippedFullyStocked: raw.skippedFullyStocked }
+}
+
+export async function apiCreateShoppingListItem(input: CreateShoppingListItemInput): Promise<ShoppingListItem> {
+  const res = await fetch('/api/shopping-list', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!res.ok) throw new Error('Failed to create shopping list item')
+  const raw: RawShoppingListItem = await res.json()
+  return parseShoppingListItem(raw)
+}
+
+// Scan-to-Buy (ADR-0021): the client resolves a scanned barcode to a Product, then posts its id here.
+// The server folds it onto the active list and reports the resulting line plus what happened —
+// 'upgraded' (a planned Food line promoted to this Product), 'checked' (a planned Product line marked
+// bought), or 'impulse' (a fresh bought Product line for an off-list scan). The outcome/result types are
+// shared via @/types/ShoppingList (as ShoppingTripCompletion is), so the layers can't drift.
+export async function apiScanToBuyShoppingListItem(productId: number): Promise<ScanToBuyResult> {
+  const res = await fetch('/api/shopping-list/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId }),
+  })
+
+  if (!res.ok) throw new Error('Failed to scan shopping list item')
+  const raw: { item: RawShoppingListItem; outcome: ScanToBuyOutcome } = await res.json()
+  return { item: parseShoppingListItem(raw.item), outcome: raw.outcome }
+}
+
+export async function apiDeleteShoppingListItem(id: number): Promise<void> {
+  const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
+}
+
+// Persists a status change. Resolves on success and throws on failure — the caller keeps its own
+// (optimistic) copy of the line, since only `status` changes server-side, so no response body is read.
+export async function apiUpdateShoppingListItemStatus(
+  id: number,
+  status: ShoppingListItemStatus,
+): Promise<void> {
+  const res = await fetch(`/api/shopping-list/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+
+  if (!res.ok) throw new Error('Failed to update shopping list item status')
+}
+
+// The optional check-off details: the Line Price total and the expiration date. Each field is
+// independent — omit a key to leave it unchanged, or pass null to clear it. Only the whole-line total
+// is sent (the per-unit ↔ total conversion happens in the entry UI). Returns the re-joined line so the
+// caller can replace its store copy with the persisted (rounded) price.
+export type UpdateShoppingListItemDetailsInput = {
+  linePrice?: number | null
+  expirationDate?: Date | null
+}
+
+export async function apiUpdateShoppingListItemDetails(
+  id: number,
+  input: UpdateShoppingListItemDetailsInput,
+): Promise<ShoppingListItem> {
+  const body: { linePrice?: number | null; expirationDate?: string | null } = {}
+  if ('linePrice' in input) body.linePrice = input.linePrice
+  // Serialize the Date to an ISO string; null clears it, undefined leaves it unchanged.
+  if ('expirationDate' in input) body.expirationDate = input.expirationDate ? input.expirationDate.toISOString() : null
+
+  const res = await fetch(`/api/shopping-list/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) throw new Error('Failed to update shopping list item details')
+  const raw: RawShoppingListItem = await res.json()
+  return parseShoppingListItem(raw)
+}
+
+// A single portion of a split: a share of the line's amount plus its own expiration date.
+export type ShoppingListItemPortionInput = {
+  amount: number
+  expirationDate: Date | null
+}
+
+// Split one line into several, each carrying a share of the amount and its own expiration date (the
+// "different dates per item" path). The portions must sum to the line's amount. An optional linePrice
+// (the whole-line total) is distributed across the portions server-side. Returns every resulting line.
+export async function apiSplitShoppingListItem(
+  id: number,
+  input: { portions: ShoppingListItemPortionInput[]; linePrice?: number | null },
+): Promise<ShoppingListItem[]> {
+  const body: { portions: { amount: number; expirationDate: string | null }[]; linePrice?: number | null } = {
+    portions: input.portions.map((portion) => ({
+      amount: portion.amount,
+      expirationDate: portion.expirationDate ? portion.expirationDate.toISOString() : null,
+    })),
+  }
+  if ('linePrice' in input) body.linePrice = input.linePrice
+
+  const res = await fetch(`/api/shopping-list/${id}/split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) throw new Error('Failed to split shopping list item')
+  const raw: RawShoppingListItem[] = await res.json()
+  return raw.map(parseShoppingListItem)
+}
+
+// Finish the shopping trip: archive the active list, transfer bought Food/Product lines to the Pantry,
+// and keep or drop the still-unbought lines as one batch. `keepUnbought` answers the leftover prompt.
+// Returns the ShoppingTripCompletion the server reports, with its items parsed to domain objects.
+export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<ShoppingTripCompletion> {
+  const res = await fetch('/api/shopping-list/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepUnbought }),
+  })
+
+  if (!res.ok) throw new Error('Failed to complete shopping trip')
+  const raw: Omit<ShoppingTripCompletion, 'items'> & { items: RawShoppingListItem[] } = await res.json()
+  return { ...raw, items: raw.items.map(parseShoppingListItem) }
+}

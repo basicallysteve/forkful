@@ -1,0 +1,1010 @@
+.shopping-list {
+  color: var(--vscode-text);
+  width: 100%;
+  box-sizing: border-box;
+
+  .shopping-list-content {
+    padding: 22px 22px 18px;
+    background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
+  }
+
+  .shopping-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-border);
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--vscode-text);
+    }
+  }
+
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--vscode-border);
+  }
+  // Groups the title-row actions (History / Scan / Share / Done shopping) on a single, non-wrapping row.
+  // On mobile the buttons collapse to icon-only (see .btn-label below), which keeps them narrow and
+  // uniform so all four stay on that row without overflowing.
+  .shopping-list-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+
+    // Below the 720px breakpoint (matching the row swipe-to-remove cutoff) show icons only: hide the
+    // label text and even out the padding so each button is a consistent square-ish icon target.
+    @media (max-width: 720px) {
+      .btn-label {
+        display: none;
+      }
+
+      .share-button,
+      .done-shopping-button {
+        padding: 0.4rem 0.6rem;
+      }
+    }
+  }
+
+  // Primary title-row action: finishes the trip, archives the list, and sends bought lines to the pantry.
+  .done-shopping-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--vscode-accent);
+    border: 1px solid var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    .pi {
+      font-size: 14px;
+    }
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  // Secondary, ghost-style action beside the title: copies the list to the clipboard.
+  .share-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--vscode-text);
+    background: var(--vscode-panel-strong);
+    border: 1px solid var(--vscode-border);
+    cursor: pointer;
+
+    .pi {
+      font-size: 14px;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .shopping-list-panel {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  // Segmented control that switches the add form between Food / Product / Freeform lines.
+  .variant-tabs {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+  }
+
+  .variant-tab {
+    border: none;
+    background: none;
+    padding: 6px 16px;
+    border-radius: 999px;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    &.is-active {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:not(.is-active):hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  .add-item-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 12px;
+      color: var(--vscode-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    // Make the PrimeReact controls fill their field so widths are driven by the
+    // field, not each control's intrinsic size.
+    .p-autocomplete,
+    .p-inputnumber,
+    .p-dropdown {
+      width: 100%;
+    }
+
+    .p-inputnumber-input {
+      width: 100%;
+    }
+
+    // Normalize control heights: PrimeReact's InputNumber/Dropdown default to a
+    // larger font and padding than the food autocomplete input, so match them to it.
+    .p-inputnumber-input,
+    .p-dropdown .p-dropdown-label {
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
+  }
+
+  .field-food,
+  .field-product,
+  .field-freeform {
+    flex: 1 1 auto;
+    min-width: 200px;
+  }
+
+  .field {
+    // Freeform's plain text inputs match the other controls' height.
+    .p-inputtext {
+      width: 100%;
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
+  }
+
+  // Fixed widths keep Amount/Unit from dominating the row and stop the Unit
+  // dropdown from reflowing when it swaps its placeholder for a short unit label.
+  .field-amount {
+    flex: 0 0 auto;
+    width: 110px;
+  }
+
+  .field-unit {
+    flex: 0 0 auto;
+    width: 140px;
+  }
+
+  .add-item-button {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  // Understated link-style control that reveals the unit override. The unit is auto-derived and
+  // hidden by default; most users never open this.
+  .advanced-toggle {
+    align-self: flex-start;
+    margin-top: -6px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-muted);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  .add-item-error {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  // Confirmation shown after a Shopping Trip Completion (e.g. "3 items added to your pantry").
+  .trip-summary {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .shopping-list-empty {
+    margin: 0;
+    padding: 28px 0;
+    text-align: center;
+    color: var(--vscode-muted);
+  }
+
+  // Shown above the list when the user has turned price/expiration collection off.
+  .collection-off-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--vscode-muted);
+  }
+
+  // Inline "click here to enable" affordance inside the hint — reads as a link, not a button.
+  .collection-enable-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--vscode-accent);
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  // The item list is a PrimeReact Listbox (multiple + checkbox); strip its card chrome so it reads
+  // as a plain checklist inside the panel.
+  .shopping-list-items.p-listbox {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .shopping-list-items .p-listbox-list {
+    padding: 0;
+  }
+
+  .shopping-list-items .p-listbox-item {
+    padding: 0;
+    border-radius: 0;
+    color: var(--vscode-text);
+
+    // Neutralise the theme's default selection fill — a bought line is conveyed by the checkbox and
+    // the strikethrough, not a highlighted row.
+    &.p-highlight {
+      background: transparent;
+      color: inherit;
+    }
+
+    &:hover {
+      background: var(--accent-hover);
+    }
+
+    &:focus {
+      box-shadow: inset 0 0 0 2px var(--vscode-accent);
+    }
+  }
+
+  .shopping-list-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--vscode-border);
+  }
+
+  .p-listbox-item:last-child .shopping-list-item {
+    border-bottom: none;
+  }
+
+  // Checked checkbox in the app's accent green. p-highlight can land on the root or the box across
+  // PrimeReact builds, so match both.
+  .item-check.p-highlight .p-checkbox-box,
+  .item-check .p-checkbox-box.p-highlight {
+    background: var(--vscode-accent);
+    border-color: var(--vscode-accent);
+  }
+
+  .item-check {
+    flex: 0 0 auto;
+    // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
+    pointer-events: none;
+  }
+
+  .item-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .item-name {
+    flex: 1;
+    color: var(--vscode-text);
+    font-weight: 500;
+  }
+
+  .item-qty {
+    color: var(--vscode-muted);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The captured Line Price total, right-aligned alongside the quantity.
+  .item-price {
+    flex: 0 0 auto;
+    color: var(--vscode-text);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The optional expiration date, shown as a muted chip so it reads as metadata, not an action.
+  .item-expiration {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    color: var(--vscode-muted);
+    background: var(--vscode-panel-strong);
+    border: 1px solid var(--vscode-border);
+  }
+
+  // 'unavailable' is carried by an inline amber pill; 'bought' uses the strikethrough below and
+  // 'to_buy' shows nothing.
+  .item-status-pill {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    color: var(--vscode-warning);
+    background: color-mix(in srgb, var(--vscode-warning) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--vscode-warning) 40%, transparent);
+  }
+
+  // Always-visible kebab that opens the per-line status menu (Mark unavailable / Mark to buy).
+  .item-menu {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-muted);
+    cursor: pointer;
+
+    .pi {
+      font-size: 16px;
+    }
+
+    &:hover {
+      color: var(--vscode-text);
+      background: var(--accent-hover);
+    }
+  }
+
+  // A bought line is struck through across the entire row (not just the name), drawn as a single
+  // continuous line rather than per-text-run decoration, and its text is dimmed.
+  .shopping-list-item.status-bought {
+    &::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      top: 50%;
+      height: 2px;
+      background: var(--vscode-muted);
+      pointer-events: none;
+    }
+
+    .item-name,
+    .item-qty {
+      color: var(--vscode-muted);
+    }
+  }
+
+  // Each row wraps its content plus a swipe-reveal Remove button. Below 720px a left swipe reveals it;
+  // at ≥721px it is hidden (delete lives in the kebab). Overflow hidden clips it when closed.
+  .shopping-list-row {
+    position: relative;
+    overflow: hidden;
+  }
+
+  // Below 720px this is a full-height red panel pinned to the right edge, collapsed to zero width until
+  // a left swipe opens the row. At ≥721px it is hidden entirely (the kebab's Remove replaces it).
+  .item-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: #ffffff;
+    background: var(--vscode-danger);
+    cursor: pointer;
+    transition: width 0.2s ease;
+
+    .pi {
+      font-size: 18px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .shopping-list-row.is-open .item-remove {
+    width: 64px;
+  }
+
+  // Wide screens: no swipe, and delete lives in the kebab menu — so the swipe-reveal button is hidden
+  // and the row needs no right-hand gutter reserved for it.
+  @media (min-width: 721px) {
+    .item-remove {
+      display: none;
+    }
+  }
+
+  // On narrow screens the row can't hold four controls, so stack them: the food
+  // search, Amount, Unit, and the button each take their own full-width row.
+  @media (max-width: 720px) {
+    .variant-tabs {
+      width: 100%;
+    }
+    .variant-tab {
+      width: 33%;
+    }
+
+    .add-item-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .field-food,
+    .field-product,
+    .field-freeform,
+    .field-amount,
+    .field-unit {
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .add-item-button {
+      width: 100%;
+    }
+  }
+}
+
+// The shopping-list kebab menu portals to <body>, outside .shopping-list, so its destructive Remove
+// item is styled here at the top level: danger-red text and icon to flag it as a delete.
+.menu-item-danger .p-menuitem-link {
+  .p-menuitem-text,
+  .p-menuitem-icon {
+    color: var(--vscode-danger);
+  }
+}
+
+// These dialogs portal to <body>, so they are styled here at the top level rather than under
+// .shopping-list. The Scan-to-Buy modal shares the footer / primary-button / error styling below.
+.item-details-dialog,
+.scan-to-buy-dialog {
+  // Scan-to-Buy modal body: the running confirmation banner sits above the scanner.
+  .scan-to-buy-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scan-to-buy-result {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-accent);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .item-details-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .field-label {
+      font-size: 12px;
+      color: var(--vscode-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .p-inputnumber,
+    .p-calendar {
+      width: 100%;
+    }
+
+    .p-inputnumber-input,
+    .p-calendar .p-inputtext,
+    input[type='date'] {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 14px;
+      line-height: normal;
+      padding: 10px 12px;
+    }
+
+    small {
+      color: var(--vscode-muted);
+      font-size: 12px;
+    }
+  }
+
+  // Total / Per unit and Whole line / Per item segmented toggles, mirroring the variant tabs.
+  .price-mode,
+  .expiration-mode {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+  }
+
+  // Per-item date editor: a stack of quantity + date rows with an add control and a running tally.
+  .expiration-portions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .expiration-portion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .p-inputnumber {
+      flex: 0 0 90px;
+      width: 90px;
+    }
+
+    .p-calendar {
+      flex: 1 1 auto;
+    }
+  }
+
+  .portion-remove {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--vscode-danger);
+      background: var(--accent-hover);
+    }
+  }
+
+  .expiration-portions-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .portion-add {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--vscode-accent);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .portion-tally {
+    font-variant-numeric: tabular-nums;
+
+    // Amber when the portions don't yet add up to the line — Save stays disabled until they do.
+    &.is-off {
+      color: var(--vscode-warning);
+    }
+  }
+
+  .price-mode-tab {
+    border: none;
+    background: none;
+    padding: 5px 14px;
+    border-radius: 999px;
+    color: var(--vscode-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.is-active {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:not(.is-active):hover {
+      color: var(--vscode-text);
+    }
+  }
+
+  .price-hint {
+    color: var(--vscode-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .item-details-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-border);
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+    font-size: 13px;
+  }
+
+  // "Don't ask on future shopping lists" — the profile-preference toggle inside the modal.
+  .collection-skip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--vscode-muted);
+    cursor: pointer;
+  }
+
+  // Footer actions live in the Modal's footer slot. Styled locally (the app's .primary-button /
+  // .ghost-button classes are declared ad-hoc across view stylesheets), mirroring their ghost + accent
+  // look so this dialog matches the other Modals.
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .primary-button {
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    border: 1px solid var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  .ghost-button {
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    color: var(--vscode-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--vscode-text);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // The leftover keep/drop batch prompt at Shopping Trip Completion.
+  .complete-trip-message {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: var(--vscode-text);
+  }
+
+  .complete-trip-note {
+    margin: 0;
+    font-size: 13px;
+    color: var(--vscode-muted);
+  }
+}
+
+// Shopping History (archived lists) — the price-history browse pages. Mirrors the Foods/Recipes browse
+// layout: a header with label + title + pill counts, a bordered panel, and a responsive Card grid.
+.archive-list {
+  color: var(--vscode-text);
+  width: 100%;
+  box-sizing: border-box;
+
+  .archive-content {
+    padding: 22px 22px 18px;
+    background: linear-gradient(180deg, var(--vscode-panel), var(--vscode-panel-strong));
+  }
+
+  .archive-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-border);
+  }
+
+  .archive-label {
+    margin: 0;
+    color: var(--vscode-muted);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  .archive-name {
+    margin: 4px 0 0;
+    font-size: 24px;
+    color: var(--vscode-text);
+  }
+
+  .archive-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .pill {
+    border-radius: 999px;
+    padding: clamp(0.3rem, 1vw, 0.5rem) clamp(0.4rem, 1.5vw, 0.65rem);
+    font-size: clamp(0.6rem, 2vw, 0.75rem);
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+    color: var(--vscode-muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  a.pill:hover {
+    color: var(--vscode-text);
+    border-color: var(--vscode-accent);
+  }
+
+  .pill-primary {
+    color: #ffffff;
+    border-color: var(--vscode-accent);
+    background: var(--vscode-accent);
+    box-shadow: 0 4px 12px var(--accent-glow);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pill-ghost {
+    background: var(--accent-hover);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .archive-panel {
+    border: 1px solid var(--vscode-border);
+    border-radius: 12px;
+    background: var(--vscode-panel-deep);
+    margin-top: 18px;
+  }
+
+  .panel-content {
+    padding: 14px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .archive-empty-text {
+    margin: 0;
+    padding: 24px;
+    border: 1px dashed var(--vscode-border);
+    border-radius: 10px;
+    color: var(--vscode-muted);
+    background: var(--accent-hover);
+    text-align: center;
+  }
+
+  .archive-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  .archive-card {
+    &.p-card .p-card-body {
+      width: 100%;
+      padding: clamp(0.8rem, 1.5vw, 1rem);
+    }
+    &.p-card .p-card-content {
+      padding: 0;
+    }
+    border-radius: 10px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel);
+    box-shadow: none;
+    transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+
+    &:not(.is-static):hover {
+      border-color: var(--vscode-accent);
+      background: var(--accent-hover);
+      box-shadow: 0 4px 12px var(--shadow-container);
+    }
+  }
+
+  .card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .card-title {
+    margin: 0;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+    font-weight: 600;
+    color: var(--vscode-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+  }
+
+  .card-meta {
+    font-size: 12px;
+    color: var(--vscode-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-total {
+    flex: 1;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--vscode-text);
+  }
+
+  .card-chevron {
+    color: var(--vscode-muted);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 720px) {
+    .archive-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .archive-meta {
+      justify-content: flex-start;
+    }
+
+    .archive-cards {
+      grid-template-columns: 1fr;
+    }
+  }
+}

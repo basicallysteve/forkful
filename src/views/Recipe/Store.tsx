@@ -18,6 +18,7 @@ import { Dropdown } from 'primereact/dropdown'
 import { RadioButton } from 'primereact/radiobutton'
 import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
+import RecipeImporter from './RecipeImporter'
 import './markdownImport.scss'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
@@ -248,7 +249,7 @@ function Store() {
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
 
-  const [inputMode, setInputMode] = useState<'guided' | 'markdown'>('guided')
+  const [inputMode, setInputMode] = useState<'guided' | 'markdown' | 'import'>('guided')
 
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
     name: "",
@@ -446,7 +447,15 @@ function Store() {
       </div>
     </form>
   )
-
+  let panelContent: React.ReactNode
+  if (inputMode === 'guided') {
+    panelContent = activeTab === "details" ? detailsTabContent : ingredientsTabContent
+  } else if (inputMode === 'markdown') {
+    panelContent = <MarkdownImport />
+  } else if (inputMode === 'import') {
+    panelContent = <RecipeImporter />
+  }
+  
   return (
     <div className="recipe-store">
       <div className="store-content">
@@ -485,6 +494,15 @@ function Store() {
                 Guided
               </span>
               <span
+                className={`tab ${inputMode === 'import' ? 'is-active' : ''}`}
+                onClick={() => setInputMode('import')}
+                role="button"
+                aria-label="Import mode"
+                aria-selected={inputMode === 'import'}
+              >
+                Import
+              </span>
+              <span
                 className={`tab ${inputMode === 'markdown' ? 'is-active' : ''}`}
                 onClick={() => setInputMode('markdown')}
                 role="button"
@@ -497,10 +515,7 @@ function Store() {
           </div>
 
           <div className="panel-content">
-            {inputMode === 'markdown'
-              ? <MarkdownImport />
-              : (activeTab === "details" ? detailsTabContent : ingredientsTabContent)
-            }
+            { panelContent}
           </div>
         </section>
       </div>

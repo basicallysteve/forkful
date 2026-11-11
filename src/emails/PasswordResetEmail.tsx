@@ -9,8 +9,8 @@ interface Props {
 export function PasswordResetEmail({ resetUrl, trackingPixelUrl }: Props) {
   return (
     <BaseEmail
-      subject="Reset your Forkful password"
-      previewText="Click to reset your Forkful password. This link expires in 1 hour."
+      subject="Reset your EatForkful password"
+      previewText="Click to reset your EatForkful password. This link expires in 1 hour."
       variant="functional"
       trackingPixelUrl={trackingPixelUrl}
     >
@@ -22,7 +22,7 @@ export function PasswordResetEmail({ resetUrl, trackingPixelUrl }: Props) {
       </h1>
 
       <p style={{ margin: '0 0 24px' }}>
-        We received a request to reset the password for your Forkful account.
+        We received a request to reset the password for your EatForkful account.
         Click the button below to choose a new password.
         This link expires in <strong>1 hour</strong>.
       </p>

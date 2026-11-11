@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import Store from './Store'
 import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Food } from '@/types/Food'
+import type { Recipe } from '@/types/Recipe'
 
 vi.mock('@/lib/api/foods', () => ({
   apiCreateFood: vi.fn(async (f) => ({ ...f, id: 999 })),
@@ -48,11 +49,11 @@ function renderWithProviders(
     getFoodByName = vi.fn(),
   }: {
     foods?: Food[]
-    addFood?: ReturnType<typeof vi.fn>
-    updateFood?: ReturnType<typeof vi.fn>
-    deleteFood?: ReturnType<typeof vi.fn>
-    isFoodUsedInRecipe?: ReturnType<typeof vi.fn>
-    getFoodByName?: ReturnType<typeof vi.fn>
+    addFood?: (food: Omit<Food, 'id'>) => void
+    updateFood?: (updatedFood: Food) => void
+    deleteFood?: (id: number) => void
+    isFoodUsedInRecipe?: (foodId: number, recipes: Recipe[]) => boolean
+    getFoodByName?: (name: string) => Food | undefined
   } = {}
 ) {
   resetFoodStore()

@@ -1,5 +1,6 @@
 import type { Recipe, CreateRecipeInput } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
+import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
 
 export type RecipeQueryOptions = {
   ingredient?: string
@@ -122,4 +123,17 @@ export async function apiUploadImage(file: File): Promise<string> {
   if (!res.ok) throw new Error('Failed to upload image')
   const data = await res.json()
   return data.url
+}
+
+export async function apiScrapeRecipeFromUrl(url: string): Promise<ParsedRecipe> {
+  const res = await fetch('/api/recipes/url-import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json()
+    throw new Error(errorData.error || 'Failed to scrape recipe')
+  }
+  return res.json()
 }

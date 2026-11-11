@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar } from './users'
+import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences, apiUpdateNutritionGoal } from './users'
 
 const mockUser = {
   id: '1',
@@ -22,6 +22,8 @@ describe('apiSignUp', () => {
       username: 'testuser',
       email: 'test@example.com',
       password: 'StrongPass1!',
+      cuisinePreferences: [],
+      dietaryRestrictions: [],
     })
 
     expect(result).toEqual(mockUser)
@@ -38,7 +40,7 @@ describe('apiSignUp', () => {
     } as Response)
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'taken@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'taken@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Email already in use')
   })
 
@@ -49,7 +51,7 @@ describe('apiSignUp', () => {
     } as unknown as Response)
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Registration failed')
   })
 
@@ -57,7 +59,7 @@ describe('apiSignUp', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
     await expect(
-      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
     ).rejects.toThrow('Network error')
   })
 
@@ -67,7 +69,7 @@ describe('apiSignUp', () => {
       json: async () => mockUser,
     } as Response)
 
-    await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!' })
+    await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
 
     expect(fetch).toHaveBeenCalledWith(
       '/api/users',
@@ -89,6 +91,49 @@ describe('apiLogout', () => {
       '/api/logout',
       expect.objectContaining({ method: 'POST', credentials: 'same-origin' })
     )
+  })
+})
+
+describe('apiUpdateShoppingPreferences', () => {
+  it('sends PATCH with the shoppingPreferences action', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
+
+    await apiUpdateShoppingPreferences(42, { enableShoppingListPricingCollection: false })
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/42',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'shoppingPreferences', enableShoppingListPricingCollection: false }),
+      })
+    )
+  })
+})
+
+describe('apiUpdateNutritionGoal', () => {
+  it('sends PATCH with the nutritionGoal action and the goal fields', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
+
+    await apiUpdateNutritionGoal(42, { calories: 2000, protein: 150, carbs: null, fat: 60, fiber: null })
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/users/42',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'nutritionGoal', calories: 2000, protein: 150, carbs: null, fat: 60, fiber: null }),
+      })
+    )
+  })
+
+  it('throws with server error message on non-ok response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Nutrition goal values must be non-negative numbers or blank' }),
+    } as Response)
+
+    await expect(
+      apiUpdateNutritionGoal(42, { calories: -1, protein: null, carbs: null, fat: null, fiber: null })
+    ).rejects.toThrow('Nutrition goal values must be non-negative numbers or blank')
   })
 })
 

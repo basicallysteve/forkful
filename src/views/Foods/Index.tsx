@@ -13,6 +13,8 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import OpenFoodFactsImport from '@/components/OpenFoodFactsImport/OpenFoodFactsImport'
+import StatusDot from '@/components/StatusLegend/StatusDot'
+import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
 type SortOption = 'name' | 'calories' | 'protein'
 type SortDirection = 'asc' | 'desc'
@@ -193,6 +195,8 @@ export default function Foods() {
           </div>
         </header>
 
+        <StatusLegend items={[{ variant: 'in-use', label: 'In use' }]} />
+
         <section className="foods-panel">
           <div className="panel-toolbar">
             <div className="toolbar-filters">
@@ -298,7 +302,7 @@ export default function Foods() {
                           <div className="card-badges">
                             <span className="pill pill-ghost">{food.calories} cal</span>
                             {isFoodUsedInRecipe(food.id, recipes) && (
-                              <span className="pill pill-info">In use</span>
+                              <StatusDot variant="in-use" label="In use" />
                             )}
                           </div>
                         </div>

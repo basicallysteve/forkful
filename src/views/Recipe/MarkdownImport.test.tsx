@@ -224,8 +224,11 @@ describe('MarkdownImport — preview state', () => {
     const parseBtn = screen.getByRole('button', { name: /parse & preview/i })
     await user.click(parseBtn)
 
-    // Wait for preview to appear
+    // Wait for preview to appear, then for ingredient resolution to settle
     await screen.findByText('Recipe Details')
+    await waitFor(() =>
+      expect(screen.queryByText('Resolving ingredients…')).not.toBeInTheDocument()
+    )
     return user
   }
 
@@ -359,7 +362,15 @@ describe('MarkdownImport — preview state', () => {
 
     await waitFor(() => {
       expect(apiCreateRecipe).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Test Recipe', meal: 'Dinner', serves: 2 })
+        expect.objectContaining({
+          name: 'Test Recipe',
+          meal: 'Dinner',
+          serves: 2,
+          // The editable quantity/unit defaults (seeded from the parse) commit through the override.
+          ingredients: expect.arrayContaining([
+            expect.objectContaining({ quantity: 500, servingUnit: 'g' }),
+          ]),
+        })
       )
       // Two steps in the template
       expect(apiCreateRecipeStep).toHaveBeenCalledTimes(2)

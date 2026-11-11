@@ -3,12 +3,12 @@ import styles from './layout.module.scss'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Forkful',
-    default: 'Forkful',
+    template: '%s | EatForkful',
+    default: 'EatForkful',
   },
   description: 'Recipes worth repeating.',
   openGraph: {
-    siteName: 'Forkful',
+    siteName: 'EatForkful',
     images: [{ url: '/og-default.png' }],
   },
   twitter: {

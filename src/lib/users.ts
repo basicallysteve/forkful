@@ -1,10 +1,11 @@
 import { eq, and, gt, gte, isNull, isNotNull, lt, lte, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, login_attempts, passwordResetTokens, oauthAccounts, accountFeedback, recipes } from '@/db/schema'
-import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { sendGoodbyeEmail, sendDeactivationExpiryWarningEmail } from '@/lib/email'
+import { defaultMealSlots } from '@/constants/userPreferences'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 
@@ -16,10 +17,20 @@ function mapUser(row: typeof users.$inferSelect): User {
     hasPassword: !!row.password,
     cuisinePreferences: row.cuisinePreferences,
     dietaryRestrictions: row.dietaryRestrictions,
+    // Users created before this field default to the seeded slots.
+    mealSlots: row.mealSlots ?? [...defaultMealSlots],
     avatarUrl: row.avatarUrl ?? null,
     marketingEmailOptIn: row.marketingEmailOptIn,
     recipeSuggestionFrequency: row.recipeSuggestionFrequency as RecipeSuggestionFrequency,
     pantryExpirationFrequency: row.pantryExpirationFrequency as PantryExpirationFrequency,
+    enableShoppingListPricingCollection: row.enableShoppingListPricingCollection,
+    nutritionGoal: {
+      calories: row.calorieGoal,
+      protein: row.proteinGoal !== null ? Number(row.proteinGoal) : null,
+      carbs: row.carbsGoal !== null ? Number(row.carbsGoal) : null,
+      fat: row.fatGoal !== null ? Number(row.fatGoal) : null,
+      fiber: row.fiberGoal !== null ? Number(row.fiberGoal) : null,
+    },
     dateAdded: row.dateAdded!,
     dateDeleted: row.dateDeleted,
   }
@@ -248,6 +259,10 @@ export async function updateUserPreferences(userId: number, data: { cuisinePrefe
     }).where(eq(users.id, userId))
 }
 
+export async function updateMealSlots(userId: number, mealSlots: string[]): Promise<void> {
+    await db.update(users).set({ mealSlots }).where(eq(users.id, userId))
+}
+
 export async function updateUserEmail(userId: number, newEmail: string): Promise<void> {
     const [existing] = await db.select().from(users).where(eq(users.email, newEmail))
     if (existing && existing.id !== userId) throw new Error('Email already in use')
@@ -291,6 +306,25 @@ export async function updateEmailPreferences(userId: number, data: {
     pantryExpirationFrequency: PantryExpirationFrequency
 }): Promise<void> {
     await db.update(users).set(data).where(eq(users.id, userId))
+}
+
+export async function updateShoppingPreferences(userId: number, data: {
+    enableShoppingListPricingCollection: boolean
+}): Promise<void> {
+    await db.update(users).set(data).where(eq(users.id, userId))
+}
+
+// Set/clear the User's Nutrition Goal. Each field is independently nullable — a null clears that
+// target while leaving the others intact. Macros are written as strings to the numeric columns
+// (same convention as the food macro columns).
+export async function updateNutritionGoal(userId: number, goal: NutritionGoal): Promise<void> {
+    await db.update(users).set({
+        calorieGoal: goal.calories,
+        proteinGoal: goal.protein !== null ? String(goal.protein) : null,
+        carbsGoal: goal.carbs !== null ? String(goal.carbs) : null,
+        fatGoal: goal.fat !== null ? String(goal.fat) : null,
+        fiberGoal: goal.fiber !== null ? String(goal.fiber) : null,
+    }).where(eq(users.id, userId))
 }
 
 export async function deactivateAccount(userId: number): Promise<void> {

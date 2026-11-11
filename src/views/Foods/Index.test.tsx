@@ -64,8 +64,8 @@ function renderWithProviders(
   }: {
     foods?: Food[]
     recipes?: Recipe[]
-    deleteFood?: ReturnType<typeof vi.fn>
-    isFoodUsedInRecipe?: ReturnType<typeof vi.fn>
+    deleteFood?: (id: number) => void
+    isFoodUsedInRecipe?: (foodId: number, recipes: Recipe[]) => boolean
   } = {}
 ) {
   resetFoodStore()
@@ -269,7 +269,9 @@ describe('Foods List Page', () => {
       const isFoodUsedInRecipe = vi.fn().mockImplementation((id) => id === 1)
       renderWithProviders(<Foods />, { isFoodUsedInRecipe })
 
-      expect(screen.getByText('In use')).toBeInTheDocument()
+      // The status dot (role=img) only renders for an in-use food; the legend
+      // also contains "In use" text, so target the dot specifically.
+      expect(screen.getByRole('img', { name: 'In use' })).toBeInTheDocument()
     })
   })
 

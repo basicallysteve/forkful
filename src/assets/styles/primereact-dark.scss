@@ -179,3 +179,91 @@ html[data-theme='light'] { @include quill-light; }
   overflow: hidden;
   border-radius: 8px;
 }
+
+// ── DatePicker (Calendar) popup ───────────────────────────────────────────────
+// lara-dark-blue paints the calendar popup with its own blue accent and chrome, so it clashes with the
+// app's surfaces. Retame the panel with our tokens (they are theme-aware, so this covers light + dark),
+// and put the green app accent on the selected day and "today" so it matches the rest of the UI.
+
+.p-datepicker {
+  background: var(--surface-a);
+  border: 1px solid var(--surface-border);
+  color: var(--text-color);
+
+  .p-datepicker-header {
+    background: transparent;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-color);
+  }
+
+  // Month / year title buttons and prev/next arrows.
+  .p-datepicker-title .p-datepicker-month,
+  .p-datepicker-title .p-datepicker-year {
+    color: var(--text-color);
+
+    &:enabled:hover {
+      color: var(--vscode-accent);
+    }
+  }
+
+  .p-datepicker-prev,
+  .p-datepicker-next {
+    color: var(--text-color-secondary);
+
+    &:enabled:hover {
+      color: var(--vscode-accent);
+      background: var(--surface-hover);
+    }
+  }
+
+  // Weekday header row.
+  .p-datepicker-calendar th > span {
+    color: var(--text-color-secondary);
+  }
+
+  // Day cells.
+  .p-datepicker-calendar td > span {
+    color: var(--text-color);
+    border-radius: 8px;
+
+    &:not(.p-disabled):not(.p-highlight):hover {
+      background: var(--surface-hover);
+    }
+
+    &.p-highlight {
+      background: var(--vscode-accent);
+      color: #ffffff;
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--surface-hover);
+    }
+  }
+
+  // Today marker (when not the selected day): a subtle accent ring instead of lara's fill.
+  .p-datepicker-calendar td.p-datepicker-today > span:not(.p-highlight) {
+    background: transparent;
+    border: 1px solid var(--vscode-accent);
+    color: var(--text-color);
+  }
+
+  // Month / year quick-pickers share the selected-day highlight.
+  .p-monthpicker .p-monthpicker-month.p-highlight,
+  .p-yearpicker .p-yearpicker-year.p-highlight {
+    background: var(--vscode-accent);
+    color: #ffffff;
+  }
+
+  // Today / Clear button bar.
+  .p-datepicker-buttonbar {
+    border-top: 1px solid var(--surface-border);
+
+    .p-button.p-button-text {
+      color: var(--vscode-accent);
+
+      &:enabled:hover {
+        background: var(--surface-hover);
+      }
+    }
+  }
+}

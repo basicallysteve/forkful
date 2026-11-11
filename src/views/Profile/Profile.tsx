@@ -8,19 +8,24 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
-import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
+import { OrderList } from 'primereact/orderlist'
+import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
+  apiUpdateMealSlots,
   apiUpdateEmail,
   apiUpdatePassword,
   apiUploadAvatar,
   apiUpdateUsername,
   apiUpdateEmailPreferences,
+  apiUpdateShoppingPreferences,
+  apiUpdateNutritionGoal,
   apiDeactivateAccount,
   apiDeleteAccount,
   apiSubmitAccountFeedback,
 } from '@/lib/api/users'
-import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { User, RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
+import { isValidGoalValue } from '@/types/User'
 import './profile.scss'
 
 const commonPasswords = [
@@ -53,6 +58,37 @@ const PANTRY_FREQUENCY_OPTIONS = [
   { label: 'Daily', value: 'daily' },
   { label: 'Weekly', value: 'weekly' },
 ]
+
+// The Nutrition Goal fields, in display order, with the unit shown next to each input.
+const NUTRITION_GOAL_FIELDS: { key: keyof NutritionGoal; label: string; unit: string }[] = [
+  { key: 'calories', label: 'Daily calories', unit: 'kcal' },
+  { key: 'protein', label: 'Protein', unit: 'g' },
+  { key: 'carbs', label: 'Carbs', unit: 'g' },
+  { key: 'fat', label: 'Fat', unit: 'g' },
+  { key: 'fiber', label: 'Fiber', unit: 'g' },
+]
+
+type NutritionGoalForm = Record<keyof NutritionGoal, string>
+
+// The goal is stored as nullable numbers but edited as text — blank means "unset". These convert
+// between the two: null <-> '' , number <-> its string form.
+function goalToForm(goal: NutritionGoal): NutritionGoalForm {
+  return {
+    calories: goal.calories !== null ? String(goal.calories) : '',
+    protein: goal.protein !== null ? String(goal.protein) : '',
+    carbs: goal.carbs !== null ? String(goal.carbs) : '',
+    fat: goal.fat !== null ? String(goal.fat) : '',
+    fiber: goal.fiber !== null ? String(goal.fiber) : '',
+  }
+}
+
+// A single field is valid when blank (unset) or a value its column can store without rounding
+// (whole numbers for calories, up to 2 decimals for macros — see isValidGoalValue).
+function isValidGoalInput(key: keyof NutritionGoal, value: string): boolean {
+  if (value.trim() === '') return true
+  const n = Number(value)
+  return isValidGoalValue(key, n)
+}
 
 interface PasswordValidation {
   hasMinLength: boolean
@@ -169,6 +205,58 @@ export default function Profile({ user }: ProfileProps) {
     }
   }
 
+  // Meal slots — each row carries a stable id so reorder/remove keep React identity
+  // tied to the slot rather than its position. Names are set once on add and are
+  // read-only thereafter; the only edits are create, delete, and reorder.
+  const slotIdRef = useRef(0)
+  const toSlots = (names: string[]) => names.map(name => ({ id: slotIdRef.current++, name }))
+  const [mealSlots, setMealSlots] = useState(() => toSlots(user.mealSlots ?? [...defaultMealSlots]))
+  const [newSlot, setNewSlot] = useState('')
+  const [mealSlotsSaving, setMealSlotsSaving] = useState(false)
+  const [mealSlotsError, setMealSlotsError] = useState<string | null>(null)
+  const [mealSlotsSuccess, setMealSlotsSuccess] = useState(false)
+
+  function removeSlot(id: number) {
+    setMealSlots(prev => prev.filter(s => s.id !== id))
+    setMealSlotsSuccess(false)
+  }
+
+  function reorderSlots(value: { id: number; name: string }[]) {
+    setMealSlots(value)
+    setMealSlotsSuccess(false)
+  }
+
+  function addSlot() {
+    const trimmed = newSlot.trim()
+    if (!trimmed) return
+    if (mealSlots.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+      setMealSlotsError('That meal slot already exists')
+      return
+    }
+    setMealSlots(prev => [...prev, { id: slotIdRef.current++, name: trimmed }])
+    setNewSlot('')
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+  }
+
+  async function saveMealSlots() {
+    // Names are always trimmed, non-blank, and unique by construction (add-time
+    // guard + read-only rows), so we can persist the current order as-is.
+    const names = mealSlots.map(s => s.name)
+    setMealSlotsSaving(true)
+    setMealSlotsError(null)
+    setMealSlotsSuccess(false)
+    try {
+      const saved = await apiUpdateMealSlots(user.id!, names)
+      setMealSlots(toSlots(saved))
+      setMealSlotsSuccess(true)
+    } catch (err) {
+      setMealSlotsError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setMealSlotsSaving(false)
+    }
+  }
+
   // Email preferences
   const [marketingOptIn, setMarketingOptIn] = useState(user.marketingEmailOptIn)
   const [recipeFreq, setRecipeFreq] = useState<RecipeSuggestionFrequency>(user.recipeSuggestionFrequency)
@@ -192,6 +280,61 @@ export default function Profile({ user }: ProfileProps) {
       setEmailPrefError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setEmailPrefSaving(false)
+    }
+  }
+
+  // Shopping list preferences
+  const [pricingCollection, setPricingCollection] = useState(user.enableShoppingListPricingCollection)
+  const [shoppingPrefSaving, setShoppingPrefSaving] = useState(false)
+  const [shoppingPrefError, setShoppingPrefError] = useState<string | null>(null)
+  const [shoppingPrefSuccess, setShoppingPrefSuccess] = useState(false)
+
+  async function saveShoppingPreferences() {
+    setShoppingPrefSaving(true)
+    setShoppingPrefError(null)
+    setShoppingPrefSuccess(false)
+    try {
+      await apiUpdateShoppingPreferences(user.id!, { enableShoppingListPricingCollection: pricingCollection })
+      setShoppingPrefSuccess(true)
+    } catch (err) {
+      setShoppingPrefError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setShoppingPrefSaving(false)
+    }
+  }
+
+  // Nutrition Goal
+  const [goalForm, setGoalForm] = useState<NutritionGoalForm>(() => goalToForm(user.nutritionGoal))
+  const [goalSaving, setGoalSaving] = useState(false)
+  const [goalError, setGoalError] = useState<string | null>(null)
+  const [goalSuccess, setGoalSuccess] = useState(false)
+  const goalFieldsValid = useMemo(
+    () => NUTRITION_GOAL_FIELDS.every(({ key }) => isValidGoalInput(key, goalForm[key])),
+    [goalForm],
+  )
+
+  function setGoalField(key: keyof NutritionGoal, value: string) {
+    setGoalForm(prev => ({ ...prev, [key]: value }))
+    setGoalSuccess(false)
+  }
+
+  async function saveNutritionGoal() {
+    if (!goalFieldsValid) return
+    setGoalSaving(true)
+    setGoalError(null)
+    setGoalSuccess(false)
+    try {
+      const goal = NUTRITION_GOAL_FIELDS.reduce((acc, { key }) => {
+        const raw = goalForm[key].trim()
+        acc[key] = raw === '' ? null : Number(raw)
+        return acc
+      }, {} as NutritionGoal)
+      await apiUpdateNutritionGoal(user.id!, goal)
+      setGoalSuccess(true)
+    } catch (err) {
+      setGoalError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setGoalSaving(false)
     }
   }
 
@@ -396,6 +539,69 @@ export default function Profile({ user }: ProfileProps) {
           </div>
         </section>
 
+        {/* Meal slots */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Meal Slots</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <small className="field-hint">
+              The buckets your daily food log groups into. Add a slot, remove one, or drag to reorder —
+              whether you eat one meal a day or five, shape the slots how you want.
+            </small>
+            <div className="meal-slot-add">
+              <InputText
+                value={newSlot}
+                placeholder="Add a meal slot…"
+                aria-label="New meal slot name"
+                onChange={e => { setNewSlot(e.target.value); setMealSlotsError(null) }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSlot() } }}
+                className="meal-slot-input"
+              />
+              <button type="button" className="secondary-button" onClick={addSlot} disabled={!newSlot.trim()}>
+                Add
+              </button>
+            </div>
+            <hr className="section-divider" />
+            {mealSlots.length === 0 ? (
+              <p className="meal-slot-empty">No meal slots yet — add one above.</p>
+            ) : (
+              <OrderList
+                className="meal-slot-orderlist"
+                dataKey="id"
+                value={mealSlots}
+                onChange={e => reorderSlots(e.value)}
+                dragdrop
+                itemTemplate={(slot: { id: number; name: string }) => {
+                  return (
+                    <div className="meal-slot-row">
+                      <span className="meal-slot-name">{slot.name}</span>
+                      <button
+                        type="button"
+                        className="icon-button icon-button--danger"
+                        aria-label={`Remove ${slot.name}`}
+                        onClick={() => removeSlot(slot.id)}
+                        onMouseDown={e => e.stopPropagation()}
+                      >
+                        <i className="pi pi-trash" aria-hidden="true" />
+                      </button>
+                    </div>
+                  )
+                }}
+              />
+            )}
+            <div className="panel-footer">
+              {mealSlotsSuccess && <span className="success-text">Saved!</span>}
+              {mealSlotsError && <span className="field-error" role="alert">{mealSlotsError}</span>}
+              <button className="primary-button" onClick={saveMealSlots} disabled={mealSlotsSaving}>
+                {mealSlotsSaving ? 'Saving…' : 'Save Meal Slots'}
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Email preferences */}
         <section className="profile-panel">
           <div className="panel-toolbar">
@@ -433,6 +639,75 @@ export default function Profile({ user }: ProfileProps) {
               {emailPrefError && <span className="field-error" role="alert">{emailPrefError}</span>}
               <button className="primary-button" onClick={saveEmailPreferences} disabled={emailPrefSaving}>
                 {emailPrefSaving ? 'Saving…' : 'Save Email Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Shopping list preferences */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Shopping List</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <div className="pref-group">
+              <label className={`checkbox-option${pricingCollection ? ' is-active' : ''}`} onClick={() => { setPricingCollection(prev => !prev); setShoppingPrefSuccess(false) }}>
+                <span className="checkbox-indicator" />
+                Enable pricing/expiration collection
+              </label>
+              <small className="field-hint">When on, checking an item off prompts you to record its price and expiration date.</small>
+            </div>
+            <div className="panel-footer">
+              {shoppingPrefSuccess && <span className="success-text">Saved!</span>}
+              {shoppingPrefError && <span className="field-error" role="alert">{shoppingPrefError}</span>}
+              <button className="primary-button" onClick={saveShoppingPreferences} disabled={shoppingPrefSaving}>
+                {shoppingPrefSaving ? 'Saving…' : 'Save Shopping List Preferences'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Nutrition goal */}
+        <section className="profile-panel">
+          <div className="panel-toolbar">
+            <div className="toolbar-tabs">
+              <span className="tab is-active">Nutrition Goal</span>
+            </div>
+          </div>
+          <div className="panel-content">
+            <p className="field-hint">Set your daily targets. Leave a field blank for no target.</p>
+            <div className="nutrition-goal-grid">
+              {NUTRITION_GOAL_FIELDS.map(({ key, label, unit }) => {
+                const invalid = !isValidGoalInput(key, goalForm[key])
+                return (
+                  <label key={key} className={`form-field ${invalid ? 'has-error' : ''}`}>
+                    <span className="field-label">{label}</span>
+                    <div className="nutrition-goal-input">
+                      <InputText
+                        value={goalForm[key]}
+                        onChange={e => setGoalField(key, e.target.value)}
+                        inputMode={key === 'calories' ? 'numeric' : 'decimal'}
+                        placeholder="—"
+                        aria-label={label}
+                      />
+                      <span className="nutrition-goal-unit">{unit}</span>
+                    </div>
+                    {invalid && (
+                      <span className="field-error" role="alert">
+                        {key === 'calories' ? 'Enter a non-negative whole number.' : 'Enter a non-negative number (up to 2 decimals).'}
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+            <div className="panel-footer">
+              {goalSuccess && <span className="success-text">Saved!</span>}
+              {goalError && <span className="field-error" role="alert">{goalError}</span>}
+              <button className="primary-button" onClick={saveNutritionGoal} disabled={goalSaving || !goalFieldsValid}>
+                {goalSaving ? 'Saving…' : 'Save Nutrition Goal'}
               </button>
             </div>
           </div>

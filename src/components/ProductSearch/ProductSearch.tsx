@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
 import { SelectButton } from 'primereact/selectbutton'
@@ -11,6 +11,8 @@ import type { Product } from '@/types/Product'
 import type { USDABrandedItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
+import BarcodeCreationModal from '@/components/BarcodeCreationModal/BarcodeCreationModal'
+import LinkFoodModal from '@/components/BarcodeCreationModal/LinkFoodModal'
 import './product-search.scss'
 
 type Tab = 'search' | 'barcode'
@@ -57,6 +59,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [importing, setImporting] = useState(false)
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null)
+  const [productPendingFoodLink, setUnlinkProduct] = useState<Product | null>(null)
+  const [detectingCode, setDetectingCode] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -144,14 +149,19 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
     }
   }
 
-  async function handleBarcodeDetected(code: string) {
+  const handleBarcodeDetected = useCallback(async (code: string) => {
     setBarcodeLoading(true)
+    setDetectingCode(code)
     setBarcodeError(null)
     try {
       // Single server call: checks local DB, falls back to OFF, auto-creates if needed
       const product = await apiFetchProductByBarcode(code)
       if (!product) {
-        setBarcodeError(`No product found for barcode ${code}.`)
+        setPendingBarcode(code)
+        return
+      }
+      if (!product.parentFoodId) {
+        setUnlinkProduct(product)
         return
       }
       onChange(product)
@@ -159,8 +169,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       setBarcodeError('Barcode lookup failed. Please try again.')
     } finally {
       setBarcodeLoading(false)
+      setDetectingCode(null)
     }
-  }
+  }, [onChange])
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     acRef.current?.search(e, inputValue)
@@ -242,11 +253,38 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       {activeTab === 'barcode' && (
         <div className="product-search-panel">
           {barcodeError && <p className="product-search-error">{barcodeError}</p>}
-          {barcodeLoading && <p className="product-search-status">Looking up barcode…</p>}
-          {!barcodeLoading && (
-            <BarcodeScanner onDetected={handleBarcodeDetected} />
-          )}
+          <BarcodeScanner
+            onDetected={handleBarcodeDetected}
+            loading={barcodeLoading}
+            detectedCode={detectingCode}
+          />
         </div>
+      )}
+
+      {productPendingFoodLink && (
+        <LinkFoodModal
+          product={productPendingFoodLink}
+          onLinked={(product) => {
+            setUnlinkProduct(null)
+            onChange(product)
+          }}
+          onSkip={(product) => {
+            setUnlinkProduct(null)
+            onChange(product)
+          }}
+          onHide={() => setUnlinkProduct(null)}
+        />
+      )}
+
+      {pendingBarcode && (
+        <BarcodeCreationModal
+          barcode={pendingBarcode}
+          onCreated={(product) => {
+            setPendingBarcode(null)
+            onChange(product)
+          }}
+          onHide={() => setPendingBarcode(null)}
+        />
       )}
     </div>
   )

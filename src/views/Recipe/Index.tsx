@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
 import { Dropdown } from 'primereact/dropdown'
-import DOMPurify from 'dompurify'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
 import { type Recipe } from '@/types/Recipe'
@@ -17,14 +16,36 @@ import {
   apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep,
   apiReorderRecipeSteps, apiUploadImage,
 } from '@/lib/api/recipes'
+import { apiFetchFoods } from '@/lib/api/foods'
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
+import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
+import PrepareMealDialog from '@/components/PrepareMealDialog/PrepareMealDialog'
+import { apiFillPantryGapFromRecipe } from '@/lib/api/shoppingList'
+import SignupWall from '@/components/SignupWall/SignupWall'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
+
+// Attribution link back to the original recipe for URL-imported recipes.
+function RecipeSource({ recipe }: { recipe: Recipe }) {
+  if (!recipe.sourceUrl) return null
+  let label = recipe.sourceName
+  if (!label) {
+    try { label = new URL(recipe.sourceUrl).hostname.replace(/^www\./, '') } catch { label = recipe.sourceUrl }
+  }
+  return (
+    <p className="recipe-source">
+      Source:{' '}
+      <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="recipe-source-link">
+        {label} ↗
+      </a>
+    </p>
+  )
+}
 
 interface RecipeProps {
   recipe: Recipe
@@ -34,15 +55,18 @@ interface RecipeProps {
   canSave?: boolean
   initialSaved?: boolean
   isLoggedIn?: boolean
+  gated?: boolean
 }
 
-export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false }: RecipeProps) {
+export default function Recipe({ recipe, foods = [], isEditing = false, canEdit = true, canSave = false, initialSaved = false, isLoggedIn = false, gated = false }: RecipeProps) {
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe)
   const toast = useRef<Toast>(null)
 
   const [editMode, setEditMode] = useState(isEditing && canEdit)
   const [saved, setSaved] = useState(initialSaved)
   const [savePending, setSavePending] = useState(false)
+  const [prepareMealVisible, setPrepareMealVisible] = useState(false)
+  const [gapFillPending, setGapFillPending] = useState(false)
   const [currentRecipe, setCurrentRecipe] = useState<Recipe>({ ...recipe })
   const [editedRecipe, setEditedRecipe] = useState<Recipe>({ ...recipe })
   const [localFoods, setLocalFoods] = useState<Food[]>(foods)
@@ -50,6 +74,30 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
   const [perServing, setPerServing] = useState(true)
   const [activePanel, setActivePanel] = useState<'ingredients' | 'reviews'>('ingredients')
   const stepDebounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // Tracks whether the lazy catalog fetch has been kicked off. A ref (not `localFoods.length`) so that
+  // FoodSearch appending a picked food to `localFoods` can't re-run the effect and cancel the in-flight
+  // request. Starts "loaded" when a caller already supplied foods.
+  const catalogFetchStartedRef = useRef(foods.length > 0)
+
+  // The food catalog only powers ingredient editing, so fetch it lazily the first time the user enters
+  // edit mode rather than shipping it with every (read-only, often anonymous) recipe view. FoodSearch
+  // queries the server per keystroke regardless, so this only warms instant local suggestions.
+  useEffect(() => {
+    if (!editMode || catalogFetchStartedRef.current) return
+    catalogFetchStartedRef.current = true
+    let cancelled = false
+    apiFetchFoods()
+      .then((fetched) => {
+        if (cancelled || fetched.length === 0) return
+        // Merge rather than replace so a food the user picked while the fetch was in flight survives.
+        setLocalFoods((prev) => {
+          const fetchedIds = new Set(fetched.map((food) => food.id))
+          return [...fetched, ...prev.filter((food) => !fetchedIds.has(food.id))]
+        })
+      })
+      .catch(() => { catalogFetchStartedRef.current = false })
+    return () => { cancelled = true }
+  }, [editMode])
 
   let publishedText = "Unpublished"
   let isPublished = false
@@ -121,6 +169,34 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     console.log('Copy recipe clicked:', recipe.name)
   }
 
+  // Pantry-Gap Fill: add only the ingredients this recipe is short on to the active shopping list.
+  async function handleFillPantryGap() {
+    setGapFillPending(true)
+    try {
+      const { items, skippedFullyStocked } = await apiFillPantryGapFromRecipe(currentRecipe.shortId)
+      if (items.length === 0) {
+        toast.current?.show({
+          severity: 'info',
+          summary: 'Nothing to add',
+          detail: skippedFullyStocked > 0
+            ? 'Your pantry already covers every ingredient.'
+            : 'This recipe has no ingredients to add.',
+          life: 3500,
+        })
+      } else {
+        const added = `Added ${items.length} missing ${items.length === 1 ? 'ingredient' : 'ingredients'} to your shopping list.`
+        const skipped = skippedFullyStocked > 0
+          ? ` ${skippedFullyStocked} already in stock.`
+          : ''
+        toast.current?.show({ severity: 'success', summary: 'Shopping list updated', detail: added + skipped, life: 4000 })
+      }
+    } catch {
+      toast.current?.show({ severity: 'error', summary: 'Could not update shopping list', detail: 'Please try again.', life: 4000 })
+    } finally {
+      setGapFillPending(false)
+    }
+  }
+
   // Helper: calories for a given quantity + unit, falling back to 0 if unconvertible
   function computeIngredientCalories(food: Food, quantity: number, servingUnit: string): number {
     const measurement = food.measurements?.find((m) => m.unit === servingUnit)
@@ -180,35 +256,35 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       return
     }
 
-    // Check if there's an empty ingredient slot already (prevents adding duplicates)
-    const hasEmptyIngredient = editedRecipe.ingredients.some(ing => !ing.food)
+    // A freshly-added row carries the placeholder Food (id 0) until the user picks one via FoodSearch.
+    // `Ingredient.food` is always set, so detect that sentinel — not a falsy food — to avoid stacking
+    // multiple unpicked rows.
+    const hasEmptyIngredient = editedRecipe.ingredients.some(ing => ing.food.id === 0)
     if (hasEmptyIngredient) {
       return // Don't add another empty ingredient if one already exists
     }
 
-    // Create a placeholder ingredient with the first food
-    if (localFoods.length > 0) {
-      // default to empty values
-      const defaultFood = {
-        id: 0,
-        name: '',
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        servingSize: 1,
-        servingUnit: DEFAULT_SERVING_UNIT,
-        measurements: [],
-      }
-      const newIngredient: Ingredient = {
-        food: defaultFood,
-        quantity: defaultFood.servingSize || 1,
-        calories: defaultFood.calories || 0,
-        servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
-      }
-      setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
+    // Add an empty placeholder row; its Food is chosen via FoodSearch (server-backed), so this does
+    // not depend on the local catalog being loaded yet.
+    const defaultFood = {
+      id: 0,
+      name: '',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      servingSize: 1,
+      servingUnit: DEFAULT_SERVING_UNIT,
+      measurements: [],
     }
+    const newIngredient: Ingredient = {
+      food: defaultFood,
+      quantity: defaultFood.servingSize || 1,
+      calories: defaultFood.calories || 0,
+      servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT,
+    }
+    setEditedRecipe(prev => ({ ...prev, ingredients: [...prev.ingredients, newIngredient] }))
   }
 
   function handleIngredientFoodChange(index: number, food: Food) {
@@ -370,6 +446,51 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     </button>
   )
 
+  if (gated) {
+    const hasMeta =
+      recipe.prepTime != null || recipe.cookTime != null || recipe.totalTime != null ||
+      !!recipe.cuisineType || (recipe.dietaryTags ?? []).length > 0
+    return (
+      <div className="recipe-view">
+        <div className="recipe-content">
+          <header className="recipe-header">
+            <div className="recipe-header-container">
+              <Link href="/recipes" className="back-link">← All Recipes</Link>
+              <p className="recipe-label">Recipe</p>
+              <h2 className="recipe-name">{recipe.name}</h2>
+            </div>
+            <div className="recipe-meta">
+              <span className="pill pill-ghost">{recipe.ingredientCount ?? 0} ingredients</span>
+            </div>
+          </header>
+
+          <div
+            className="recipe-description"
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(recipe.description) }}
+          />
+
+          <RecipeSource recipe={recipe} />
+
+          {hasMeta && (
+            <section className="recipe-meta-display">
+              <div className="meta-pills">
+                {recipe.cuisineType && <span className="pill pill-ghost">{recipe.cuisineType}</span>}
+                {recipe.prepTime != null && <span className="pill pill-ghost">Prep: {recipe.prepTime}m</span>}
+                {recipe.cookTime != null && <span className="pill pill-ghost">Cook: {recipe.cookTime}m</span>}
+                {recipe.totalTime != null && <span className="pill pill-ghost">Total: {recipe.totalTime}m</span>}
+                {(recipe.dietaryTags ?? []).map((tag) => (
+                  <span key={tag} className="pill pill-primary">{tag}</span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <SignupWall />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="recipe-view">
       <Toast ref={toast} position="bottom-right" />
@@ -396,6 +517,11 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             <span className="pill pill-ghost">
               {displayRecipe.ingredients.length} ingredients
             </span>
+            {displayRecipe.isPublic && (displayRecipe.viewCount ?? 0) > 0 && (
+              <span className="pill pill-ghost">
+                {displayRecipe.viewCount} {displayRecipe.viewCount === 1 ? 'view' : 'views'}
+              </span>
+            )}
           </div>
         </header>
 
@@ -410,9 +536,11 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         ) : (
           <div
             className="recipe-description"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayRecipe.description) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichText(displayRecipe.description) }}
           />
         )}
+
+        {!editMode && <RecipeSource recipe={displayRecipe} />}
 
         {editMode && (
           <section className="recipe-meta-fields">
@@ -580,6 +708,27 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                       {saved ? '★ Saved' : '☆ Save'}
                     </button>
                   )}
+                  {isLoggedIn && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => setPrepareMealVisible(true)}
+                      aria-label="Prepare this meal and save to pantry"
+                    >
+                      Prepare Meal
+                    </button>
+                  )}
+                  {isLoggedIn && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={handleFillPantryGap}
+                      disabled={gapFillPending}
+                      aria-label="Add missing ingredients to your shopping list"
+                    >
+                      {gapFillPending ? 'Adding…' : 'Add Missing to List'}
+                    </button>
+                  )}
                   {visibilityButton}
                   {publishedButton}
                   <button type="button" className="ghost-button" onClick={handleCopyRecipe}>
@@ -744,6 +893,16 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         </section>
       </div>
 
+      {isLoggedIn && (
+        <PrepareMealDialog
+          recipe={currentRecipe}
+          visible={prepareMealVisible}
+          onHide={() => setPrepareMealVisible(false)}
+          onCreated={() => {
+            toast.current?.show({ severity: 'success', summary: 'Saved to pantry', detail: 'Prepared meal added to your pantry.', life: 3000 })
+          }}
+        />
+      )}
     </div>
   )
 }

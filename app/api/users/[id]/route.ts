@@ -2,20 +2,31 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/auth'
 import {
   updateUserPreferences,
+  updateMealSlots,
   updateUserEmail,
   updateUserPassword,
   updateUsername,
   updateEmailPreferences,
+  updateShoppingPreferences,
+  updateNutritionGoal,
   deactivateAccount,
   deleteAccount,
 } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
-import type { RecipeSuggestionFrequency, PantryExpirationFrequency } from '@/types/User'
+import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
+import { isValidGoalValue } from '@/types/User'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,30}$/
 const RECIPE_FREQUENCIES = new Set<string>(['never', 'weekly', 'monthly'])
 const PANTRY_FREQUENCIES = new Set<string>(['never', 'daily', 'weekly'])
+const NUTRITION_GOAL_FIELDS = ['calories', 'protein', 'carbs', 'fat', 'fiber'] as const
+
+// A Nutrition Goal field is valid when it is null (unset) or a number storable in its column
+// (see isValidGoalValue: whole numbers for calories, ≤2 decimals for macros, both bounded).
+function isValidGoalField(field: (typeof NUTRITION_GOAL_FIELDS)[number], value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && isValidGoalValue(field, value))
+}
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sessionUser = await getSessionUser()
@@ -47,6 +58,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ ok: true })
     }
 
+    if (body.action === 'mealSlots') {
+      if (
+        !Array.isArray(body.mealSlots) ||
+        body.mealSlots.some((v: unknown) => typeof v !== 'string')
+      ) {
+        return NextResponse.json({ error: 'Invalid meal slots data' }, { status: 400 })
+      }
+      // Trim, drop blanks, and de-duplicate (case-insensitive) while preserving order.
+      const seen = new Set<string>()
+      const mealSlots: string[] = []
+      for (const raw of body.mealSlots as string[]) {
+        const trimmed = raw.trim()
+        if (!trimmed) continue
+        const key = trimmed.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        mealSlots.push(trimmed)
+      }
+      if (mealSlots.length > 20) {
+        return NextResponse.json({ error: 'You can have at most 20 meal slots' }, { status: 400 })
+      }
+      if (mealSlots.some(s => s.length > 50)) {
+        return NextResponse.json({ error: 'Meal slot names must be 50 characters or fewer' }, { status: 400 })
+      }
+      await taskRunner.run(() => updateMealSlots(targetId, mealSlots))
+      return NextResponse.json({ ok: true, mealSlots })
+    }
+
     if (body.action === 'username') {
       if (!body.username || !USERNAME_REGEX.test(body.username)) {
         return NextResponse.json({ error: 'Username must be 3–30 characters, alphanumeric with hyphens and underscores allowed' }, { status: 400 })
@@ -70,6 +109,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         recipeSuggestionFrequency: body.recipeSuggestionFrequency as RecipeSuggestionFrequency,
         pantryExpirationFrequency: body.pantryExpirationFrequency as PantryExpirationFrequency,
       }))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'shoppingPreferences') {
+      if (typeof body.enableShoppingListPricingCollection !== 'boolean') {
+        return NextResponse.json({ error: 'Invalid enableShoppingListPricingCollection value' }, { status: 400 })
+      }
+      await taskRunner.run(() => updateShoppingPreferences(targetId, {
+        enableShoppingListPricingCollection: body.enableShoppingListPricingCollection,
+      }))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.action === 'nutritionGoal') {
+      if (!NUTRITION_GOAL_FIELDS.every((field) => isValidGoalField(field, body[field]))) {
+        return NextResponse.json({ error: 'Nutrition goal values must be non-negative numbers or blank (whole numbers for calories)' }, { status: 400 })
+      }
+      const goal: NutritionGoal = {
+        calories: body.calories,
+        protein: body.protein,
+        carbs: body.carbs,
+        fat: body.fat,
+        fiber: body.fiber,
+      }
+      await taskRunner.run(() => updateNutritionGoal(targetId, goal))
       return NextResponse.json({ ok: true })
     }
 

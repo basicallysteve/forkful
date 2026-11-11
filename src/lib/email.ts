@@ -19,9 +19,9 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
   const trackingPixelUrl = makeTrackingPixelUrl()
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
-    subject: 'Reset your Forkful password',
+    subject: 'Reset your EatForkful password',
     react: PasswordResetEmail({ resetUrl, trackingPixelUrl }),
   })
 }
@@ -32,11 +32,11 @@ export async function sendGoodbyeEmail({ to, username, action }: { to: string; u
   const reactivateUrl = baseUrl ? `${baseUrl}/login` : undefined
   const trackingPixelUrl = makeTrackingPixelUrl()
   const subject = action === 'deactivated'
-    ? 'Your Forkful account has been deactivated'
-    : 'Your Forkful account has been deleted'
+    ? 'Your EatForkful account has been deactivated'
+    : 'Your EatForkful account has been deleted'
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject,
     react: GoodbyeEmail({ username, action, reactivateUrl, trackingPixelUrl }),
@@ -53,7 +53,7 @@ export async function sendPantryReminderEmail({ to, username, items, pantryUrl }
   const trackingPixelUrl = makeTrackingPixelUrl()
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Items in your pantry are expiring soon',
     react: PantryReminderEmail({ username, items, pantryUrl, trackingPixelUrl }),
@@ -70,7 +70,7 @@ export async function sendRecipeSuggestionEmail({ to, username, recipes, baseUrl
   const trackingPixelUrl = makeTrackingPixelUrl()
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Recipe ideas picked for you',
     react: RecipeSuggestionEmail({ username, recipes, baseUrl, trackingPixelUrl }),
@@ -85,9 +85,9 @@ export async function sendDeactivationExpiryWarningEmail({ to, username, deletio
   const formatted = deletionDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
-    subject: 'Your Forkful account will be deleted soon',
+    subject: 'Your EatForkful account will be deleted soon',
     react: DeactivationExpiryWarningEmail({ username, deletionDate: formatted, reactivateUrl, trackingPixelUrl }),
   })
 }
@@ -108,9 +108,9 @@ export async function sendReviewReportSummaryEmail({ to, reportCount, reports, a
 }): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY)
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
-    subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on Forkful`,
+    subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on EatForkful`,
     react: ReviewReportSummaryEmail({ reportCount, reports, adminUrl }),
   })
 }
@@ -119,7 +119,7 @@ export async function sendUserAccountCreationEmail(username: string): Promise<vo
   const resend = new Resend(process.env.RESEND_API_KEY)
 
   await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL ?? 'Forkful <noreply@eatforkful.com>',
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to: "steven@eatforkful.com",
     subject: 'New user signed up',
     react: NewUserNotificationEmail({ username }),
