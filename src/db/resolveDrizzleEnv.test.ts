@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDrizzleEnv, parseEnvFile } from './resolveDrizzleEnv'
+import { resolveDrizzleEnv, parseEnvFile, pickUrl } from './resolveDrizzleEnv'
 
 const PROD = 'postgres://u:p@prod.example.com:6543/db'
 const DEV = 'postgres://u:p@dev.example.com:6543/db'
@@ -96,12 +96,52 @@ describe('resolveDrizzleEnv ci and precedence', () => {
   })
 })
 
+describe('production guard across keys', () => {
+  it('refuses when .env.production only has POSTGRES_URL and .env.local uses the same URL as DATABASE_URL', () => {
+    expect(() =>
+      resolveDrizzleEnv({
+        env: {},
+        readFile: files({
+          '.env.local': `DATABASE_URL=${PROD}`,
+          '.env.production': `POSTGRES_URL=${PROD}\nDATABASE_POSTGRES_URL=${PROD}`,
+        }),
+      }),
+    ).toThrow(/production database/)
+  })
+
+  it('refuses a quoted production URL with a trailing comment', () => {
+    expect(() =>
+      resolveDrizzleEnv({
+        env: {},
+        readFile: files({
+          '.env.local': `DATABASE_URL="${PROD}" # production`,
+          '.env.production': `POSTGRES_URL=${PROD}`,
+        }),
+      }),
+    ).toThrow(/production database/)
+  })
+})
+
+describe('pickUrl', () => {
+  it('prefers DATABASE_URL, then POSTGRES_URL, then DATABASE_POSTGRES_URL', () => {
+    expect(pickUrl({ DATABASE_URL: 'a', POSTGRES_URL: 'b', DATABASE_POSTGRES_URL: 'c' })).toBe('a')
+    expect(pickUrl({ POSTGRES_URL: 'b', DATABASE_POSTGRES_URL: 'c' })).toBe('b')
+    expect(pickUrl({ DATABASE_POSTGRES_URL: 'c' })).toBe('c')
+    expect(pickUrl({})).toBeUndefined()
+  })
+})
+
 describe('parseEnvFile', () => {
-  it('handles comments, quotes, export and inline comments', () => {
-    expect(parseEnvFile('# c\nexport A="x y"\nB=\'z\'\nC=plain # note\n\nbad line')).toEqual({
+  it('strips quotes from a quoted value with a trailing comment', () => {
+    expect(parseEnvFile('A="x" # production')).toEqual({ A: 'x' })
+  })
+
+  it('handles single quotes, export, comments and # inside quotes', () => {
+    expect(parseEnvFile("# c\nexport A=\"x y\"\nB='z'\nC=\"has # hash\"\nD='q#r'")).toEqual({
       A: 'x y',
       B: 'z',
-      C: 'plain',
+      C: 'has # hash',
+      D: 'q#r',
     })
   })
 })

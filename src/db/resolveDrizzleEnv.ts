@@ -6,6 +6,8 @@
  * and ignore whatever `.env` put into process.env.
  */
 
+import { parse } from 'dotenv'
+
 export type EnvRecord = Record<string, string | undefined>
 
 export interface ResolveDrizzleEnvOptions {
@@ -22,29 +24,22 @@ export interface ResolvedDrizzleEnv {
 const URL_KEYS = ['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL'] as const
 
 export function parseEnvFile(contents: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const rawLine of contents.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
-    const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-    if (!match) continue
-    let value = match[2].trim()
-    const quote = value[0]
-    if ((quote === '"' || quote === "'") && value.length >= 2 && value.endsWith(quote)) {
-      value = value.slice(1, -1)
-    } else {
-      value = value.replace(/\s+#.*$/, '')
-    }
-    out[match[1]] = value
-  }
-  return out
+  return parse(contents)
 }
 
-function pickUrl(vars: EnvRecord): string | undefined {
+export function pickUrl(vars: EnvRecord): string | undefined {
   for (const key of URL_KEYS) {
     if (vars[key]) return vars[key]
   }
   return undefined
+}
+
+/** True when the URL matches any URL variable in .env.production (when that file exists). */
+function isProductionUrl(url: string, readFile: (name: string) => string | undefined): boolean {
+  const contents = readFile('.env.production')
+  if (contents === undefined) return false
+  const vars = parseEnvFile(contents)
+  return URL_KEYS.some((key) => vars[key] === url)
 }
 
 export function resolveDrizzleEnv({ env, readFile }: ResolveDrizzleEnvOptions): ResolvedDrizzleEnv {
@@ -59,9 +54,7 @@ export function resolveDrizzleEnv({ env, readFile }: ResolveDrizzleEnvOptions): 
   if (env.DRIZZLE_ENV === 'ci') {
     const url = pickUrl(env)
     if (!url) throw new Error('Drizzle config: DRIZZLE_ENV=ci but no database URL is set in the environment.')
-    const prodContents = readFile('.env.production')
-    const prodUrl = prodContents === undefined ? undefined : pickUrl(parseEnvFile(prodContents))
-    if (prodUrl && prodUrl === url) {
+    if (isProductionUrl(url, readFile)) {
       throw new Error('Drizzle config: DRIZZLE_ENV=ci but the URL is the production database. Refusing.')
     }
     return { url, source: 'ci' }
@@ -84,9 +77,7 @@ export function resolveDrizzleEnv({ env, readFile }: ResolveDrizzleEnvOptions): 
   if (!url) throw new Error(`Drizzle config: no database URL (${URL_KEYS.join('/')}) found in ${file}.`)
 
   if (!wantsProduction) {
-    const prodContents = readFile('.env.production')
-    const prodUrl = prodContents === undefined ? undefined : pickUrl(parseEnvFile(prodContents))
-    if (prodUrl && prodUrl === url) {
+    if (isProductionUrl(url, readFile)) {
       throw new Error(
         'Drizzle config: .env.local points at the production database. ' +
           'Point it at dev, or set DRIZZLE_ENV=production to target production on purpose.',
