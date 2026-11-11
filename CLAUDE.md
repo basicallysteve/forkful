@@ -36,6 +36,10 @@ bunx vitest run src/stores/pantry.test.ts
 bun db:generate      # Generate new Drizzle migration from schema changes
 bun db:push          # Push schema to DB (used in CI; skips migration files)
 bun db:studio        # Open Drizzle Studio UI
+
+# USDA food seeding
+bun seed:usda        # Seed foods into the database in .env.local (dev)
+bun seed:usda:prod   # Deliberately seed production (.env.production); the script refuses the prod URL otherwise
 ```
 
 CI uses Bun (`bun install --frozen-lockfile`, `bunx vitest run --changed`).
