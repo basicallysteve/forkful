@@ -82,6 +82,9 @@ bun test:integration # Integration tests (requires .env.local with DB credential
 bun db:generate      # Generate Drizzle migration from schema changes
 bun db:push          # Push schema to DB
 bun db:studio        # Open Drizzle Studio UI
+
+bun seed:usda        # Seed USDA foods into the database in .env.local (dev)
+bun seed:usda:prod   # Deliberately seed production (.env.production)
 ```
 
 ## Project structure

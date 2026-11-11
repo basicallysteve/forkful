@@ -3,7 +3,8 @@
  * Seed Foundation and SR Legacy foods from USDA FoodData Central bulk CSV files.
  *
  * Usage:
- *   bun --env-file .env scripts/seed-usda.ts --dir ./data/usda
+ *   bun seed:usda        # seeds the database in .env.local (dev)
+ *   bun seed:usda:prod   # deliberately seeds production (.env.production)
  *
  * Expects the FDC Full Download CSV files in --dir (food.csv, food_nutrient.csv, etc.)
  * Only "Foundation Food" and "SR Legacy Food" rows are imported — Branded is skipped.
@@ -15,6 +16,7 @@
  */
 
 import { parseArgs } from 'node:util'
+import { assertSafeSeedTarget } from './seedGuard'
 import { readFileSync, existsSync, createReadStream } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -174,9 +176,15 @@ const { values: args } = parseArgs({
 })
 
 if (!args.dir) {
-  console.error('Usage: bun --env-file .env.local run scripts/seed-usda.ts --dir ./data/usda')
+  console.error('Usage: bun seed:usda -- --dir ./data/usda')
   process.exit(1)
 }
+
+const productionEnvPath = resolve('.env.production')
+assertSafeSeedTarget(
+  process.env,
+  existsSync(productionEnvPath) ? readFileSync(productionEnvPath, 'utf-8') : null,
+)
 
 const dir = resolve(args.dir)
 const REQUIRED_FILES = ['food.csv', 'food_nutrient.csv', 'nutrient.csv', 'food_portion.csv', 'measure_unit.csv']
