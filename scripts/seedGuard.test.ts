@@ -56,6 +56,12 @@ describe('assertSafeSeedTarget', () => {
     ).toThrow(/production/)
   })
 
+  it('does not treat SEED_ALLOW_PRODUCTION=0 as allowed', () => {
+    expect(() =>
+      assertSafeSeedTarget({ POSTGRES_URL: PROD, SEED_ALLOW_PRODUCTION: '0' }, prodEnv),
+    ).toThrow(/production/)
+  })
+
   it('does nothing when .env.production is absent', () => {
     expect(() => assertSafeSeedTarget({ DATABASE_URL: 'postgres://a/b' }, null)).not.toThrow()
   })
