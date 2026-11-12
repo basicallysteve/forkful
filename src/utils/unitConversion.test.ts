@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EACH_UNIT, formatUnitForAmount, preferredShoppingUnit, shoppingUnitOptions } from './unitConversion'
+import { CUSTOM_UNITS, EACH_UNIT, formatUnitForAmount, getUnitCategory, getUnitLabel, preferredShoppingUnit, shoppingUnitOptions } from './unitConversion'
 
 describe('formatUnitForAmount', () => {
   it('leaves standard mass and volume symbols unchanged regardless of amount', () => {
@@ -64,5 +64,35 @@ describe('shoppingUnitOptions', () => {
 
   it('does not duplicate "each" when the food already lists it', () => {
     expect(shoppingUnitOptions(['each', 'g'])).toEqual(['each', 'g'])
+  })
+})
+
+describe('more count units (#182)', () => {
+  const NEW_UNITS = ['scoop', 'stick', 'tablet', 'pouch', 'punnet', 'bar', 'packet']
+
+  it('lists the new units as built-in custom units', () => {
+    for (const unit of NEW_UNITS) expect(CUSTOM_UNITS).toContain(unit)
+  })
+
+  it('categorises the new units as custom', () => {
+    for (const unit of NEW_UNITS) expect(getUnitCategory(unit)).toBe('custom')
+  })
+
+  it('pluralises them by amount', () => {
+    expect(formatUnitForAmount(2, 'scoop')).toBe('scoops')
+    expect(formatUnitForAmount(1, 'stick')).toBe('stick')
+    expect(formatUnitForAmount(0.5, 'stick')).toBe('sticks')
+    expect(formatUnitForAmount(3, 'punnet')).toBe('punnets')
+    expect(formatUnitForAmount(2, 'packet')).toBe('packets')
+  })
+
+  it('gives each a plural label', () => {
+    expect(getUnitLabel('scoop')).toBe('scoops')
+    expect(getUnitLabel('stick')).toBe('sticks')
+    expect(getUnitLabel('tablet')).toBe('tablets')
+    expect(getUnitLabel('pouch')).toBe('pouches')
+    expect(getUnitLabel('punnet')).toBe('punnets')
+    expect(getUnitLabel('bar')).toBe('bars')
+    expect(getUnitLabel('packet')).toBe('packets')
   })
 })
