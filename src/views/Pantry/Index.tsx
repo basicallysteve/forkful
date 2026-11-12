@@ -9,6 +9,7 @@ import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
+import { itemDisplayName } from '@/utils/pantryItemName'
 import { formatPrice } from '@/utils/currency'
 import { formatDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
@@ -325,7 +326,7 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
+                          aria-label={`Select ${itemDisplayName(item)}`}
                         />
                       </td>
                       <td>
@@ -333,10 +334,10 @@ export default function Pantry() {
                           <span className="pantry-item-name">
                             {item.recipeShortId ? (
                               <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
-                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                                {itemDisplayName(item)}
                               </Link>
                             ) : (
-                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                              itemDisplayName(item)
                             )}
                             <Tag className="tag-ghost pantry-prepared-tag" value="Prepared" />
                           </span>
@@ -381,7 +382,7 @@ export default function Pantry() {
                         </div>
                         <PantryRowActions
                           itemId={item.id}
-                          itemName={item.sourceType === 'recipe' ? item.recipeNameSnapshot ?? 'Prepared Meal' : item.food?.name ?? item.product?.name ?? 'item'}
+                          itemName={itemDisplayName(item)}
                           frozen={Boolean(item.frozenDate)}
                           onFreeze={() => handleFreeze(item.id)}
                           onThaw={() => handleUnfreeze(item.id)}
@@ -415,7 +416,7 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
+                        aria-label={`Select ${itemDisplayName(item)}`}
                       />
                     </div>
                     <div className="card-content">
@@ -426,10 +427,10 @@ export default function Pantry() {
                               href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}
                               className="card-title"
                             >
-                              {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              {itemDisplayName(item)}
                             </Link>
                           ) : (
-                            <span className="card-title">{item.recipeNameSnapshot ?? 'Prepared Meal'}</span>
+                            <span className="card-title">{itemDisplayName(item)}</span>
                           )
                         ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
