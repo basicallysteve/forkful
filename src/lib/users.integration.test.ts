@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { signUp, login, trackLoginAttempt } from './users'
+import { signUp, login, trackLoginAttempt, getUser, updateNutritionGoal, updateMealSlots } from './users'
+import { defaultMealSlots } from '@/constants/userPreferences'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
@@ -95,6 +96,83 @@ describe('users integration tests', () => {
         const newUser = await signUp(user)
         expect(newUser.cuisinePreferences).toEqual(user.cuisinePreferences)
         expect(newUser.dietaryRestrictions).toEqual(user.dietaryRestrictions)
+    })
+
+    it('should default a new user to an empty nutrition goal', async () => {
+        const newUser = await signUp({
+            username: 'testgoal',
+            email: 'testgoal@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        expect(newUser.nutritionGoal).toEqual({ calories: null, protein: null, carbs: null, fat: null, fiber: null })
+    })
+
+    it('should write and read back a full nutrition goal', async () => {
+        const newUser = await signUp({
+            username: 'testgoal',
+            email: 'testgoal@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        await updateNutritionGoal(Number(newUser.id), { calories: 2200, protein: 165, carbs: 220, fat: 70, fiber: 32.5 })
+        const reloaded = await getUser(Number(newUser.id))
+        expect(reloaded?.nutritionGoal).toEqual({ calories: 2200, protein: 165, carbs: 220, fat: 70, fiber: 32.5 })
+    })
+
+    it('should persist per-field nullability of the nutrition goal', async () => {
+        const newUser = await signUp({
+            username: 'testgoal',
+            email: 'testgoal@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        // Only a calorie goal — every macro left unset.
+        await updateNutritionGoal(Number(newUser.id), { calories: 1900, protein: null, carbs: null, fat: null, fiber: null })
+        const reloaded = await getUser(Number(newUser.id))
+        expect(reloaded?.nutritionGoal).toEqual({ calories: 1900, protein: null, carbs: null, fat: null, fiber: null })
+    })
+
+    it('should clear a previously set nutrition goal', async () => {
+        const newUser = await signUp({
+            username: 'testgoal',
+            email: 'testgoal@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        await updateNutritionGoal(Number(newUser.id), { calories: 2000, protein: 150, carbs: 200, fat: 60, fiber: 30 })
+        await updateNutritionGoal(Number(newUser.id), { calories: null, protein: null, carbs: null, fat: null, fiber: null })
+        const reloaded = await getUser(Number(newUser.id))
+        expect(reloaded?.nutritionGoal).toEqual({ calories: null, protein: null, carbs: null, fat: null, fiber: null })
+    })
+
+    it('should seed the four default meal slots on account creation', async () => {
+        const newUser = await signUp({
+            username: 'testuser',
+            email: 'testUser@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        expect(newUser.mealSlots).toEqual(defaultMealSlots)
+    })
+
+    it('should round-trip meal slots in their configured order', async () => {
+        const newUser = await signUp({
+            username: 'testuser',
+            email: 'testUser@gmail.com',
+            password: 'password123',
+            cuisinePreferences: [],
+            dietaryRestrictions: [],
+        })
+        const reordered = ['Dinner', 'Breakfast', 'Second Breakfast', 'Lunch']
+        await updateMealSlots(Number(newUser.id), reordered)
+        const fetched = await getUser(Number(newUser.id))
+        expect(fetched?.mealSlots).toEqual(reordered)
     })
 
     it('should login a user successfully', async () => {

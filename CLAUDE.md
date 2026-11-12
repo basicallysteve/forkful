@@ -36,6 +36,14 @@ bunx vitest run src/stores/pantry.test.ts
 bun db:generate      # Generate new Drizzle migration from schema changes
 bun db:push          # Push schema to DB (used in CI; skips migration files)
 bun db:studio        # Open Drizzle Studio UI
+
+# USDA food seeding
+bun seed:usda        # Seed foods into the database in .env.local (dev)
+bun seed:usda:prod   # Deliberately seed production (.env.production); the script refuses the prod URL otherwise
+bun seed:usda-branded       # Import USDA Branded products into the database in .env.local (dev)
+bun seed:usda-branded:prod  # Deliberately import into production (.env.production); the script refuses the prod URL otherwise
+bun link:product-foods       # AI-link unlinked products to parent foods in .env.local (dev); add -- --dry-run --limit N --concurrency N
+bun link:product-foods:prod  # Deliberately link in production (.env.production); the script refuses the prod URL otherwise
 ```
 
 CI uses Bun (`bun install --frozen-lockfile`, `bunx vitest run --changed`).
@@ -74,7 +82,9 @@ Thin `fetch` wrappers that call the Next.js API routes (`/api/…`). Used by cli
 All write operations in API routes must go through the `taskRunner` singleton (`src/lib/TaskRunner.ts`) via `taskRunner.run(() => ...)`. This centralises the point where retry logic or audit hooks can be added.
 
 ### Database connection — `src/db/index.ts`
-Uses `postgres` (postgres.js) with `{ prepare: false }` via a Supabase Transaction Pooler connection string. Single `DATABASE_URL` env var used for all environments (local and production). `drizzle.config.ts` reads `.env.local` by default; set `DRIZZLE_ENV=production` to target `.env.production`.
+Uses `postgres` (postgres.js) with `{ prepare: false }` via a Supabase Transaction Pooler connection string. Single `DATABASE_URL` env var used for all environments (local and production).
+
+`drizzle.config.ts` (logic in `src/db/resolveDrizzleEnv.ts`) does not trust `.env`, which drizzle-kit loads itself and which points at production. Instead it explicitly loads `.env.local` and uses only its values. It throws if `.env.local` is missing, or if its URL equals the one in `.env.production`. To target production on purpose, run with `DRIZZLE_ENV=production`, which loads `.env.production` instead. On Vercel (`VERCEL` set) no env files are read; the platform's env vars are used so `vercel-build` migrations keep working. Setting `VERCEL` locally bypasses the file-based guard, so never do that. `DRIZZLE_ENV=ci` is an explicit opt-in used only by the CI schema-push step: it takes the URL from process.env (`DATABASE_URL`, then `POSTGRES_URL`, matching `src/db/index.ts`), reads no `.env.local`, and still refuses the URL in `.env.production` if that file exists.
 
 ### Soft-delete pattern
 Most entities (recipes, pantry items, users) are never hard-deleted. Set `dateDeleted = new Date()` and filter with `isNull(table.dateDeleted)` in queries. `deleteFood` is currently a hard delete (exception).

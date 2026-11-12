@@ -108,6 +108,8 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   cuisinePreferences: jsonb('cuisine_preferences').$type<string[]>().default([]),
   dietaryRestrictions: jsonb('dietary_restrictions').$type<string[]>().default([]),
+  // Ordered, user-defined Meal Slots — seeded with the four defaults; editable in profile.
+  mealSlots: jsonb('meal_slots').$type<string[]>().default(['Breakfast', 'Lunch', 'Dinner', 'Snack']),
   avatarUrl: varchar('avatar_url', { length: 500 }),
   onboardingCompletedAt: timestamp('onboarding_completed_at'),
   passwordChangedAt: timestamp('password_changed_at'),
@@ -116,6 +118,14 @@ export const users = pgTable('users', {
   pantryExpirationFrequency: pantryExpirationFrequencyEnum('pantry_expiration_frequency').notNull().default('weekly'),
   // When off, the shopping list stops prompting for (and hides manual entry of) Line Price & expiration.
   enableShoppingListPricingCollection: boolean('enable_shopping_list_pricing_collection').notNull().default(true),
+  // Nutrition Goal (see CONTEXT.md): a manually-set daily calorie target plus optional per-macro
+  // targets. Every column is nullable — null means that field has no target. No goal is ever computed
+  // from biometrics/activity. Calories are whole numbers; macros mirror the numeric(10,2) macro columns.
+  calorieGoal: integer('calorie_goal'),
+  proteinGoal: numeric('protein_goal', { precision: 10, scale: 2 }),
+  carbsGoal: numeric('carbs_goal', { precision: 10, scale: 2 }),
+  fatGoal: numeric('fat_goal', { precision: 10, scale: 2 }),
+  fiberGoal: numeric('fiber_goal', { precision: 10, scale: 2 }),
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),

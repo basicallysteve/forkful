@@ -13,11 +13,14 @@ vi.mock('next-auth/react', () => ({
 
 vi.mock('@/lib/api/users', () => ({
   apiUpdatePreferences: vi.fn().mockResolvedValue(undefined),
+  apiUpdateMealSlots: vi.fn(),
   apiUpdateEmail: vi.fn().mockResolvedValue(undefined),
   apiUpdatePassword: vi.fn().mockResolvedValue(undefined),
   apiUploadAvatar: vi.fn().mockResolvedValue({ url: 'https://example.com/new-avatar.jpg' }),
   apiUpdateUsername: vi.fn().mockResolvedValue(undefined),
   apiUpdateEmailPreferences: vi.fn().mockResolvedValue(undefined),
+  apiUpdateShoppingPreferences: vi.fn().mockResolvedValue(undefined),
+  apiUpdateNutritionGoal: vi.fn().mockResolvedValue(undefined),
   apiDeactivateAccount: vi.fn().mockResolvedValue(undefined),
   apiDeleteAccount: vi.fn().mockResolvedValue(undefined),
   apiSubmitAccountFeedback: vi.fn().mockResolvedValue(undefined),
@@ -25,9 +28,11 @@ vi.mock('@/lib/api/users', () => ({
 
 import {
   apiUpdatePreferences,
+  apiUpdateMealSlots,
   apiUpdateEmail,
   apiUpdateUsername,
   apiUpdateEmailPreferences,
+  apiUpdateNutritionGoal,
   apiDeactivateAccount,
   apiDeleteAccount,
   apiSubmitAccountFeedback,
@@ -40,10 +45,13 @@ const mockUser: User = {
   hasPassword: true,
   cuisinePreferences: ['Italian'],
   dietaryRestrictions: ['Vegan'],
+  mealSlots: ['Breakfast', 'Lunch', 'Dinner', 'Snack'],
   avatarUrl: null,
   marketingEmailOptIn: true,
   recipeSuggestionFrequency: 'weekly',
   pantryExpirationFrequency: 'daily',
+  enableShoppingListPricingCollection: true,
+  nutritionGoal: { calories: null, protein: null, carbs: null, fat: null, fiber: null },
   dateAdded: new Date('2024-01-01'),
   dateDeleted: null,
 }
@@ -51,9 +59,11 @@ const mockUser: User = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(apiUpdatePreferences).mockResolvedValue(undefined)
+  vi.mocked(apiUpdateMealSlots).mockImplementation(async (_id, slots) => slots)
   vi.mocked(apiUpdateEmail).mockResolvedValue(undefined)
   vi.mocked(apiUpdateUsername).mockResolvedValue(undefined)
   vi.mocked(apiUpdateEmailPreferences).mockResolvedValue(undefined)
+  vi.mocked(apiUpdateNutritionGoal).mockResolvedValue(undefined)
   vi.mocked(apiDeactivateAccount).mockResolvedValue(undefined)
   vi.mocked(apiDeleteAccount).mockResolvedValue(undefined)
   vi.mocked(apiSubmitAccountFeedback).mockResolvedValue(undefined)
@@ -258,6 +268,68 @@ describe('Profile', () => {
     })
   })
 
+  describe('meal slots', () => {
+    it('renders the seeded meal slots as read-only rows', () => {
+      render(<Profile user={mockUser} />)
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Lunch')).toBeInTheDocument()
+      expect(screen.getByText('Dinner')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
+      // Read-only: names are not editable text inputs.
+      expect(screen.queryByLabelText('Meal slot 1 name')).not.toBeInTheDocument()
+    })
+
+    it('defaults to the four seeded slots when the user has none', () => {
+      render(<Profile user={{ ...mockUser, mealSlots: null }} />)
+      expect(screen.getByText('Breakfast')).toBeInTheDocument()
+      expect(screen.getByText('Snack')).toBeInTheDocument()
+    })
+
+    it('adds a new slot', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.type(screen.getByLabelText('New meal slot name'), 'Dessert')
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+      expect(screen.getByText('Dessert')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Remove Dessert' })).toBeInTheDocument()
+    })
+
+    it('rejects a duplicate slot (case-insensitive)', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.type(screen.getByLabelText('New meal slot name'), 'breakfast')
+      await user.click(screen.getByRole('button', { name: 'Add' }))
+      expect(screen.getByText('That meal slot already exists')).toBeInTheDocument()
+      expect(screen.queryByText('breakfast')).not.toBeInTheDocument()
+    })
+
+    it('removes a slot', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: 'Remove Snack' }))
+      expect(screen.queryByText('Snack')).not.toBeInTheDocument()
+    })
+
+    it('saves the current slots in order', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+      await waitFor(() => {
+        expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+    })
+
+    it('shows an error message when saving meal slots fails', async () => {
+      vi.mocked(apiUpdateMealSlots).mockRejectedValueOnce(new Error('Server error'))
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+      await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Server error')).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('email preferences', () => {
     it('renders the Save Email Preferences button', () => {
       render(<Profile user={mockUser} />)
@@ -405,6 +477,67 @@ describe('Profile', () => {
       const newPwInput = container.querySelectorAll<HTMLInputElement>('input[autocomplete="new-password"]')[0]
       await user.type(newPwInput, 'weak')
       expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('nutrition goal', () => {
+    it('pre-fills inputs from an existing goal', () => {
+      const user: User = { ...mockUser, nutritionGoal: { calories: 2000, protein: 150, carbs: null, fat: 60, fiber: null } }
+      render(<Profile user={user} />)
+      expect(screen.getByLabelText('Daily calories')).toHaveValue('2000')
+      expect(screen.getByLabelText('Protein')).toHaveValue('150')
+      expect(screen.getByLabelText('Carbs')).toHaveValue('')
+      expect(screen.getByLabelText('Fat')).toHaveValue('60')
+      expect(screen.getByLabelText('Fiber')).toHaveValue('')
+    })
+
+    it('saves entered values, treating blanks as null', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Daily calories'), '2200')
+      await user.type(screen.getByLabelText('Protein'), '165')
+      await user.click(screen.getByRole('button', { name: /save nutrition goal/i }))
+
+      await waitFor(() => {
+        expect(apiUpdateNutritionGoal).toHaveBeenCalledWith('1', {
+          calories: 2200, protein: 165, carbs: null, fat: null, fiber: null,
+        })
+      })
+      expect(screen.getByText('Saved!')).toBeInTheDocument()
+    })
+
+    it('disables the save button and shows an error for a negative value', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Protein'), '-5')
+
+      expect(screen.getByText('Enter a non-negative number (up to 2 decimals).')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
+      expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
+    })
+
+    it('rejects a fractional calorie value (integer column)', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Daily calories'), '2000.5')
+
+      expect(screen.getByText('Enter a non-negative whole number.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
+      expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
+    })
+
+    it('rejects a macro value with more than two decimals', async () => {
+      const user = userEvent.setup()
+      render(<Profile user={mockUser} />)
+
+      await user.type(screen.getByLabelText('Fat'), '1.234')
+
+      expect(screen.getByText('Enter a non-negative number (up to 2 decimals).')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save nutrition goal/i })).toBeDisabled()
+      expect(apiUpdateNutritionGoal).not.toHaveBeenCalled()
     })
   })
 
