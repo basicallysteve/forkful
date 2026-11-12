@@ -224,10 +224,19 @@ describe('Pantry List Page', () => {
       await loaded(two())
       clickDelete('Chicken Breast')
 
-      expect(screen.getByRole('status')).toHaveTextContent('Deleted Chicken Breast')
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
       expect(rowNames().join('|')).not.toContain('Chicken Breast')
       expect(apiDeletePantryItem).not.toHaveBeenCalled()
+    })
+
+    it('shows the deletion in a PrimeReact toast that is announced as an alert, with Undo inside it', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+
+      const toast = screen.getByText('Deleted Chicken Breast').closest('.p-toast-message')
+      expect(toast).toHaveAttribute('role', 'alert')
+      expect(within(toast as HTMLElement).getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     })
 
     it('Undo restores the item in the same position and sends nothing', async () => {
@@ -238,7 +247,7 @@ describe('Pantry List Page', () => {
       const names = rowNames()
       expect(names[0]).toContain('Chicken Breast')
       expect(names[1]).toContain('Brown Rice')
-      expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument())
       act(() => { vi.advanceTimersByTime(10000) })
       expect(apiDeletePantryItem).not.toHaveBeenCalled()
       expect(usePantryStore.getState().items).toHaveLength(2)
@@ -252,7 +261,7 @@ describe('Pantry List Page', () => {
       expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
       expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
       await waitFor(() => expect(usePantryStore.getState().items.map((i) => i.id)).toEqual([2]))
-      expect(screen.queryByRole('status')).not.toHaveTextContent('Deleted')
+      await waitFor(() => expect(screen.queryByText(/^Deleted /)).not.toBeInTheDocument())
     })
 
     it('shows one toast for a bulk delete and Undo restores all of them', async () => {
@@ -261,7 +270,7 @@ describe('Pantry List Page', () => {
       fireEvent.click(screen.getByRole('button', { name: /delete \(2\)/i }))
 
       expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
-      expect(screen.getByRole('status')).toHaveTextContent('Deleted 2 items')
+      expect(screen.getByText('Deleted 2 items')).toBeInTheDocument()
       expect(screen.getByText('No pantry items found.')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
@@ -313,7 +322,7 @@ describe('Pantry List Page', () => {
       clickDelete('Brown Rice')
 
       expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
-      expect(screen.getByRole('status')).toHaveTextContent('Deleted Chicken Breast')
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
       expect(rowNames().join('|')).toContain('Brown Rice')
     })
 
@@ -330,7 +339,7 @@ describe('Pantry List Page', () => {
       await loaded(two())
       fireEvent.click(screen.getByRole('button', { name: 'Actions for Chicken Breast' }))
       fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
-      expect(screen.getByRole('status')).toHaveTextContent('Deleted Chicken Breast')
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
     })
   })
 
