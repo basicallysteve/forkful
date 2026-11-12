@@ -58,11 +58,14 @@ describe('ToolBar — desktop layout', () => {
     expect(screen.getByRole('menubar')).toBeInTheDocument()
   })
 
-  it('renders options with children as a non-navigating trigger with a caret', () => {
+  it('renders options with children as a non-navigating action anchor with a caret', () => {
     render(<ToolBar menuOptions={optionsWithChildren} />)
     const bar = screen.getByRole('menubar')
     const trigger = bar.querySelector('.menu-option__trigger')!
-    expect(trigger.tagName).not.toBe('A')
+    expect(trigger.tagName).toBe('A')
+    expect(trigger).toHaveAttribute('data-pc-section', 'action')
+    expect(trigger).toHaveAttribute('tabindex', '-1')
+    expect(fireEvent.click(trigger)).toBe(false) // default prevented
     expect(trigger.textContent).toContain('Recipes')
     expect(trigger.textContent).toContain('▾')
   })
@@ -72,6 +75,14 @@ describe('ToolBar — desktop layout', () => {
     const bar = screen.getByRole('menubar')
     const link = Array.from(bar.querySelectorAll('a')).find(a => a.textContent === 'Add New Recipe')
     expect(link).toHaveAttribute('href', '/recipes/new')
+    expect(link).toHaveAttribute('data-pc-section', 'action')
+  })
+
+  it('marks leaf links as MegaMenu actions so Enter/Space can activate them', () => {
+    render(<ToolBar menuOptions={[{ label: 'Log', to: '/log' }]} />)
+    const link = screen.getByRole('menubar').querySelector('a.menu-option__trigger')!
+    expect(link).toHaveAttribute('href', '/log')
+    expect(link).toHaveAttribute('data-pc-section', 'action')
   })
 
   it('labels the avatar link for screen readers', () => {

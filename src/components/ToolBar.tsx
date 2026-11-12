@@ -31,19 +31,28 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         const item: MenuItem = {
             label: option.label,
             className: option.align === 'right' ? 'menu-item--right' : undefined,
+            url: hasChildren ? undefined : option.to,
             template: (_item, options) => {
                 if (hasChildren) {
                     return (
-                        <span className={`${options.className} menu-option__trigger`}>
+                        <a
+                            href="#"
+                            className={`${options.className} menu-option__trigger`}
+                            data-pc-section="action"
+                            tabIndex={-1}
+                            onClick={(e) => e.preventDefault()}
+                        >
                             <span className="menu-option__label">{option.label}</span>
                             <span className="menu-option__caret" aria-hidden="true">▾</span>
-                        </span>
+                        </a>
                     )
                 }
                 return (
                     <Link
                         href={option.to || '#'}
                         className={`${options.className} menu-option__trigger`}
+                        data-pc-section="action"
+                        tabIndex={-1}
                         onClick={option.action}
                         title={option.avatar ? option.label : undefined}
                         aria-label={option.avatar ? option.label : undefined}
@@ -67,8 +76,15 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                 label: option.label,
                 items: option.children!.map((child): MenuItem => ({
                     label: child.label,
+                    url: child.to,
                     template: (_i, options) => (
-                        <Link href={child.to || '#'} className={`${options.className} submenu-option`} onClick={child.action}>
+                        <Link
+                            href={child.to || '#'}
+                            className={`${options.className} submenu-option`}
+                            data-pc-section="action"
+                            tabIndex={-1}
+                            onClick={child.action}
+                        >
                             {child.label}
                         </Link>
                     ),
