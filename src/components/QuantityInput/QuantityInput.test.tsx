@@ -19,6 +19,11 @@ describe('QuantityInput', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('uses a text keyboard so "/", space and fraction glyphs can be typed on phones', () => {
+    render(<QuantityInput value={1} unit="slice" onChange={() => {}} />)
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'text')
+  })
+
   it('reformats on blur using the unit', () => {
     render(<QuantityInput value={1} unit="slice" onChange={() => {}} />)
     const input = screen.getByLabelText('Amount') as HTMLInputElement
