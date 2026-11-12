@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 import { Card } from 'primereact/card'
+import { Tag } from 'primereact/tag'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
@@ -132,6 +133,15 @@ export default function Pantry() {
     }
   }
 
+  function getStatusSeverity(status: PantryItemStatus): 'success' | 'warning' | 'danger' | undefined {
+    switch (status) {
+      case 'expired': return 'danger'
+      case 'expiring-soon': return 'warning'
+      case 'good': return 'success'
+      default: return undefined
+    }
+  }
+
   function getStatusClass(status: PantryItemStatus): string {
     switch (status) {
       case 'expired': return 'status-expired'
@@ -154,8 +164,8 @@ export default function Pantry() {
             <h1 className="pantry-name">Pantry</h1>
           </div>
           <div className="pantry-meta">
-            <Link href="/pantry/new" className="pill pill-primary">
-              Add Item
+            <Link href="/pantry/new" className="pantry-add-link">
+              <Tag value="Add Item" />
             </Link>
           </div>
         </div>
@@ -327,7 +337,7 @@ export default function Pantry() {
                             ) : (
                               item.recipeNameSnapshot ?? 'Prepared Meal'
                             )}
-                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                            <Tag className="tag-ghost pantry-prepared-tag" value="Prepared" />
                           </span>
                         ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`}>
@@ -341,15 +351,13 @@ export default function Pantry() {
                       <td>{item.purchasePrice != null ? formatPrice(item.purchasePrice) : '—'}</td>
                       <td>
                         {item.frozenDate ? (
-                          <span className="status-badge status-frozen">Frozen</span>
+                          <Tag severity="info" value="Frozen" />
                         ) : (
                           formatDate(item.expirationDate)
                         )}
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusClass(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
+                        <Tag severity={getStatusSeverity(item.status)} value={getStatusLabel(item.status)} />
                       </td>
                       <td>{formatDate(item.addedDate)}</td>
                       <td>
