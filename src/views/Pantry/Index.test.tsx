@@ -308,7 +308,7 @@ describe('Pantry List Page', () => {
 
     it('works from the row actions menu too', async () => {
       await loaded(two())
-      fireEvent.click(screen.getAllByRole('button', { name: /more actions/i })[0])
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Chicken Breast' }))
       fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
       expect(screen.getByRole('status')).toHaveTextContent('Deleted Chicken Breast')
     })
