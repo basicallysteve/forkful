@@ -295,6 +295,7 @@ describe('Pantry List Page', () => {
     it('still works when a second item is deleted while a toast is showing', async () => {
       await loaded(two())
       clickDelete('Chicken Breast')
+      act(() => { vi.advanceTimersByTime(500) })
       clickDelete('Brown Rice')
       expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(2)
 
@@ -304,6 +305,25 @@ describe('Pantry List Page', () => {
       expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
       expect(apiDeletePantryItem).toHaveBeenCalledWith(2)
       expect(rowNames()[0]).toContain('Chicken Breast')
+    })
+
+    it('ignores a second Delete click right after one, so a double-click cannot delete the row that shifts up', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      clickDelete('Brown Rice')
+
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
+      expect(screen.getByRole('status')).toHaveTextContent('Deleted Chicken Breast')
+      expect(rowNames().join('|')).toContain('Brown Rice')
+    })
+
+    it('ignores a rapid second click from the row actions menu too', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Brown Rice' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
+
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
     })
 
     it('works from the row actions menu too', async () => {
