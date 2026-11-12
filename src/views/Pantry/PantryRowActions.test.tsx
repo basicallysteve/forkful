@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryRowActions from './PantryRowActions'
 
@@ -102,5 +102,34 @@ describe('PantryRowActions', () => {
     expect(deleteIndex).toBe(rows.length - 1)
     expect(separatorIndex).toBe(deleteIndex - 1)
     expect(rows[deleteIndex].querySelector('.pantry-menu-danger')).not.toBeNull()
+  })
+
+  it('closes when the window is resized while open, so it is not left detached from the trigger', async () => {
+    const user = userEvent.setup()
+    const { trigger } = setup()
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    fireEvent(window, new Event('resize'))
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('closes on Tab and returns focus to the trigger', async () => {
+    const user = userEvent.setup()
+    const { trigger } = setup()
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await user.keyboard('{Tab}')
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
+    expect(trigger).toHaveFocus()
+  })
+
+  it('closes on Shift+Tab and returns focus to the trigger', async () => {
+    const user = userEvent.setup()
+    const { trigger } = setup()
+    await user.click(trigger)
+    await user.keyboard('{Shift>}{Tab}{/Shift}')
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
+    expect(trigger).toHaveFocus()
   })
 })
