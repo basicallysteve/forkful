@@ -158,7 +158,7 @@
   .ingredient-input {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1.5fr repeat(2, 120px) auto;
+    grid-template-columns: minmax(0, 1.6fr) 110px 130px 110px auto;
     gap: 10px;
     align-items: flex-end;
     padding: 12px;
@@ -173,6 +173,144 @@
       box-shadow: none;
       gap: 6px;
     }
+  }
+
+  // One consistent field style for every control in an ingredient row (theme tokens, #54)
+  .ingredient-input {
+    .p-inputtext,
+    .p-inputnumber-input,
+    .p-dropdown,
+    .p-autocomplete-input {
+      width: 100%;
+      background: var(--surface-a);
+      color: var(--vscode-text);
+      border: 1px solid var(--vscode-border);
+      border-radius: 8px;
+      box-shadow: none;
+    }
+
+    .p-inputnumber,
+    .p-dropdown {
+      width: 100%;
+    }
+
+    .p-inputtext,
+    .p-inputnumber-input {
+      height: 42px;
+      padding: 0 12px;
+    }
+
+    .p-dropdown {
+      height: 42px;
+      align-items: center;
+    }
+
+    // The Dropdown's inner label must not draw a second border inside the outer one
+    .p-dropdown .p-dropdown-label {
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      height: auto;
+      padding: 0 12px;
+    }
+
+    .p-inputtext:disabled,
+    .p-dropdown.p-disabled {
+      opacity: 0.6;
+    }
+
+    .p-inputtext:enabled:focus,
+    .p-dropdown:not(.p-disabled).p-focus {
+      border-color: var(--vscode-accent);
+      box-shadow: var(--focus-ring);
+    }
+
+    .ingredient-action-button {
+      justify-self: end;
+      height: 42px;
+      min-width: 42px;
+    }
+  }
+
+  .ingredients-heading {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--vscode-muted);
+  }
+
+  .ingredient-input {
+    // Visible chevron in both themes
+    .p-dropdown .p-dropdown-trigger,
+    .p-dropdown .p-dropdown-trigger-icon {
+      color: var(--vscode-muted);
+    }
+
+    // Enabled Add: filled accent with dark text/icon (PrimeReact's default text colour is
+    // near-black and its dark-mode background is dark green, which made it unreadable)
+    .ingredient-action-button.p-button:enabled:not(.p-button-outlined) {
+      --on-accent: #04281c;
+      background: var(--vscode-accent);
+      border: 1px solid var(--vscode-accent);
+      color: var(--on-accent);
+
+      .p-button-icon,
+      .p-button-label {
+        color: var(--on-accent);
+      }
+
+      &:hover {
+        background: var(--vscode-accent);
+        border-color: var(--vscode-accent);
+        color: var(--on-accent);
+        filter: brightness(1.1);
+      }
+
+      &:active {
+        background: var(--vscode-accent);
+        border-color: var(--vscode-accent);
+        filter: brightness(0.92);
+      }
+
+      &:focus-visible {
+        box-shadow: var(--focus-ring);
+      }
+    }
+
+    // Disabled Add: clearly a button (border + readable text/icon) but obviously inactive
+    .ingredient-action-button.p-button:disabled {
+      opacity: 1;
+      background: transparent;
+      border: 1px solid var(--vscode-muted);
+      color: var(--vscode-muted);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+
+  // The blank row reads as "add new"; added rows read as a compact summary
+  .ingredient-input--new {
+    border-style: dashed;
+    border-color: var(--vscode-accent);
+    background: var(--accent-hover);
+
+    .ingredient-input-title {
+      grid-column: 1 / -1;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--vscode-accent);
+    }
+  }
+
+  .ingredient-input--stored {
+    border-left: 3px solid var(--vscode-accent);
+    background: var(--vscode-panel);
+    padding: 8px 12px;
   }
 
   .ingredient-name-input {
@@ -464,8 +602,10 @@
       grid-auto-rows: auto;
     }
 
+    // The action sits on its own row, right-aligned (no orphan under column 1)
     .ingredient-action-button {
-      justify-self: stretch;
+      grid-column: 1 / -1;
+      justify-self: end;
     }
   }
 

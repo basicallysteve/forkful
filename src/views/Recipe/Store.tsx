@@ -15,6 +15,7 @@ import { apiCreateRecipe } from "@/lib/api/recipes"
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
+import { Button } from 'primereact/button'
 import { RadioButton } from 'primereact/radiobutton'
 import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
@@ -24,14 +25,14 @@ import './markdownImport.scss'
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
 
-function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onRemove?: () => void, readOnly?: boolean, storedIngredient?: Ingredient }) {
+function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onChange?: (ingredient: Ingredient) => void, onRemove?: () => void, storedIngredient?: Ingredient }) {
+  const isStored = !!storedIngredient
   const foods = useFoodStore((state) => state.foods)
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
   // Create initial ingredient state - handle case when no foods are available
   const createInitialIngredient = (): Ingredient | null => {
-    if (storedIngredient) return storedIngredient
     if (!defaultFood) return null
     return {
       food: defaultFood,
@@ -41,15 +42,32 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     }
   }
 
-  const [ingredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
-  const [ingredientName, setIngredientName] = useState<string>(ingredient ? ingredient.food.name : "")
+  // Stored rows render straight from the recipe (no local copy, so they can never go stale);
+  // only the blank "new ingredient" row keeps local draft state.
+  const [draftIngredient, setIngredient] = useState<Ingredient | null>(createInitialIngredient())
+  const ingredient = storedIngredient ?? draftIngredient
+  // The add row starts blank: no food is chosen until the user picks one.
+  const [draftName, setIngredientName] = useState<string>("")
+  const [foodChosen, setFoodChosen] = useState<boolean>(false)
+  const blank = !isStored && !foodChosen
+  const ingredientName = storedIngredient ? storedIngredient.food.name : draftName
   const [missingFood, setMissingFood] = useState<boolean>(false)
 
+  // Edits to an already-added ingredient must reach the recipe, not just this row's local state.
+  function updateIngredient(next: Ingredient) {
+    if (isStored) onChange?.(next)
+    else setIngredient(next)
+  }
+
   function handleAdd() {
-    if (!ingredient || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
+    if (!ingredient || !foodChosen || !ingredient.food?.id || ingredient.quantity <= 0 || missingFood) {
       return
     }
     onAdd?.(ingredient)
+    // Reset the add row to blank
+    setIngredientName("")
+    setFoodChosen(false)
+    setMissingFood(false)
     if (defaultFood) {
       setIngredient({ 
         food: defaultFood, 
@@ -62,6 +80,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
 
   function handleFoodSelect(food: Food) {
     if (!ingredient) return
+    setFoodChosen(true)
     setIngredient({
       ...ingredient,
       food: food,
@@ -75,7 +94,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
     if (!ingredient) return
     const quantity = value ?? 0
     if (quantity < 0) {
-      setIngredient({ ...ingredient, quantity: 0, calories: 0 })
+      updateIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
     const caloriesPerUnit = calculateCalories({
@@ -86,7 +105,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       targetUnit: ingredient.servingUnit,
       density: ingredient.food?.density,
     }) || 0
-    setIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
+    updateIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
   }
 
   function handleUnitChange(newUnit: string) {
@@ -112,7 +131,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
       ? Math.round(calculatedCalories) 
       : ingredient.calories
     
-    setIngredient({
+    updateIngredient({
       ...ingredient,
       servingUnit: newUnit,
       calories: newCalories,
@@ -120,7 +139,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   }
 
   // If no foods available, show a message with link to create food
-  if (!ingredient && !storedIngredient) {
+  if (!ingredient) {
     return (
       <div className="ingredient-input">
         <span className="no-foods-message">No foods available. <Link href="/foods/new">Add a food</Link> first.</span>
@@ -132,7 +151,8 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
   if (!ingredient) return null
 
   return (
-    <div className="ingredient-input">
+    <div className={`ingredient-input ${isStored ? 'ingredient-input--stored' : 'ingredient-input--new'}`} role="group" aria-label={isStored ? `Ingredient ${ingredient.food.name}` : 'Add an ingredient'}>
+      {!isStored && <span className="ingredient-input-title">Add an ingredient</span>}
         <label className={`form-field ${missingFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
@@ -148,7 +168,8 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
                   setMissingFood(false)
                   handleFoodSelect(food)
                 } else {
-                  setMissingFood(true)
+                  setFoodChosen(false)
+                  setMissingFood(next.trim() !== "")
                 }
               }}
               onSelect={(food) => {
@@ -158,7 +179,7 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
               }}
               placeholder="Select food"
               inputAriaLabel="Ingredient name"
-              readOnly={readOnly}
+              readOnly={isStored}
               inputClassName={missingFood ? 'input-error' : ''}
               renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
@@ -171,9 +192,9 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         <InputNumber
           className="ingredient-quantity-input"
           min={0}
-          value={ingredient.quantity}
+          value={blank ? null : ingredient.quantity}
+          disabled={blank}
           onValueChange={(e) => setIngredientQuantity(e.value)}
-          readOnly={readOnly}
           aria-label="Quantity"
         />
         </label>
@@ -181,9 +202,10 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         <span className="field-label">Unit</span>
         <Dropdown
           className="ingredient-unit-select"
-          value={ingredient.servingUnit}
+          value={blank ? null : ingredient.servingUnit}
+          placeholder="Unit"
+          disabled={blank}
           onChange={(e) => handleUnitChange(e.value)}
-          disabled={readOnly}
           options={(() => {
             const food = ingredient.food
             const stored = (food?.measurements || []).map((m) => m.unit)
@@ -204,19 +226,19 @@ function IngredientInput({ onAdd, onRemove, readOnly, storedIngredient }: { onAd
         <InputNumber
             className="ingredient-calories-input"
             min={0}
-            value={ingredient.calories}
-            readOnly={readOnly}
+            value={blank ? null : ingredient.calories}
+            disabled={blank}
             onValueChange={(e) =>
-            setIngredient({ ...ingredient, calories: e.value ?? 0 })
+            updateIngredient({ ...ingredient, calories: e.value ?? 0 })
             }
             aria-label="Calories"
         />
         </label>
-      {readOnly ? <button type="button" className="danger-button ingredient-action-button" onClick={onRemove}>
-        -
-      </button> :  <button type="button" className="primary-button ingredient-action-button" onClick={handleAdd}>
-        +
-      </button>}
+      {isStored ? (
+        <Button type="button" icon="pi pi-trash" severity="danger" outlined className="ingredient-action-button" aria-label={`Remove ${ingredient.food.name}`} tooltip="Remove" tooltipOptions={{ position: 'top' }} onClick={onRemove} />
+      ) : (
+        <Button type="button" icon="pi pi-plus" label="Add" className="ingredient-action-button" aria-label="Add ingredient" disabled={blank || ingredient.quantity <= 0} onClick={handleAdd} />
+      )}
     </div>
   )
 }
@@ -293,17 +315,29 @@ function Store() {
 
   const [activeTab, setActiveTab] = useState<"details" | "ingredients">("details")
   
+  // Stable client-side row keys, parallel to recipe.ingredients (never sent to the API).
+  const [ingredientRowIds, setIngredientRowIds] = useState<string[]>([])
+
   function handleAddIngredient(ingredient: Ingredient) {
+    setIngredientRowIds((ids) => [...ids, crypto.randomUUID()])
     setRecipe({
         ...recipe,
         ingredients: [...(recipe.ingredients || []), ingredient],
     })
   }
 
+  function handleUpdateIngredient(index: number, updated: Ingredient) {
+    setRecipe((prev) => ({
+      ...prev,
+      ingredients: (prev.ingredients || []).map((ing, i) => (i === index ? updated : ing)),
+    }))
+  }
+
   function handleRemoveIngredient(index: number) {
     if (!recipe.ingredients) return
     const updatedIngredients = [...recipe.ingredients]
     updatedIngredients.splice(index, 1)
+    setIngredientRowIds((ids) => ids.filter((_, i) => i !== index))
     setRecipe({
         ...recipe,
         ingredients: updatedIngredients,
@@ -426,14 +460,12 @@ function Store() {
     const ingredientsTabContent = (
     <form className="store-form">
       <div className="form-grid">
-        <label className="form-field form-field-full">
-          <span className="field-label">Ingredients</span>
-        </label>
+        <h3 className="ingredients-heading form-field-full">Ingredients</h3>
         {ingredientCount === 0 && <p className="no-ingredients-text">No ingredients added yet.</p>}
         
         <IngredientInput onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
-          <IngredientInput storedIngredient={ingredient} key={`${ingredient.food.name}-${index}`} onRemove={() => handleRemoveIngredient(index)} readOnly={true} />
+          <IngredientInput storedIngredient={ingredient} key={ingredientRowIds[index] ?? index} onChange={(updated) => handleUpdateIngredient(index, updated)} onRemove={() => handleRemoveIngredient(index)} />
         ))}
         
         {similarRecipe && (
@@ -469,7 +501,7 @@ function Store() {
           </div>
           <div className="store-meta">
             <span className="pill pill-primary">Draft</span>
-            <span className="pill pill-ghost">{ingredientCount} ingredients</span>
+            <span className="pill pill-ghost">{ingredientCount} {ingredientCount === 1 ? "ingredient" : "ingredients"}</span>
           </div>
         </header>
 
