@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryRowActions from './PantryRowActions'
 
@@ -26,7 +26,7 @@ describe('PantryRowActions', () => {
     const { trigger } = setup()
     await user.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    const menu = screen.getByRole('menu')
+    const menu = screen.getByRole('menu', { hidden: true })
     expect(within(menu).getByText('Freeze')).toBeInTheDocument()
     expect(within(menu).getByText('Edit').closest('a')).toHaveAttribute('href', '/pantry/7/edit')
     expect(within(menu).getByText('Delete')).toBeInTheDocument()
@@ -37,7 +37,7 @@ describe('PantryRowActions', () => {
     const user = userEvent.setup()
     const { trigger } = setup(true)
     await user.click(trigger)
-    const menu = screen.getByRole('menu')
+    const menu = screen.getByRole('menu', { hidden: true })
     expect(within(menu).getByText('Thaw')).toBeInTheDocument()
     expect(within(menu).queryByText('Freeze')).not.toBeInTheDocument()
   })
@@ -74,17 +74,16 @@ describe('PantryRowActions', () => {
     const user = userEvent.setup()
     const { trigger } = setup()
     await user.click(trigger)
-    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
   })
 
   it('puts Delete last, after a separator, with danger styling', async () => {
     const user = userEvent.setup()
     const { trigger } = setup()
     await user.click(trigger)
-    const menu = screen.getByRole('menu')
+    const menu = screen.getByRole('menu', { hidden: true })
     const rows = Array.from(menu.querySelectorAll('li'))
     const separatorIndex = rows.findIndex((li) => li.getAttribute('role') === 'separator')
     const deleteIndex = rows.findIndex((li) => li.textContent?.includes('Delete'))

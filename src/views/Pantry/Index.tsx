@@ -15,6 +15,7 @@ import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpda
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import PantryRowActions from './PantryRowActions'
 import StatusDot from '@/components/StatusLegend/StatusDot'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
@@ -378,6 +379,14 @@ export default function Pantry() {
                             Delete
                           </button>
                         </div>
+                        <PantryRowActions
+                          itemId={item.id}
+                          itemName={item.sourceType === 'recipe' ? item.recipeNameSnapshot ?? 'Prepared Meal' : item.food?.name ?? item.product?.name ?? 'item'}
+                          frozen={Boolean(item.frozenDate)}
+                          onFreeze={() => handleFreeze(item.id)}
+                          onThaw={() => handleUnfreeze(item.id)}
+                          onDelete={() => handleDelete(item.id)}
+                        />
                       </td>
                     </tr>
                   ))}
