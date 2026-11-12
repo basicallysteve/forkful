@@ -73,8 +73,26 @@
   .p-menuitem {
     position: relative;
 
-    &.menu-item--right-first {
+    &:not(.menu-item--right) + .menu-item--right {
       margin-left: auto;
+    }
+  }
+
+  .p-megamenu-root-list {
+    flex-wrap: nowrap;
+  }
+
+  // MegaMenu keeps DOM focus on the menubar and marks the active item with .p-focus
+  .p-menuitem.p-focus > .p-menuitem-content {
+    .menu-option__trigger,
+    .submenu-option {
+      color: var(--vscode-text);
+      background: var(--accent-hover);
+      box-shadow: var(--focus-ring);
+    }
+
+    .menu-option__trigger::after {
+      transform: scaleX(1);
     }
   }
 
@@ -352,7 +370,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 819px) {
   .toolbar {
     padding: 0 16px;
     height: 60px;

@@ -30,6 +30,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         const hasChildren = !!(option.children && option.children.length > 0)
         const item: MenuItem = {
             label: option.label,
+            className: option.align === 'right' ? 'menu-item--right' : undefined,
             template: (_item, options) => {
                 if (hasChildren) {
                     return (
@@ -46,7 +47,6 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                         onClick={option.action}
                         title={option.avatar ? option.label : undefined}
                         aria-label={option.avatar ? option.label : undefined}
-                       
                     >
                         {option.avatar ? (
                             <span className="toolbar-avatar">
@@ -126,10 +126,7 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                 {/* Desktop menu */}
                 <MegaMenu
                     className="menu menu--desktop"
-                    model={[...leftOptions, ...rightOptions].map((o, i) => ({
-                        ...toMegaItem(o),
-                        className: i === leftOptions.length && rightOptions.length ? 'menu-item--right-first' : undefined,
-                    }))}
+                    model={[...leftOptions, ...rightOptions].map(toMegaItem)}
                     aria-label="Main navigation"
                     end={<ThemeToggle />}
                 />
