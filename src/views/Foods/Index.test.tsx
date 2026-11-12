@@ -91,7 +91,7 @@ describe('Foods List Page', () => {
 
     it('displays the food count', () => {
       renderWithProviders(<Foods />)
-      expect(screen.getByText('3 foods')).toBeInTheDocument()
+      expect(screen.getByText('3 foods').closest('.p-tag')).toBeInTheDocument()
     })
 
     it('renders all food cards', () => {
