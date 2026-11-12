@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   preprocessName, escapeLike, candidateSearchTerms, selectCandidates, buildUserMessage,
   parseChoice, pickBestFood, resolveLinkModel, DEFAULT_LINK_MODEL, MAX_CANDIDATES,
-  parseIntFlag, settleBatch, type CompleteFn,
+  parseIntFlag, settleBatch, finalOutcome, type CompleteFn,
 } from './productFoodLinker'
 
 const cands = [{ id: 42, name: 'Chicken Breast' }, { id: 7, name: 'Chicken Thigh' }]
@@ -95,5 +95,14 @@ describe('settleBatch', () => {
     const r = settleBatch([fail(boom), ok('b')])
     expect(r.budgetExhausted).toBe(false)
     expect(r.otherError).toBe(boom)
+  })
+})
+
+describe('finalOutcome', () => {
+  it('skips linked results whose guarded update touched no rows', () => {
+    expect(finalOutcome('linked', 0)).toBe('skipped')
+    expect(finalOutcome('linked', 1)).toBe('linked')
+    expect(finalOutcome('linked', null)).toBe('linked')
+    expect(finalOutcome('no-match', 0)).toBe('no-match')
   })
 })

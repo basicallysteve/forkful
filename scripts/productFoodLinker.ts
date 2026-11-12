@@ -139,3 +139,18 @@ export function settleBatch<R>(settled: PromiseSettledResult<R>[]): SettledBatch
   })
   return { results, prefix: prefix < 0 ? settled.length : prefix, budgetExhausted, otherError }
 }
+
+export type LinkOutcome = 'linked' | 'no-candidates' | 'no-match' | 'error' | 'skipped'
+
+/**
+ * Final outcome for a result once the write is known. `rowsUpdated` is the guarded update's row count
+ * (null in dry-run, where no write happens). A linked result that updated 0 rows was linked or deleted
+ * by someone else since the worklist was loaded, so it is skipped rather than counted as linked.
+ */
+export function finalOutcome(
+  reason: 'linked' | 'no-candidates' | 'no-match' | 'error',
+  rowsUpdated: number | null,
+): LinkOutcome {
+  if (reason === 'linked' && rowsUpdated === 0) return 'skipped'
+  return reason
+}

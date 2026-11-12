@@ -26,7 +26,7 @@ import { db } from '@/db'
 import { products, foods } from '@/db/schema'
 import { complete, AIBudgetExhaustedError } from '@/lib/ai'
 import {
-  preprocessName, escapeLike, selectCandidates, pickBestFood, resolveLinkModel, parseIntFlag, settleBatch, type Candidate,
+  preprocessName, escapeLike, selectCandidates, pickBestFood, resolveLinkModel, parseIntFlag, settleBatch, finalOutcome, type LinkOutcome, type Candidate,
 } from './productFoodLinker'
 
 // Refuse to touch production unless explicitly allowed (see seedGuard.ts).
@@ -115,7 +115,7 @@ const baseQuery = db.select({ id: products.id, name: products.name }).from(produ
 const toProcess = await (LIMIT < Infinity ? baseQuery.limit(LIMIT) : baseQuery)
 console.log(`  ${toProcess.length} unlinked products to process (source: ${SOURCE ?? 'all'}, after id ${AFTER_ID}, concurrency ${CONCURRENCY}, model ${MODEL.model})\n`)
 
-const counts: Record<Reason, number> = { linked: 0, 'no-candidates': 0, 'no-match': 0, error: 0 }
+const counts: Record<LinkOutcome, number> = { linked: 0, 'no-candidates': 0, 'no-match': 0, error: 0, skipped: 0 }
 let processed = 0
 let lastProcessedId = AFTER_ID
 let stopped = false
@@ -126,13 +126,19 @@ for (let i = 0; i < toProcess.length && !stopped; i += CONCURRENCY) {
   const { results, prefix, budgetExhausted, otherError } = settleBatch(await Promise.allSettled(batch.map(processProduct)))
   for (const r of results) {
     processed++
-    counts[r.reason]++
-    if (r.reason !== 'linked') continue
-    if (DRY_RUN) {
-      console.log(`  [DRY] "${r.productName}" -> "${r.foodName}" (food #${r.foodId})`)
-    } else {
-      await db.update(products).set({ parentFoodId: r.foodId, dateUpdated: new Date() }).where(eq(products.id, r.productId))
+    let rowsUpdated: number | null = null
+    if (r.reason === 'linked' && !DRY_RUN) {
+      // Guarded write: never overwrite a link made since the worklist was loaded, or touch deleted rows.
+      const updated = await db.update(products)
+        .set({ parentFoodId: r.foodId, dateUpdated: new Date() })
+        .where(and(eq(products.id, r.productId), isNull(products.parentFoodId), isNull(products.dateDeleted)))
+        .returning({ id: products.id })
+      rowsUpdated = updated.length
     }
+    const outcome = finalOutcome(r.reason, rowsUpdated)
+    counts[outcome]++
+    if (outcome === 'linked' && DRY_RUN) console.log(`  [DRY] "${r.productName}" -> "${r.foodName}" (food #${r.foodId})`)
+    if (outcome === 'skipped') console.log(`  skipped "${r.productName}": already linked or deleted`)
   }
   if (prefix > 0) lastProcessedId = batch[prefix - 1].id
   if (otherError !== undefined) throw otherError
@@ -140,9 +146,9 @@ for (let i = 0; i < toProcess.length && !stopped; i += CONCURRENCY) {
     console.error('\nAI budget exhausted, stopping. Links made so far are kept.')
     stopped = true
   }
-  process.stdout.write(`\r  ${processed} / ${toProcess.length}  linked: ${counts.linked}, no-candidates: ${counts['no-candidates']}, no-match: ${counts['no-match']}, errors: ${counts.error}  `)
+  process.stdout.write(`\r  ${processed} / ${toProcess.length}  linked: ${counts.linked}, no-candidates: ${counts['no-candidates']}, no-match: ${counts['no-match']}, skipped: ${counts.skipped}, errors: ${counts.error}  `)
 }
 
 process.stdout.write('\n')
-console.log(`\n${DRY_RUN ? 'DRY RUN, nothing written. ' : ''}Processed ${processed}; linked ${counts.linked}; no candidates ${counts['no-candidates']}; no match ${counts['no-match']}; errors ${counts.error}\nLast processed id: ${lastProcessedId} (continue with --after-id ${lastProcessedId})\n`)
+console.log(`\n${DRY_RUN ? 'DRY RUN, nothing written. ' : ''}Processed ${processed}; linked ${counts.linked}; no candidates ${counts['no-candidates']}; no match ${counts['no-match']}; skipped (already linked or deleted) ${counts.skipped}; errors ${counts.error}\nLast processed id: ${lastProcessedId} (continue with --after-id ${lastProcessedId})\n`)
 process.exit(0)
