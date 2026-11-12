@@ -373,6 +373,7 @@
 
   .item-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
 
     .btn-small {
@@ -566,6 +567,18 @@
         flex: 1 1 0;
         min-width: 0;
         text-align: center;
+      }
+    }
+  }
+
+  // Narrow table range (721-900px): tighten cell padding so every column, Actions included, fits
+  // without the panel scrolling sideways. Below 721px the table is hidden for the card view.
+  @media (min-width: 721px) and (max-width: 900px) {
+    .pantry-table {
+      thead th,
+      tbody td {
+        padding-left: 6px;
+        padding-right: 6px;
       }
     }
   }
