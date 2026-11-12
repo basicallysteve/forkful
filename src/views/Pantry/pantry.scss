@@ -42,9 +42,25 @@
     justify-content: flex-end;
   }
 
+  // The whole visible pill is the link: the anchor is the hit area and the Tag fills it.
+  // Size matches the old primary pill at desktop; the font no longer shrinks below 12px on phones.
   .pantry-add-link {
-    text-decoration: none;
     display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    border-radius: 999px;
+
+    &:focus-visible {
+      outline: 2px solid var(--vscode-accent);
+      outline-offset: 2px;
+    }
+
+    .p-tag {
+      border-radius: 999px;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      min-height: 2rem;
+    }
   }
 
   .pantry-stats {
@@ -349,7 +365,8 @@
     border-color: rgba(239, 68, 68, 0.45);
   }
 
-  .pantry-prepared-tag {
+  .p-tag.pantry-prepared-tag {
+    border-color: var(--vscode-muted);
     margin-left: 0.5rem;
     font-size: 0.7rem;
   }
