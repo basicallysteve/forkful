@@ -249,6 +249,37 @@
       color: var(--vscode-muted);
     }
 
+    // Enabled Add: filled accent with dark text/icon (PrimeReact's default text colour is
+    // near-black and its dark-mode background is dark green, which made it unreadable)
+    .ingredient-action-button.p-button:enabled:not(.p-button-outlined) {
+      --on-accent: #04281c;
+      background: var(--vscode-accent);
+      border: 1px solid var(--vscode-accent);
+      color: var(--on-accent);
+
+      .p-button-icon,
+      .p-button-label {
+        color: var(--on-accent);
+      }
+
+      &:hover {
+        background: var(--vscode-accent);
+        border-color: var(--vscode-accent);
+        color: var(--on-accent);
+        filter: brightness(1.1);
+      }
+
+      &:active {
+        background: var(--vscode-accent);
+        border-color: var(--vscode-accent);
+        filter: brightness(0.92);
+      }
+
+      &:focus-visible {
+        box-shadow: var(--focus-ring);
+      }
+    }
+
     // Disabled Add: clearly a button (border + readable text/icon) but obviously inactive
     .ingredient-action-button.p-button:disabled {
       opacity: 1;
@@ -571,8 +602,10 @@
       grid-auto-rows: auto;
     }
 
+    // The action sits on its own row, right-aligned (no orphan under column 1)
     .ingredient-action-button {
-      justify-self: stretch;
+      grid-column: 1 / -1;
+      justify-self: end;
     }
   }
 
