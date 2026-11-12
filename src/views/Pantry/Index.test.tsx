@@ -157,6 +157,46 @@ describe('Pantry List Page', () => {
     })
   })
 
+  describe('Mobile cards', () => {
+    function cardFor(name: string): HTMLElement {
+      const card = [...document.querySelectorAll<HTMLElement>('.pantry-card')].find((c) => c.textContent?.includes(name))
+      if (!card) throw new Error(`no card for ${name}`)
+      return card
+    }
+
+    it('shows Freeze, Edit and Delete in every card, named after the item', async () => {
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], status: 'good' })])
+      await screen.findAllByText('Chicken Breast')
+
+      const card = within(cardFor('Chicken Breast'))
+      expect(card.getByRole('button', { name: 'Freeze Chicken Breast' })).toBeInTheDocument()
+      expect(card.getByRole('link', { name: 'Edit Chicken Breast' })).toHaveAttribute('href', '/pantry/1/edit')
+      expect(card.getByRole('button', { name: 'Delete Chicken Breast' })).toBeInTheDocument()
+    })
+
+    it('shows Thaw instead of Freeze for a frozen item', async () => {
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], status: 'good', frozenDate: new Date() })])
+      await screen.findAllByText('Chicken Breast')
+
+      const card = within(cardFor('Chicken Breast'))
+      expect(card.getByRole('button', { name: 'Thaw Chicken Breast' })).toBeInTheDocument()
+      expect(card.queryByRole('button', { name: /^Freeze/ })).not.toBeInTheDocument()
+    })
+
+    it('keeps Delete in its own danger element, apart from Freeze and Edit', async () => {
+      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], status: 'good' })])
+      await screen.findAllByText('Chicken Breast')
+
+      const card = cardFor('Chicken Breast')
+      const group = card.querySelector('.card-actions-group') as HTMLElement
+      const del = within(card).getByRole('button', { name: 'Delete Chicken Breast' })
+      expect(del).toHaveClass('card-action-delete')
+      expect(group).not.toContainElement(del)
+      expect(within(group).getByRole('button', { name: 'Freeze Chicken Breast' })).toBeInTheDocument()
+      expect(within(group).getByRole('link', { name: 'Edit Chicken Breast' })).toBeInTheDocument()
+    })
+  })
+
   describe('Delete', () => {
     it('calls the API and removes the item from the store', async () => {
       const user = userEvent.setup()
