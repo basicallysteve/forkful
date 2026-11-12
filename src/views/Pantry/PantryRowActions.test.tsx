@@ -3,6 +3,26 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import PantryRowActions from './PantryRowActions'
 
+// Pass-through Menu that records the currentTarget of every hide event (jsdom can't reproduce
+// PrimeReact's resize repositioning, so we assert on what it would be given).
+const hideTargets: unknown[] = []
+vi.mock('primereact/menu', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('primereact/menu')>()
+  const React = await import('react')
+  const Menu = React.forwardRef<unknown, Record<string, unknown>>((props, ref) => {
+    const onHide = props.onHide as ((event: { currentTarget: unknown }) => void) | undefined
+    return React.createElement(actual.Menu as never, {
+      ...props,
+      ref,
+      onHide: (event: { currentTarget: unknown }) => {
+        hideTargets.push(event.currentTarget)
+        onHide?.(event)
+      },
+    })
+  })
+  return { ...actual, Menu }
+})
+
 function setup(frozen = false) {
   const onFreeze = vi.fn()
   const onThaw = vi.fn()
@@ -112,6 +132,19 @@ describe('PantryRowActions', () => {
     fireEvent(window, new Event('resize'))
     await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('hides against the trigger, not the window, on resize (PrimeReact repositions against the stored target)', async () => {
+    const user = userEvent.setup()
+    const { trigger } = setup()
+    hideTargets.length = 0
+    await user.click(trigger)
+    fireEvent(window, new Event('resize'))
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
+    // Window as the stored target makes PrimeReact's own resize handler throw
+    // "target.getBoundingClientRect is not a function" in a real browser.
+    // Compare by identity, printing only a label (a window in a failure diff is enormous).
+    expect(hideTargets.map((target) => (target === trigger ? 'trigger' : target instanceof Element ? 'other element' : 'not an element (window)'))).toEqual(['trigger'])
   })
 
   it('closes on Tab and returns focus to the trigger', async () => {
