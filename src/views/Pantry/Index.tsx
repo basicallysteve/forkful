@@ -474,19 +474,37 @@ export default function Pantry() {
                       </div>
 
                       <div className="card-actions">
-                        {item.frozenDate ? (
-                          <button onClick={() => handleUnfreeze(item.id)} className="btn-small btn-info" title="Unfreeze item">
-                            Thaw
-                          </button>
-                        ) : (
-                          <button onClick={() => handleFreeze(item.id)} className="btn-small btn-info" title="Freeze item">
-                            Freeze
-                          </button>
-                        )}
-                        <Link href={`/pantry/${item.id}/edit`} className="btn-small btn-secondary">
-                          Edit
-                        </Link>
-                        <button onClick={() => handleDelete(item.id)} className="btn-small btn-danger">
+                        <div className="card-actions-group">
+                          {item.frozenDate ? (
+                            <button
+                              onClick={() => handleUnfreeze(item.id)}
+                              className="btn-small btn-info"
+                              aria-label={`Thaw ${itemDisplayName(item)}`}
+                            >
+                              Thaw
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleFreeze(item.id)}
+                              className="btn-small btn-info"
+                              aria-label={`Freeze ${itemDisplayName(item)}`}
+                            >
+                              Freeze
+                            </button>
+                          )}
+                          <Link
+                            href={`/pantry/${item.id}/edit`}
+                            className="btn-small btn-secondary"
+                            aria-label={`Edit ${itemDisplayName(item)}`}
+                          >
+                            Edit
+                          </Link>
+                        </div>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="btn-small btn-danger card-action-delete"
+                          aria-label={`Delete ${itemDisplayName(item)}`}
+                        >
                           Delete
                         </button>
                       </div>
