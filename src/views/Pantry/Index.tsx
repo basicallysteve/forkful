@@ -121,6 +121,7 @@ export default function Pantry() {
     const toastMessage: ToastMessage = {
       sticky: true,
       closable: false,
+      className: 'undo-toast',
       content: (
         <div className="undo-toast-content">
           <span className="undo-toast-message">{message}</span>
@@ -607,7 +608,7 @@ export default function Pantry() {
           )}
         </div>
       </div>
-      <Toast ref={toast} position="bottom-left" />
+      <Toast ref={toast} position="bottom-left" className="pantry-toast" />
     </div>
   )
 }

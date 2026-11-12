@@ -988,7 +988,27 @@
   }
  
 }
-// Undo toast content (PrimeReact Toast, bottom-left so it clears the bottom-right "Report an issue" widget).
+// Undo toast (PrimeReact Toast). Bottom-left so it clears the bottom-right "Report an issue" widget;
+// on narrow screens it leaves room for that widget on the right.
+.p-toast.pantry-toast {
+  left: 16px;
+  bottom: 16px;
+  width: min(420px, calc(100vw - 32px));
+
+  @media (max-width: 720px) {
+    width: calc(100vw - 32px - 64px);
+  }
+}
+
+.p-toast-message.undo-toast {
+  background: var(--vscode-panel-strong);
+  color: var(--vscode-text);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--shadow-container);
+  backdrop-filter: none;
+}
+
 .undo-toast-content {
   display: flex;
   align-items: center;
