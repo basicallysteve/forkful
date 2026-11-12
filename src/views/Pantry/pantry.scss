@@ -585,6 +585,16 @@
     .pantry-row-actions {
       display: block;
     }
+
+    // Even with the menu the table overflows sideways at 12px padding (measured: 92px at 721px,
+    // 33px at 780px), so keep the cells tight in this range only.
+    .pantry-table {
+      thead th,
+      tbody td {
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+    }
   }
 
   @media (max-width: 720px) {

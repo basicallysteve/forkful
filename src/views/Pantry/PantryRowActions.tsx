@@ -27,7 +27,7 @@ export default function PantryRowActions({ itemId, itemName, frozen, onFreeze, o
       label,
       command,
       template: (item: MenuItem, options: MenuItemOptions) => (
-        <button type="button" tabIndex={-1} role="presentation" className={`${options.className} pantry-menu-action ${extraClass}`.trim()} onClick={options.onClick}>
+        <button type="button" tabIndex={-1} role="presentation" className={`${options.className} pantry-menu-action ${extraClass}`.trim()}>
           {item.label}
         </button>
       ),
@@ -39,7 +39,7 @@ export default function PantryRowActions({ itemId, itemName, frozen, onFreeze, o
     {
       label: 'Edit',
       template: (item: MenuItem, options: MenuItemOptions) => (
-        <Link href={`/pantry/${itemId}/edit`} tabIndex={-1} role="presentation" className={`${options.className} pantry-menu-action`} onClick={options.onClick}>
+        <Link href={`/pantry/${itemId}/edit`} tabIndex={-1} role="presentation" className={`${options.className} pantry-menu-action`} data-pc-section="action">
           {item.label}
         </Link>
       ),

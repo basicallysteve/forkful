@@ -79,6 +79,17 @@ describe('PantryRowActions', () => {
     await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'))
   })
 
+  it('activates Edit from the keyboard by clicking its link', async () => {
+    const user = userEvent.setup()
+    const { trigger } = setup()
+    await user.click(trigger)
+    const link = screen.getByText('Edit').closest('a') as HTMLAnchorElement
+    const clicked = vi.fn((event: Event) => event.preventDefault())
+    link.addEventListener('click', clicked)
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(clicked).toHaveBeenCalledTimes(1)
+  })
+
   it('puts Delete last, after a separator, with danger styling', async () => {
     const user = userEvent.setup()
     const { trigger } = setup()
