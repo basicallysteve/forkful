@@ -42,6 +42,8 @@ bun seed:usda        # Seed foods into the database in .env.local (dev)
 bun seed:usda:prod   # Deliberately seed production (.env.production); the script refuses the prod URL otherwise
 bun seed:usda-branded       # Import USDA Branded products into the database in .env.local (dev)
 bun seed:usda-branded:prod  # Deliberately import into production (.env.production); the script refuses the prod URL otherwise
+bun link:product-foods       # AI-link unlinked products to parent foods in .env.local (dev); add -- --dry-run --limit N --concurrency N
+bun link:product-foods:prod  # Deliberately link in production (.env.production); the script refuses the prod URL otherwise
 ```
 
 CI uses Bun (`bun install --frozen-lockfile`, `bunx vitest run --changed`).
