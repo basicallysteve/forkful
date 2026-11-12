@@ -26,7 +26,13 @@ export default function PantryRowActions({ itemId, itemName, frozen, onFreeze, o
   // The popup is positioned once on open, so a resize would leave it detached from its trigger.
   useEffect(() => {
     if (!open) return
-    const close = (event: Event) => menu.current?.hide(event as unknown as React.SyntheticEvent)
+    // Menu.hide(event) stores event.currentTarget as the overlay target, and PrimeReact's own resize
+    // handler repositions against it, so it must be the trigger element (a window there throws
+    // "getBoundingClientRect is not a function"). hide() only reads currentTarget, hence the narrow
+    // cast: PrimeReact types it as a React.SyntheticEvent and offers no typed alternative.
+    const trigger = wrapper.current?.querySelector<HTMLElement>('.pantry-row-actions-trigger')
+    if (!trigger) return
+    const close = () => menu.current?.hide({ currentTarget: trigger } as unknown as React.SyntheticEvent)
     window.addEventListener('resize', close)
     return () => window.removeEventListener('resize', close)
   }, [open])
