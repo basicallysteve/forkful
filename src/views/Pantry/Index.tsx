@@ -17,7 +17,8 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import PantryRowActions from './PantryRowActions'
-import UndoToasts from './UndoToasts'
+import { Toast, type ToastMessage } from 'primereact/toast'
+import { Button } from 'primereact/button'
 import StatusDot from '@/components/StatusLegend/StatusDot'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
@@ -61,6 +62,8 @@ export default function Pantry() {
   const pendingTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
   const nextKey = useRef(0)
   const deleteLocked = useRef(false)
+  const toast = useRef<Toast>(null)
+  const toastMessages = useRef(new Map<number, ToastMessage>())
 
   // Rows with a delete waiting out its undo window stay in the store but are hidden from the view,
   // so Undo puts them back in their original position.
@@ -114,16 +117,37 @@ export default function Pantry() {
     setActionError(null)
     setPending((current) => [...current, { key, ids, message, sending: false }])
     pendingTimers.current.set(key, setTimeout(() => sendDelete(key, ids), UNDO_WINDOW_MS))
+    // Sticky: our timer decides when the toast goes, so it can never outlive or cut short the undo window.
+    const toastMessage: ToastMessage = {
+      sticky: true,
+      closable: false,
+      content: (
+        <div className="undo-toast-content">
+          <span className="undo-toast-message">{message}</span>
+          <Button type="button" label="Undo" size="small" outlined onClick={() => handleUndo(key)} />
+        </div>
+      ),
+    }
+    toastMessages.current.set(key, toastMessage)
+    toast.current?.show(toastMessage)
     return true
+  }
+
+  function removeToast(key: number) {
+    const message = toastMessages.current.get(key)
+    if (message) toast.current?.remove(message)
+    toastMessages.current.delete(key)
   }
 
   function dropPending(key: number) {
     pendingTimers.current.delete(key)
+    removeToast(key)
     setPending((current) => current.filter((entry) => entry.key !== key))
   }
 
   async function sendDelete(key: number, ids: number[]) {
     pendingTimers.current.delete(key)
+    removeToast(key)
     setPending((current) => current.map((entry) => (entry.key === key ? { ...entry, sending: true } : entry)))
     try {
       if (ids.length === 1) {
@@ -583,10 +607,7 @@ export default function Pantry() {
           )}
         </div>
       </div>
-      <UndoToasts
-        toasts={pending.filter((entry) => !entry.sending).map(({ key, message }) => ({ key, message }))}
-        onUndo={handleUndo}
-      />
+      <Toast ref={toast} position="bottom-left" />
     </div>
   )
 }
