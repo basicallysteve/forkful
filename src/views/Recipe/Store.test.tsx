@@ -387,7 +387,7 @@ describe('Recipes List - Card Layout', () => {
             <div className="card-header">
               <h3 className="card-title">Test Recipe</h3>
               <div className="card-badges">
-                <span className="pill pill-ghost">Lunch</span>
+                <span className="p-tag">Lunch</span>
               </div>
             </div>
           </div>

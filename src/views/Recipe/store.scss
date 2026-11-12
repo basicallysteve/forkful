@@ -1,3 +1,5 @@
+@use '../../styles/tag';
+
 .recipe-store {
   color: var(--vscode-text);
   width: 100%;
@@ -63,25 +65,7 @@
     justify-content: flex-end;
   }
 
-  .pill {
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    border: 1px solid var(--vscode-border);
-    background: var(--vscode-panel);
-    color: var(--vscode-muted);
-  }
-
-  .pill-primary {
-    color: #ffffff;
-    border-color: var(--vscode-accent);
-    background: var(--vscode-accent);
-    box-shadow: 0 4px 12px var(--accent-glow);
-  }
-
-  .pill-ghost {
-    background: var(--accent-hover);
-  }
+  @include tag.tag-theme;
 
   .store-panel {
     border: 1px solid var(--vscode-border);
