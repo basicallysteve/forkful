@@ -142,7 +142,7 @@ describe('Pantry List Page', () => {
 
       expect(await screen.findAllByText('Chicken Breast')).not.toHaveLength(0)
       expect(screen.getAllByText(/2\.00 lb \/ 1\.50 lb/).length).toBeGreaterThan(0)
-      expect(document.querySelector('.status-badge.status-good')).toHaveTextContent('Good')
+      expect(document.querySelector('.p-tag.p-tag-success')).toHaveTextContent('Good')
     })
 
     it('renders edit and delete buttons for each item', async () => {
