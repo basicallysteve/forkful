@@ -26,6 +26,8 @@ type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
 
 const UNDO_WINDOW_MS = 6000
+// After a delete, rows shift up under the cursor; ignore clicks this soon after so a double-click can't delete the next row.
+const DELETE_GUARD_MS = 400
 
 interface PendingDelete {
   key: number
@@ -58,6 +60,7 @@ export default function Pantry() {
   const [pending, setPending] = useState<PendingDelete[]>([])
   const pendingTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
   const nextKey = useRef(0)
+  const deleteLocked = useRef(false)
 
   // Rows with a delete waiting out its undo window stay in the store but are hidden from the view,
   // so Undo puts them back in their original position.
@@ -103,11 +106,15 @@ export default function Pantry() {
     else setSelectedItems(new Set(items.map((item) => item.id)))
   }
 
-  function scheduleDelete(ids: number[], message: string) {
+  function scheduleDelete(ids: number[], message: string): boolean {
+    if (deleteLocked.current) return false
+    deleteLocked.current = true
+    setTimeout(() => { deleteLocked.current = false }, DELETE_GUARD_MS)
     const key = nextKey.current++
     setActionError(null)
     setPending((current) => [...current, { key, ids, message, sending: false }])
     pendingTimers.current.set(key, setTimeout(() => sendDelete(key, ids), UNDO_WINDOW_MS))
+    return true
   }
 
   function dropPending(key: number) {
@@ -145,14 +152,14 @@ export default function Pantry() {
     if (selectedItems.size === 0) return
     const ids = items.filter((item) => selectedItems.has(item.id)).map((item) => item.id)
     if (ids.length === 0) return
-    scheduleDelete(ids, ids.length === 1 ? `Deleted ${itemDisplayName(items.find((i) => i.id === ids[0])!)}` : `Deleted ${ids.length} items`)
-    setSelectedItems(new Set())
+    const message = ids.length === 1 ? `Deleted ${itemDisplayName(items.find((i) => i.id === ids[0])!)}` : `Deleted ${ids.length} items`
+    if (scheduleDelete(ids, message)) setSelectedItems(new Set())
   }
 
   function handleDelete(id: number) {
     const item = items.find((i) => i.id === id)
     if (!item) return
-    scheduleDelete([id], `Deleted ${itemDisplayName(item)}`)
+    if (!scheduleDelete([id], `Deleted ${itemDisplayName(item)}`)) return
     setSelectedItems((current) => {
       if (!current.has(id)) return current
       const next = new Set(current)

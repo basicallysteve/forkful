@@ -317,11 +317,11 @@ describe('Pantry List Page', () => {
       expect(rowNames().join('|')).toContain('Brown Rice')
     })
 
-    it('ignores a rapid second click from the row actions menu too', async () => {
+    it('ignores a rapid click right after a delete from the row actions menu', async () => {
       await loaded(two())
-      clickDelete('Chicken Breast')
-      fireEvent.click(screen.getByRole('button', { name: 'Actions for Brown Rice' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Chicken Breast' }))
       fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
+      clickDelete('Brown Rice')
 
       expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
     })
