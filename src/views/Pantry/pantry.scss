@@ -469,6 +469,7 @@
 
     .p-card-content {
       display: flex;
+      flex-direction: row;
       gap: 12px;
       padding: 0;
     }
