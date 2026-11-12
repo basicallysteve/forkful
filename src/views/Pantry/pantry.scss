@@ -570,6 +570,33 @@
     }
   }
 
+  // The overflow menu trigger only replaces the inline buttons in the mid-width table range.
+  .pantry-row-actions {
+    display: none;
+  }
+
+  // Mid-width table range (721-960px): too narrow for three inline buttons per row, so collapse them
+  // into one "..." menu. Below 721px the table is hidden for the card view.
+  @media (min-width: 721px) and (max-width: 960px) {
+    .item-actions {
+      display: none;
+    }
+
+    .pantry-row-actions {
+      display: block;
+    }
+
+    // Even with the menu the table overflows sideways at 12px padding (measured: 92px at 721px,
+    // 33px at 780px), so keep the cells tight in this range only.
+    .pantry-table {
+      thead th,
+      tbody td {
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+    }
+  }
+
   @media (max-width: 720px) {
     .pantry-header {
       flex-direction: column;
@@ -609,6 +636,71 @@
     .pantry-cards {
       display: flex;
     }
+  }
+}
+
+// Row actions trigger + popup menu (the popup is appended to <body>, so it sits outside .pantry-list).
+.pantry-row-actions-trigger.p-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--vscode-text);
+
+  &:hover {
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+}
+
+.pantry-row-menu.p-menu {
+  min-width: 10rem;
+  background: var(--vscode-panel);
+  border: 1px solid var(--vscode-border);
+  box-shadow: 0 6px 18px var(--shadow-container);
+
+  .p-menuitem-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-size: 14px;
+    color: var(--vscode-text);
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .p-menuitem:hover > .p-menuitem-link,
+  .p-menuitem.p-focus > .p-menuitem-link {
+    background: var(--accent-hover);
+  }
+
+  .p-menuitem.p-focus > .p-menuitem-link {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: -2px;
+  }
+
+  .p-menu-separator {
+    margin: 0.25rem 0;
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  .pantry-menu-danger {
+    color: var(--vscode-danger);
+  }
+
+  .p-menuitem:hover > .pantry-menu-danger,
+  .p-menuitem.p-focus > .pantry-menu-danger {
+    background: rgba(239, 68, 68, 0.12);
   }
 }
 
