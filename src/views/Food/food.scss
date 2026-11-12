@@ -56,6 +56,18 @@
     justify-content: flex-end;
   }
 
+  .p-tag {
+    color: var(--vscode-text);
+    background: var(--accent-hover-strong);
+    border: 1px solid var(--accent-border);
+    font-weight: 500;
+  }
+
+  .p-tag.p-tag-info {
+    background: rgba(6, 182, 212, 0.18);
+    border-color: rgba(6, 182, 212, 0.4);
+  }
+
   .food-panel {
     border: 1px solid var(--vscode-border);
     border-radius: 12px;
