@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { MegaMenu } from 'primereact/megamenu'
+import type { MenuItem } from 'primereact/menuitem'
 import ThemeToggle from './ThemeToggle'
 import ThemedLogo from './ThemedLogo'
 
@@ -24,31 +26,32 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
         setDrawerOpen(false)
     }
 
-    function renderMenuOption(option: MenuOption) {
+    function toMegaItem(option: MenuOption): MenuItem {
         const hasChildren = !!(option.children && option.children.length > 0)
-
-        return (
-            <div className={`menu-option${option.align === 'right' ? ' menu-option--right' : ''}`} key={option.label}>
-                {hasChildren ? (
-                    <button
-                        type="button"
-                        className="menu-option__trigger"
-                        onClick={option.action}
-                    >
-                        <span className="menu-option__label">{option.label}</span>
-                        <span className="menu-option__caret">▾</span>
-                    </button>
-                ) : (
+        const item: MenuItem = {
+            label: option.label,
+            template: (_item, options) => {
+                if (hasChildren) {
+                    return (
+                        <span className={`${options.className} menu-option__trigger`}>
+                            <span className="menu-option__label">{option.label}</span>
+                            <span className="menu-option__caret" aria-hidden="true">▾</span>
+                        </span>
+                    )
+                }
+                return (
                     <Link
                         href={option.to || '#'}
-                        className="menu-option__trigger"
+                        className={`${options.className} menu-option__trigger`}
                         onClick={option.action}
                         title={option.avatar ? option.label : undefined}
+                        aria-label={option.avatar ? option.label : undefined}
+                       
                     >
                         {option.avatar ? (
-                            <span className="toolbar-avatar" aria-label={option.label}>
+                            <span className="toolbar-avatar">
                                 {option.avatar.url
-                                    ? <img src={option.avatar.url} alt={option.label} className="toolbar-avatar__img" />
+                                    ? <img src={option.avatar.url} alt="" className="toolbar-avatar__img" />
                                     : <span className="toolbar-avatar__initial">{option.avatar.initial}</span>
                                 }
                             </span>
@@ -56,23 +59,23 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                             <span className="menu-option__label">{option.label}</span>
                         )}
                     </Link>
-                )}
-                {hasChildren && (
-                    <div className="submenu" role="menu">
-                        {option.children!.map((childOption) => (
-                            <Link
-                                key={childOption.label}
-                                className="submenu-option"
-                                href={childOption.to || '#'}
-                                onClick={childOption.action}
-                            >
-                                {childOption.label}
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </div>
-        )
+                )
+            },
+        }
+        if (hasChildren) {
+            item.items = [[{
+                label: option.label,
+                items: option.children!.map((child): MenuItem => ({
+                    label: child.label,
+                    template: (_i, options) => (
+                        <Link href={child.to || '#'} className={`${options.className} submenu-option`} onClick={child.action}>
+                            {child.label}
+                        </Link>
+                    ),
+                })),
+            }]]
+        }
+        return item
     }
 
     function renderDrawerSection(option: MenuOption) {
@@ -121,15 +124,15 @@ function ToolBar({ menuOptions }: { menuOptions?: MenuOption[] }) {
                 </Link>
 
                 {/* Desktop menu */}
-                <div className="menu menu--desktop">
-                    <div className="menu__left">
-                        {leftOptions.map(renderMenuOption)}
-                    </div>
-                    <div className="menu__right">
-                        {rightOptions.map(renderMenuOption)}
-                        <ThemeToggle />
-                    </div>
-                </div>
+                <MegaMenu
+                    className="menu menu--desktop"
+                    model={[...leftOptions, ...rightOptions].map((o, i) => ({
+                        ...toMegaItem(o),
+                        className: i === leftOptions.length && rightOptions.length ? 'menu-item--right-first' : undefined,
+                    }))}
+                    aria-label="Main navigation"
+                    end={<ThemeToggle />}
+                />
 
                 {/* Mobile controls */}
                 <div className="toolbar-mobile-controls">

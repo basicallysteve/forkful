@@ -52,11 +52,32 @@ describe('ToolBar — desktop layout', () => {
     expect(screen.getAllByRole('link', { name: /logout/i }).length).toBeGreaterThan(0)
   })
 
-  it('renders options with children as buttons with a caret', () => {
+  it('renders the desktop nav with PrimeReact MegaMenu', () => {
+    const { container } = render(<ToolBar menuOptions={leftOptions} />)
+    expect(container.querySelector('.p-megamenu')).toBeInTheDocument()
+    expect(screen.getByRole('menubar')).toBeInTheDocument()
+  })
+
+  it('renders options with children as a non-navigating trigger with a caret', () => {
     render(<ToolBar menuOptions={optionsWithChildren} />)
-    const trigger = screen.getAllByRole('button', { name: /recipes/i })[0]
-    expect(trigger).toBeInTheDocument()
+    const bar = screen.getByRole('menubar')
+    const trigger = bar.querySelector('.menu-option__trigger')!
+    expect(trigger.tagName).not.toBe('A')
+    expect(trigger.textContent).toContain('Recipes')
     expect(trigger.textContent).toContain('▾')
+  })
+
+  it('renders submenu children as links in the mega menu panel', () => {
+    render(<ToolBar menuOptions={optionsWithChildren} />)
+    const bar = screen.getByRole('menubar')
+    const link = Array.from(bar.querySelectorAll('a')).find(a => a.textContent === 'Add New Recipe')
+    expect(link).toHaveAttribute('href', '/recipes/new')
+  })
+
+  it('labels the avatar link for screen readers', () => {
+    render(<ToolBar menuOptions={[{ label: 'stevent', to: '/profile', align: 'right', avatar: { url: null, initial: 'S' } }]} />)
+    const bar = screen.getByRole('menubar')
+    expect(bar.querySelector('a[aria-label="stevent"]')).toHaveAttribute('href', '/profile')
   })
 })
 
