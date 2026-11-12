@@ -22,7 +22,7 @@ export default function QuantityInput({ value, unit, onChange, className }: Quan
   return (
     <InputText
       value={text}
-      inputMode="decimal"
+      inputMode="text"
       aria-label="Amount"
       aria-invalid={invalid}
       className={`text-input ${invalid ? 'p-invalid' : ''} ${className ?? ''}`.trim()}
