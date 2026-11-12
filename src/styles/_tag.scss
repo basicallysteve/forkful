@@ -1,0 +1,21 @@
+// Shared look for PrimeReact <Tag>: readable text, translucent accent tint.
+// `.tag-ghost` is the subdued variant (neutral border, muted text).
+@mixin tag-theme {
+  .p-tag {
+    color: var(--vscode-text);
+    background: var(--accent-hover-strong);
+    border: 1px solid var(--accent-border);
+    font-weight: 500;
+  }
+
+  .p-tag.p-tag-info {
+    background: rgba(6, 182, 212, 0.18);
+    border-color: rgba(6, 182, 212, 0.4);
+  }
+
+  .p-tag.tag-ghost {
+    color: var(--vscode-muted);
+    background: transparent;
+    border-color: var(--vscode-border);
+  }
+}

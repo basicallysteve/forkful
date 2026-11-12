@@ -1,3 +1,5 @@
+@use '../../styles/tag';
+
 .markdown-import {
   display: flex;
   flex-direction: column;
@@ -237,39 +239,28 @@
     flex-wrap: wrap;
   }
 
-  .mi-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    border: 1px solid transparent;
+  @include tag.tag-theme;
+
+  .p-tag {
     white-space: nowrap;
+  }
 
-    &--matched {
-      background: rgba(16, 185, 129, 0.12);
-      border-color: var(--vscode-success);
-      color: var(--vscode-success);
-    }
+  .p-tag.p-tag-success {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: var(--vscode-success);
+    color: var(--vscode-success);
+  }
 
-    &--warn {
-      background: rgba(245, 158, 11, 0.12);
-      border-color: var(--vscode-warning);
-      color: var(--vscode-warning);
-    }
+  .p-tag.p-tag-warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: var(--vscode-warning);
+    color: var(--vscode-warning);
+  }
 
-    &--error {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: var(--vscode-danger);
-      color: var(--vscode-danger);
-    }
-
-    &--skipped {
-      background: var(--vscode-panel-strong);
-      border-color: var(--vscode-border);
-      color: var(--vscode-muted);
-    }
+  .p-tag.p-tag-danger {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: var(--vscode-danger);
+    color: var(--vscode-danger);
   }
 
   .mi-candidates-block {

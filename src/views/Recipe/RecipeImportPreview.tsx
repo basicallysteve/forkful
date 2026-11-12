@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Dropdown } from 'primereact/dropdown'
 import { InputNumber } from 'primereact/inputnumber'
 import { InputText } from 'primereact/inputtext'
+import { Tag } from 'primereact/tag'
 import { useRecipeStore } from '@/stores/recipes'
 import { useFoodStore } from '@/stores/food'
 import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
@@ -336,13 +337,13 @@ function IngredientRow({
 
       <div className="mi-ingredient-resolution">
         {!override.skipped && effectiveStatus === 'matched' && resolvedFood && (
-          <span className="mi-badge mi-badge--matched">✓ {resolvedFood.name}</span>
+          <Tag rounded severity="success" value={`✓ ${resolvedFood.name}`} />
         )}
 
         {!override.skipped && effectiveStatus === 'candidates' && !override.selectedFood && (
           <div className="mi-candidates-block">
             <div className="mi-candidates-header">
-              <span className="mi-badge mi-badge--warn">No exact match</span>
+              <Tag rounded severity="warning" value="No exact match" />
               <div className="mi-candidates-carousel">
                 {candidates?.map((c: Food) => (
                   <button
@@ -368,7 +369,7 @@ function IngredientRow({
 
         {!override.skipped && effectiveStatus === 'unresolved' && !override.selectedFood && (
           <div className="mi-search">
-            <span className="mi-badge mi-badge--error">Not found</span>
+            <Tag rounded severity="danger" value="Not found" />
             <FoodSearch
               value={override.searchText}
               localFoods={localFoods}
@@ -380,7 +381,7 @@ function IngredientRow({
         )}
 
         {override.skipped && (
-          <span className="mi-badge mi-badge--skipped">Skipped</span>
+          <Tag rounded className="tag-ghost" value="Skipped" />
         )}
       </div>
 
