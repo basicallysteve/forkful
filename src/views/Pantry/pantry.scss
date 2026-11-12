@@ -646,8 +646,7 @@
       border: 2px solid var(--vscode-muted);
     }
 
-    .p-checkbox.p-checkbox-checked .p-checkbox-box,
-    .p-checkbox .p-checkbox-box.p-highlight {
+    .p-checkbox.p-highlight .p-checkbox-box {
       background: var(--vscode-accent);
       border-color: var(--vscode-accent);
 
@@ -656,8 +655,7 @@
       }
     }
 
-    .p-checkbox.p-focus .p-checkbox-box,
-    .p-checkbox .p-checkbox-box.p-focus {
+    .p-checkbox:has(.p-checkbox-input:focus-visible) .p-checkbox-box {
       outline: 2px solid var(--vscode-accent);
       outline-offset: 2px;
       box-shadow: none;
