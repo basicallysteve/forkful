@@ -40,6 +40,8 @@ bun db:studio        # Open Drizzle Studio UI
 # USDA food seeding
 bun seed:usda        # Seed foods into the database in .env.local (dev)
 bun seed:usda:prod   # Deliberately seed production (.env.production); the script refuses the prod URL otherwise
+bun seed:usda-branded       # Import USDA Branded products into the database in .env.local (dev)
+bun seed:usda-branded:prod  # Deliberately import into production (.env.production); the script refuses the prod URL otherwise
 ```
 
 CI uses Bun (`bun install --frozen-lockfile`, `bunx vitest run --changed`).
