@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 
 import { Card } from 'primereact/card'
@@ -17,12 +17,23 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import PantryRowActions from './PantryRowActions'
+import UndoToasts from './UndoToasts'
 import StatusDot from '@/components/StatusLegend/StatusDot'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
 type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
+
+const UNDO_WINDOW_MS = 6000
+
+interface PendingDelete {
+  key: number
+  ids: number[]
+  message: string
+  /** True once the undo window has closed and the request is in flight; the rows stay hidden until it settles. */
+  sending: boolean
+}
 
 function displayUnit(size: number, unit: string | undefined): string {
   if (!unit) return ''
@@ -31,7 +42,7 @@ function displayUnit(size: number, unit: string | undefined): string {
 }
 
 export default function Pantry() {
-  const items = usePantryStore((state) => state.items)
+  const allItems = usePantryStore((state) => state.items)
   const setItems = usePantryStore((state) => state.setItems)
   const deleteItem = usePantryStore((state) => state.deleteItem)
   const updateItem = usePantryStore((state) => state.updateItem)
@@ -43,6 +54,23 @@ export default function Pantry() {
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [pending, setPending] = useState<PendingDelete[]>([])
+  const pendingTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
+  const nextKey = useRef(0)
+
+  // Rows with a delete waiting out its undo window stay in the store but are hidden from the view,
+  // so Undo puts them back in their original position.
+  const items = useMemo(() => {
+    const hidden = new Set(pending.flatMap((entry) => entry.ids))
+    return hidden.size === 0 ? allItems : allItems.filter((item) => !hidden.has(item.id))
+  }, [allItems, pending])
+
+  useEffect(() => {
+    const timers = pendingTimers.current
+    // Leaving the page drops any unsent delete, so the item stays (the safe default).
+    return () => timers.forEach(clearTimeout)
+  }, [])
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -75,30 +103,62 @@ export default function Pantry() {
     else setSelectedItems(new Set(items.map((item) => item.id)))
   }
 
-  async function handleDeleteSelected() {
-    if (selectedItems.size === 0) return
+  function scheduleDelete(ids: number[], message: string) {
+    const key = nextKey.current++
     setActionError(null)
-    try {
-      const ids = [...selectedItems]
-      const deletedIds = await apiDeletePantryItems(ids)
-      deletedIds.forEach(id => deleteItem(id))
-      if (deletedIds.length < ids.length) {
-        setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
-      }
-      setSelectedItems(new Set())
-    } catch {
-      setActionError('Failed to delete items. Please try again.')
-    }
+    setPending((current) => [...current, { key, ids, message, sending: false }])
+    pendingTimers.current.set(key, setTimeout(() => sendDelete(key, ids), UNDO_WINDOW_MS))
   }
 
-  async function handleDelete(id: number) {
+  function dropPending(key: number) {
+    pendingTimers.current.delete(key)
+    setPending((current) => current.filter((entry) => entry.key !== key))
+  }
+
+  async function sendDelete(key: number, ids: number[]) {
+    pendingTimers.current.delete(key)
+    setPending((current) => current.map((entry) => (entry.key === key ? { ...entry, sending: true } : entry)))
     try {
-      setActionError(null)
-      await apiDeletePantryItem(id)
-      deleteItem(id)
+      if (ids.length === 1) {
+        await apiDeletePantryItem(ids[0])
+        deleteItem(ids[0])
+      } else {
+        const deletedIds = await apiDeletePantryItems(ids)
+        deletedIds.forEach((id) => deleteItem(id))
+        if (deletedIds.length < ids.length) {
+          setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
+        }
+      }
     } catch {
-      setActionError('Failed to delete item. Please try again.')
+      setActionError(ids.length === 1 ? 'Failed to delete item. Please try again.' : 'Failed to delete items. Please try again.')
     }
+    dropPending(key)
+  }
+
+  function handleUndo(key: number) {
+    const timer = pendingTimers.current.get(key)
+    if (timer) clearTimeout(timer)
+    dropPending(key)
+  }
+
+  function handleDeleteSelected() {
+    if (selectedItems.size === 0) return
+    const ids = items.filter((item) => selectedItems.has(item.id)).map((item) => item.id)
+    if (ids.length === 0) return
+    scheduleDelete(ids, ids.length === 1 ? `Deleted ${itemDisplayName(items.find((i) => i.id === ids[0])!)}` : `Deleted ${ids.length} items`)
+    setSelectedItems(new Set())
+  }
+
+  function handleDelete(id: number) {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+    scheduleDelete([id], `Deleted ${itemDisplayName(item)}`)
+    setSelectedItems((current) => {
+      if (!current.has(id)) return current
+      const next = new Set(current)
+      next.delete(id)
+      return next
+    })
   }
 
   async function handleFreeze(id: number) {
@@ -516,6 +576,10 @@ export default function Pantry() {
           )}
         </div>
       </div>
+      <UndoToasts
+        toasts={pending.filter((entry) => !entry.sending).map(({ key, message }) => ({ key, message }))}
+        onUndo={handleUndo}
+      />
     </div>
   )
 }
