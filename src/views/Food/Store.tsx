@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
 import { apiCreateFood, apiUpdateFood } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import type { Food, Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { getUnitCategory, convertUnit, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS, type UnitCategory } from '@/utils/unitConversion'
@@ -43,6 +44,7 @@ function Store({ existingFood }: FoodStoreProps) {
 
   const [newMeasurement, setNewMeasurement] = useState('')
   const [measurementError, setMeasurementError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // Check for duplicate food name (case-insensitive, trimmed)
   const isDuplicateName = useMemo(() => {
@@ -160,6 +162,7 @@ function Store({ existingFood }: FoodStoreProps) {
 
   async function handleSaveFood() {
     if (!canSave) return
+    setSaveError(null)
 
     const foodData: Omit<Food, 'id'> = {
       name: food.name!.trim(),
@@ -183,7 +186,8 @@ function Store({ existingFood }: FoodStoreProps) {
         updateFood(updatedFood)
         router.push(`/foods/${toSlug(updatedFood.name)}`)
       } catch (err) {
-        console.error('Failed to persist food update:', err)
+        if (isUnauthorizedError(err)) setSaveError(SIGN_IN_REQUIRED_MESSAGE)
+        else console.error('Failed to persist food update:', err)
       }
     } else {
       try {
@@ -191,7 +195,8 @@ function Store({ existingFood }: FoodStoreProps) {
         addFood(createdFood)
         router.push(`/foods/${toSlug(createdFood.name)}`)
       } catch (err) {
-        console.error('Failed to persist new food:', err)
+        if (isUnauthorizedError(err)) setSaveError(SIGN_IN_REQUIRED_MESSAGE)
+        else console.error('Failed to persist new food:', err)
       }
     }
   }
@@ -490,6 +495,7 @@ function Store({ existingFood }: FoodStoreProps) {
                     {isEditing ? 'Update Food' : 'Save Food'}
                   </button>
                 </div>
+                {saveError && <span className="field-error" role="alert">{saveError}</span>}
               </div>
             </form>
           </div>

@@ -5,6 +5,7 @@ import Modal from '@/components/Modal/Modal'
 import { InputText } from 'primereact/inputtext'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
 import { apiCreateFood } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import type { Food } from '@/types/Food'
 
@@ -72,7 +73,12 @@ export default function OpenFoodFactsImport({ visible, onHide, onImport }: OpenF
       const created = await apiCreateFood(foodData)
       onImport(created)
       onHide()
-    } catch {
+    } catch (err) {
+      if (isUnauthorizedError(err)) {
+        setError(SIGN_IN_REQUIRED_MESSAGE)
+        setImportingCode(null)
+        return
+      }
       setError(`Failed to import "${product.product_name}". It may already exist in your library.`)
       setImportingCode(null)
     }

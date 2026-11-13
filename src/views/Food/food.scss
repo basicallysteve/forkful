@@ -107,6 +107,14 @@
     }
   }
 
+  .delete-error {
+    padding: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border-bottom: 1px solid var(--vscode-danger);
+    color: var(--vscode-danger);
+    font-size: 13px;
+  }
+
   .toolbar-actions {
     display: flex;
     align-items: center;
