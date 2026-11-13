@@ -74,7 +74,7 @@ describe('Food View Page', () => {
 
     it('displays calories', () => {
       renderWithProviders(<FoodIndex food={mockFood} />)
-      expect(screen.getByText('165 calories')).toBeInTheDocument()
+      expect(screen.getByText('165 calories').closest('.p-tag')).toBeInTheDocument()
     })
 
     it('displays serving information', () => {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
+import { Tag } from 'primereact/tag'
 import { Dropdown } from 'primereact/dropdown'
 import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import RecipeStepBlock from '@/components/RecipeStepBlock/RecipeStepBlock'
@@ -460,7 +461,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
               <h2 className="recipe-name">{recipe.name}</h2>
             </div>
             <div className="recipe-meta">
-              <span className="pill pill-ghost">{recipe.ingredientCount ?? 0} ingredients</span>
+              <Tag rounded className="tag-ghost" value={`${recipe.ingredientCount ?? 0} ingredients`} />
             </div>
           </header>
 
@@ -474,12 +475,12 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
           {hasMeta && (
             <section className="recipe-meta-display">
               <div className="meta-pills">
-                {recipe.cuisineType && <span className="pill pill-ghost">{recipe.cuisineType}</span>}
-                {recipe.prepTime != null && <span className="pill pill-ghost">Prep: {recipe.prepTime}m</span>}
-                {recipe.cookTime != null && <span className="pill pill-ghost">Cook: {recipe.cookTime}m</span>}
-                {recipe.totalTime != null && <span className="pill pill-ghost">Total: {recipe.totalTime}m</span>}
+                {recipe.cuisineType && <Tag rounded className="tag-ghost" value={recipe.cuisineType} />}
+                {recipe.prepTime != null && <Tag rounded className="tag-ghost" value={`Prep: ${recipe.prepTime}m`} />}
+                {recipe.cookTime != null && <Tag rounded className="tag-ghost" value={`Cook: ${recipe.cookTime}m`} />}
+                {recipe.totalTime != null && <Tag rounded className="tag-ghost" value={`Total: ${recipe.totalTime}m`} />}
                 {(recipe.dietaryTags ?? []).map((tag) => (
-                  <span key={tag} className="pill pill-primary">{tag}</span>
+                  <Tag key={tag} rounded value={tag} />
                 ))}
               </div>
             </section>
@@ -513,14 +514,14 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
             )}
           </div>
           <div className="recipe-meta">
-            <span className="pill pill-primary">{publishedText}</span>
-            <span className="pill pill-ghost">
-              {displayRecipe.ingredients.length} ingredients
-            </span>
+            <Tag rounded value={publishedText} />
+            <Tag rounded className="tag-ghost" value={`${displayRecipe.ingredients.length} ingredients`} />
             {displayRecipe.isPublic && (displayRecipe.viewCount ?? 0) > 0 && (
-              <span className="pill pill-ghost">
-                {displayRecipe.viewCount} {displayRecipe.viewCount === 1 ? 'view' : 'views'}
-              </span>
+              <Tag
+                rounded
+                className="tag-ghost"
+                value={`${displayRecipe.viewCount} ${displayRecipe.viewCount === 1 ? 'view' : 'views'}`}
+              />
             )}
           </div>
         </header>
@@ -623,12 +624,12 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
         {!editMode && (displayRecipe.prepTime != null || displayRecipe.cookTime != null || displayRecipe.totalTime != null || displayRecipe.cuisineType || (displayRecipe.dietaryTags ?? []).length > 0) && (
           <section className="recipe-meta-display">
             <div className="meta-pills">
-              {displayRecipe.cuisineType && <span className="pill pill-ghost">{displayRecipe.cuisineType}</span>}
-              {displayRecipe.prepTime != null && <span className="pill pill-ghost">Prep: {displayRecipe.prepTime}m</span>}
-              {displayRecipe.cookTime != null && <span className="pill pill-ghost">Cook: {displayRecipe.cookTime}m</span>}
-              {displayRecipe.totalTime != null && <span className="pill pill-ghost">Total: {displayRecipe.totalTime}m</span>}
+              {displayRecipe.cuisineType && <Tag rounded className="tag-ghost" value={displayRecipe.cuisineType} />}
+              {displayRecipe.prepTime != null && <Tag rounded className="tag-ghost" value={`Prep: ${displayRecipe.prepTime}m`} />}
+              {displayRecipe.cookTime != null && <Tag rounded className="tag-ghost" value={`Cook: ${displayRecipe.cookTime}m`} />}
+              {displayRecipe.totalTime != null && <Tag rounded className="tag-ghost" value={`Total: ${displayRecipe.totalTime}m`} />}
               {(displayRecipe.dietaryTags ?? []).map((tag) => (
-                <span key={tag} className="pill pill-primary">{tag}</span>
+                <Tag key={tag} rounded value={tag} />
               ))}
             </div>
           </section>

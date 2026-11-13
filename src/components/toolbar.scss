@@ -46,33 +46,116 @@
   color: var(--vscode-muted);
 }
 
-// Desktop menu — hidden on mobile
-.menu--desktop {
-  display: flex;
-  align-items: center;
-  height: 100%;
+// Desktop menu (PrimeReact MegaMenu) — hidden on mobile. Overrides are scoped to .toolbar.
+.toolbar .p-megamenu.menu--desktop {
   flex: 1;
-  gap: 0;
-}
-
-.menu__left {
-  display: flex;
-  align-items: stretch;
   height: 100%;
-}
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-muted);
 
-.menu__right {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  margin-left: auto;
-  gap: 0;
-}
+  .p-megamenu-root-list {
+    flex: 1;
+    height: 100%;
+    gap: 0;
+    align-items: stretch;
+  }
 
-.menu-option {
-  position: relative;
-  display: flex;
-  align-items: stretch;
+  .p-menuitem-content {
+    height: 100%;
+    display: flex;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .p-menuitem {
+    position: relative;
+
+    &:not(.menu-item--right) + .menu-item--right {
+      margin-left: auto;
+    }
+  }
+
+  .p-megamenu-root-list {
+    flex-wrap: nowrap;
+  }
+
+  // MegaMenu keeps DOM focus on the menubar and marks the active item with .p-focus
+  .p-menuitem.p-focus > .p-menuitem-content {
+    .menu-option__trigger,
+    .submenu-option {
+      color: var(--vscode-text);
+      background: var(--accent-hover);
+      box-shadow: var(--focus-ring);
+    }
+
+    .submenu-option {
+      box-shadow: inset 0 0 0 2px var(--vscode-accent);
+    }
+
+    .menu-option__trigger::after {
+      transform: scaleX(1);
+    }
+  }
+
+  .p-megamenu-end {
+    display: flex;
+    align-items: center;
+    margin-left: 4px;
+  }
+
+  .p-menuitem-link {
+    height: 100%;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .p-submenu-header {
+    display: none;
+  }
+
+  .p-megamenu-panel {
+    min-width: 210px;
+    padding: 6px 0;
+    overflow: hidden;
+    border: 1px solid var(--vscode-border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    background: var(--vscode-panel);
+    box-shadow: 0 12px 28px var(--shadow-container);
+  }
+
+  .p-megamenu-submenu {
+    width: 100%;
+    padding: 0;
+    gap: 0;
+  }
+
+  // Submenu rows span the full panel width so hover/focus highlights edge to edge
+  .p-megamenu-panel [class*='p-megamenu-col-'] {
+    padding: 0;
+  }
+
+  .p-megamenu-panel .p-menuitem,
+  .p-megamenu-panel .p-menuitem-content {
+    display: flex;
+    width: 100%;
+    height: auto;
+  }
+
+  .p-megamenu-panel .p-menuitem-content > .submenu-option {
+    flex: 1 1 auto;
+    width: 100%;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--vscode-text);
+      background: var(--accent-hover);
+    }
+  }
 }
 
 .menu-option__trigger {
@@ -122,32 +205,11 @@
   opacity: 0.65;
 }
 
-.submenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 210px;
-  padding: 6px;
-  display: none;
-  flex-direction: column;
-  gap: 2px;
-  border: 1px solid var(--vscode-border);
-  border-top: none;
-  border-radius: 0 0 12px 12px;
-  background: var(--vscode-panel);
-  box-shadow: 0 12px 28px var(--shadow-container);
-  z-index: 101;
-}
-
-.menu-option:hover .submenu,
-.menu-option:focus-within .submenu {
-  display: flex;
-}
-
 .submenu-option {
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  display: block;
+  padding: 9px 18px;
+  border-radius: 0;
+  border: none;
   background: transparent;
   color: var(--vscode-muted);
   font-size: 13px;
@@ -160,7 +222,6 @@
   &:focus-visible {
     outline: none;
     background: var(--accent-hover);
-    border-color: var(--accent-border);
     color: var(--vscode-text);
   }
 }
@@ -337,7 +398,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 819px) {
   .toolbar {
     padding: 0 16px;
     height: 60px;

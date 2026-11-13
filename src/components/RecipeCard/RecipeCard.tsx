@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Card } from 'primereact/card'
 import { Checkbox } from 'primereact/checkbox'
+import { Tag } from 'primereact/tag'
 import { sanitizeRichText } from '@/lib/sanitize'
 import { toRecipeUrl } from '@/utils/slug'
 import type { Recipe } from '@/types/Recipe'
@@ -37,7 +38,7 @@ export default function RecipeCard({ recipe, selected, onSelect }: RecipeCardPro
           />
         </div>
       )}
-      {recipe.meal && <span className="pill pill-ghost card-meal-tag">{recipe.meal}</span>}
+      {recipe.meal && <Tag rounded className="tag-ghost card-meal-tag" value={recipe.meal} />}
       <Link href={toRecipeUrl(recipe.shortId, recipe.name)} className="card-content">
         <div className="card-header">
           <h3 className="card-title">{recipe.name}</h3>

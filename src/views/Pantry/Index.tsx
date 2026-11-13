@@ -1,25 +1,41 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 
 import { Card } from 'primereact/card'
+import { Tag } from 'primereact/tag'
 import { usePantryStore } from '@/stores/pantry'
 import type { PantryItemStatus } from '@/types/PantryItem'
 import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
+import { itemDisplayName } from '@/utils/pantryItemName'
 import { formatPrice } from '@/utils/currency'
 import { formatDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
+import PantryRowActions from './PantryRowActions'
+import { Toast, type ToastMessage } from 'primereact/toast'
 import StatusDot from '@/components/StatusLegend/StatusDot'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
 type SortOption = NonNullable<PantryQueryOptions['sortBy']>
 type SortDirection = NonNullable<PantryQueryOptions['sortDir']>
 type StatusFilter = NonNullable<PantryQueryOptions['status']>
+
+const UNDO_WINDOW_MS = 6000
+// After a delete, rows shift up under the cursor; ignore clicks this soon after so a double-click can't delete the next row.
+const DELETE_GUARD_MS = 400
+
+interface PendingDelete {
+  key: number
+  ids: number[]
+  message: string
+  /** True once the undo window has closed and the request is in flight; the rows stay hidden until it settles. */
+  sending: boolean
+}
 
 function displayUnit(size: number, unit: string | undefined): string {
   if (!unit) return ''
@@ -28,7 +44,7 @@ function displayUnit(size: number, unit: string | undefined): string {
 }
 
 export default function Pantry() {
-  const items = usePantryStore((state) => state.items)
+  const allItems = usePantryStore((state) => state.items)
   const setItems = usePantryStore((state) => state.setItems)
   const deleteItem = usePantryStore((state) => state.deleteItem)
   const updateItem = usePantryStore((state) => state.updateItem)
@@ -40,6 +56,26 @@ export default function Pantry() {
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [pending, setPending] = useState<PendingDelete[]>([])
+  const pendingTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
+  const nextKey = useRef(0)
+  const deleteLocked = useRef(false)
+  const toast = useRef<Toast>(null)
+  const toastMessages = useRef(new Map<number, ToastMessage>())
+
+  // Rows with a delete waiting out its undo window stay in the store but are hidden from the view,
+  // so Undo puts them back in their original position.
+  const items = useMemo(() => {
+    const hidden = new Set(pending.flatMap((entry) => entry.ids))
+    return hidden.size === 0 ? allItems : allItems.filter((item) => !hidden.has(item.id))
+  }, [allItems, pending])
+
+  useEffect(() => {
+    const timers = pendingTimers.current
+    // Leaving the page drops any unsent delete, so the item stays (the safe default).
+    return () => timers.forEach(clearTimeout)
+  }, [])
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -72,30 +108,90 @@ export default function Pantry() {
     else setSelectedItems(new Set(items.map((item) => item.id)))
   }
 
-  async function handleDeleteSelected() {
-    if (selectedItems.size === 0) return
+  function scheduleDelete(ids: number[], message: string): boolean {
+    if (deleteLocked.current) return false
+    deleteLocked.current = true
+    setTimeout(() => { deleteLocked.current = false }, DELETE_GUARD_MS)
+    const key = nextKey.current++
     setActionError(null)
-    try {
-      const ids = [...selectedItems]
-      const deletedIds = await apiDeletePantryItems(ids)
-      deletedIds.forEach(id => deleteItem(id))
-      if (deletedIds.length < ids.length) {
-        setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
-      }
-      setSelectedItems(new Set())
-    } catch {
-      setActionError('Failed to delete items. Please try again.')
+    setPending((current) => [...current, { key, ids, message, sending: false }])
+    pendingTimers.current.set(key, setTimeout(() => sendDelete(key, ids), UNDO_WINDOW_MS))
+    // Sticky: our timer decides when the toast goes, so it can never outlive or cut short the undo window.
+    const toastMessage: ToastMessage = {
+      sticky: true,
+      closable: false,
+      className: 'undo-toast',
+      content: (
+        <div className="undo-toast-content">
+          <span className="undo-toast-message">{message}</span>
+          <button type="button" className="undo-toast-button" onClick={() => handleUndo(key)}>
+            Undo
+          </button>
+        </div>
+      ),
     }
+    toastMessages.current.set(key, toastMessage)
+    toast.current?.show(toastMessage)
+    return true
   }
 
-  async function handleDelete(id: number) {
+  function removeToast(key: number) {
+    const message = toastMessages.current.get(key)
+    if (message) toast.current?.remove(message)
+    toastMessages.current.delete(key)
+  }
+
+  function dropPending(key: number) {
+    pendingTimers.current.delete(key)
+    removeToast(key)
+    setPending((current) => current.filter((entry) => entry.key !== key))
+  }
+
+  async function sendDelete(key: number, ids: number[]) {
+    pendingTimers.current.delete(key)
+    removeToast(key)
+    setPending((current) => current.map((entry) => (entry.key === key ? { ...entry, sending: true } : entry)))
     try {
-      setActionError(null)
-      await apiDeletePantryItem(id)
-      deleteItem(id)
+      if (ids.length === 1) {
+        await apiDeletePantryItem(ids[0])
+        deleteItem(ids[0])
+      } else {
+        const deletedIds = await apiDeletePantryItems(ids)
+        deletedIds.forEach((id) => deleteItem(id))
+        if (deletedIds.length < ids.length) {
+          setActionError(`Failed to delete ${ids.length - deletedIds.length} item(s). Please try again.`)
+        }
+      }
     } catch {
-      setActionError('Failed to delete item. Please try again.')
+      setActionError(ids.length === 1 ? 'Failed to delete item. Please try again.' : 'Failed to delete items. Please try again.')
     }
+    dropPending(key)
+  }
+
+  function handleUndo(key: number) {
+    const timer = pendingTimers.current.get(key)
+    if (timer) clearTimeout(timer)
+    dropPending(key)
+  }
+
+  function handleDeleteSelected() {
+    if (selectedItems.size === 0) return
+    const ids = items.filter((item) => selectedItems.has(item.id)).map((item) => item.id)
+    if (ids.length === 0) return
+    const message = ids.length === 1 ? `Deleted ${itemDisplayName(items.find((i) => i.id === ids[0])!)}` : `Deleted ${ids.length} items`
+    if (scheduleDelete(ids, message)) setSelectedItems(new Set())
+  }
+
+  function handleDelete(id: number) {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+    if (!scheduleDelete([id], `Deleted ${itemDisplayName(item)}`)) return
+    setSelectedItems((current) => {
+      if (!current.has(id)) return current
+      const next = new Set(current)
+      next.delete(id)
+      return next
+    })
   }
 
   async function handleFreeze(id: number) {
@@ -132,6 +228,15 @@ export default function Pantry() {
     }
   }
 
+  function getStatusSeverity(status: PantryItemStatus): 'success' | 'warning' | 'danger' | undefined {
+    switch (status) {
+      case 'expired': return 'danger'
+      case 'expiring-soon': return 'warning'
+      case 'good': return 'success'
+      default: return undefined
+    }
+  }
+
   function getStatusClass(status: PantryItemStatus): string {
     switch (status) {
       case 'expired': return 'status-expired'
@@ -154,8 +259,8 @@ export default function Pantry() {
             <h1 className="pantry-name">Pantry</h1>
           </div>
           <div className="pantry-meta">
-            <Link href="/pantry/new" className="pill pill-primary">
-              Add Item
+            <Link href="/pantry/new" className="pantry-add-link">
+              <Tag value="Add Item" />
             </Link>
           </div>
         </div>
@@ -314,7 +419,7 @@ export default function Pantry() {
                         <Checkbox
                           checked={selectedItems.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
+                          aria-label={`Select ${itemDisplayName(item)}`}
                         />
                       </td>
                       <td>
@@ -322,12 +427,12 @@ export default function Pantry() {
                           <span className="pantry-item-name">
                             {item.recipeShortId ? (
                               <Link href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}>
-                                {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                                {itemDisplayName(item)}
                               </Link>
                             ) : (
-                              item.recipeNameSnapshot ?? 'Prepared Meal'
+                              itemDisplayName(item)
                             )}
-                            <span className="pill pill-ghost" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>Prepared</span>
+                            <Tag className="tag-ghost pantry-prepared-tag" value="Prepared" />
                           </span>
                         ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`}>
@@ -341,15 +446,13 @@ export default function Pantry() {
                       <td>{item.purchasePrice != null ? formatPrice(item.purchasePrice) : '—'}</td>
                       <td>
                         {item.frozenDate ? (
-                          <span className="status-badge status-frozen">Frozen</span>
+                          <Tag severity="info" value="Frozen" />
                         ) : (
                           formatDate(item.expirationDate)
                         )}
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusClass(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
+                        <Tag severity={getStatusSeverity(item.status)} value={getStatusLabel(item.status)} />
                       </td>
                       <td>{formatDate(item.addedDate)}</td>
                       <td>
@@ -370,6 +473,14 @@ export default function Pantry() {
                             Delete
                           </button>
                         </div>
+                        <PantryRowActions
+                          itemId={item.id}
+                          itemName={itemDisplayName(item)}
+                          frozen={Boolean(item.frozenDate)}
+                          onFreeze={() => handleFreeze(item.id)}
+                          onThaw={() => handleUnfreeze(item.id)}
+                          onDelete={() => handleDelete(item.id)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -398,7 +509,7 @@ export default function Pantry() {
                         className="item-checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => handleSelectItem(item.id)}
-                        aria-label={`Select ${item.food?.name ?? item.product?.name ?? item.recipeNameSnapshot ?? ''}`}
+                        aria-label={`Select ${itemDisplayName(item)}`}
                       />
                     </div>
                     <div className="card-content">
@@ -409,10 +520,10 @@ export default function Pantry() {
                               href={`/recipes/${item.recipeShortId}/${toSlug(item.recipeNameSnapshot ?? '')}`}
                               className="card-title"
                             >
-                              {item.recipeNameSnapshot ?? 'Prepared Meal'}
+                              {itemDisplayName(item)}
                             </Link>
                           ) : (
-                            <span className="card-title">{item.recipeNameSnapshot ?? 'Prepared Meal'}</span>
+                            <span className="card-title">{itemDisplayName(item)}</span>
                           )
                         ) : item.food ? (
                           <Link href={`/foods/${toSlug(item.food.name)}`} className="card-title">
@@ -456,19 +567,37 @@ export default function Pantry() {
                       </div>
 
                       <div className="card-actions">
-                        {item.frozenDate ? (
-                          <button onClick={() => handleUnfreeze(item.id)} className="btn-small btn-info" title="Unfreeze item">
-                            Thaw
-                          </button>
-                        ) : (
-                          <button onClick={() => handleFreeze(item.id)} className="btn-small btn-info" title="Freeze item">
-                            Freeze
-                          </button>
-                        )}
-                        <Link href={`/pantry/${item.id}/edit`} className="btn-small btn-secondary">
-                          Edit
-                        </Link>
-                        <button onClick={() => handleDelete(item.id)} className="btn-small btn-danger">
+                        <div className="card-actions-group">
+                          {item.frozenDate ? (
+                            <button
+                              onClick={() => handleUnfreeze(item.id)}
+                              className="btn-small btn-info"
+                              aria-label={`Thaw ${itemDisplayName(item)}`}
+                            >
+                              Thaw
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleFreeze(item.id)}
+                              className="btn-small btn-info"
+                              aria-label={`Freeze ${itemDisplayName(item)}`}
+                            >
+                              Freeze
+                            </button>
+                          )}
+                          <Link
+                            href={`/pantry/${item.id}/edit`}
+                            className="btn-small btn-secondary"
+                            aria-label={`Edit ${itemDisplayName(item)}`}
+                          >
+                            Edit
+                          </Link>
+                        </div>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="btn-small btn-danger card-action-delete"
+                          aria-label={`Delete ${itemDisplayName(item)}`}
+                        >
                           Delete
                         </button>
                       </div>
@@ -480,6 +609,7 @@ export default function Pantry() {
           )}
         </div>
       </div>
+      <Toast ref={toast} position="bottom-left" className="pantry-toast" />
     </div>
   )
 }

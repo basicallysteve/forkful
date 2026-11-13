@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { Tag } from 'primereact/tag'
 import { Card } from 'primereact/card'
 import { Skeleton } from 'primereact/skeleton'
 import { useFoodStore } from '@/stores/food'
@@ -188,9 +189,9 @@ export default function Foods() {
             <h2 className="foods-name">All Foods</h2>
           </div>
           <div className="foods-meta">
-            <span className="pill pill-primary">{foods.length} foods</span>
+            <Tag rounded value={`${foods.length} foods`} />
             {selectedFoods.size > 0 && (
-              <span className="pill pill-ghost">{selectedFoods.size} selected</span>
+              <Tag rounded value={`${selectedFoods.size} selected`} />
             )}
           </div>
         </header>
@@ -300,7 +301,7 @@ export default function Foods() {
                         <div className="card-header">
                           <h3 className="card-title">{food.name}</h3>
                           <div className="card-badges">
-                            <span className="pill pill-ghost">{food.calories} cal</span>
+                            <Tag rounded value={`${food.calories} cal`} />
                             {isFoodUsedInRecipe(food.id, recipes) && (
                               <StatusDot variant="in-use" label="In use" />
                             )}

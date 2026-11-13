@@ -8,6 +8,7 @@ import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import { Toast } from 'primereact/toast'
+import { Tag } from 'primereact/tag'
 import { Skeleton } from 'primereact/skeleton'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
@@ -204,13 +205,13 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
           </div>
           <div className="recipes-meta">
             
-            <span className="pill">{recipes.length} recipes</span>
+            <Tag rounded value={`${recipes.length} recipes`} />
             {selectedRecipes.size > 0 && (
-              <span className="pill pill-ghost">{selectedRecipes.size} selected</span>
+              <Tag rounded className="tag-ghost" value={`${selectedRecipes.size} selected`} />
             )}
 
             { isAuthenticated && (
-              <Link href="/recipes/new" className="pill pill-primary">
+              <Link href="/recipes/new" className="add-new-link">
                 Add New
               </Link>
             )}

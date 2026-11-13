@@ -1,7 +1,10 @@
+@use '../../styles/tag';
+
 .pantry-list {
   color: var(--vscode-text);
   width: 100%;
   box-sizing: border-box;
+  @include tag.tag-theme;
 
   .pantry-content {
     padding: 22px 22px 18px;
@@ -39,45 +42,25 @@
     justify-content: flex-end;
   }
 
-  .pill {
+  // The whole visible pill is the link: the anchor is the hit area and the Tag fills it.
+  // Size matches the old primary pill at desktop; the font no longer shrinks below 12px on phones.
+  .pantry-add-link {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
     border-radius: 999px;
-    padding: clamp(0.3rem, 1vw, 0.5rem) clamp(0.3rem, 1.5vw, 0.5rem);
-    font-size: clamp(0.3rem, 2vw, 0.75rem);
-    border: 1px solid var(--vscode-border);
-    background: var(--vscode-panel);
-    color: var(--vscode-muted);
-  }
 
-  .pill-primary {
-    color: #ffffff;
-    border-color: var(--vscode-accent);
-    background: var(--vscode-accent);
-    box-shadow: 0 4px 12px var(--accent-glow);
-  }
+    &:focus-visible {
+      outline: 2px solid var(--vscode-accent);
+      outline-offset: 2px;
+    }
 
-  .pill-ghost {
-    background: var(--accent-hover);
-  }
-
-  .pill-success {
-    color: #ffffff;
-    border-color: var(--vscode-success);
-    background: var(--vscode-success);
-    box-shadow: 0 4px 12px var(--accent-glow);
-  }
-
-  .pill-warning {
-    color: #ffffff;
-    border-color: var(--vscode-warning);
-    background: var(--vscode-warning);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
-  }
-
-  .pill-danger {
-    color: #ffffff;
-    border-color: var(--vscode-danger);
-    background: var(--vscode-danger);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+    .p-tag {
+      border-radius: 999px;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      min-height: 2rem;
+    }
   }
 
   .pantry-stats {
@@ -365,39 +348,27 @@
     }
   }
 
-  .status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: 1px solid;
+  // Status tags: app text colour on a translucent tint of the status colour.
+  // (`info` is covered by the shared tag-theme mixin.)
+  .p-tag.p-tag-success {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.45);
+  }
 
-    &.status-good {
-      background: rgba(16, 185, 129, 0.12);
-      color: #059669;
-      border-color: var(--vscode-success);
-    }
+  .p-tag.p-tag-warning {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
 
-    &.status-expiring-soon {
-      background: rgba(245, 158, 11, 0.12);
-      color: #d97706;
-      border-color: var(--vscode-warning);
-    }
+  .p-tag.p-tag-danger {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.45);
+  }
 
-    &.status-expired {
-      background: rgba(239, 68, 68, 0.12);
-      color: #dc2626;
-      border-color: var(--vscode-danger);
-    }
-
-    &.status-frozen {
-      background: rgba(6, 182, 212, 0.12);
-      color: #0891b2;
-      border-color: var(--vscode-info);
-    }
+  .p-tag.pantry-prepared-tag {
+    border-color: var(--vscode-muted);
+    margin-left: 0.5rem;
+    font-size: 0.7rem;
   }
 
   .item-actions {
@@ -462,9 +433,8 @@
       font-size: 13px;
 
       .select-all-checkbox {
-        width: 16px;
-        height: 16px;
-        accent-color: var(--vscode-accent);
+        width: 20px;
+        height: 20px;
         cursor: pointer;
       }
 
@@ -486,10 +456,23 @@
     border-radius: 10px;
     overflow: hidden;
     transition: all 140ms ease;
-    display: flex;
-    gap: 12px;
     padding: 14px;
     box-shadow: 0 2px 8px var(--shadow-container);
+
+    // PrimeReact nests our markup in .p-card-body > .p-card-content, so the checkbox/content row has to
+    // be laid out on .p-card-content, and both wrappers must fill the card (a flex root shrink-wrapped
+    // the body to its widest line, so cards had different widths).
+    .p-card-body {
+      width: 100%;
+      padding: 0;
+    }
+
+    .p-card-content {
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      padding: 0;
+    }
 
     &.is-selected {
       border-color: var(--vscode-accent);
@@ -510,9 +493,8 @@
       padding-top: 2px;
 
       .item-checkbox {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--vscode-accent);
+        width: 20px;
+        height: 20px;
         cursor: pointer;
       }
     }
@@ -585,16 +567,124 @@
 
     .card-actions {
       display: flex;
-      gap: 8px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
+      justify-content: space-between;
       align-items: center;
-      padding-top: 8px;
+      gap: 8px 16px;
+      padding-top: 12px;
       border-top: 1px solid var(--vscode-border);
 
-      .btn-small {
+      // Freeze/Thaw and Edit sit together at the start; Delete is pushed to the far end.
+      .card-actions-group {
+        display: flex;
+        gap: 8px;
         flex: 1 1 0;
-        min-width: 0;
-        text-align: center;
+        min-width: 130px; // below this Delete wraps onto its own line instead of squeezing the pair
+      }
+
+      .btn-small {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        min-width: 40px;
+        padding: 0 12px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 8px;
+        border: 1px solid var(--vscode-border);
+        background: var(--vscode-panel-strong);
+        color: var(--vscode-text);
+        cursor: pointer;
+        transition: background 120ms ease, border-color 120ms ease;
+
+        &:hover {
+          border-color: var(--vscode-accent);
+          background: var(--accent-hover-strong);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--vscode-accent);
+          outline-offset: 2px;
+        }
+      }
+
+      .card-actions-group .btn-small {
+        flex: 1 1 0;
+      }
+
+      .card-action-delete {
+        flex: 0 0 auto;
+        margin-left: auto;
+        color: var(--vscode-danger);
+        border-color: rgba(239, 68, 68, 0.45);
+        background: rgba(239, 68, 68, 0.1);
+
+        &:hover {
+          border-color: var(--vscode-danger);
+          background: rgba(239, 68, 68, 0.2);
+        }
+
+        &:focus-visible {
+          outline-color: var(--vscode-danger);
+        }
+      }
+    }
+
+  }
+
+  // Selection checkboxes: PrimeReact paints the box with a fixed dark-navy fill in both themes.
+  // Follow the theme instead (scoped to the Pantry card view; the same fill is global, see PR).
+  .pantry-card,
+  .select-all-row {
+    .p-checkbox .p-checkbox-box {
+      width: 20px;
+      height: 20px;
+      background: var(--vscode-panel);
+      border: 2px solid var(--vscode-muted);
+    }
+
+    .p-checkbox.p-highlight .p-checkbox-box {
+      background: var(--vscode-accent);
+      border-color: var(--vscode-accent);
+
+      .p-checkbox-icon {
+        color: var(--vscode-bg);
+      }
+    }
+
+    .p-checkbox:has(.p-checkbox-input:focus-visible) .p-checkbox-box {
+      outline: 2px solid var(--vscode-accent);
+      outline-offset: 2px;
+      box-shadow: none;
+    }
+  }
+
+  // The overflow menu trigger only replaces the inline buttons in the mid-width table range.
+  .pantry-row-actions {
+    display: none;
+  }
+
+  // Mid-width table range (721-960px): too narrow for three inline buttons per row, so collapse them
+  // into one "..." menu. Below 721px the table is hidden for the card view.
+  @media (min-width: 721px) and (max-width: 960px) {
+    .item-actions {
+      display: none;
+    }
+
+    .pantry-row-actions {
+      display: block;
+    }
+
+    // Even with the menu the table overflows sideways at 12px padding (measured: 92px at 721px,
+    // 33px at 780px), so keep the cells tight in this range only.
+    .pantry-table {
+      thead th,
+      tbody td {
+        padding-left: 4px;
+        padding-right: 4px;
       }
     }
   }
@@ -638,6 +728,71 @@
     .pantry-cards {
       display: flex;
     }
+  }
+}
+
+// Row actions trigger + popup menu (the popup is appended to <body>, so it sits outside .pantry-list).
+.pantry-row-actions-trigger.p-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--vscode-text);
+
+  &:hover {
+    background: var(--accent-hover);
+    color: var(--vscode-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+}
+
+.pantry-row-menu.p-menu {
+  min-width: 10rem;
+  background: var(--vscode-panel);
+  border: 1px solid var(--vscode-border);
+  box-shadow: 0 6px 18px var(--shadow-container);
+
+  .p-menuitem-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-size: 14px;
+    color: var(--vscode-text);
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .p-menuitem:hover > .p-menuitem-link,
+  .p-menuitem.p-focus > .p-menuitem-link {
+    background: var(--accent-hover);
+  }
+
+  .p-menuitem.p-focus > .p-menuitem-link {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: -2px;
+  }
+
+  .p-menu-separator {
+    margin: 0.25rem 0;
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  .pantry-menu-danger {
+    color: var(--vscode-danger);
+  }
+
+  .p-menuitem:hover > .pantry-menu-danger,
+  .p-menuitem.p-focus > .pantry-menu-danger {
+    background: rgba(239, 68, 68, 0.12);
   }
 }
 
@@ -832,4 +987,77 @@
     flex-flow: row;
   }
  
+}
+// Undo toast (PrimeReact Toast). Bottom-left so it clears the bottom-right "Report an issue" widget;
+// on narrow screens it leaves room for that widget on the right.
+.p-toast.pantry-toast.p-toast-bottom-left {
+  left: 16px;
+  bottom: 16px;
+  width: auto;
+  padding: 0;
+  max-width: min(420px, calc(100vw - 32px));
+
+  @media (max-width: 720px) {
+    max-width: calc(100vw - 32px - 64px);
+  }
+}
+
+.p-toast .p-toast-message.undo-toast {
+  margin: 0 0 8px;
+  background: var(--vscode-panel-strong);
+  color: var(--vscode-text);
+  border: 1px solid var(--vscode-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--shadow-container);
+  backdrop-filter: none;
+
+  .p-toast-message-content {
+    padding: 10px 12px 10px 14px;
+  }
+}
+
+.undo-toast-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.undo-toast-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.undo-toast-button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  background: transparent;
+  // Light theme: the brand green (#10b981) is only ~2.3:1 on the toast background, so use a darker green (5:1).
+  --undo-accent: #047857;
+  color: var(--undo-accent);
+  border: 1px solid var(--undo-accent);
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) & {
+      --undo-accent: var(--vscode-accent);
+    }
+  }
+
+  html[data-theme='dark'] & {
+    --undo-accent: var(--vscode-accent);
+  }
+
+  &:hover {
+    background: var(--accent-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--vscode-accent);
+    outline-offset: 2px;
+  }
 }

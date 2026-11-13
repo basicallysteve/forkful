@@ -16,6 +16,7 @@ import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
+import { Tag } from 'primereact/tag'
 import { RadioButton } from 'primereact/radiobutton'
 import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
@@ -500,8 +501,8 @@ function Store() {
             </p>
           </div>
           <div className="store-meta">
-            <span className="pill pill-primary">Draft</span>
-            <span className="pill pill-ghost">{ingredientCount} {ingredientCount === 1 ? "ingredient" : "ingredients"}</span>
+            <Tag rounded value="Draft" />
+            <Tag rounded className="tag-ghost" value={`${ingredientCount} ${ingredientCount === 1 ? "ingredient" : "ingredients"}`} />
           </div>
         </header>
 
