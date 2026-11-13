@@ -161,6 +161,29 @@ describe('Pantry Store Page', () => {
     })
   })
 
+  describe('size box accessibility', () => {
+    it('gives each size box a distinct group name', () => {
+      renderWithProviders(<PantryStore />)
+      expect(screen.getByRole('group', { name: 'Original Size' })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: 'Current Size' })).toBeInTheDocument()
+    })
+
+    it('keeps the visible headings available to assistive tech', () => {
+      renderWithProviders(<PantryStore />)
+      expect(screen.getByText('Original Size').closest('[aria-hidden="true"]')).toBeNull()
+      expect(screen.getByText('Current Size').closest('[aria-hidden="true"]')).toBeNull()
+    })
+
+    it('focuses the matching input when a heading is clicked', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      await user.click(screen.getByText('Original Size'))
+      expect(screen.getByLabelText(/original size\s*\*/i)).toHaveFocus()
+      await user.click(screen.getByText('Current Size'))
+      expect(screen.getByLabelText(/current size\s*\*/i)).toHaveFocus()
+    })
+  })
+
   describe('fraction amounts', () => {
     it('parses fractions in both size boxes and saves decimals', async () => {
       const user = userEvent.setup()
