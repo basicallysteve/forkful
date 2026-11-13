@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { searchUSDAFoods, searchUSDABranded } from '@/lib/usda'
+import { captureError } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
     ])
     return NextResponse.json({ foods: foodResults, products: brandedResults })
   } catch (err) {
-    console.error('USDA search error:', err)
+    // Upstream failure: tagged by area so it can be filtered/alerted separately.
+    captureError(err, { area: 'usda', attributes: { type } })
     return NextResponse.json({ error: 'USDA search failed' }, { status: 502 })
   }
 }
