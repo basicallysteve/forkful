@@ -114,7 +114,7 @@ describe('servingScale', () => {
   })
   it('real macros are stored for a count unit scale, not 0', () => {
     const s = servingScale(2, 'piece')
-    expect([clampMacro(12.3 * s), clampCalories(250 * s)]).toEqual(['12.30', 250])
+    expect([clampMacro(12.3 * s), clampCalories(250 * s)]).toEqual(['12.3', 250])
   })
   it('keeps the 100 g fallback for invalid sizes with mass/volume units', () => {
     expect(servingScale(Infinity, 'g')).toBe(1)

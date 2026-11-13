@@ -3,6 +3,7 @@
  * normalisation, density derivation, numeric clamping). No I/O, so they can be
  * unit-tested without a database or the FDC CSV files.
  */
+import type { Measurement } from '@/types/Food'
 
 // A branded product is imported only when its branded_food_category contains at
 // least one of these substrings (case-insensitive). Edit freely.
@@ -140,20 +141,61 @@ const MASS_TO_G: Record<string, number> = { g: 1, mg: 0.001, kg: 1000, oz: 28.34
  * (products store macros per serving of servingSize servingUnit).
  * - mass units: grams / 100
  * - volume units: (ml * density) / 100, density defaulting to 1 g/ml
- * - custom/count units (slice, piece, scoop, ...): 0. Interim rule until #156
- *   (custom serving definitions) lets users set the weight per unit; storing
- *   per-100g values against "2 slice" would skew calorie maths.
+ * - custom/count units (slice, piece, scoop, ...): 1 (the per-100 g basis).
+ *   Callers re-anchor those in grams first with resolveServing, so the
+ *   scale only ever applies to a gram serving.
  * - invalid size with a mass/volume unit: 1 (100 g basis fallback)
  */
 export function servingScale(servingSize: number, servingUnit: string, density?: number): number {
   const unit = normaliseUnit(servingUnit)
-  if (unit === null) return 0
+  if (unit === null) return 1
   if (!Number.isFinite(servingSize) || servingSize <= 0) return 1
   if (unit in MASS_TO_G) return (servingSize * MASS_TO_G[unit]) / 100
   const mlPerUnit = VOLUME_TO_ML[unit.toLowerCase()]
   if (mlPerUnit === undefined) return 1
   const d = density !== undefined && Number.isFinite(density) && density > 0 ? density : 1
   return (servingSize * mlPerUnit * d) / 100
+}
+
+export type ResolvedServing = {
+  servingSize: number
+  servingUnit: string
+  /** Factor from USDA per-100 g nutrients to the stored per-serving values. */
+  scale: number
+  measurements: Measurement[]
+}
+
+/**
+ * Serving anchor and Measurements for an imported product (ADR-0027, ADR-0028).
+ * - mass/volume serving units: unchanged anchor; portions follow the serving unit.
+ * - count unit (slice, piece, ...) with a USDA portion for that unit: anchored in
+ *   grams as servingSize x gramsPerUnit, the unit stays as a Calibrated Custom Unit.
+ * - count unit without a usable portion: 100 g with per-100 g nutrition, the unit
+ *   kept as an Uncalibrated Custom Unit.
+ */
+export function resolveServing(
+  servingSize: number,
+  servingUnit: string,
+  density: number | undefined,
+  portions: Measurement[],
+): ResolvedServing {
+  if (!isCustomServingUnit(servingUnit)) {
+    return {
+      servingSize,
+      servingUnit,
+      scale: servingScale(servingSize, servingUnit, density),
+      measurements: [{ unit: servingUnit }, ...portions],
+    }
+  }
+  const unit = servingUnit.toLowerCase().trim()
+  const match = portions.find(p => p.unit === unit)
+  const grams = match?.gramsPerUnit
+  if (grams !== undefined && grams > 0 && Number.isFinite(servingSize) && servingSize > 0) {
+    const total = Math.round(servingSize * grams * 100) / 100
+    return { servingSize: total, servingUnit: 'g', scale: total / 100, measurements: [{ unit: 'g' }, ...portions] }
+  }
+  const rest = portions.filter(p => p.unit !== unit)
+  return { servingSize: 100, servingUnit: 'g', scale: 1, measurements: [{ unit: 'g' }, { unit }, ...rest] }
 }
 
 const MAX_SLUG = 255
@@ -167,7 +209,7 @@ export function uniqueSlug(base: string, fdcId: string, taken: Set<string>): str
   return candidate
 }
 
-/** True when the serving unit is neither mass nor volume (nutrition is stored as 0, see #156). */
+/** True when the serving unit is neither mass nor volume (a count unit such as slice or piece). */
 export function isCustomServingUnit(servingUnit: string): boolean {
   return normaliseUnit(servingUnit) === null
 }
