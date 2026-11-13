@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { DataView } from 'primereact/dataview'
 import { InputText } from 'primereact/inputtext'
-import { InputNumber } from 'primereact/inputnumber'
-import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import Modal from '@/components/Modal/Modal'
+import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiCreateFoodLogEntry } from '@/lib/api/foodLog'
 import { getUnitLabel, allowedUnitsForFood } from '@/utils/unitConversion'
@@ -33,7 +32,7 @@ export default function LogFoodDialog({ visible, meal, logDate, seedFoods, onHid
   const [results, setResults] = useState<Food[]>([])
   const [searching, setSearching] = useState(false)
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
-  const [amount, setAmount] = useState<number>(1)
+  const [amount, setAmount] = useState<number | null>(1)
   const [unit, setUnit] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,14 +154,7 @@ export default function LogFoodDialog({ visible, meal, logDate, seedFoods, onHid
           <div className="log-food-fields">
             <label className="log-field">
               <span>Amount</span>
-              <InputNumber
-                value={amount}
-                onValueChange={(e: InputNumberValueChangeEvent) => setAmount(e.value ?? 0)}
-                min={0}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                inputClassName="text-input"
-              />
+              <QuantityInput value={amount} unit={unit} onChange={setAmount} />
             </label>
             <label className="log-field">
               <span>Unit</span>
