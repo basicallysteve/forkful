@@ -120,9 +120,9 @@ describe('Pantry Store Page', () => {
     it('renders all form fields', () => {
       const { container } = renderWithProviders(<PantryStore />)
       expect(screen.getByLabelText(/food item/i)).toBeInTheDocument()
-      expect(screen.getByRole('spinbutton', { name: /original size/i })).toBeInTheDocument()
+      expect(screen.getByLabelText(/original size\s*\*/i)).toBeInTheDocument()
       expect(container.querySelector('#original-unit')).toBeInTheDocument()
-      expect(screen.getByRole('spinbutton', { name: /current size/i })).toBeInTheDocument()
+      expect(screen.getByLabelText(/current size\s*\*/i)).toBeInTheDocument()
       expect(container.querySelector('#current-unit')).toBeInTheDocument()
       expect(screen.getByLabelText(/expiration date/i)).toBeInTheDocument()
     })
@@ -141,11 +141,11 @@ describe('Pantry Store Page', () => {
 
       await user.click(screen.getByRole('option', { name: /chicken breast/i }))
 
-      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      const originalSizeInput = screen.getByLabelText(/original size\s*\*/i)
       await user.clear(originalSizeInput)
       await user.type(originalSizeInput, '16')
 
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      const currentSizeInput = screen.getByLabelText(/current size\s*\*/i)
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '8')
 
@@ -158,6 +158,47 @@ describe('Pantry Store Page', () => {
       }))
       await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(1))
       expect(usePantryStore.getState().items[0].food?.name).toBe('Chicken Breast')
+    })
+  })
+
+  describe('fraction amounts', () => {
+    it('parses fractions in both size boxes and saves decimals', async () => {
+      const user = userEvent.setup()
+      vi.mocked(apiCreatePantryItem).mockResolvedValue(makeMockItem())
+      renderWithProviders(<PantryStore />)
+      await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+
+      const original = screen.getByLabelText(/original size\s*\*/i)
+      await user.clear(original)
+      await user.type(original, '2 1/2')
+      const current = screen.getByLabelText(/current size\s*\*/i)
+      await user.clear(current)
+      await user.type(current, '1 1/2')
+
+      await user.click(screen.getByRole('button', { name: /add item/i }))
+      expect(apiCreatePantryItem).toHaveBeenCalledWith(expect.objectContaining({
+        originalSizeAmount: 2.5,
+        currentSizeAmount: 1.5,
+      }))
+    })
+
+    it('keeps Current Size following Original Size until it is edited', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      const original = screen.getByLabelText(/original size\s*\*/i)
+      await user.clear(original)
+      await user.type(original, '1/2')
+      expect(screen.getByLabelText(/current size\s*\*/i)).toHaveValue('½')
+    })
+
+    it('disables save while an amount is not a valid number', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      await user.click(screen.getByRole('option', { name: /chicken breast/i }))
+      const current = screen.getByLabelText(/current size\s*\*/i)
+      await user.clear(current)
+      await user.type(current, 'abc')
+      expect(screen.getByRole('button', { name: /add item/i })).toBeDisabled()
     })
   })
 
@@ -185,8 +226,8 @@ describe('Pantry Store Page', () => {
       renderWithProviders(<PantryStore existingItem={existingItem} />)
 
       expect(screen.getByPlaceholderText('Select a food item')).toHaveValue('Chicken Breast')
-      expect((screen.getByRole('spinbutton', { name: /original size/i }) as HTMLInputElement).value).toBe('3')
-      expect((screen.getByRole('spinbutton', { name: /current size/i }) as HTMLInputElement).value).toBe('2')
+      expect((screen.getByLabelText(/original size\s*\*/i) as HTMLInputElement).value).toBe('3')
+      expect((screen.getByLabelText(/current size\s*\*/i) as HTMLInputElement).value).toBe('2')
     })
 
     it('calls apiUpdatePantryItem and updates the store on save', async () => {
@@ -203,7 +244,7 @@ describe('Pantry Store Page', () => {
 
       renderWithProviders(<PantryStore existingItem={existingItem} />, { items: [existingItem] })
 
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      const currentSizeInput = screen.getByLabelText(/current size\s*\*/i)
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '1.5')
 
@@ -255,12 +296,12 @@ describe('Pantry Store Page', () => {
 
       await user.click(screen.getByRole('option', { name: /chicken breast/i }))
 
-      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      const originalSizeInput = screen.getByLabelText(/original size\s*\*/i)
       await user.clear(originalSizeInput)
       await user.type(originalSizeInput, '10')
       await user.tab()
 
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      const currentSizeInput = screen.getByLabelText(/current size\s*\*/i)
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '15')
       await user.tab()
@@ -274,12 +315,12 @@ describe('Pantry Store Page', () => {
 
       await user.click(screen.getByRole('option', { name: /chicken breast/i }))
 
-      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      const originalSizeInput = screen.getByLabelText(/original size\s*\*/i)
       await user.clear(originalSizeInput)
       await user.type(originalSizeInput, '10')
       await user.tab()
 
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      const currentSizeInput = screen.getByLabelText(/current size\s*\*/i)
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '10')
       await user.tab()
@@ -293,7 +334,7 @@ describe('Pantry Store Page', () => {
 
       await user.click(screen.getByRole('option', { name: /chicken breast/i }))
 
-      const originalSizeInput = screen.getByRole('spinbutton', { name: /original size/i })
+      const originalSizeInput = screen.getByLabelText(/original size\s*\*/i)
       await user.clear(originalSizeInput)
       await user.type(originalSizeInput, '10')
       await user.tab()
@@ -303,7 +344,7 @@ describe('Pantry Store Page', () => {
       await user.click(originalUnitDropdown)
       fireEvent.click(await screen.findByRole('option', { name: 'slice', hidden: true }))
 
-      const currentSizeInput = screen.getByRole('spinbutton', { name: /current size/i })
+      const currentSizeInput = screen.getByLabelText(/current size\s*\*/i)
       await user.clear(currentSizeInput)
       await user.type(currentSizeInput, '15')
       await user.tab()

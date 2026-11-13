@@ -118,7 +118,7 @@ describe('Store Page - Recipe Creation', () => {
       const hamOption = await screen.findByRole('option', { name: /^Ham/i })
       await user.click(hamOption)
 
-      const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
+      const quantityInput = screen.getByLabelText(/amount/i)
       await user.clear(quantityInput)
       await user.type(quantityInput, '2')
 
@@ -131,8 +131,9 @@ describe('Store Page - Recipe Creation', () => {
       // Find option that starts with Cheese (includes calories meta text)
       const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
       await user.click(cheeseOption)
-      await user.clear(quantityInput)
-      await user.type(quantityInput, '1')
+      const cheeseQuantity = screen.getByLabelText(/amount/i)
+      await user.clear(cheeseQuantity)
+      await user.type(cheeseQuantity, '1')
       await user.click(addButton)
 
       // Should see similar recipe suggestion
@@ -180,7 +181,7 @@ describe('Store Page - Recipe Creation', () => {
       const hamOption = await screen.findByRole('option', { name: /^Ham/i })
       await user.click(hamOption)
 
-      const quantityInput = screen.getByRole('spinbutton', { name: /quantity/i })
+      const quantityInput = screen.getByLabelText(/amount/i)
       await user.clear(quantityInput)
       await user.type(quantityInput, '2')
 
@@ -192,8 +193,9 @@ describe('Store Page - Recipe Creation', () => {
       // Find option that starts with Cheese (includes calories meta text)
       const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
       await user.click(cheeseOption)
-      await user.clear(quantityInput)
-      await user.type(quantityInput, '1')
+      const cheeseQuantity = screen.getByLabelText(/amount/i)
+      await user.clear(cheeseQuantity)
+      await user.type(cheeseQuantity, '1')
       await user.click(addButton)
 
       // Check that the link exists and points to the right recipe
@@ -426,7 +428,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await addHam(user)
 
     // [0] is the blank "new ingredient" row, [1] is the added Ham row
-    const addedQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[1]
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
     expect(addedQuantity).not.toHaveAttribute('readonly')
     await user.clear(addedQuantity)
     await user.type(addedQuantity, '4')
@@ -440,7 +442,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     renderWithProviders(<Store />)
     await addHam(user)
 
-    const addedQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[1]
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
     await user.clear(addedQuantity)
     await user.type(addedQuantity, '4')
     await user.tab()
@@ -467,7 +469,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'Ham')
     await user.click(await screen.findByRole('option', { name: /^Ham/i }))
-    const newRowQuantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[0]
+    const newRowQuantity = screen.getAllByLabelText(/amount/i)[0]
     await user.clear(newRowQuantity)
     await user.type(newRowQuantity, '2')
     await user.tab()
@@ -476,7 +478,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     // Remove the first stored Ham row
     await user.click(screen.getAllByRole('button', { name: /remove/i })[0])
 
-    const quantities = screen.getAllByRole('spinbutton', { name: /quantity/i })
+    const quantities = screen.getAllByLabelText(/amount/i)
     expect(quantities).toHaveLength(2) // new row + survivor
     expect(quantities[1]).toHaveValue('2')
     expect(screen.getAllByRole('spinbutton', { name: /calories/i })[1]).toHaveValue('150')
@@ -496,6 +498,43 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(saved.ingredients[0]).toMatchObject({ quantity: 3, calories: 225 })
   })
 
+  it('parses a mixed fraction in the quantity box and saves it as a decimal', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Ham')
+    await user.click(await screen.findByRole('option', { name: /^Ham/i }))
+
+    const quantity = screen.getAllByLabelText(/amount/i)[0]
+    await user.clear(quantity)
+    await user.type(quantity, '1 1/2')
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+
+    // 75 cal per slice * 1.5, shown back as a fraction in the stored row
+    expect(screen.getAllByLabelText(/calories/i)[1]).toHaveValue('112.5')
+    expect(screen.getAllByLabelText(/amount/i)[1]).toHaveValue('1½')
+
+    await user.click(screen.getByRole('button', { name: /details tab/i }))
+    await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Test Fraction Ham')
+    await user.click(screen.getByRole('radio', { name: /lunch/i }))
+    await user.type(screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.'), 'desc')
+    await user.click(screen.getByRole('button', { name: /save recipe/i }))
+    await waitFor(() => expect(apiCreateRecipe).toHaveBeenCalled())
+    const saved = vi.mocked(apiCreateRecipe).mock.calls.at(-1)![0]
+    expect(saved.ingredients[0].quantity).toBe(1.5)
+  })
+
+  it('edits a stored ingredient quantity with a fraction', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+    const stored = screen.getAllByLabelText(/amount/i)[1]
+    await user.clear(stored)
+    await user.type(stored, '3/4')
+    await user.tab()
+    expect(screen.getAllByLabelText(/calories/i)[1]).toHaveValue('56.25')
+  })
+
   it('resets the add row to blank after a successful add', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Store />)
@@ -510,8 +549,8 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.click(screen.getByRole('button', { name: /add ingredient/i }))
 
     expect(screen.getAllByPlaceholderText('Select food')[0]).toHaveValue('')
-    expect(screen.getAllByRole('spinbutton', { name: /quantity/i })[0]).toHaveValue('')
-    expect(screen.getAllByRole('spinbutton', { name: /quantity/i })[0]).toBeDisabled()
+    expect(screen.getAllByLabelText(/amount/i)[0]).toHaveValue('')
+    expect(screen.getAllByLabelText(/amount/i)[0]).toBeDisabled()
     expect(screen.getByRole('button', { name: /add ingredient/i })).toBeDisabled()
   })
 
@@ -539,7 +578,7 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.click(await screen.findByRole('option', { name: /^Ham/i }))
     expect(addButton()).toBeEnabled()
 
-    const quantity = screen.getAllByRole('spinbutton', { name: /quantity/i })[0]
+    const quantity = screen.getAllByLabelText(/amount/i)[0]
     await user.clear(quantity)
     await user.tab()
     expect(addButton()).toBeDisabled()
