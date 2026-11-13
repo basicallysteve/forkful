@@ -33,13 +33,14 @@ function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): F
  * records zero (the flow is expected to offer calibration before reaching this point).
  */
 export function computeFrozenMacros(food: Food, amount: number, unit: string): Macros {
-  const gramsPerUnit = food.measurements.find((m) => m.unit === unit)?.gramsPerUnit
+  const measurement = food.measurements.find((m) => m.unit === unit)
   const factor = servingScaleFactor({
     baseServingSize: food.servingSize,
     baseServingUnit: food.servingUnit,
     targetAmount: amount,
     targetUnit: unit,
-    gramsPerUnit,
+    gramsPerUnit: measurement?.gramsPerUnit,
+    mlPerUnit: measurement?.mlPerUnit,
     density: food.density,
   })
   if (factor === null) return { ...ZERO_MACROS }
