@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { scrubLog } from '@/lib/sentry/scrubLog'
+import { replayOptions } from '@/lib/sentry/replayOptions'
 
 // Client-side Sentry init. In Next.js (App Router + Turbopack) this file is the
 // supported entry point for browser instrumentation — the legacy
@@ -21,7 +22,7 @@ Sentry.init({
   integrations: [
     Sentry.browserProfilingIntegration(),
     Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
+    Sentry.replayIntegration(replayOptions),
     Sentry.feedbackIntegration({
       autoInject: true,
       // Match the OS/user-toggle preference set by Forkful's ThemeToggle
