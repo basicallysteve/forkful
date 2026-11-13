@@ -345,6 +345,14 @@
     background: var(--vscode-panel);
   }
 
+  // Wraps QuantityInput so a disabled fieldset can disable it; strip the fieldset chrome.
+  .ingredient-quantity-field {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
   .form-field-full {
     grid-column: 1 / -1;
   }

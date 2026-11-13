@@ -805,7 +805,9 @@
   .form-section {
     margin-bottom: 18px;
 
-    label {
+    // .field-heading is the visible title of the size boxes; clicking it focuses the amount input.
+    label,
+    .field-heading {
       display: block;
       margin-bottom: 8px;
       font-size: 12px;
@@ -854,6 +856,17 @@
 
       .size-number {
         flex: 2;
+        min-width: 0;
+        margin-bottom: 0;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
       }
 
       .size-unit {
