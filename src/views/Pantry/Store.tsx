@@ -13,8 +13,7 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
 import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
 import { canConvert, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS } from '@/utils/unitConversion'
-import { InputNumber } from 'primereact/inputnumber'
-import type { InputNumberValueChangeEvent } from 'primereact/inputnumber'
+import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { Dropdown } from 'primereact/dropdown'
 import { SelectButton } from 'primereact/selectbutton'
 
@@ -40,15 +39,17 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [foodName, setFoodName] = useState<string>(existingItem?.food?.name || '')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(existingItem?.product ?? null)
   const [productSearchValue, setProductSearchValue] = useState<string>(existingItem?.product?.name || '')
-  const [originalSize, setOriginalSize] = useState<number>(existingItem?.originalSize.size || 1)
+  const [originalSize, setOriginalSize] = useState<number | null>(existingItem?.originalSize.size || 1)
   const [originalUnit, setOriginalUnit] = useState<string>(existingItem?.originalSize.unit || 'oz')
-  const [currentSize, setCurrentSize] = useState<number>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
+  const [currentSize, setCurrentSize] = useState<number | null>(existingItem?.currentSize.size || existingItem?.originalSize.size || 1)
   const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate
       ? formatDateForInput(existingItem.expirationDate)
       : ''
   )
+  // The Current Size box keeps its own text, so remount it when Original Size pushes a new value into it.
+  const [currentSizeKey, setCurrentSizeKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -101,9 +102,9 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     try {
       if (isEditing) {
         const updated = await apiUpdatePantryItem(existingItem.id, {
-          originalSizeAmount: originalSize,
+          originalSizeAmount: originalSize!,
           originalSizeUnit: originalUnit,
-          currentSizeAmount: currentSize,
+          currentSizeAmount: currentSize!,
           currentSizeUnit: currentUnit,
           expirationDate: expirationDate || null,
         })
@@ -113,9 +114,9 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
           sourceType: sourceMode,
           foodId: sourceMode === 'food' ? selectedFood!.id : undefined,
           productId: sourceMode === 'product' ? selectedProduct!.id : undefined,
-          originalSizeAmount: originalSize,
+          originalSizeAmount: originalSize!,
           originalSizeUnit: originalUnit,
-          currentSizeAmount: currentSize,
+          currentSizeAmount: currentSize!,
           currentSizeUnit: currentUnit,
           expirationDate: expirationDate || null,
         })
@@ -133,13 +134,13 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     router.push('/pantry')
   }
 
-  function syncSizes(e: InputNumberValueChangeEvent) {
-
+  function syncSizes(value: number | null) {
     const currentSizeEqualsOriginal = currentSize === originalSize && currentUnit === originalUnit
-    
-    setOriginalSize(e.value ?? originalSize)
+
+    setOriginalSize(value)
     if (currentSizeEqualsOriginal) {
-      setCurrentSize(e.value ?? currentSize)
+      setCurrentSize(value)
+      setCurrentSizeKey((k) => k + 1)
     }
   }
 
@@ -153,10 +154,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
 
 
   const hasValidSelection = sourceMode === 'food' ? !!selectedFood : !!selectedProduct
-  const hasValidOriginalSize = originalSize > 0
-  const hasValidCurrentSize = currentSize >= 0
+  const hasValidOriginalSize = originalSize !== null && originalSize > 0
+  const hasValidCurrentSize = currentSize !== null && currentSize >= 0
   const activeDensity = (sourceMode === 'food' ? selectedFood : selectedProduct)?.density
-  const sizeValid = canConvert(currentUnit, originalUnit, activeDensity) ? currentSize <= originalSize : true
+  const sizeValid = canConvert(currentUnit, originalUnit, activeDensity) ? currentSize !== null && originalSize !== null && currentSize <= originalSize : true
   const isSaveDisabled = saving || !hasValidSelection || !hasValidOriginalSize || !hasValidCurrentSize || !sizeValid
 
   return (
@@ -216,20 +217,14 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
           </div>
 
           <div className="form-section">
-            <label htmlFor="original-size">
+            <span className="field-heading" aria-hidden="true">
               Original Size <span className="required">*</span>
-            </label>
+            </span>
             <div className="size-input-group">
-              <InputNumber
-                inputId="original-size"
-                min={0.01}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                value={originalSize}
-                onValueChange={(e) => syncSizes(e)}
-                placeholder="Enter size"
-                className="size-number"
-              />
+              <label className="size-number">
+                <span className="sr-only">Original Size *</span>
+                <QuantityInput value={originalSize} unit={originalUnit} onChange={syncSizes} />
+              </label>
               <Dropdown
                 inputId="original-unit"
                 value={originalUnit}
@@ -243,20 +238,14 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
           </div>
 
           <div className="form-section">
-            <label htmlFor="current-size">
+            <span className="field-heading" aria-hidden="true">
               Current Size <span className="required">*</span>
-            </label>
+            </span>
             <div className="size-input-group">
-              <InputNumber
-                inputId="current-size"
-                min={0}
-                minFractionDigits={0}
-                maxFractionDigits={2}
-                value={currentSize}
-                onValueChange={(e) => setCurrentSize(e.value ?? 0)}
-                placeholder="Enter size"
-                className="size-number"
-              />
+              <label className="size-number">
+                <span className="sr-only">Current Size *</span>
+                <QuantityInput key={currentSizeKey} value={currentSize} unit={currentUnit} onChange={setCurrentSize} />
+              </label>
               <Dropdown
                 inputId="current-unit"
                 value={currentUnit}

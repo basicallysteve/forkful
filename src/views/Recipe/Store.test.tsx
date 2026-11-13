@@ -131,7 +131,7 @@ describe('Store Page - Recipe Creation', () => {
       // Find option that starts with Cheese (includes calories meta text)
       const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
       await user.click(cheeseOption)
-      const cheeseQuantity = screen.getByLabelText(/amount/i)
+      const cheeseQuantity = screen.getAllByLabelText(/amount/i)[0]
       await user.clear(cheeseQuantity)
       await user.type(cheeseQuantity, '1')
       await user.click(addButton)
@@ -193,7 +193,7 @@ describe('Store Page - Recipe Creation', () => {
       // Find option that starts with Cheese (includes calories meta text)
       const cheeseOption = await screen.findByRole('option', { name: /^Cheese/i })
       await user.click(cheeseOption)
-      const cheeseQuantity = screen.getByLabelText(/amount/i)
+      const cheeseQuantity = screen.getAllByLabelText(/amount/i)[0]
       await user.clear(cheeseQuantity)
       await user.type(cheeseQuantity, '1')
       await user.click(addButton)

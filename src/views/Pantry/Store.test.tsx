@@ -188,7 +188,7 @@ describe('Pantry Store Page', () => {
       const original = screen.getByLabelText(/original size\s*\*/i)
       await user.clear(original)
       await user.type(original, '1/2')
-      expect(screen.getByLabelText(/current size\s*\*/i)).toHaveValue('½')
+      expect(screen.getByLabelText(/current size\s*\*/i)).toHaveValue('0.5')
     })
 
     it('disables save while an amount is not a valid number', async () => {
