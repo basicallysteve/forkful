@@ -292,3 +292,42 @@ html[data-theme='light'] {
     }
   }
 }
+
+// Checkbox: PrimeReact paints .p-checkbox-box with a fixed dark fill in both themes. Theme it once here.
+// p-highlight can land on the root or the box across PrimeReact builds, so match both.
+.p-checkbox {
+  .p-checkbox-box {
+    background:   var(--vscode-panel);
+    border:       2px solid var(--vscode-muted);
+    transition:   background-color 0.15s, border-color 0.15s;
+
+    .p-checkbox-icon {
+      color: var(--vscode-bg);
+    }
+  }
+
+  &:not(.p-checkbox-disabled):hover .p-checkbox-box {
+    border-color: var(--vscode-accent);
+  }
+
+  &.p-highlight .p-checkbox-box,
+  .p-checkbox-box.p-highlight {
+    background:   var(--vscode-accent);
+    border-color: var(--vscode-accent);
+  }
+
+  &:has(.p-checkbox-input:focus-visible) .p-checkbox-box,
+  .p-checkbox-box.p-focus {
+    outline:        2px solid var(--vscode-accent);
+    outline-offset: 2px;
+    box-shadow:     none;
+  }
+
+  &.p-checkbox-disabled {
+    opacity: 0.5;
+
+    .p-checkbox-box {
+      cursor: not-allowed;
+    }
+  }
+}

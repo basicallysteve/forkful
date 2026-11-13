@@ -635,30 +635,12 @@
 
   }
 
-  // Selection checkboxes: PrimeReact paints the box with a fixed dark-navy fill in both themes.
-  // Follow the theme instead (scoped to the Pantry card view; the same fill is global, see PR).
+  // Checkbox colours come from the global theme (theme.scss); only the larger touch size is Pantry-specific.
   .pantry-card,
   .select-all-row {
     .p-checkbox .p-checkbox-box {
       width: 20px;
       height: 20px;
-      background: var(--vscode-panel);
-      border: 2px solid var(--vscode-muted);
-    }
-
-    .p-checkbox.p-highlight .p-checkbox-box {
-      background: var(--vscode-accent);
-      border-color: var(--vscode-accent);
-
-      .p-checkbox-icon {
-        color: var(--vscode-bg);
-      }
-    }
-
-    .p-checkbox:has(.p-checkbox-input:focus-visible) .p-checkbox-box {
-      outline: 2px solid var(--vscode-accent);
-      outline-offset: 2px;
-      box-shadow: none;
     }
   }
 
