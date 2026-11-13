@@ -23,6 +23,7 @@ import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
 import RecipeImporter from './RecipeImporter'
 import './markdownImport.scss'
+import { hasValidQuantities } from './ingredientQuantities'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -314,7 +315,7 @@ function Store() {
 
   const canSave = useMemo(() => {
     // A stored row with invalid or zero quantity text has quantity 0; block saving it as "0 slice".
-    const quantitiesValid = recipe.ingredients.every((ingredient) => ingredient.quantity > 0)
+    const quantitiesValid = hasValidQuantities(recipe.ingredients)
     return !!(recipe.name && recipe.meal && recipe.description && quantitiesValid)
   }, [recipe])
 
