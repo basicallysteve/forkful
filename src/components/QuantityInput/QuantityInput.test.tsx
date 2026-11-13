@@ -79,4 +79,59 @@ describe('QuantityInput', () => {
     const notCancelled = fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
     expect(notCancelled).toBe(false)
   })
+
+  describe('accessibility', () => {
+    it('is a spinbutton exposing the parsed value, minimum and formatted text', () => {
+      render(<QuantityInput value={1.5} unit="slice" onChange={() => {}} />)
+      const input = screen.getByRole('spinbutton', { name: 'Amount' })
+      expect(input).toHaveAttribute('aria-valuenow', '1.5')
+      expect(input).toHaveAttribute('aria-valuemin', '0.25')
+      expect(input).toHaveAttribute('aria-valuetext', '1½')
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+    })
+
+    it('uses a minimum of 1 for measured units', () => {
+      render(<QuantityInput value={5} unit="g" onChange={() => {}} />)
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuemin', '1')
+    })
+
+    it('omits aria-valuenow and aria-valuetext when the text is invalid or empty', () => {
+      render(<QuantityInput value={1} unit="slice" onChange={() => {}} />)
+      const input = screen.getByRole('spinbutton')
+      fireEvent.change(input, { target: { value: 'abc' } })
+      expect(input).not.toHaveAttribute('aria-valuenow')
+      expect(input).not.toHaveAttribute('aria-valuetext')
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.change(input, { target: { value: '' } })
+      expect(input).not.toHaveAttribute('aria-valuenow')
+    })
+
+    it('updates the attributes when stepping', () => {
+      render(<QuantityInput value={1} unit="slice" onChange={() => {}} />)
+      const input = screen.getByRole('spinbutton')
+      fireEvent.keyDown(input, { key: 'ArrowUp' })
+      expect(input).toHaveAttribute('aria-valuenow', '1.25')
+      expect(input).toHaveAttribute('aria-valuetext', '1¼')
+    })
+
+    it.each(['ctrlKey', 'altKey', 'metaKey'])('ignores arrows with %s held', (mod) => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      const notCancelled = fireEvent.keyDown(input, { key: 'ArrowUp', [mod]: true })
+      expect(notCancelled).toBe(true)
+      expect(onChange).not.toHaveBeenCalled()
+      expect(input.value).toBe('1')
+    })
+
+    it('ignores arrows during IME composition', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByRole('spinbutton') as HTMLInputElement
+      const notCancelled = fireEvent.keyDown(input, { key: 'ArrowDown', isComposing: true })
+      expect(notCancelled).toBe(true)
+      expect(onChange).not.toHaveBeenCalled()
+      expect(input.value).toBe('1')
+    })
+  })
 })
