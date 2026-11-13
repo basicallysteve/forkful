@@ -10,13 +10,24 @@ interface QuantityInputProps {
   unit: string
   onChange: (value: number | null) => void
   className?: string
+  disabled?: boolean
+  // Accessible name; defaults to "Amount". Give each box on a screen its own.
+  ariaLabel?: string
+  id?: string
 }
 
 // Free-text amount field that accepts fractions ("1 1/2", "½") and decimals. Reports the parsed number
 // on every keystroke and tidies the text (e.g. "1.5" -> "1½" for count units) on blur.
-export default function QuantityInput({ value, unit, onChange, className }: QuantityInputProps) {
+export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
   const parsed = parseQuantity(text)
+  // Follow a value changed from outside (food picked, sizes synced). Our own onChange echoes the parsed
+  // text back, so parsed === value then and the text the user is typing is left alone.
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (value !== parsed) setText(value === null ? '' : formatQuantity(value, unit))
+  }
   const invalid = text.trim() !== '' && parsed === null
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
   const min = stepQuantity(null, 1, unit)
@@ -25,7 +36,9 @@ export default function QuantityInput({ value, unit, onChange, className }: Quan
     <InputText
       value={text}
       inputMode="text"
-      aria-label="Amount"
+      id={id}
+      disabled={disabled}
+      aria-label={ariaLabel}
       role="spinbutton"
       aria-valuemin={min ?? undefined}
       aria-valuenow={parsed ?? undefined}
