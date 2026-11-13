@@ -180,12 +180,12 @@
 
     .p-inputtext,
     .p-inputnumber-input {
-      height: 42px;
+      height: var(--control-height);
       padding: 0 12px;
     }
 
     .p-dropdown {
-      height: 42px;
+      height: var(--control-height);
       align-items: center;
     }
 
@@ -211,8 +211,8 @@
 
     .ingredient-action-button {
       justify-self: end;
-      height: 42px;
-      min-width: 42px;
+      height: var(--control-height);
+      min-width: var(--control-height);
     }
   }
 

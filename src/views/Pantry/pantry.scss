@@ -823,7 +823,8 @@
     input,
     select {
       width: 100%;
-      padding: 10px 12px;
+      height: var(--control-height);
+      padding: 0 12px;
       border: 1px solid var(--vscode-border);
       border-radius: 8px;
       background: var(--vscode-panel);
@@ -883,6 +884,9 @@
       }
 
       .p-dropdown.size-unit {
+        display: flex;
+        align-items: center;
+        height: var(--control-height);
         border: 1px solid var(--vscode-border);
         border-radius: 8px;
         background: var(--vscode-panel);
@@ -891,6 +895,28 @@
         cursor: pointer;
         box-sizing: border-box;
         transition: border-color 120ms ease, box-shadow 120ms ease;
+
+        // The inner label must not add its own box (padding/height/background) inside the outer one
+        .p-dropdown-label {
+          flex: 1;
+          height: auto;
+          padding: 0 12px;
+          border: 0;
+          background: transparent;
+          box-shadow: none;
+          color: inherit;
+        }
+
+        .p-dropdown-trigger {
+          width: auto;
+          padding-right: 12px;
+          color: var(--vscode-muted);
+        }
+
+        &:not(.p-disabled).p-focus {
+          border-color: var(--vscode-accent);
+          box-shadow: var(--focus-ring);
+        }
       }
     }
 
