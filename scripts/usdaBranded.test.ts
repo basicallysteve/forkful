@@ -106,16 +106,15 @@ describe('servingScale', () => {
     expect(servingScale(240, 'ml')).toBeCloseTo(2.4)
     expect(servingScale(1, 'cup')).toBeCloseTo(2.36588)
   })
-  it('returns 0 for custom units (interim, #156)', () => {
-    expect(servingScale(2, 'slice')).toBe(0)
-    expect(servingScale(1, 'piece')).toBe(0)
-    expect(servingScale(Infinity, 'slice')).toBe(0)
+  it('no longer zeroes count units: the 100 g basis applies (#191)', () => {
+    expect(servingScale(2, 'slice')).toBe(1)
+    expect(servingScale(Infinity, 'slice')).toBe(1)
     expect(isCustomServingUnit('slice')).toBe(true)
     expect(isCustomServingUnit('ml')).toBe(false)
   })
-  it('zero scale stores all nutrients as 0, never NaN', () => {
+  it('real macros are stored for a count unit scale, not 0', () => {
     const s = servingScale(2, 'piece')
-    expect([clampMacro(12.3 * s), clampSodium(300 * s), clampCalories(250 * s)]).toEqual(['0', '0', 0])
+    expect([clampMacro(12.3 * s), clampCalories(250 * s)]).toEqual(['12.3', 250])
   })
   it('keeps the 100 g fallback for invalid sizes with mass/volume units', () => {
     expect(servingScale(Infinity, 'g')).toBe(1)

@@ -27,7 +27,7 @@ import type { Measurement } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import {
   isAllowedCategory, normaliseUnit, deriveDensity, clampMacro, clampSodium, clampServing, clampCalories,
-  parseServingSize, servingScale, isCustomServingUnit, uniqueSlug, indexBrandedByExternalId, BRANDED_SOURCE,
+  parseServingSize, resolveServing, isCustomServingUnit, uniqueSlug, indexBrandedByExternalId, BRANDED_SOURCE,
 } from './usdaBranded'
 
 // ── Nutrient IDs (FDC standard) ───────────────────────────────────────────────
@@ -324,8 +324,9 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
 
   // USDA values are per 100 g; products store them per serving (see servingScale)
   const density = densityByFood.get(fdcId)
-  // Custom units (slice, piece, ...) get 0 nutrition until #156 lands.
-  const scale = servingScale(meta.servingSize, meta.servingUnit, density)
+  // Count units (slice, piece, ...) are anchored in grams (ADR-0027, ADR-0028).
+  const serving = resolveServing(meta.servingSize, meta.servingUnit, density, portions)
+  const scale = serving.scale
 
   // slug: leave room for -fdcId suffix (fdcIds up to 8 digits + hyphen = 9 chars)
   const baseSlug = toSlug(name).slice(0, 245)
@@ -346,12 +347,10 @@ function buildValues(fdcId: string, meta: BrandedMeta): ProductValues {
     saturatedFat: get(NID.satFat) ? clampMacro(get(NID.satFat) * scale) : null,
     sugar:   get(NID.sugar)  ? clampMacro(get(NID.sugar)  * scale) : null,
     sodium:  get(NID.sodium) ? clampSodium(get(NID.sodium) * scale) : null,
-    servingSize: clampServing(meta.servingSize),
-    servingUnit: meta.servingUnit.slice(0, 50),
+    servingSize: clampServing(serving.servingSize),
+    servingUnit: serving.servingUnit.slice(0, 50),
     density: density != null ? String(density) : null,
-    measurements: portions.length
-      ? [{ unit: meta.servingUnit }, ...portions]
-      : [{ unit: meta.servingUnit }],
+    measurements: serving.measurements,
     source: BRANDED_SOURCE,
   }
 }
@@ -414,7 +413,7 @@ console.log('\n─────────────────────�
 console.log(`  Inserted:      ${inserted.toLocaleString()}`)
 console.log(`  Updated:       ${updated.toLocaleString()}`)
 console.log(`  Skipped:       ${skippedDeleted} (soft-deleted)`)
-console.log(`  Custom-unit products stored with 0 nutrition (see #156): ${customUnitProducts.toLocaleString()}`)
+console.log(`  Count-unit products anchored in grams (ADR-0027): ${customUnitProducts.toLocaleString()}`)
 console.log(`  Non-finite nutrient rows skipped: ${skippedNonFinite.toLocaleString()}`)
 console.log(`  Category skip: ${skippedCategory.toLocaleString()}`)
 console.log('─────────────────────────────────────────')
