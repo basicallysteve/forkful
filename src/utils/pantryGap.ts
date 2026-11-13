@@ -1,4 +1,4 @@
-import { convertFoodAmount } from './convertFoodAmount'
+import { convertAcrossSides } from './pantryDeduction'
 import { round2 } from './number'
 import type { Measurement } from '@/types/Food'
 
@@ -29,16 +29,15 @@ const SHORTFALL_EPSILON = 0.005
 // two units can't be bridged: an unconvertible pair, or an Uncalibrated Custom Unit on either side.
 function convertStockToIngredientUnit(stock: PantryGapStock, ingredient: PantryGapIngredient): number | null {
   // Matched stock is the same substance as the ingredient, so a single density bridges any mass<->volume
-  // step; prefer the Pantry source's density and fall back to the ingredient Food's. Calibrations from both
-  // sides are pooled so a Custom Unit on either resolves (ADR-0028).
-  return convertFoodAmount(
-    {
-      measurements: [...stock.measurements, ...ingredient.measurements],
-      density: stock.density ?? ingredient.density,
-    },
+  // step; prefer the Pantry source's density and fall back to the ingredient Food's. Each side's Custom
+  // Units resolve with that side's own calibration (ADR-0028).
+  return convertAcrossSides(
     stock.amount,
     stock.unit,
+    stock.measurements,
     ingredient.unit,
+    ingredient.measurements,
+    stock.density ?? ingredient.density,
   )
 }
 

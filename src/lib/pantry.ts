@@ -406,8 +406,7 @@ export async function getIngredientPantryMatches(
         pantryAmount: currentSizeAmount,
         pantryUnit,
         pantryMeasurements: measurements ?? [],
-        density,
-        ingredientDensity: food.density ? Number(food.density) : undefined,
+        density: density ?? (food.density ? Number(food.density) : undefined),
       })
 
       return {
