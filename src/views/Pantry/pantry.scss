@@ -805,7 +805,7 @@
   .form-section {
     margin-bottom: 18px;
 
-    // .field-heading is the visible title of the size boxes; their real label is the sr-only text inside.
+    // .field-heading is the visible title of the size boxes; clicking it focuses the amount input.
     label,
     .field-heading {
       display: block;

@@ -23,6 +23,11 @@ interface PantryStoreProps {
 
 type SourceMode = 'food' | 'product'
 
+// Clicking a size heading focuses that box's amount input, as the old <label htmlFor> did.
+function focusSizeInput(event: React.MouseEvent<HTMLElement>) {
+  event.currentTarget.closest('.form-section')?.querySelector('input')?.focus()
+}
+
 export default function PantryStore({ existingItem }: PantryStoreProps) {
   const router = useRouter()
   const foods = useFoodStore((state) => state.foods)
@@ -216,9 +221,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             )}
           </div>
 
-          <div className="form-section">
-            <span className="field-heading" aria-hidden="true">
-              Original Size <span className="required">*</span>
+          <div className="form-section" role="group" aria-labelledby="original-size-heading">
+            <span className="field-heading">
+              <span id="original-size-heading" onClick={focusSizeInput}>Original Size</span>{' '}
+              <span className="required" aria-hidden="true">*</span>
             </span>
             <div className="size-input-group">
               <label className="size-number">
@@ -237,9 +243,10 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             <small>Original size of each item (e.g., 16 oz box)</small>
           </div>
 
-          <div className="form-section">
-            <span className="field-heading" aria-hidden="true">
-              Current Size <span className="required">*</span>
+          <div className="form-section" role="group" aria-labelledby="current-size-heading">
+            <span className="field-heading">
+              <span id="current-size-heading" onClick={focusSizeInput}>Current Size</span>{' '}
+              <span className="required" aria-hidden="true">*</span>
             </span>
             <div className="size-input-group">
               <label className="size-number">
