@@ -19,7 +19,7 @@ export type MassUnit = typeof MASS_UNITS[number]
 export const VOLUME_UNITS = ['ml', 'l', 'cup', 'Tbs', 'tsp', 'fl-oz'] as const
 export type VolumeUnit = typeof VOLUME_UNITS[number]
 
-export const CUSTOM_UNITS = ['slice', 'piece', 'serving', 'portion', 'loaf', 'can', 'bottle', 'package'] as const
+export const CUSTOM_UNITS = ['slice', 'piece', 'serving', 'portion', 'loaf', 'can', 'bottle', 'package', 'scoop', 'stick', 'tablet', 'pouch', 'punnet', 'bar', 'packet'] as const
 export type CustomUnit = typeof CUSTOM_UNITS[number]
 
 export type FoodUnit = MassUnit | VolumeUnit | CustomUnit
@@ -233,6 +233,13 @@ export function getUnitLabel(unit: string): string {
     can: 'cans',
     bottle: 'bottles',
     package: 'packages',
+    scoop: 'scoops',
+    stick: 'sticks',
+    tablet: 'tablets',
+    pouch: 'pouches',
+    punnet: 'punnets',
+    bar: 'bars',
+    packet: 'packets',
     each: 'each',
   }
   return labels[unit] || unit
