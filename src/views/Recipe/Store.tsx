@@ -313,7 +313,9 @@ function Store() {
   }, [recipe.ingredients, recipes])
 
   const canSave = useMemo(() => {
-    return !!(recipe.name && recipe.meal && recipe.description)
+    // A stored row with invalid or zero quantity text has quantity 0; block saving it as "0 slice".
+    const quantitiesValid = recipe.ingredients.every((ingredient) => ingredient.quantity > 0)
+    return !!(recipe.name && recipe.meal && recipe.description && quantitiesValid)
   }, [recipe])
 
     const canPublish = useMemo(() => {
