@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { apiFetchFoods, apiFetchFood, apiCreateFood, apiUpdateFood, apiDeleteFood } from './foods'
+import { UnauthorizedError, isUnauthorizedError } from './errors'
 import type { Food } from '@/types/Food'
 
 const mockFood: Food = {
@@ -85,6 +86,39 @@ describe('apiUpdateFood', () => {
     const result = await apiUpdateFood(mockFood)
     expect(result).toEqual(mockFood)
     expect(fetch).toHaveBeenCalledWith('/api/foods/ham', expect.objectContaining({ method: 'PUT' }))
+  })
+})
+
+describe('401 handling', () => {
+  const unauthorized = () => ({ ok: false, status: 401 }) as Response
+
+  it('apiCreateFood throws UnauthorizedError on 401', async () => {
+    global.fetch = vi.fn().mockResolvedValue(unauthorized())
+    const { id: _id, ...foodData } = mockFood
+    await expect(apiCreateFood(foodData)).rejects.toBeInstanceOf(UnauthorizedError)
+  })
+
+  it('apiUpdateFood throws UnauthorizedError on 401', async () => {
+    global.fetch = vi.fn().mockResolvedValue(unauthorized())
+    await expect(apiUpdateFood(mockFood)).rejects.toBeInstanceOf(UnauthorizedError)
+  })
+
+  it('apiDeleteFood throws UnauthorizedError on 401', async () => {
+    global.fetch = vi.fn().mockResolvedValue(unauthorized())
+    await expect(apiDeleteFood('ham')).rejects.toBeInstanceOf(UnauthorizedError)
+  })
+
+  it('other failures stay plain errors, not UnauthorizedError', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
+    const { id: _id, ...foodData } = mockFood
+    const err = await apiCreateFood(foodData).catch((e) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err).not.toBeInstanceOf(UnauthorizedError)
+  })
+
+  it('isUnauthorizedError recognises the error', () => {
+    expect(isUnauthorizedError(new UnauthorizedError())).toBe(true)
+    expect(isUnauthorizedError(new Error('x'))).toBe(false)
   })
 })
 
