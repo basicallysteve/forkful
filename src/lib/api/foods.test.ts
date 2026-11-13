@@ -94,8 +94,7 @@ describe('401 handling', () => {
 
   it('apiCreateFood throws UnauthorizedError on 401', async () => {
     global.fetch = vi.fn().mockResolvedValue(unauthorized())
-    const { id: _id, ...foodData } = mockFood
-    await expect(apiCreateFood(foodData)).rejects.toBeInstanceOf(UnauthorizedError)
+    await expect(apiCreateFood(mockFood)).rejects.toBeInstanceOf(UnauthorizedError)
   })
 
   it('apiUpdateFood throws UnauthorizedError on 401', async () => {
@@ -110,8 +109,7 @@ describe('401 handling', () => {
 
   it('other failures stay plain errors, not UnauthorizedError', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
-    const { id: _id, ...foodData } = mockFood
-    const err = await apiCreateFood(foodData).catch((e) => e)
+    const err = await apiCreateFood(mockFood).catch((e) => e)
     expect(err).toBeInstanceOf(Error)
     expect(err).not.toBeInstanceOf(UnauthorizedError)
   })

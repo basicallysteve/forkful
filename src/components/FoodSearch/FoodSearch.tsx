@@ -6,6 +6,7 @@ import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteCh
 import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
 import type { Food } from '@/types/Food'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
@@ -62,6 +63,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const [importing, setImporting] = useState(false)
   const [addDialog, setAddDialog] = useState<AddFoodForm | null>(null)
   const [addSaving, setAddSaving] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -163,8 +165,9 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       const created = await apiCreateFood(mapOFFProductToFood(item.product))
       setInputValue(created.name)
       onChange(created)
-    } catch {
-      // Import failed — no-op, user can try again
+    } catch (err) {
+      // Import failed — user can try again
+      if (isUnauthorizedError(err)) setAddError(SIGN_IN_REQUIRED_MESSAGE)
     } finally {
       setImporting(false)
     }
@@ -174,6 +177,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     e.preventDefault()
     if (!addDialog) return
     setAddSaving(true)
+    setAddError(null)
     try {
       const created = await apiCreateFood({
         name: addDialog.name,
@@ -189,8 +193,9 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       setInputValue(created.name)
       onChange(created)
       setAddDialog(null)
-    } catch {
-      // Silently fail — user can retry
+    } catch (err) {
+      // User can retry
+      if (isUnauthorizedError(err)) setAddError(SIGN_IN_REQUIRED_MESSAGE)
     } finally {
       setAddSaving(false)
     }
@@ -246,12 +251,13 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pt={{ input: { 'aria-label': inputAriaLabel } as any }}
         />
+        {addError && !addDialog && <p className="add-food-error" role="alert">{addError}</p>}
       </div>
 
       {addDialog && (
         <Modal
           visible
-          onHide={() => setAddDialog(null)}
+          onHide={() => { setAddDialog(null); setAddError(null) }}
           header="Add a new food"
           style={{ width: '420px', maxWidth: '95vw' }}
         >
@@ -293,6 +299,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
                   onChange={e => setAddDialog(d => d ? { ...d, fat: e.target.value } : d)} />
               </label>
             </div>
+            {addError && <p className="add-food-error" role="alert">{addError}</p>}
             <p className="add-food-note">Nutrition is per 100 g serving. You can edit more details later.</p>
             <div className="form-actions">
               <button type="button" className="secondary-button" onClick={() => setAddDialog(null)}>Cancel</button>
