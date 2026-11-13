@@ -5,7 +5,7 @@ import type { PantryItem, PantryItemStatus } from '@/types/PantryItem'
 import type { Food, Measurement } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import { calculatePantryStatus } from '@/utils/pantryStatus'
-import { convertUnit, getUnitCategory } from '@/utils/unitConversion'
+import { suggestPantryDeduction } from '@/utils/pantryDeduction'
 
 const EXPIRING_SOON_THRESHOLD_DAYS = 7
 
@@ -399,43 +399,15 @@ export async function getIngredientPantryMatches(
       const exp = row.expirationDate ? new Date(row.expirationDate) : null
       const isExpiringSoon = exp ? exp > now && exp <= soonCutoff : false
 
-      // Try standard unit conversion first
-      let suggestedDeductAmount: number | null = null
-      let canAutoConvert = false
-
-      const pantryUnitCat = getUnitCategory(pantryUnit)
-      const ingUnitCat = getUnitCategory(ingredientUnit)
-
-      if (pantryUnitCat !== 'custom' && ingUnitCat !== 'custom') {
-        const converted = convertUnit({ value: ingredientQty, fromUnit: ingredientUnit, toUnit: pantryUnit, density })
-        if (converted !== null) {
-          canAutoConvert = true
-          suggestedDeductAmount = Math.min(converted, currentSizeAmount)
-        }
-      } else if (ingUnitCat !== 'custom' && pantryUnitCat === 'custom') {
-        // Ingredient in standard unit, pantry in custom — need gramsPerUnit on pantry food
-        const pantryMeasurement = (measurements ?? []).find(m => m.unit === pantryUnit)
-        if (pantryMeasurement?.gramsPerUnit) {
-          // Convert ingredient to grams, then divide by gramsPerUnit
-          const gramsConverted = convertUnit({ value: ingredientQty, fromUnit: ingredientUnit, toUnit: 'g', density })
-          if (gramsConverted !== null) {
-            canAutoConvert = true
-            const customUnits = gramsConverted / pantryMeasurement.gramsPerUnit
-            suggestedDeductAmount = Math.min(customUnits, currentSizeAmount)
-          }
-        }
-      } else if (ingUnitCat === 'custom' && pantryUnitCat !== 'custom') {
-        // Ingredient in custom unit, pantry in standard — need gramsPerUnit on ingredient food
-        const ingMeasurement = foodMeasurements.find(m => m.unit === ingredientUnit)
-        if (ingMeasurement?.gramsPerUnit) {
-          const grams = ingredientQty * ingMeasurement.gramsPerUnit
-          const converted = convertUnit({ value: grams, fromUnit: 'g', toUnit: pantryUnit, density })
-          if (converted !== null) {
-            canAutoConvert = true
-            suggestedDeductAmount = Math.min(converted, currentSizeAmount)
-          }
-        }
-      }
+      const { canAutoConvert, suggestedDeductAmount } = suggestPantryDeduction({
+        ingredientQuantity: ingredientQty,
+        ingredientUnit,
+        ingredientMeasurements: foodMeasurements,
+        pantryAmount: currentSizeAmount,
+        pantryUnit,
+        pantryMeasurements: measurements ?? [],
+        density: density ?? (food.density ? Number(food.density) : undefined),
+      })
 
       return {
         pantryItemId: row.id,
