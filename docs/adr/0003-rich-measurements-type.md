@@ -1,6 +1,6 @@
 # Food measurements stored as objects with optional gram-weight, not plain strings
 
-> **Implementation status:** The DB schema and `Food` type still use `string[]` for `measurements`. The migration to `{ unit, gramsPerUnit? }[]` (including the `parseMeasurements` backward-compatibility shim) is tracked in the `feat/serving-unit-refinement` branch and will land in a follow-up merge.
+> **Implementation status:** Implemented. `foods.measurements` and `products.measurements` are `jsonb` columns typed `Measurement[]`, and `parseMeasurements` in `src/lib/pantry.ts` still wraps legacy plain strings. ADR-0028 adds an optional `mlPerUnit` calibration alongside `gramsPerUnit`.
 
 `food.measurements` is stored as `{ unit: string, gramsPerUnit?: number }[]` rather than `string[]`. The extra `gramsPerUnit` field is what enables custom units (slice, piece, can, etc.) to participate in calorie calculations: when a gram-weight is defined, the system can convert the custom unit to grams and apply the food's per-gram calorie rate. Without this field, custom units would require a separate lookup table or could never be calibrated at all.
 
@@ -12,3 +12,6 @@
 ## Consequences
 
 Existing `measurements` data in the database (plain strings from before this change) must be migrated. The migration script wraps each string `"unit"` as `{ unit: "unit" }` with no `gramsPerUnit`, preserving behaviour for previously uncalibrated units.
+
+## Amendment (2026-11, #156)
+A Measurement now carries at most one calibration: `gramsPerUnit`, or `mlPerUnit` for a food with no weight (ADR-0028). Grams are tried first. Both are optional, so no data migration is needed.

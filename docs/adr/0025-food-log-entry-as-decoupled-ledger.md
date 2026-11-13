@@ -16,7 +16,7 @@ A Food Log Entry references a Food, Product, or Prepared Meal for its nutrition 
 
 ## Decision 2: Macros are snapshotted (frozen) at log time, not computed live
 
-The five core macros (calories, protein, carbs, fat, fiber) are computed once — reusing `calculateCalories` / `convertUnit` — and frozen onto the entry. The referent FK and resolved amount + unit are retained for provenance and display, but the macro numbers are facts of record. An explicit *edit* of the entry re-computes and re-freezes; ambient changes to the referent Food do not.
+The five core macros (calories, protein, carbs, fat, fiber) are computed once — reusing `calculateCalories` / `convertUnit` — and frozen onto the entry. The referent FK and resolved amount + unit are retained for provenance and display, but the macro numbers are facts of record. An explicit *edit* of the entry's amount scales its frozen macros; adopting the referent's current nutrition needs the User's confirmation (see the Amendment below). Ambient changes to the referent Food do not touch the entry.
 
 **Rationale:** A log is a historical record of what a User actually ate on a date. If a Food's calories are corrected next month, an August 19th intake total must not silently change. This deliberately diverges from Ingredient calories, which are computed live because a recipe should always reflect a Food's *current* nutrition — a recipe is a living definition; a log entry is a past event. Snapshotting also keeps daily totals cheap to sum and lets an entry survive soft-deletion of its referent (the same orphan instinct as a Prepared Meal's `recipeNameSnapshot`).
 
@@ -43,4 +43,6 @@ The instant is not stored; only a `logDate` (`date`) is, derived on the client f
 - A new `food_log_entries` table: referent discriminator `sourceType ('food' | 'product' | 'prepared_meal')`, nullable referent FKs, nullable `pantryItemId` link, frozen macro columns, resolved amount + unit, nullable `mealSlot` (string snapshot), `logDate`, and `dateDeleted` (soft-delete, per the content-entity convention).
 - Two mechanisms now change pantry stock — Meal Preparation Deduction and Food Log Entry. No double-counting: preparing a recipe deducts raw ingredients and yields a Prepared Meal (servings); logging deducts the thing eaten (a Food/Product's stock, or a Prepared Meal's servings), never the raw ingredients again.
 - Logging in an Uncalibrated Custom Unit would compute zero macros; the flow offers inline calibration of the referent Food/Product, and on decline logs zero with a nutrition-incomplete flag rather than blocking (logging is never a dead end).
-- Correcting a mistake is an entry edit, not a Food edit; editing amount/unit re-freezes from current nutrition, and is disabled when the referent has been soft-deleted (the entry survives on its snapshot).
+- Correcting a mistake is an entry edit, not a Food edit; editing the amount scales the frozen macros, adopting current nutrition needs the User's confirmation (see the Amendment below), and editing is disabled when the referent has been soft-deleted (the entry survives on its snapshot).
+
+## Amendment (2026-11, #156): editing an entry needs the User's consent to adopt current nutrition
