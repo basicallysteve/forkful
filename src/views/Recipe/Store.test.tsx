@@ -535,6 +535,33 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(screen.getAllByLabelText(/calories/i)[1]).toHaveValue('56.25')
   })
 
+  describe('Save Recipe with an invalid stored quantity', () => {
+    async function fillDetailsThenAddHam(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Test Invalid Qty')
+      await user.click(screen.getByRole('radio', { name: /lunch/i }))
+      await user.type(screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.'), 'desc')
+      await addHam(user)
+    }
+
+    it.each(['abc', '1/0', '-1', '0'])('disables Save Recipe while a stored row has quantity "%s"', async (text) => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />)
+      await fillDetailsThenAddHam(user)
+      expect(screen.getByRole('button', { name: /save recipe/i })).toBeEnabled()
+
+      const stored = screen.getAllByLabelText(/amount/i)[1]
+      await user.clear(stored)
+      await user.type(stored, text)
+      await user.tab()
+      expect(screen.getByRole('button', { name: /save recipe/i })).toBeDisabled()
+
+      await user.clear(stored)
+      await user.type(stored, '1 1/2')
+      await user.tab()
+      expect(screen.getByRole('button', { name: /save recipe/i })).toBeEnabled()
+    })
+  })
+
   it('resets the add row to blank after a successful add', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Store />)
