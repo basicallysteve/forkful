@@ -23,7 +23,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
   const parsed = parseQuantity(text)
   // Follow a value changed from outside (food picked, sizes synced). A change that lands in the render
   // right after our own onChange is the parent's echo (it may normalise, e.g. null -> 0), so the text the
-  // user is typing is left alone.
+  // user is typing is left alone. A parent that echoes asynchronously would overwrite mid-edit text (no caller does).
   const [emitted, setEmitted] = useState(false)
   const [prevValue, setPrevValue] = useState(value)
   if (value !== prevValue) {

@@ -53,7 +53,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
       ? formatDateForInput(existingItem.expirationDate)
       : ''
   )
-  // The Current Size box keeps its own text, so remount it when Original Size pushes a new value into it.
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
