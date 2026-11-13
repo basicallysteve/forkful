@@ -21,13 +21,16 @@ interface QuantityInputProps {
 export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
   const parsed = parseQuantity(text)
-  // Follow a value changed from outside (food picked, sizes synced). Our own onChange echoes the parsed
-  // text back, so parsed === value then and the text the user is typing is left alone.
+  // Follow a value changed from outside (food picked, sizes synced). A change that lands in the render
+  // right after our own onChange is the parent's echo (it may normalise, e.g. null -> 0), so the text the
+  // user is typing is left alone.
+  const [emitted, setEmitted] = useState(false)
   const [prevValue, setPrevValue] = useState(value)
   if (value !== prevValue) {
     setPrevValue(value)
-    if (value !== parsed) setText(value === null ? '' : formatQuantity(value, unit))
+    if (!emitted && value !== parsed) setText(value === null ? '' : formatQuantity(value, unit))
   }
+  if (emitted) setEmitted(false)
   const invalid = text.trim() !== '' && parsed === null
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
   const min = stepQuantity(null, 1, unit)
@@ -47,6 +50,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       className={`text-input ${invalid ? 'p-invalid' : ''} ${className ?? ''}`.trim()}
       onChange={(e) => {
         setText(e.target.value)
+        setEmitted(true)
         onChange(parseQuantity(e.target.value))
       }}
       onKeyDown={(e) => {
@@ -57,6 +61,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         const next = stepQuantity(parsed, e.key === 'ArrowUp' ? 1 : -1, unit)
         if (next === null) return
         setText(formatQuantity(next, unit))
+        setEmitted(true)
         onChange(next)
       }}
       onBlur={() => {

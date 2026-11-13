@@ -55,7 +55,6 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   const blank = !isStored && !foodChosen
   const ingredientName = storedIngredient ? storedIngredient.food.name : draftName
   const [missingFood, setMissingFood] = useState<boolean>(false)
-  const [quantityKey, setQuantityKey] = useState(0)
 
   // Edits to an already-added ingredient must reach the recipe, not just this row's local state.
   function updateIngredient(next: Ingredient) {
@@ -69,7 +68,6 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
     }
     onAdd?.(ingredient)
     // Reset the add row to blank
-    setQuantityKey((k) => k + 1)
     setIngredientName("")
     setFoodChosen(false)
     setMissingFood(false)
@@ -86,7 +84,6 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   function handleFoodSelect(food: Food) {
     if (!ingredient) return
     setFoodChosen(true)
-    setQuantityKey((k) => k + 1)
     setIngredient({
       ...ingredient,
       food: food,
@@ -195,17 +192,13 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
-        {/* A disabled fieldset disables QuantityInput while the add row is blank. The key remounts it
-            (it keeps its own text) whenever the row's quantity is set from outside. */}
-        <fieldset className="ingredient-quantity-field" disabled={blank}>
-          <QuantityInput
-            key={quantityKey}
-            className="ingredient-quantity-input"
-            value={blank ? null : ingredient.quantity}
-            unit={ingredient.servingUnit}
-            onChange={setIngredientQuantity}
-          />
-        </fieldset>
+        <QuantityInput
+          className="ingredient-quantity-input"
+          value={blank ? null : ingredient.quantity}
+          unit={ingredient.servingUnit}
+          disabled={blank}
+          onChange={setIngredientQuantity}
+        />
         </label>
       <label className="form-field">
         <span className="field-label">Unit</span>

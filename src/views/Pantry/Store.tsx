@@ -54,7 +54,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
       : ''
   )
   // The Current Size box keeps its own text, so remount it when Original Size pushes a new value into it.
-  const [currentSizeKey, setCurrentSizeKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -145,7 +144,6 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
     setOriginalSize(value)
     if (currentSizeEqualsOriginal) {
       setCurrentSize(value)
-      setCurrentSizeKey((k) => k + 1)
     }
   }
 
@@ -228,8 +226,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             </span>
             <div className="size-input-group">
               <label className="size-number">
-                <span className="sr-only">Original Size *</span>
-                <QuantityInput value={originalSize} unit={originalUnit} onChange={syncSizes} />
+                <QuantityInput ariaLabel="Original Size *" value={originalSize} unit={originalUnit} onChange={syncSizes} />
               </label>
               <Dropdown
                 inputId="original-unit"
@@ -250,8 +247,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             </span>
             <div className="size-input-group">
               <label className="size-number">
-                <span className="sr-only">Current Size *</span>
-                <QuantityInput key={currentSizeKey} value={currentSize} unit={currentUnit} onChange={setCurrentSize} />
+                <QuantityInput ariaLabel="Current Size *" value={currentSize} unit={currentUnit} onChange={setCurrentSize} />
               </label>
               <Dropdown
                 inputId="current-unit"
