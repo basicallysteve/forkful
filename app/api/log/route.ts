@@ -3,6 +3,7 @@ import { createFoodLogEntry, getDailyLog } from '@/lib/foodLog'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import { isPositiveInteger } from '@/utils/number'
+import { captureError, logInfo } from '@/lib/logger'
 
 type CreateBody = {
   foodId?: number
@@ -58,7 +59,9 @@ export async function POST(request: Request) {
       amount: body.amount!,
       unit: body.unit!.trim(),
       logDate: body.logDate!,
-    }))
+    }), 'foodLog.create')
+    // Example: constant message, IDs as attributes, no personal data.
+    logInfo('food log entry created', { foodId: body.foodId, unit: body.unit.trim() })
     return NextResponse.json(entry, { status: 201 })
   } catch (err) {
     if (err instanceof Error && err.message === 'Food not found') {
@@ -78,7 +81,7 @@ export async function POST(request: Request) {
       )
     }
     // Never leak the raw query/driver message to the client; log server-side and return a clean 500.
-    console.error('Failed to create food log entry', err)
+    captureError(err, { area: 'food-log', attributes: { foodId: body.foodId } })
     return NextResponse.json({ error: 'Could not save the log entry. Please try again.' }, { status: 500 })
   }
 }
