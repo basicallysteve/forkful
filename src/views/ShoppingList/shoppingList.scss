@@ -353,14 +353,6 @@
     border-bottom: none;
   }
 
-  // Checked checkbox in the app's accent green. p-highlight can land on the root or the box across
-  // PrimeReact builds, so match both.
-  .item-check.p-highlight .p-checkbox-box,
-  .item-check .p-checkbox-box.p-highlight {
-    background: var(--vscode-accent);
-    border-color: var(--vscode-accent);
-  }
-
   .item-check {
     flex: 0 0 auto;
     // Clicks are handled by the Listbox row; the checkbox is a visual indicator only.
