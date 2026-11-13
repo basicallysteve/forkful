@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { InputText } from 'primereact/inputtext'
-import { parseQuantity, formatQuantity } from '@/utils/quantity'
+import { parseQuantity, formatQuantity, stepQuantity } from '@/utils/quantity'
 
 interface QuantityInputProps {
   // Parsed amount, or null while the text is empty/invalid.
@@ -29,6 +29,14 @@ export default function QuantityInput({ value, unit, onChange, className }: Quan
       onChange={(e) => {
         setText(e.target.value)
         onChange(parseQuantity(e.target.value))
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+        e.preventDefault()
+        const next = stepQuantity(parsed, e.key === 'ArrowUp' ? 1 : -1, unit)
+        if (next === null) return
+        setText(formatQuantity(next, unit))
+        onChange(next)
       }}
       onBlur={() => {
         if (parsed !== null) setText(formatQuantity(parsed, unit))

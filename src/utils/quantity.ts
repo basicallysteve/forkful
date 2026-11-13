@@ -62,3 +62,19 @@ export function formatQuantity(value: number, unit: string): string {
   }
   return decimalString(value)
 }
+
+const COUNT_STEP = 0.25 // every multiple is a representable fraction glyph (¼ ½ ¾)
+const MEASURE_STEP = 1
+const EPSILON = 1e-9
+
+// Next value when the user presses ArrowUp (direction 1) or ArrowDown (-1). Snaps to the unit's step
+// grid (so ⅓ steps to ½, not 0.58) and never returns 0 or below: returns null when there is no valid
+// result, meaning the caller should leave the field as it is. null/empty starts from 0.
+export function stepQuantity(value: number | null, direction: 1 | -1, unit: string): number | null {
+  const step = getUnitCategory(unit) === 'custom' ? COUNT_STEP : MEASURE_STEP
+  const current = value ?? 0
+  const units = current / step
+  const snapped = direction === 1 ? Math.floor(units + EPSILON) + 1 : Math.ceil(units - EPSILON) - 1
+  const next = Number((snapped * step).toFixed(6))
+  return next > 0 ? next : null
+}
