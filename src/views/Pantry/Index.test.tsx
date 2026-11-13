@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PantryList from './Index'
 import { usePantryStore, resetPantryStore } from '@/stores/pantry'
@@ -197,20 +197,149 @@ describe('Pantry List Page', () => {
     })
   })
 
-  describe('Delete', () => {
-    it('calls the API and removes the item from the store', async () => {
-      const user = userEvent.setup()
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 30)
+  describe('Delete with undo', () => {
+    const future = new Date(Date.now() + 30 * 86400000)
+    const two = () => [
+      createPantryItem({ id: 1, food: mockFoods[0], expirationDate: future }),
+      createPantryItem({ id: 2, food: mockFoods[1], expirationDate: future }),
+    ]
+    const rowNames = () => screen.getAllByRole('row').slice(1).map((r) => r.textContent ?? '')
 
-      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })])
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      vi.mocked(apiDeletePantryItem).mockResolvedValue(undefined)
+      vi.mocked(apiDeletePantryItems).mockResolvedValue([1, 2])
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
 
+    async function loaded(items: PantryItem[]) {
+      renderWithItems(items)
       await screen.findAllByText('Chicken Breast')
-      const deleteButtons = screen.getAllByRole('button', { name: /^delete$/i })
-      await user.click(deleteButtons[0])
+    }
+    const clickDelete = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Delete ${name}` }))
 
+    it('removes the item from the list at once and shows an undo toast, sending nothing yet', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
+      expect(rowNames().join('|')).not.toContain('Chicken Breast')
+      expect(apiDeletePantryItem).not.toHaveBeenCalled()
+    })
+
+    it('shows the deletion in a PrimeReact toast that is announced as an alert, with Undo inside it', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+
+      const toast = screen.getByText('Deleted Chicken Breast').closest('.p-toast-message')
+      expect(toast).toHaveAttribute('role', 'alert')
+      expect(within(toast as HTMLElement).getByRole('button', { name: 'Undo' })).toBeInTheDocument()
+    })
+
+    it('Undo restores the item in the same position and sends nothing', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+      const names = rowNames()
+      expect(names[0]).toContain('Chicken Breast')
+      expect(names[1]).toContain('Brown Rice')
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument())
+      act(() => { vi.advanceTimersByTime(10000) })
+      expect(apiDeletePantryItem).not.toHaveBeenCalled()
+      expect(usePantryStore.getState().items).toHaveLength(2)
+    })
+
+    it('sends exactly one delete when the toast expires and then drops the item from the store', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      await act(async () => { vi.advanceTimersByTime(7000) })
+
+      expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
       expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
+      await waitFor(() => expect(usePantryStore.getState().items.map((i) => i.id)).toEqual([2]))
+      await waitFor(() => expect(screen.queryByText(/^Deleted /)).not.toBeInTheDocument())
+    })
+
+    it('shows one toast for a bulk delete and Undo restores all of them', async () => {
+      await loaded(two())
+      fireEvent.click(screen.getByRole('checkbox', { name: /select all items/i }))
+      fireEvent.click(screen.getByRole('button', { name: /delete \(2\)/i }))
+
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
+      expect(screen.getByText('Deleted 2 items')).toBeInTheDocument()
+      expect(screen.getByText('No pantry items found.')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(rowNames()).toHaveLength(2)
+      act(() => { vi.advanceTimersByTime(10000) })
+      expect(apiDeletePantryItems).not.toHaveBeenCalled()
+    })
+
+    it('sends one bulk request when the bulk toast expires', async () => {
+      await loaded(two())
+      fireEvent.click(screen.getByRole('checkbox', { name: /select all items/i }))
+      fireEvent.click(screen.getByRole('button', { name: /delete \(2\)/i }))
+      await act(async () => { vi.advanceTimersByTime(7000) })
+
+      expect(apiDeletePantryItems).toHaveBeenCalledTimes(1)
+      expect(apiDeletePantryItems).toHaveBeenCalledWith([1, 2])
       await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
+    })
+
+    it('restores the item and shows the error message when the delete fails', async () => {
+      vi.mocked(apiDeletePantryItem).mockRejectedValue(new Error('nope'))
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      await act(async () => { vi.advanceTimersByTime(7000) })
+
+      expect(await screen.findByText('Failed to delete item. Please try again.')).toBeInTheDocument()
+      expect(rowNames()[0]).toContain('Chicken Breast')
+      expect(usePantryStore.getState().items).toHaveLength(2)
+    })
+
+    it('still works when a second item is deleted while a toast is showing', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      act(() => { vi.advanceTimersByTime(500) })
+      clickDelete('Brown Rice')
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(2)
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Undo' })[0])
+      await act(async () => { vi.advanceTimersByTime(7000) })
+
+      expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+      expect(apiDeletePantryItem).toHaveBeenCalledWith(2)
+      expect(rowNames()[0]).toContain('Chicken Breast')
+    })
+
+    it('ignores a second Delete click right after one, so a double-click cannot delete the row that shifts up', async () => {
+      await loaded(two())
+      clickDelete('Chicken Breast')
+      clickDelete('Brown Rice')
+
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
+      expect(rowNames().join('|')).toContain('Brown Rice')
+    })
+
+    it('ignores a rapid click right after a delete from the row actions menu', async () => {
+      await loaded(two())
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Chicken Breast' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
+      clickDelete('Brown Rice')
+
+      expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
+    })
+
+    it('works from the row actions menu too', async () => {
+      await loaded(two())
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Chicken Breast' }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /delete/i }))
+      expect(screen.getByText('Deleted Chicken Breast')).toBeInTheDocument()
     })
   })
 
@@ -351,22 +480,6 @@ describe('Pantry List Page', () => {
 
       await user.click(screen.getByRole('checkbox', { name: /select all items/i }))
       expect(screen.getByText('2 item(s) selected')).toBeInTheDocument()
-    })
-
-    it('calls the API and removes items from the store on bulk delete', async () => {
-      const user = userEvent.setup()
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + 30)
-
-      renderWithItems([createPantryItem({ id: 1, food: mockFoods[0], expirationDate: futureDate, status: 'good' })])
-
-      await screen.findAllByText('Chicken Breast')
-
-      await user.click(screen.getAllByRole('checkbox', { name: /select chicken breast/i })[0])
-      await user.click(screen.getByRole('button', { name: /delete \(1\)/i }))
-
-      expect(apiDeletePantryItems).toHaveBeenCalledWith([1])
-      await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
     })
   })
 })
