@@ -8,6 +8,10 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: true,
   tracesSampleRate: 1.0,
+  // Browser profiling: profile 10% of sessions, for the duration of each sampled trace.
+  // Requires the `Document-Policy: js-profiling` response header (set in next.config.ts).
+  profileSessionSampleRate: 0.1,
+  profileLifecycle: 'trace',
   replaysSessionSampleRate: 0.2,
   replaysOnErrorSampleRate: 1.0,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
