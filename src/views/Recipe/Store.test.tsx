@@ -547,17 +547,23 @@ describe('Store Page - editing an added ingredient (#16)', () => {
       const user = userEvent.setup()
       renderWithProviders(<Store />)
       await fillDetailsThenAddHam(user)
+      await user.click(screen.getByRole('button', { name: /details tab/i }))
       expect(screen.getByRole('button', { name: /save recipe/i })).toBeEnabled()
 
+      await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
       const stored = screen.getAllByLabelText(/amount/i)[1]
       await user.clear(stored)
       await user.type(stored, text)
       await user.tab()
+      await user.click(screen.getByRole('button', { name: /details tab/i }))
       expect(screen.getByRole('button', { name: /save recipe/i })).toBeDisabled()
 
-      await user.clear(stored)
-      await user.type(stored, '1 1/2')
+      await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+      const again = screen.getAllByLabelText(/amount/i)[1]
+      await user.clear(again)
+      await user.type(again, '1 1/2')
       await user.tab()
+      await user.click(screen.getByRole('button', { name: /details tab/i }))
       expect(screen.getByRole('button', { name: /save recipe/i })).toBeEnabled()
     })
   })
