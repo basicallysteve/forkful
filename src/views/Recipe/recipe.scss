@@ -259,6 +259,14 @@
   flex-direction: column;
   gap: 5px;
   min-width: 0;
+
+  // Ingredient name search sits in the same row, so it shares the row's control height
+  .food-search input {
+    height: var(--control-height);
+    box-sizing: border-box;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
 }
 
 .ingredient-field-label {
@@ -272,7 +280,8 @@
 .ingredient-unit-select {
   width: 100%;
   box-sizing: border-box;
-  padding: 7px 10px;
+  height: var(--control-height);
+  padding: 0 10px;
   font-size: 14px;
   color: var(--vscode-text);
   background: var(--vscode-panel-strong);
@@ -292,8 +301,14 @@
     align-items: center;
     padding: 0;
 
+    // The inner label must not add its own box (padding/height/background) inside the outer one
     .p-dropdown-label {
-      padding: 7px 10px;
+      flex: 1;
+      height: auto;
+      padding: 0 10px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
       font-size: 14px;
       font-family: inherit;
       color: var(--vscode-text);
@@ -302,12 +317,21 @@
     .p-dropdown-trigger {
       padding-right: 8px;
     }
+
+    &.p-focus:not(.p-disabled) {
+      border-color: var(--vscode-accent);
+      box-shadow: var(--focus-ring);
+    }
   }
 }
 
 .ingredient-cal-value {
-  display: block;
-  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--control-height);
+  padding: 0 10px;
   font-size: 14px;
   font-weight: 600;
   color: var(--vscode-accent);
@@ -321,6 +345,7 @@
 .ingredient-remove-btn {
   flex-shrink: 0;
   align-self: flex-end;
+  height: var(--control-height);
 }
 
 .recipe-statusbar {
