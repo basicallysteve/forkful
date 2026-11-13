@@ -72,6 +72,7 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
       targetAmount: quantity,
       targetUnit: servingUnit,
       gramsPerUnit: measurement?.gramsPerUnit,
+      mlPerUnit: measurement?.mlPerUnit,
       density: food.density,
     }) ?? 0
     return { food, quantity, calories, servingUnit }
