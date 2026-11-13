@@ -1,4 +1,4 @@
-import { convertUnit, getUnitCategory } from './unitConversion'
+import { convertFoodAmount } from './convertFoodAmount'
 import { round2 } from './number'
 import type { Measurement } from '@/types/Food'
 
@@ -28,39 +28,18 @@ const SHORTFALL_EPSILON = 0.005
 // bridging Meal Preparation Deduction applies, just in the opposite direction. Returns null when the
 // two units can't be bridged: an unconvertible pair, or an Uncalibrated Custom Unit on either side.
 function convertStockToIngredientUnit(stock: PantryGapStock, ingredient: PantryGapIngredient): number | null {
-  const fromUnit = stock.unit
-  const toUnit = ingredient.unit
-  // Same unit (including the same Custom Unit, e.g. both "slice") is a direct comparison.
-  if (fromUnit === toUnit) return stock.amount
-
-  const fromCat = getUnitCategory(fromUnit)
-  const toCat = getUnitCategory(toUnit)
-  // Matched stock is the same substance as the ingredient, so a single density bridges any mass↔volume
-  // step; prefer the Pantry source's density and fall back to the ingredient Food's.
-  const density = stock.density ?? ingredient.density
-
-  if (fromCat !== 'custom' && toCat !== 'custom') {
-    return convertUnit({ value: stock.amount, fromUnit, toUnit, density })
-  }
-
-  if (fromCat === 'custom' && toCat !== 'custom') {
-    // Pantry unit is custom — need its gram-weight to reach the ingredient's standard unit.
-    const gramsPerUnit = stock.measurements.find((m) => m.unit === fromUnit)?.gramsPerUnit
-    if (!gramsPerUnit) return null
-    return convertUnit({ value: stock.amount * gramsPerUnit, fromUnit: 'g', toUnit, density })
-  }
-
-  if (fromCat !== 'custom' && toCat === 'custom') {
-    // Ingredient unit is custom — convert the Pantry stock to grams, then to the ingredient's count.
-    const gramsPerUnit = ingredient.measurements.find((m) => m.unit === toUnit)?.gramsPerUnit
-    if (!gramsPerUnit) return null
-    const grams = convertUnit({ value: stock.amount, fromUnit, toUnit: 'g', density })
-    if (grams === null) return null
-    return grams / gramsPerUnit
-  }
-
-  // Both custom and not the same unit — food-specific Custom Units are not mutually convertible.
-  return null
+  // Matched stock is the same substance as the ingredient, so a single density bridges any mass<->volume
+  // step; prefer the Pantry source's density and fall back to the ingredient Food's. Calibrations from both
+  // sides are pooled so a Custom Unit on either resolves (ADR-0028).
+  return convertFoodAmount(
+    {
+      measurements: [...stock.measurements, ...ingredient.measurements],
+      density: stock.density ?? ingredient.density,
+    },
+    stock.amount,
+    stock.unit,
+    ingredient.unit,
+  )
 }
 
 // The shortfall to add to the Shopping List for one ingredient, expressed in the ingredient's unit — or

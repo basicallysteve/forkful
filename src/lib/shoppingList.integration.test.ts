@@ -792,6 +792,44 @@ describe('shopping list data layer (integration)', () => {
       expect(result!.items[0].amount).toBe(80)
     })
 
+    it('credits gram stock against a Calibrated Custom Unit ingredient (slice = 28 g)', async () => {
+      const user = await createTestUser('gapSlice')
+      const food = await createFood({
+        name: 'TestShopping Loaf',
+        calories: 80,
+        protein: 3,
+        carbs: 15,
+        fat: 1,
+        fiber: 1,
+        servingSize: 28,
+        servingUnit: 'g',
+        measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }],
+      })
+      const recipe = await createRecipe({
+        name: 'TestShopping Toast',
+        meal: 'Breakfast',
+        description: '',
+        ingredients: [{ food, quantity: 4, calories: 0, servingUnit: 'slice' }],
+        date_published: null,
+        isPublic: false,
+        userId: user.id,
+      })
+      // 56 g on hand = 2 slices against 4 required → a 2-slice shortfall.
+      await createPantryItem({
+        userId: user.id,
+        foodId: food.id,
+        originalSizeAmount: 56,
+        currentSizeAmount: 56,
+        currentSizeUnit: 'g',
+      })
+
+      const result = await fillPantryGapFromRecipe(user.id, recipe.shortId)
+
+      expect(result!.items).toHaveLength(1)
+      expect(result!.items[0].amount).toBe(2)
+      expect(result!.items[0].unit).toBe('slice')
+    })
+
     it('merges the shortfall into an existing open line for the same Food and unit', async () => {
       const user = await createTestUser('gapF')
       const food = await createTestFood('TestShopping Butter')

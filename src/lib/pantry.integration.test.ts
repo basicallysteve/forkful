@@ -1,7 +1,8 @@
 import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems, getExpiringPantryItems } from './pantry'
+import { getIngredientPantryMatches, getPantryItems, getPantryItemById, createPantryItem, updatePantryItem, deletePantryItem, deletePantryItems, getExpiringPantryItems } from './pantry'
 import { createFood } from './foods'
+import { createRecipe } from './recipes'
 import { signUp } from './users'
 import {
   completeShoppingTrip,
@@ -16,6 +17,7 @@ const pool = new Pool({ connectionString })
 
 async function cleanup() {
   await pool.query(`DELETE FROM pantry_items WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'TestPantry%')`)
+  await pool.query(`DELETE FROM recipes WHERE name LIKE 'TestPantry%'`)
   await pool.query(`DELETE FROM foods WHERE name LIKE 'TestPantry%'`)
   await pool.query(`DELETE FROM users WHERE username LIKE 'testpantry%'`)
 }
@@ -337,6 +339,82 @@ describe('pantry data layer (integration)', () => {
 
       const byId = await getPantryItemById(item.id, user.id)
       expect(byId?.purchasePrice).toBeNull()
+    })
+  })
+
+  describe('getIngredientPantryMatches (Serving Definition conversion)', () => {
+    it('suggests deducting 2 slice from 100 g stock, leaving 44 g', async () => {
+      const user = await createTestUser('slice')
+      const food = await createFood({
+        name: 'TestPantry Loaf',
+        calories: 80,
+        protein: 3,
+        carbs: 15,
+        fat: 1,
+        fiber: 1,
+        servingSize: 28,
+        servingUnit: 'g',
+        measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }],
+      })
+      const recipe = await createRecipe({
+        name: 'TestPantry Toast',
+        meal: 'Breakfast',
+        description: '',
+        ingredients: [{ food, quantity: 2, calories: 0, servingUnit: 'slice' }],
+        date_published: null,
+        isPublic: false,
+        userId: user.id,
+      })
+      await createPantryItem({
+        userId: user.id,
+        foodId: food.id,
+        originalSizeAmount: 100,
+        currentSizeAmount: 100,
+        currentSizeUnit: 'g',
+      })
+
+      const matches = await getIngredientPantryMatches(recipe.shortId, user.id)
+
+      const match = matches![0].pantryMatches[0]
+      expect(match.canAutoConvert).toBe(true)
+      expect(100 - match.suggestedDeductAmount!).toBe(44)
+    })
+
+    it('falls back to manual entry when the custom unit is uncalibrated', async () => {
+      const user = await createTestUser('uncal')
+      const food = await createFood({
+        name: 'TestPantry Roll',
+        calories: 80,
+        protein: 3,
+        carbs: 15,
+        fat: 1,
+        fiber: 1,
+        servingSize: 28,
+        servingUnit: 'g',
+        measurements: [{ unit: 'g' }, { unit: 'slice' }],
+      })
+      const recipe = await createRecipe({
+        name: 'TestPantry Sandwich',
+        meal: 'Lunch',
+        description: '',
+        ingredients: [{ food, quantity: 2, calories: 0, servingUnit: 'slice' }],
+        date_published: null,
+        isPublic: false,
+        userId: user.id,
+      })
+      await createPantryItem({
+        userId: user.id,
+        foodId: food.id,
+        originalSizeAmount: 100,
+        currentSizeAmount: 100,
+        currentSizeUnit: 'g',
+      })
+
+      const matches = await getIngredientPantryMatches(recipe.shortId, user.id)
+
+      const match = matches![0].pantryMatches[0]
+      expect(match.canAutoConvert).toBe(false)
+      expect(match.suggestedDeductAmount).toBeNull()
     })
   })
 })
