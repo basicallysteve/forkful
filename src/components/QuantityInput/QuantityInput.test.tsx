@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import QuantityInput from './QuantityInput'
@@ -133,5 +134,40 @@ describe('QuantityInput', () => {
       expect(onChange).not.toHaveBeenCalled()
       expect(input.value).toBe('1')
     })
+  })
+  it('can be disabled', () => {
+    render(<QuantityInput value={1} unit="slice" onChange={() => {}} disabled />)
+    expect(screen.getByLabelText('Amount')).toBeDisabled()
+  })
+
+  it('follows an externally changed value', () => {
+    const { rerender } = render(<QuantityInput value={1} unit="slice" onChange={() => {}} />)
+    const input = screen.getByLabelText('Amount') as HTMLInputElement
+    rerender(<QuantityInput value={2.5} unit="slice" onChange={() => {}} />)
+    expect(input.value).toBe('2½')
+    rerender(<QuantityInput value={null} unit="slice" onChange={() => {}} />)
+    expect(input.value).toBe('')
+  })
+
+  it('does not clobber text the user is mid-typing when the parent echoes the parsed value', () => {
+    function Harness() {
+      const [v, setV] = useState<number | null>(1)
+      return <QuantityInput value={v} unit="slice" onChange={setV} />
+    }
+    render(<Harness />)
+    const input = screen.getByLabelText('Amount') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '1.5' } })
+    expect(input.value).toBe('1.5')
+    fireEvent.change(input, { target: { value: '1 ' } })
+    expect(input.value).toBe('1 ')
+    fireEvent.change(input, { target: { value: '' } })
+    expect(input.value).toBe('')
+  })
+
+  it('accepts a custom ariaLabel and id', () => {
+    render(<QuantityInput value={1} unit="slice" onChange={() => {}} ariaLabel="Current Size" id="current-size" />)
+    const input = screen.getByLabelText('Current Size')
+    expect(input).toHaveAttribute('id', 'current-size')
+    expect(input).toHaveAttribute('role', 'spinbutton')
   })
 })
