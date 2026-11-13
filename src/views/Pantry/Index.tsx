@@ -18,7 +18,6 @@ import { Dropdown } from 'primereact/dropdown'
 import { Checkbox } from 'primereact/checkbox'
 import PantryRowActions from './PantryRowActions'
 import { Toast, type ToastMessage } from 'primereact/toast'
-import { Button } from 'primereact/button'
 import StatusDot from '@/components/StatusLegend/StatusDot'
 import StatusLegend from '@/components/StatusLegend/StatusLegend'
 
@@ -125,7 +124,9 @@ export default function Pantry() {
       content: (
         <div className="undo-toast-content">
           <span className="undo-toast-message">{message}</span>
-          <Button type="button" label="Undo" size="small" outlined onClick={() => handleUndo(key)} />
+          <button type="button" className="undo-toast-button" onClick={() => handleUndo(key)}>
+            Undo
+          </button>
         </div>
       ),
     }
