@@ -486,11 +486,11 @@
       padding-bottom: 5px;
     }
 
+    // Both listed: the slot selector is more specific, so it would otherwise keep the taller 15.75rem reserve above.
     .log-food-confirm:has(.log-field [aria-expanded='true']) .log-food-actions,
     .log-food-confirm:has(.log-field--slot [aria-expanded='true']) .log-food-actions {
       margin-top: 11rem;
     }
-
   }
 
   .log-food-cancel,
