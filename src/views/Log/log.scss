@@ -445,6 +445,11 @@
     margin-top: 12.5rem;
   }
 
+  // The Meal Slot list is taller (250px), so reserve a little more while it is open.
+  .log-food-confirm:has(.log-field--slot [aria-expanded='true']) .log-food-actions {
+    margin-top: 15.75rem;
+  }
+
   @media (max-height: 600px) {
     // Doubled class so these beat modal.scss's `.app-modal .p-dialog-*` regardless of load order.
     &.app-modal .p-dialog-header {

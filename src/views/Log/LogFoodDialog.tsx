@@ -238,6 +238,8 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
                 <Dropdown
                   value={slot}
                   options={slotOptions}
+                  // Tall enough for No slot plus a typical set, so the list does not open scrolled past the first option.
+                  scrollHeight="250px"
                   onChange={(e) => setSlot(e.value)}
                   appendTo="self"
                   onShow={() => actionsRef.current?.scrollIntoView({ block: 'nearest' })}
