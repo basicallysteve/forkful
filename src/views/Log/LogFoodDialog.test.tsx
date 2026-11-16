@@ -284,3 +284,18 @@ describe('LogFoodDialog meal slot', () => {
     expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBeNull()
   })
 })
+
+describe('LogFoodDialog header follows the picked slot', () => {
+  it('updates the header when the picker changes, so it matches the button', async () => {
+    apiCreateFoodLogEntry.mockReset()
+    render(
+      <LogFoodDialog visible mealSlot="Snack" mealSlots={['Breakfast', 'Snack']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log to Snack')
+    fireEvent.click(document.body.querySelectorAll('.p-dropdown')[1] as HTMLElement)
+    const items = await screen.findAllByText('Breakfast')
+    fireEvent.click(items[items.length - 1])
+    await waitFor(() => expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log to Breakfast'))
+  })
+})

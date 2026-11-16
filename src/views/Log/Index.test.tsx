@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import Log from './Index'
 import { UnauthorizedError } from '@/lib/api/errors'
 import { resetFoodLogStore } from '@/stores/foodLog'
@@ -92,5 +92,26 @@ describe('Log view meal slot grouping', () => {
     expect(row.textContent).toMatch(/Carbs 10g/)
     expect(row.textContent).toMatch(/Fat 3g/)
     expect(row.textContent).toMatch(/Fiber 1g/)
+  })
+})
+
+describe('Log view section state', () => {
+  beforeEach(() => {
+    resetFoodLogStore()
+    apiFetchDailyLog.mockReset()
+  })
+
+  it('does not collapse the synthetic Other group when a user slot is also named "Other"', async () => {
+    apiFetchDailyLog.mockResolvedValue(dailyLog([
+      entry(1, 'Test Soup', 'Lunch'),
+      entry(2, 'Test Tea', 'Other'),
+    ]))
+    render(<Log mealSlots={['Other']} />)
+    await screen.findByText('Test Soup')
+    const toggles = Array.from(document.querySelectorAll<HTMLElement>('.daily-log-meal-toggle'))
+    expect(toggles).toHaveLength(2)
+    fireEvent.click(toggles[0])
+    expect(screen.queryByText('Test Tea')).toBeNull()
+    expect(screen.getByText('Test Soup')).toBeTruthy()
   })
 })
