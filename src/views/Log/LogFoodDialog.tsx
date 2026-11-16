@@ -53,6 +53,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
   const latestQueryRef = useRef<string>('')
   const searchRef = useRef<HTMLInputElement>(null)
   const amountWrapRef = useRef<HTMLLabelElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
 
   // Reset to the search step each time the dialog (re)opens.
   useEffect(() => {
@@ -215,6 +216,11 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
                 options={unitOptions}
                 onChange={(e) => setUnit(e.value)}
                 placeholder="Unit"
+                // Rendered inside the dialog (not <body>) so it scrolls with the confirm step, and the
+                // actions are scrolled into view when it opens: on short windows the reserved panel space
+                // makes the step taller than the dialog, which used to clip Log/Cancel.
+                appendTo="self"
+                onShow={() => actionsRef.current?.scrollIntoView({ block: 'nearest' })}
               />
             </label>
           </div>
@@ -224,7 +230,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
             </p>
           )}
           {error && <p className="daily-log-error" role="alert">{error}</p>}
-          <div className="log-food-actions">
+          <div className="log-food-actions" ref={actionsRef}>
             <button type="button" className="log-food-cancel" onClick={onHide} disabled={saving}>
               Cancel
             </button>
