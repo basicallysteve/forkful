@@ -15,7 +15,7 @@
   --vscode-accent:       #10b981;
   --vscode-accent-deep:  #059669;
   --vscode-text:         #0f172a;
-  --vscode-muted:        #64748b;
+  --vscode-muted:        #5a6a80; // >= 4.5:1 on panel-strong (#f1f5f9), where modal labels sit
 
   --accent-hover:        rgba(16, 185, 129, 0.07);
   --accent-hover-strong: rgba(16, 185, 129, 0.12);
@@ -335,5 +335,147 @@ html[data-theme='light'] {
     .p-checkbox-box {
       cursor: not-allowed;
     }
+  }
+}
+
+// ── lara-dark-blue overrides: DataView, Paginator, Dropdown, Carousel ─────────
+// The global lara-dark-blue theme paints these navy (#1f2937) in both themes. Re-skin them once here with the
+// theme-aware tokens (same approach as Checkbox above) so light and dark both follow the app palette.
+
+.p-dataview {
+  background: transparent;
+  color:      var(--text-color);
+
+  .p-dataview-content,
+  .p-dataview-header {
+    background: transparent;
+    border:     none;
+    color:      var(--text-color);
+  }
+
+  .p-dataview-emptymessage {
+    color: var(--text-color-secondary);
+  }
+}
+
+.p-paginator {
+  background: transparent;
+  border:     none;
+  color:      var(--text-color);
+
+  .p-paginator-first,
+  .p-paginator-prev,
+  .p-paginator-next,
+  .p-paginator-last,
+  .p-paginator-page {
+    background: transparent;
+    border:     none;
+    color:      var(--text-color-secondary);
+
+    &:not(.p-disabled):not(.p-highlight):hover {
+      background: var(--surface-hover);
+      color:      var(--text-color);
+    }
+
+    &.p-highlight {
+      background: var(--highlight-bg);
+      color:      var(--text-color);
+    }
+  }
+
+  .p-paginator-current {
+    color: var(--text-color-secondary);
+  }
+}
+
+// Dropdown (closed trigger and the open panel). The panel may be portaled to <body>, so it is styled globally.
+.p-dropdown {
+  background:   var(--surface-a);
+  border:       1px solid var(--surface-border);
+  color:        var(--text-color);
+
+  .p-dropdown-label {
+    color: var(--text-color);
+  }
+
+  .p-dropdown-label.p-placeholder {
+    color: var(--text-color-secondary);
+  }
+
+  .p-dropdown-trigger,
+  .p-dropdown-trigger .p-dropdown-trigger-icon {
+    background: transparent;
+    color:      var(--text-color-secondary);
+  }
+
+  &:not(.p-disabled):hover {
+    border-color: var(--vscode-accent);
+  }
+
+  &:not(.p-disabled).p-focus {
+    border-color: var(--vscode-accent);
+    box-shadow:   var(--focus-ring);
+  }
+}
+
+.p-dropdown-panel.p-component {
+  background:    var(--surface-overlay);
+  border:        1px solid var(--surface-border);
+  border-radius: var(--border-radius);
+  box-shadow:    0 10px 24px var(--shadow-container);
+  color:         var(--text-color);
+  font-family:   inherit; // lara sets Inter; match the body font like the modals
+
+  .p-dropdown-header {
+    background:    var(--surface-overlay);
+    border-bottom: 1px solid var(--surface-border);
+    color:         var(--text-color);
+  }
+
+  .p-dropdown-items .p-dropdown-item {
+    background: transparent;
+    color:      var(--text-color);
+
+    &:not(.p-highlight):not(.p-disabled):hover,
+    &:not(.p-highlight):not(.p-disabled).p-focus {
+      background: var(--surface-hover);
+      color:      var(--text-color);
+    }
+
+    &.p-highlight {
+      background: var(--highlight-bg);
+      color:      var(--text-color);
+    }
+  }
+
+  .p-dropdown-empty-message {
+    color: var(--text-color-secondary);
+  }
+}
+
+// Carousel indicator dots: lara paints them a fixed grey/white in both themes, so they vanish on light surfaces.
+// Inactive dots use the muted token (>= 3:1 on the page and panel backgrounds); the active one is a longer accent pill.
+.p-carousel .p-carousel-indicators .p-carousel-indicator {
+  button,
+  &:not(.p-highlight) button {
+    // The global `button` rule adds padding and a border, which would stretch the dots.
+    box-sizing:    border-box;
+    min-width:     0;
+    padding:       0;
+    border:        0;
+    width:         0.75rem;
+    height:        0.75rem;
+    background:    var(--vscode-muted);
+    border-radius: 999px;
+    transition:    width 120ms ease, background-color 120ms ease;
+  }
+
+  &:not(.p-highlight) button:hover {
+    background: var(--text-color);
+  }
+
+  &.p-highlight button {
+    width:      1.75rem;
+    background: var(--vscode-accent-deep);
   }
 }
