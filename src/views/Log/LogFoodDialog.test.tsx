@@ -21,6 +21,64 @@ const bread: Food = {
   measurements: [{ unit: 'slice' }],
 }
 
+const WARNING = 'We cannot calculate calories for this unit.'
+
+// A cup measurement with no weight or density: logging in it would freeze zero macros.
+const flour: Food = {
+  id: 8,
+  name: 'Flour',
+  calories: 364,
+  protein: 10,
+  carbs: 76,
+  fat: 1,
+  fiber: 3,
+  servingSize: 100,
+  servingUnit: 'g',
+  measurements: [{ unit: 'cup' }],
+}
+
+async function pickUnit(label: string) {
+  const dropdown = document.body.querySelector('.p-dropdown') as HTMLElement
+  fireEvent.click(dropdown)
+  const items = await screen.findAllByText(label)
+  fireEvent.click(items[items.length - 1])
+}
+
+describe('LogFoodDialog unit weight warning', () => {
+  function open(food: Food) {
+    render(
+      <LogFoodDialog visible meal="Lunch" logDate="2026-11-12" seedFoods={[food]} onHide={() => {}} onLogged={() => {}} />,
+    )
+  }
+
+  it('shows no warning for a unit that has a weight', async () => {
+    open(flour)
+    fireEvent.click(await screen.findByText('Flour'))
+    expect(screen.queryByText(WARNING)).toBeNull()
+  })
+
+  it('warns, as a status, when the chosen unit has no weight, then clears on a convertible unit', async () => {
+    open(flour)
+    fireEvent.click(await screen.findByText('Flour'))
+    await pickUnit('cups')
+    const warning = await screen.findByText(WARNING)
+    expect(warning.getAttribute('role')).toBe('status')
+
+    await pickUnit('grams')
+    await waitFor(() => expect(screen.queryByText(WARNING)).toBeNull())
+  })
+
+  it('still lets the user log with the warning showing', async () => {
+    apiCreateFoodLogEntry.mockResolvedValue({ id: 2 })
+    open(flour)
+    fireEvent.click(await screen.findByText('Flour'))
+    await pickUnit('cups')
+    await screen.findByText(WARNING)
+    fireEvent.click(screen.getByRole('button', { name: 'Log to Lunch' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+  })
+})
+
 describe('LogFoodDialog', () => {
   beforeEach(() => {
     apiCreateFoodLogEntry.mockReset()
