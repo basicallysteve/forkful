@@ -21,7 +21,6 @@ describe('food log API 401 handling', () => {
       apiCreateFoodLogEntry({ foodId: 1, amount: 1, unit: 'g', logDate: '2026-11-12' }),
     ).rejects.toBeInstanceOf(UnauthorizedError)
   })
-}
 
   it('apiCreateFoodLogEntry sends the meal slot', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ id: 1, mealSlot: 'Brunch', dateAdded: '2026-11-12T10:00:00Z' }), { status: 201 }))
