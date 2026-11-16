@@ -16,6 +16,7 @@ function makeEntry(id: number, macros: Partial<FoodLogEntry>): FoodLogEntry {
     fat: 0,
     fiber: 0,
     logDate: '2026-08-19',
+    mealSlot: null,
     dateAdded: new Date(),
     ...macros,
   }
