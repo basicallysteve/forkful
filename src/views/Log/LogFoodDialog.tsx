@@ -170,7 +170,7 @@ export default function LogFoodDialog({ visible, meal, logDate, seedFoods, onHid
           </div>
           {!unitHasWeight && (
             <p className="log-food-warning" role="status">
-              This unit has no weight yet, so calories will be 0.
+              We cannot calculate calories for this unit.
             </p>
           )}
           {error && <p className="daily-log-error" role="alert">{error}</p>}

@@ -197,10 +197,11 @@ export function allowedUnitsForFood(food: Pick<Food, 'measurements' | 'servingUn
 // Whether logging `unit` for this Food can resolve to its base serving unit. False means the unit has
 // no weight (or volume) for this Food, so frozen macros would compute to zero (ADR-0025, ADR-0028).
 export function unitResolvesForFood(
-  food: Pick<Food, 'measurements' | 'servingUnit' | 'density'>,
+  food: Pick<Food, 'measurements' | 'servingUnit' | 'servingSize' | 'density'>,
   unit: string,
 ): boolean {
   if (!unit) return true
+  if (!(food.servingSize > 0)) return false
   return convertFoodAmount(food, 1, unit, food.servingUnit) !== null
 }
 
