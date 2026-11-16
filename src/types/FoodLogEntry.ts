@@ -24,6 +24,9 @@ export type FoodLogEntry = Macros & {
   unit: string | null
   // The user-local calendar day, as a YYYY-MM-DD string (never a Date — it carries no time-of-day).
   logDate: string
+  // The Meal Slot label at log time, a string snapshot (not a FK): renaming or removing a slot never
+  // rewrites it. Null when logged without a slot.
+  mealSlot: string | null
   dateAdded: Date
 }
 

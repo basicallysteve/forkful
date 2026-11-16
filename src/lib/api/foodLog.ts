@@ -13,6 +13,7 @@ export type CreateFoodLogEntryData = {
   amount: number
   unit: string
   logDate: string
+  mealSlot?: string | null
 }
 
 // Fetch the Daily Log for a user-local day. `logDate` is the client-derived YYYY-MM-DD (never UTC).

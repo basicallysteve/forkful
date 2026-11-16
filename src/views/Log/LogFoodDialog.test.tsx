@@ -22,6 +22,8 @@ const bread: Food = {
   measurements: [{ unit: 'slice' }],
 }
 
+const SLOTS = ['Breakfast', 'Lunch', 'Dinner']
+
 const WARNING = 'We cannot calculate calories for this unit.'
 
 // A cup measurement with no weight or density: logging in it would freeze zero macros.
@@ -53,7 +55,7 @@ beforeEach(() => {
 describe('LogFoodDialog unit weight warning', () => {
   function open(food: Food) {
     render(
-      <LogFoodDialog visible meal="Lunch" seedFoods={[food]} onHide={() => {}} onLogged={() => {}} />,
+      <LogFoodDialog visible mealSlot="Lunch" mealSlots={SLOTS} seedFoods={[food]} onHide={() => {}} onLogged={() => {}} />,
     )
   }
 
@@ -98,7 +100,7 @@ describe('LogFoodDialog', () => {
   it('saves "1 1/2" as an amount of 1.5', async () => {
     const onLogged = vi.fn()
     render(
-      <LogFoodDialog visible meal="Breakfast" seedFoods={[bread]} onHide={() => {}} onLogged={onLogged} />,
+      <LogFoodDialog visible mealSlot="Breakfast" mealSlots={SLOTS} seedFoods={[bread]} onHide={() => {}} onLogged={onLogged} />,
     )
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 12, 12, 0, 0))
@@ -106,12 +108,12 @@ describe('LogFoodDialog', () => {
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1 1/2' } })
     fireEvent.click(screen.getByRole('button', { name: 'Log to Breakfast' }))
     await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
-    expect(apiCreateFoodLogEntry).toHaveBeenCalledWith({ foodId: 7, amount: 1.5, unit: 'slice', logDate: '2026-11-12' })
+    expect(apiCreateFoodLogEntry).toHaveBeenCalledWith({ foodId: 7, amount: 1.5, unit: 'slice', logDate: '2026-11-12', mealSlot: 'Breakfast' })
   })
 
   it('shows no sample foods when opened with an empty search and a fresh store', () => {
     render(
-      <LogFoodDialog visible meal="Lunch" seedFoods={useFoodStore.getState().foods} onHide={() => {}} onLogged={() => {}} />,
+      <LogFoodDialog visible mealSlot="Lunch" mealSlots={SLOTS} seedFoods={useFoodStore.getState().foods} onHide={() => {}} onLogged={() => {}} />,
     )
     for (const name of ['Ham', 'Cheese', 'Bread', 'Spaghetti', 'Ground Beef']) {
       expect(screen.queryByText(name)).toBeNull()
@@ -125,7 +127,7 @@ function manyFoods(n: number): Food[] {
 
 function openWith(foods: Food[], extra: Partial<{ onHide: () => void }> = {}) {
   return render(
-    <LogFoodDialog visible meal="Lunch" seedFoods={foods} onHide={extra.onHide ?? (() => {})} onLogged={() => {}} />,
+    <LogFoodDialog visible mealSlot="Lunch" mealSlots={SLOTS} seedFoods={foods} onHide={extra.onHide ?? (() => {})} onLogged={() => {}} />,
   )
 }
 
@@ -234,5 +236,85 @@ describe('LogFoodDialog log day', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log to Lunch' }))
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toMatch(/sign in/i)
+  })
+})
+
+describe('LogFoodDialog meal slot', () => {
+  beforeEach(() => {
+    apiCreateFoodLogEntry.mockReset()
+    apiCreateFoodLogEntry.mockResolvedValue({ id: 1 })
+  })
+
+  function slotDropdown() {
+    // The unit dropdown comes first, the optional Meal Slot picker second.
+    return document.body.querySelectorAll('.p-dropdown')[1] as HTMLElement
+  }
+
+  it('preselects the slot the dialog was launched from and records it', async () => {
+    render(
+      <LogFoodDialog visible mealSlot="Brunch" mealSlots={['Breakfast', 'Brunch']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    fireEvent.click(screen.getByRole('button', { name: 'Log to Brunch' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+    expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBe('Brunch')
+  })
+
+  it('lets the user pick a different slot, and says so on the button', async () => {
+    render(
+      <LogFoodDialog visible mealSlot="Breakfast" mealSlots={['Breakfast', 'Brunch']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    fireEvent.click(slotDropdown())
+    const items = await screen.findAllByText('Brunch')
+    fireEvent.click(items[items.length - 1])
+    fireEvent.click(await screen.findByRole('button', { name: 'Log to Brunch' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+    expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBe('Brunch')
+  })
+
+  it('logs with no slot, and no "Log to" label, when opened without one', async () => {
+    render(
+      <LogFoodDialog visible mealSlot={null} mealSlots={['Breakfast']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    expect(screen.queryByText(/Log to/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Log food' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+    expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBeNull()
+  })
+})
+
+describe('LogFoodDialog header follows the picked slot', () => {
+  it('updates the header when the picker changes, so it matches the button', async () => {
+    apiCreateFoodLogEntry.mockReset()
+    render(
+      <LogFoodDialog visible mealSlot="Snack" mealSlots={['Breakfast', 'Snack']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log to Snack')
+    fireEvent.click(document.body.querySelectorAll('.p-dropdown')[1] as HTMLElement)
+    const items = await screen.findAllByText('Breakfast')
+    fireEvent.click(items[items.length - 1])
+    await waitFor(() => expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log to Breakfast'))
+  })
+})
+
+describe('LogFoodDialog picking "No slot"', () => {
+  it('shows "Log food" in the header and button and posts mealSlot null, never an object', async () => {
+    apiCreateFoodLogEntry.mockReset()
+    apiCreateFoodLogEntry.mockResolvedValue({ id: 1 })
+    render(
+      <LogFoodDialog visible mealSlot="Breakfast" mealSlots={['Breakfast', 'Lunch']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    fireEvent.click(document.body.querySelectorAll('.p-dropdown')[1] as HTMLElement)
+    const items = await screen.findAllByText('No slot')
+    fireEvent.click(items[items.length - 1])
+    await waitFor(() => expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log food'))
+    expect(document.body.textContent).not.toContain('[object Object]')
+    fireEvent.click(screen.getByRole('button', { name: 'Log food' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+    expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBeNull()
   })
 })

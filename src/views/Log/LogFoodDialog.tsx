@@ -16,15 +16,20 @@ import type { FoodLogEntry } from '@/types/FoodLogEntry'
 
 interface LogFoodDialogProps {
   visible: boolean
-  // The meal section this log was launched from (Breakfast/Lunch/Dinner). A display label only for
-  // now — see the meal-slot TODO in Index.tsx; nothing is persisted against it yet.
-  meal: string
+  // The Meal Slot this log was launched from (preselected in the picker), or null for none.
+  mealSlot: string | null
+  // The User's current Meal Slots, offered in the optional picker.
+  mealSlots: string[]
   // Foods already cached in the shared store, used for instant local results before the server search
   // resolves. The dialog never eagerly fetches the whole catalog.
   seedFoods: Food[]
   onHide: () => void
   onLogged: (entry: FoodLogEntry) => void
 }
+
+// Dropdown value for the "No slot" option. An empty string makes PrimeReact return the whole option object,
+// so a non-empty sentinel stands in for null at the Dropdown boundary only.
+const NO_SLOT = '\u0000no-slot'
 
 // Results kept in memory, and how many of them are listed. Beyond DISPLAY_RESULTS the user refines the
 // search instead of paging (a paginator wraps badly on a phone).
@@ -38,7 +43,7 @@ function canAutoFocus(): boolean {
   return !window.matchMedia('(pointer: coarse)').matches
 }
 
-export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogged }: LogFoodDialogProps) {
+export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods, onHide, onLogged }: LogFoodDialogProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Food[]>([])
   const [searching, setSearching] = useState(false)
@@ -47,6 +52,8 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
   const [amount, setAmount] = useState<number | null>(1)
   const [unit, setUnit] = useState<string>('')
+  // The chosen Meal Slot, or null for none (assigning a slot is always optional).
+  const [slot, setSlot] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -54,6 +61,8 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
   const searchRef = useRef<HTMLInputElement>(null)
   const amountWrapRef = useRef<HTMLLabelElement>(null)
   const actionsRef = useRef<HTMLDivElement>(null)
+  const slotFieldRef = useRef<HTMLLabelElement>(null)
+  const unitFieldRef = useRef<HTMLLabelElement>(null)
 
   // Reset to the search step each time the dialog (re)opens.
   useEffect(() => {
@@ -63,8 +72,11 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
     setSelectedFood(null)
     setAmount(1)
     setUnit('')
+    setSlot(mealSlot)
     setError(null)
     setSearchFailed(false)
+    // mealSlot is read only when the dialog opens; later prop changes must not reset a half-done log.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, seedFoods])
 
   // Debounced fuzzy search against the foods catalog; empty query falls back to the seeded store foods.
@@ -103,6 +115,9 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
     ? allowedUnitsForFood(selectedFood).map((u) => ({ label: getUnitLabel(u), value: u }))
     : []
 
+  // A stale label (the slot was renamed or removed) can't be re-picked, so it isn't offered.
+  const slotOptions = [{ label: 'No slot', value: NO_SLOT }, ...mealSlots.map((s) => ({ label: s, value: s }))]
+
   const unitHasWeight = !selectedFood || unitResolvesForFood(selectedFood, unit)
 
   function pickFood(food: Food) {
@@ -117,6 +132,15 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
     if (selectedFood) amountWrapRef.current?.querySelector('input')?.focus()
   }, [selectedFood])
 
+  // When a dropdown list opens: on short windows (the dialog body scrolls) bring its trigger to the top so
+  // the trigger and list stay visible, with Log/Cancel reachable by scrolling; otherwise keep Log/Cancel
+  // in view, since the reserved space under the row makes the step taller than the dialog (#267).
+  function revealOpenList(field: HTMLElement | null) {
+    const short = typeof window.matchMedia === 'function' && window.matchMedia('(max-height: 600px)').matches
+    if (short) field?.scrollIntoView({ block: 'start' })
+    else actionsRef.current?.scrollIntoView({ block: 'nearest' })
+  }
+
   function focusSearch() {
     if (canAutoFocus()) searchRef.current?.focus()
   }
@@ -129,7 +153,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
     setSaving(true)
     setError(null)
     try {
-      const entry = await apiCreateFoodLogEntry({ foodId: selectedFood.id, amount, unit, logDate: getTodayDateString() })
+      const entry = await apiCreateFoodLogEntry({ foodId: selectedFood.id, amount, unit, logDate: getTodayDateString(), mealSlot: slot })
       onLogged(entry)
       onHide()
     } catch (err) {
@@ -145,7 +169,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
     <Modal
       visible={visible}
       onHide={onHide}
-      header={`Log to ${meal}`}
+      header={slot ? `Log to ${slot}` : 'Log food'}
       style={{ width: '560px', maxWidth: '100%' }}
       className="log-food-dialog"
       maskClassName="log-food-mask"
@@ -209,7 +233,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
               <span>Amount</span>
               <QuantityInput value={amount} unit={unit} onChange={setAmount} />
             </label>
-            <label className="log-field">
+            <label className="log-field" ref={unitFieldRef}>
               <span>Unit</span>
               <Dropdown
                 value={unit}
@@ -220,9 +244,23 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
                 // actions are scrolled into view when it opens: on short windows the reserved panel space
                 // makes the step taller than the dialog, which used to clip Log/Cancel.
                 appendTo="self"
-                onShow={() => actionsRef.current?.scrollIntoView({ block: 'nearest' })}
+                onShow={() => revealOpenList(unitFieldRef.current)}
               />
             </label>
+            {mealSlots.length > 0 && (
+              <label className="log-field log-field--slot" ref={slotFieldRef}>
+                <span>Meal slot (optional)</span>
+                <Dropdown
+                  value={slot ?? NO_SLOT}
+                  options={slotOptions}
+                  // Tall enough for No slot plus a typical set, so the list does not open scrolled past the first option.
+                  scrollHeight="250px"
+                  onChange={(e) => setSlot(e.value === NO_SLOT ? null : e.value)}
+                  appendTo="self"
+                  onShow={() => revealOpenList(slotFieldRef.current)}
+                />
+              </label>
+            )}
           </div>
           {!unitHasWeight && (
             <p className="log-food-warning" role="status">
@@ -235,7 +273,7 @@ export default function LogFoodDialog({ visible, meal, seedFoods, onHide, onLogg
               Cancel
             </button>
             <button type="button" className="log-food-submit" onClick={confirmLog} disabled={saving}>
-              {saving ? 'Logging…' : `Log to ${meal}`}
+              {saving ? 'Logging…' : slot ? `Log to ${slot}` : 'Log food'}
             </button>
           </div>
         </div>
