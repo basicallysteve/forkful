@@ -274,7 +274,8 @@
     padding: 24px;
     border: 1px dashed var(--vscode-border);
     border-radius: 10px;
-    color: var(--vscode-muted);
+    // Muted text on this tinted panel measured 4.43:1 in light; mix toward the body text colour to reach 4.5:1.
+    color: color-mix(in srgb, var(--vscode-muted) 80%, var(--vscode-text));
     background: var(--accent-hover);
     text-align: center;
 

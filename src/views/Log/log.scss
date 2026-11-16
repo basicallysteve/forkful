@@ -321,10 +321,10 @@
     gap: 8px;
   }
 
-  // The unit panel is portaled to <body> and opens over Log/Cancel when the dialog is narrow. While it
-  // is open, reserve its max height (200px) under the Amount/Unit row so any number of units stays clear.
+  // The unit panel is portaled to <body> and opens over Log/Cancel when the dialog is narrow. While the
+  // panel is open (not merely focused), reserve its max height (200px) under the Amount/Unit row.
   @media (max-width: 640px) {
-    .log-food-confirm:has(.log-field .p-dropdown.p-focus) .log-food-actions {
+    .log-food-confirm:has(.log-field [aria-expanded='true']) .log-food-actions {
       margin-top: 12.5rem;
     }
   }
