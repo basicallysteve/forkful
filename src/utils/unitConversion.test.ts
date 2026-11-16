@@ -20,6 +20,10 @@ describe('unitResolvesForFood', () => {
     expect(unitResolvesForFood({ ...base, measurements: [{ unit: 'slice' }] }, 'slice')).toBe(false)
   })
 
+  it('is false when the food has no positive serving size, even for its own unit', () => {
+    expect(unitResolvesForFood({ servingSize: 0, servingUnit: 'g', measurements: [] }, 'g')).toBe(false)
+  })
+
   it('is false for a volume unit when the food has no density or volume calibration', () => {
     expect(unitResolvesForFood({ ...base, measurements: [{ unit: 'cup' }] }, 'cup')).toBe(false)
   })

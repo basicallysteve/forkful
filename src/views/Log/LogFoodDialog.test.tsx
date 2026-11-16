@@ -20,7 +20,7 @@ const bread: Food = {
   measurements: [{ unit: 'slice' }],
 }
 
-const WARNING = 'This unit has no weight yet, so calories will be 0.'
+const WARNING = 'We cannot calculate calories for this unit.'
 
 // A cup measurement with no weight or density: logging in it would freeze zero macros.
 const flour: Food = {
