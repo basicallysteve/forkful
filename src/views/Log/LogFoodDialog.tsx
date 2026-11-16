@@ -8,7 +8,7 @@ import Modal from '@/components/Modal/Modal'
 import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { apiCreateFoodLogEntry } from '@/lib/api/foodLog'
-import { getUnitLabel, allowedUnitsForFood } from '@/utils/unitConversion'
+import { getUnitLabel, allowedUnitsForFood, unitResolvesForFood } from '@/utils/unitConversion'
 import type { Food } from '@/types/Food'
 import type { FoodLogEntry } from '@/types/FoodLogEntry'
 
@@ -82,6 +82,8 @@ export default function LogFoodDialog({ visible, meal, logDate, seedFoods, onHid
   const unitOptions = selectedFood
     ? allowedUnitsForFood(selectedFood).map((u) => ({ label: getUnitLabel(u), value: u }))
     : []
+
+  const unitHasWeight = !selectedFood || unitResolvesForFood(selectedFood, unit)
 
   function pickFood(food: Food) {
     setSelectedFood(food)
@@ -166,6 +168,11 @@ export default function LogFoodDialog({ visible, meal, logDate, seedFoods, onHid
               />
             </label>
           </div>
+          {!unitHasWeight && (
+            <p className="log-food-warning" role="status">
+              This unit has no weight yet, so calories will be 0.
+            </p>
+          )}
           {error && <p className="daily-log-error" role="alert">{error}</p>}
           <div className="log-food-actions">
             <button type="button" className="log-food-cancel" onClick={onHide} disabled={saving}>

@@ -252,6 +252,16 @@
     font-size: 14px;
   }
 
+  .log-food-warning {
+    margin: 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--vscode-warning);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--vscode-warning) 12%, transparent);
+    color: var(--vscode-text);
+    font-size: 14px;
+  }
+
   .log-food-back {
     align-self: flex-start;
     border: none;
