@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Carousel } from 'primereact/carousel'
 import { useFoodStore } from '@/stores/food'
 import { useFoodLogStore, sumMacros } from '@/stores/foodLog'
+import { isUnauthorizedError } from '@/lib/api/errors'
 import { apiFetchDailyLog } from '@/lib/api/foodLog'
 import { getTodayDateString, formatDisplayDate } from '@/utils/dateHelpers'
 import { getUnitLabel } from '@/utils/unitConversion'
@@ -37,9 +39,10 @@ export default function Log() {
   const addEntry = useFoodLogStore((state) => state.addEntry)
   const isMobile = useIsMobile()
 
-  const [today] = useState<string>(() => getTodayDateString())
+  const [today, setToday] = useState<string>(() => getTodayDateString())
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
+  const [needsSignIn, setNeedsSignIn] = useState(false)
   // The meal section whose log dialog is open, or null when closed.
   const [dialogMeal, setDialogMeal] = useState<string | null>(null)
   // Meal sections are collapsible so the mobile stack stays scannable; all start expanded.
@@ -52,13 +55,20 @@ export default function Log() {
   useEffect(() => {
     apiFetchDailyLog(today)
       .then(setDailyLog)
-      .catch(() => setFetchError(true))
+      .catch((err) => (isUnauthorizedError(err) ? setNeedsSignIn(true) : setFetchError(true)))
       .finally(() => setLoading(false))
   }, [today, setDailyLog])
 
   const total = useMemo(() => sumMacros(entries), [entries])
 
   function handleLogged(entry: FoodLogEntry) {
+    // The dialog works out the day at each write, so a log submitted after midnight lands on the new
+    // day: follow it (the effect above reloads that day's log) instead of mixing days in the list.
+    if (entry.logDate && entry.logDate !== today) {
+      setLoading(true)
+      setToday(entry.logDate)
+      return
+    }
     addEntry(entry)
   }
 
@@ -81,7 +91,7 @@ export default function Log() {
         {/* Gated on a resolved fetch (like the entries table below) so the singleton store can't flash
             a previous day's or previous user's totals before today's Daily Log loads. On mobile the
             five stat cards become a swipeable carousel instead of a tall stack. */}
-        {!loading && !fetchError && (
+        {!loading && !fetchError && !needsSignIn && (
           isMobile ? (
             <Carousel
               value={MACRO_FIELDS as MacroField[]}
@@ -139,6 +149,10 @@ export default function Log() {
           <h2 className="daily-log-entries-title">Logged today</h2>
           {loading ? (
             <p className="daily-log-empty">Loading today&apos;s log…</p>
+          ) : needsSignIn ? (
+            <p className="daily-log-empty">
+              <Link href="/login">Sign in</Link> to see and log your food.
+            </p>
           ) : fetchError ? (
             <p className="daily-log-empty">Could not load today&apos;s log.</p>
           ) : entries.length === 0 ? (
@@ -177,7 +191,6 @@ export default function Log() {
       <LogFoodDialog
         visible={dialogMeal !== null}
         meal={dialogMeal ?? ''}
-        logDate={today}
         seedFoods={foods}
         onHide={() => setDialogMeal(null)}
         onLogged={handleLogged}
