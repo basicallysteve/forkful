@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LogFoodDialog from './LogFoodDialog'
 import type { Food } from '@/types/Food'
+import { useFoodStore } from '@/stores/food'
 
 const { apiCreateFoodLogEntry } = vi.hoisted(() => ({ apiCreateFoodLogEntry: vi.fn() }))
 vi.mock('@/lib/api/foodLog', () => ({ apiCreateFoodLogEntry }))
@@ -36,5 +37,14 @@ describe('LogFoodDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Log to Breakfast' }))
     await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
     expect(apiCreateFoodLogEntry).toHaveBeenCalledWith({ foodId: 7, amount: 1.5, unit: 'slice', logDate: '2026-11-12' })
+  })
+
+  it('shows no sample foods when opened with an empty search and a fresh store', () => {
+    render(
+      <LogFoodDialog visible meal="Lunch" logDate="2026-11-12" seedFoods={useFoodStore.getState().foods} onHide={() => {}} onLogged={() => {}} />,
+    )
+    for (const name of ['Ham', 'Cheese', 'Bread', 'Spaghetti', 'Ground Beef']) {
+      expect(screen.queryByText(name)).toBeNull()
+    }
   })
 })
