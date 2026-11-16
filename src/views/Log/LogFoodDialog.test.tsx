@@ -299,3 +299,22 @@ describe('LogFoodDialog header follows the picked slot', () => {
     await waitFor(() => expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log to Breakfast'))
   })
 })
+
+describe('LogFoodDialog picking "No slot"', () => {
+  it('shows "Log food" in the header and button and posts mealSlot null, never an object', async () => {
+    apiCreateFoodLogEntry.mockReset()
+    apiCreateFoodLogEntry.mockResolvedValue({ id: 1 })
+    render(
+      <LogFoodDialog visible mealSlot="Breakfast" mealSlots={['Breakfast', 'Lunch']} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    fireEvent.click(document.body.querySelectorAll('.p-dropdown')[1] as HTMLElement)
+    const items = await screen.findAllByText('No slot')
+    fireEvent.click(items[items.length - 1])
+    await waitFor(() => expect(document.querySelector('.p-dialog-title')?.textContent).toBe('Log food'))
+    expect(document.body.textContent).not.toContain('[object Object]')
+    fireEvent.click(screen.getByRole('button', { name: 'Log food' }))
+    await waitFor(() => expect(apiCreateFoodLogEntry).toHaveBeenCalled())
+    expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBeNull()
+  })
+})
