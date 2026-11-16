@@ -91,6 +91,14 @@ bun link:product-foods       # AI-link unlinked products to parent foods in .env
 bun link:product-foods:prod  # Deliberately link in production (.env.production)
 ```
 
+## Deploys and database migrations
+
+Vercel runs `bun run vercel-build`, which is `drizzle-kit migrate && next build`. Migrations run before the app is built, and a failed migration fails the build. In production a failed build keeps the previous deployment live, so new code never ships against a database that is missing its columns.
+
+On Vercel the migrate step reads the platform's env vars (`DATABASE_URL`, then `POSTGRES_URL`, then `DATABASE_POSTGRES_URL`), the same variables and order the app uses at runtime (see `src/db/resolveDrizzleEnv.ts` and `src/db/index.ts`). Nothing reads an env file there.
+
+Which database preview deployments use (a separate preview database, or deliberately shared with production) is an open decision, tracked in #273.
+
 ## Project structure
 
 ```
