@@ -394,8 +394,7 @@ html[data-theme='light'] {
   border:       1px solid var(--surface-border);
   color:        var(--text-color);
 
-  .p-dropdown-label,
-  .p-dropdown-label.p-placeholder {
+  .p-dropdown-label {
     color: var(--text-color);
   }
 
@@ -459,6 +458,11 @@ html[data-theme='light'] {
 .p-carousel .p-carousel-indicators .p-carousel-indicator {
   button,
   &:not(.p-highlight) button {
+    // The global `button` rule adds padding and a border, which would stretch the dots.
+    box-sizing:    border-box;
+    min-width:     0;
+    padding:       0;
+    border:        0;
     width:         0.75rem;
     height:        0.75rem;
     background:    var(--vscode-muted);
