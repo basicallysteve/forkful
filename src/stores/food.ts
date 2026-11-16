@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
-import { getInitialFoods } from './initialData'
 
 type FoodStore = {
     foods: Food[]
@@ -14,7 +13,7 @@ type FoodStore = {
 }
 
 export const useFoodStore = create<FoodStore>((set, get) => ({
-    foods: getInitialFoods(),
+    foods: [],
     setFoods: (foods: Food[]) => set({ foods }),
     addFood: (food: Omit<Food, 'id'>) => set(state => {
         const id = state.foods.length > 0 ? Math.max(...state.foods.map(f => f.id)) + 1 : 1
@@ -42,5 +41,5 @@ export const useFoodStore = create<FoodStore>((set, get) => ({
 }))
 
 export const resetFoodStore = () => {
-  useFoodStore.setState({ foods: getInitialFoods() })
+  useFoodStore.setState({ foods: [] })
 }
