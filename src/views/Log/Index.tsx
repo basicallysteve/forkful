@@ -136,7 +136,7 @@ export default function Log({ mealSlots }: { mealSlots: string[] }) {
 
         <div className="daily-log-meals">
           {groups.map((group) => {
-            const collapsed = !!collapsedMeals[group.label]
+            const collapsed = !!collapsedMeals[`${group.kind}:${group.label}`]
             const rows = showEntries ? group.entries : []
             return (
               <section key={`${group.kind}:${group.label}`} className={`daily-log-meal${collapsed ? ' daily-log-meal--collapsed' : ''}`}>
@@ -144,7 +144,7 @@ export default function Log({ mealSlots }: { mealSlots: string[] }) {
                   type="button"
                   className="daily-log-meal-toggle"
                   aria-expanded={!collapsed}
-                  onClick={() => toggleMeal(group.label)}
+                  onClick={() => toggleMeal(`${group.kind}:${group.label}`)}
                 >
                   <span className="daily-log-meal-title">{group.label}</span>
                   <span className="daily-log-meal-chevron" aria-hidden="true">{collapsed ? '▸' : '▾'}</span>

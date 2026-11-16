@@ -154,7 +154,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
     <Modal
       visible={visible}
       onHide={onHide}
-      header={mealSlot ? `Log to ${mealSlot}` : 'Log food'}
+      header={slot ? `Log to ${slot}` : 'Log food'}
       style={{ width: '560px', maxWidth: '100%' }}
       className="log-food-dialog"
       maskClassName="log-food-mask"
