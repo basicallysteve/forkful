@@ -475,6 +475,22 @@
       line-height: 1.15;
     }
 
+    // Short windows: cap the Unit and Meal Slot lists so trigger, options and the reserved space fit; they scroll inside.
+    .log-field .p-dropdown-items-wrapper {
+      max-height: 170px !important;
+    }
+
+    // Compact rows so the default four slots plus "No slot" show without scrolling the list.
+    .log-field .p-dropdown-item {
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+
+    .log-food-confirm:has(.log-field [aria-expanded='true']) .log-food-actions,
+    .log-food-confirm:has(.log-field--slot [aria-expanded='true']) .log-food-actions {
+      margin-top: 11rem;
+    }
+
   }
 
   .log-food-cancel,

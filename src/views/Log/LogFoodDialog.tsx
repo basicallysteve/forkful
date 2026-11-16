@@ -57,6 +57,8 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
   const searchRef = useRef<HTMLInputElement>(null)
   const amountWrapRef = useRef<HTMLLabelElement>(null)
   const actionsRef = useRef<HTMLDivElement>(null)
+  const slotFieldRef = useRef<HTMLLabelElement>(null)
+  const unitFieldRef = useRef<HTMLLabelElement>(null)
 
   // Reset to the search step each time the dialog (re)opens.
   useEffect(() => {
@@ -125,6 +127,15 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
   useEffect(() => {
     if (selectedFood) amountWrapRef.current?.querySelector('input')?.focus()
   }, [selectedFood])
+
+  // When a dropdown list opens: on short windows (the dialog body scrolls) bring its trigger to the top so
+  // the trigger and list stay visible, with Log/Cancel reachable by scrolling; otherwise keep Log/Cancel
+  // in view, since the reserved space under the row makes the step taller than the dialog (#267).
+  function revealOpenList(field: HTMLElement | null) {
+    const short = typeof window.matchMedia === 'function' && window.matchMedia('(max-height: 600px)').matches
+    if (short) field?.scrollIntoView({ block: 'start' })
+    else actionsRef.current?.scrollIntoView({ block: 'nearest' })
+  }
 
   function focusSearch() {
     if (canAutoFocus()) searchRef.current?.focus()
@@ -218,7 +229,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
               <span>Amount</span>
               <QuantityInput value={amount} unit={unit} onChange={setAmount} />
             </label>
-            <label className="log-field">
+            <label className="log-field" ref={unitFieldRef}>
               <span>Unit</span>
               <Dropdown
                 value={unit}
@@ -229,11 +240,11 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
                 // actions are scrolled into view when it opens: on short windows the reserved panel space
                 // makes the step taller than the dialog, which used to clip Log/Cancel.
                 appendTo="self"
-                onShow={() => actionsRef.current?.scrollIntoView({ block: 'nearest' })}
+                onShow={() => revealOpenList(unitFieldRef.current)}
               />
             </label>
             {mealSlots.length > 0 && (
-              <label className="log-field log-field--slot">
+              <label className="log-field log-field--slot" ref={slotFieldRef}>
                 <span>Meal slot (optional)</span>
                 <Dropdown
                   value={slot}
@@ -242,7 +253,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
                   scrollHeight="250px"
                   onChange={(e) => setSlot(e.value)}
                   appendTo="self"
-                  onShow={() => actionsRef.current?.scrollIntoView({ block: 'nearest' })}
+                  onShow={() => revealOpenList(slotFieldRef.current)}
                 />
               </label>
             )}
