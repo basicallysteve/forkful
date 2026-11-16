@@ -27,6 +27,10 @@ interface LogFoodDialogProps {
   onLogged: (entry: FoodLogEntry) => void
 }
 
+// Dropdown value for the "No slot" option. An empty string makes PrimeReact return the whole option object,
+// so a non-empty sentinel stands in for null at the Dropdown boundary only.
+const NO_SLOT = '\u0000no-slot'
+
 // Results kept in memory, and how many of them are listed. Beyond DISPLAY_RESULTS the user refines the
 // search instead of paging (a paginator wraps badly on a phone).
 const MAX_RESULTS = 50
@@ -48,8 +52,8 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
   const [selectedFood, setSelectedFood] = useState<Food | null>(null)
   const [amount, setAmount] = useState<number | null>(1)
   const [unit, setUnit] = useState<string>('')
-  // The chosen Meal Slot; '' means none (assigning a slot is always optional).
-  const [slot, setSlot] = useState<string>('')
+  // The chosen Meal Slot, or null for none (assigning a slot is always optional).
+  const [slot, setSlot] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -68,7 +72,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
     setSelectedFood(null)
     setAmount(1)
     setUnit('')
-    setSlot(mealSlot ?? '')
+    setSlot(mealSlot)
     setError(null)
     setSearchFailed(false)
     // mealSlot is read only when the dialog opens; later prop changes must not reset a half-done log.
@@ -112,7 +116,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
     : []
 
   // A stale label (the slot was renamed or removed) can't be re-picked, so it isn't offered.
-  const slotOptions = [{ label: 'No slot', value: '' }, ...mealSlots.map((s) => ({ label: s, value: s }))]
+  const slotOptions = [{ label: 'No slot', value: NO_SLOT }, ...mealSlots.map((s) => ({ label: s, value: s }))]
 
   const unitHasWeight = !selectedFood || unitResolvesForFood(selectedFood, unit)
 
@@ -149,7 +153,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
     setSaving(true)
     setError(null)
     try {
-      const entry = await apiCreateFoodLogEntry({ foodId: selectedFood.id, amount, unit, logDate: getTodayDateString(), mealSlot: slot || null })
+      const entry = await apiCreateFoodLogEntry({ foodId: selectedFood.id, amount, unit, logDate: getTodayDateString(), mealSlot: slot })
       onLogged(entry)
       onHide()
     } catch (err) {
@@ -247,11 +251,11 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
               <label className="log-field log-field--slot" ref={slotFieldRef}>
                 <span>Meal slot (optional)</span>
                 <Dropdown
-                  value={slot}
+                  value={slot ?? NO_SLOT}
                   options={slotOptions}
                   // Tall enough for No slot plus a typical set, so the list does not open scrolled past the first option.
                   scrollHeight="250px"
-                  onChange={(e) => setSlot(e.value)}
+                  onChange={(e) => setSlot(e.value === NO_SLOT ? null : e.value)}
                   appendTo="self"
                   onShow={() => revealOpenList(slotFieldRef.current)}
                 />
