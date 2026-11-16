@@ -325,6 +325,8 @@ export const foodLogEntries = pgTable('food_log_entries', {
   fiber: numeric('fiber', { precision: 10, scale: 2 }).notNull().default('0'),
   // The user-local calendar day this entry is filed under (a plain date, no time-of-day).
   logDate: date('log_date').notNull(),
+  // Meal Slot label snapshot (nullable string, not a FK) — see CONTEXT.md, Meal Slot.
+  mealSlot: varchar('meal_slot', { length: 50 }),
   dateAdded: timestamp('date_added').defaultNow().notNull(),
   dateDeleted: timestamp('date_deleted'),
 }, (t) => ({

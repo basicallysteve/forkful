@@ -75,7 +75,8 @@
 
   .daily-log-meals {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    // One section per Meal Slot, stacked: each lists its entries as rows, so the stack suits any slot count.
+    grid-template-columns: 1fr;
     gap: 12px;
 
     .daily-log-meal {
@@ -116,6 +117,54 @@
     .daily-log-meal-body {
       display: flex;
       flex-direction: column;
+      gap: 12px;
+    }
+
+    .daily-log-rows {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .daily-log-row {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      color: var(--vscode-text);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    // Name, amount and kcal share one line; the long macro line wraps beneath, so nothing needs sideways scroll.
+    .daily-log-row-main {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .daily-log-row-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .daily-log-row-amount,
+    .daily-log-row-cal {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .daily-log-row-cal {
+      font-weight: 600;
+    }
+
+    .daily-log-row-macros {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--vscode-muted);
     }
 
     .daily-log-meal-add {
@@ -142,42 +191,12 @@
     font-size: 14px;
   }
 
-  .daily-log-entries {
-    margin-top: 24px;
-  }
-
-  .daily-log-entries-title {
-    margin: 0 0 12px;
-    font-size: 16px;
-    color: var(--vscode-text);
-  }
-
   .daily-log-empty {
     color: var(--vscode-muted);
     padding: 24px;
     text-align: center;
     border: 1px dashed var(--vscode-border);
     border-radius: 12px;
-  }
-
-  .daily-log-table {
-    width: 100%;
-    border-collapse: collapse;
-
-    th, td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--vscode-border);
-      font-size: 14px;
-      color: var(--vscode-text);
-    }
-
-    th {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--vscode-muted);
-    }
   }
 
   @media (max-width: 640px) {
@@ -187,14 +206,6 @@
       grid-template-columns: repeat(3, 1fr);
     }
 
-    .daily-log-meals {
-      grid-template-columns: 1fr;
-    }
-
-    .daily-log-table {
-      display: block;
-      overflow-x: auto;
-    }
   }
 }
 
@@ -384,6 +395,7 @@
 
   .log-food-fields {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: flex-end;
 
@@ -392,6 +404,10 @@
       flex-direction: column;
       gap: 6px;
       flex: 1 1 0;
+
+      &.log-field--slot {
+        flex-basis: 100%;
+      }
 
       span {
         font-size: 12px;
