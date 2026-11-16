@@ -1,4 +1,5 @@
 import type { DailyLog, FoodLogEntry } from '@/types/FoodLogEntry'
+import { assertWriteOk } from './errors'
 
 type RawFoodLogEntry = Omit<FoodLogEntry, 'dateAdded'> & { dateAdded: string }
 type RawDailyLog = Omit<DailyLog, 'entries'> & { entries: RawFoodLogEntry[] }
@@ -17,7 +18,7 @@ export type CreateFoodLogEntryData = {
 // Fetch the Daily Log for a user-local day. `logDate` is the client-derived YYYY-MM-DD (never UTC).
 export async function apiFetchDailyLog(logDate: string): Promise<DailyLog> {
   const res = await fetch(`/api/log?date=${encodeURIComponent(logDate)}`)
-  if (!res.ok) throw new Error('Failed to fetch daily log')
+  assertWriteOk(res, 'Failed to fetch daily log')
   const raw: RawDailyLog = await res.json()
   return { ...raw, entries: raw.entries.map(parseEntry) }
 }
@@ -28,7 +29,7 @@ export async function apiCreateFoodLogEntry(data: CreateFoodLogEntryData): Promi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error('Failed to create food log entry')
+  assertWriteOk(res, 'Failed to create food log entry')
   const raw: RawFoodLogEntry = await res.json()
   return parseEntry(raw)
 }
