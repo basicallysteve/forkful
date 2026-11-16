@@ -1,6 +1,10 @@
-.app-modal {
-  font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+.app-modal,
+.app-modal .p-component {
+  // Use the app's body font, not PrimeReact's --font-family, in every modal (app-wide, 2026-11-16).
+  font-family: inherit;
+}
 
+.app-modal {
   .p-dialog-header {
     background: var(--vscode-titlebar-bg);
     border-bottom: 1px solid var(--vscode-border);

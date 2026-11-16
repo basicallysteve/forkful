@@ -14,7 +14,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 12px;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     margin: 0;
   }
 
@@ -26,7 +26,7 @@
 
   .daily-log-date {
     margin: 0;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     font-size: 14px;
   }
 
@@ -70,7 +70,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
   }
 
   .daily-log-meals {
@@ -110,7 +110,7 @@
 
     .daily-log-meal-chevron {
       font-size: 12px;
-      color: var(--vscode-text-muted, #9aa0a6);
+      color: var(--vscode-muted);
     }
 
     .daily-log-meal-body {
@@ -153,7 +153,7 @@
   }
 
   .daily-log-empty {
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     padding: 24px;
     text-align: center;
     border: 1px dashed var(--vscode-border);
@@ -176,7 +176,7 @@
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
-      color: var(--vscode-text-muted, #9aa0a6);
+      color: var(--vscode-muted);
     }
   }
 
@@ -237,7 +237,7 @@
 
   .log-food-item-macros {
     font-size: 12px;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
   }
 
   .log-food-confirm {
@@ -293,7 +293,7 @@
 
       span {
         font-size: 12px;
-        color: var(--vscode-text-muted, #9aa0a6);
+        color: var(--vscode-muted);
       }
 
       // Match Amount (InputNumber) and Unit (Dropdown) heights — same pattern as shoppingList.scss.
@@ -319,6 +319,12 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+
+  // The unit panel is portaled to <body> and opens over Log/Cancel on a narrow dialog. While it is open,
+  // reserve room under the Amount/Unit row so the panel (a unit or two, ~75px) stays clear of the buttons.
+  .log-food-confirm:has(.log-field .p-dropdown.p-focus) .log-food-actions {
+    margin-top: 5.5rem;
   }
 
   .log-food-cancel,
