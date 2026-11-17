@@ -14,7 +14,7 @@ function post() {
 }
 
 describe('POST /api/recipes', () => {
-  beforeEach(() => vi.mocked(createRecipe).mockReset())
+  beforeEach(() => { vi.mocked(createRecipe).mockReset() })
 
   it('answers 400 (not 500) when an ingredient references an unknown food', async () => {
     vi.mocked(createRecipe).mockImplementation(() => { throw Object.assign(new Error('fk violation'), { code: '23503' }) })
@@ -28,4 +28,9 @@ describe('POST /api/recipes', () => {
     expect((await post()).status).toBe(400)
   })
 
+
+  it('still lets unrelated errors surface as server errors', async () => {
+    vi.mocked(createRecipe).mockImplementation(() => { throw new Error('boom') })
+    await expect(post()).rejects.toThrow('boom')
+  })
 })
