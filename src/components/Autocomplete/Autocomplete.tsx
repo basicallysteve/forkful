@@ -39,6 +39,8 @@ export default function Autocomplete<T>({
   const selectionInProgressRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState<string | null>(null)
+  // Results are only announced while the list is actually showing.
+  const [open, setOpen] = useState(false)
   useActiveDescendant(containerRef)
 
   function filterOptions(query: string): T[] {
@@ -88,7 +90,7 @@ export default function Autocomplete<T>({
   }
 
   const statusMessage =
-    query === null ? '' : suggestions.length > 0 ? resultsMessage(suggestions.length) : query.trim() ? 'No matches' : ''
+    query === null ? '' : suggestions.length > 0 ? (open ? resultsMessage(suggestions.length) : '') : query.trim() ? 'No matches' : ''
 
   function focus() {
     (acRef.current?.getInput() as unknown as HTMLInputElement | null)?.focus?.()
@@ -105,6 +107,8 @@ export default function Autocomplete<T>({
         onChange={handleChange}
         onSelect={handleSelect}
         onFocus={handleFocus}
+        onShow={() => setOpen(true)}
+        onHide={() => setOpen(false)}
         onBlur={() => setQuery(null)}
         onKeyUp={(e) => { if (e.key === 'Escape') setQuery(null) }}
         itemTemplate={itemTemplate}
