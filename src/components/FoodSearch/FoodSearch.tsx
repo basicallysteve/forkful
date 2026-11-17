@@ -4,8 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
 import { useSession } from 'next-auth/react'
-import { InputText } from 'primereact/inputtext'
-import Modal from '@/components/Modal/Modal'
+import QuickAddFoodModal from '@/components/QuickAddFoodModal/QuickAddFoodModal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
 import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
@@ -46,13 +45,7 @@ function addGroup(query: string): SuggestionGroup {
   return { label: 'Not found?', items: [{ kind: 'add', name: query }] }
 }
 
-type AddFoodForm = {
-  name: string
-  calories: string
-  protein: string
-  carbs: string
-  fat: string
-}
+type AddFoodRequest = { name: string }
 
 interface FoodSearchProps {
   value: string
@@ -68,12 +61,12 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [importing, setImporting] = useState(false)
-  const [addDialog, setAddDialog] = useState<AddFoodForm | null>(null)
-  const [addSaving, setAddSaving] = useState(false)
+  const [addDialog, setAddDialog] = useState<AddFoodRequest | null>(null)
   const [addError, setAddError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const { status } = useSession()
   // Read through a ref so the debounced callback sees the current auth state
   // Only hide once we know the user is signed out; while the session is still loading the
@@ -171,7 +164,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     }
 
     if (item.kind === 'add') {
-      setAddDialog({ name: item.name, calories: '', protein: '0', carbs: '0', fat: '0' })
+      setAddDialog({ name: item.name })
       return
     }
 
@@ -188,32 +181,11 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     }
   }
 
-  async function handleAddSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!addDialog) return
-    setAddSaving(true)
+  function closeAddDialog() {
+    setAddDialog(null)
     setAddError(null)
-    try {
-      const created = await apiCreateFood({
-        name: addDialog.name,
-        calories: Number(addDialog.calories) || 0,
-        protein: Number(addDialog.protein) || 0,
-        carbs: Number(addDialog.carbs) || 0,
-        fat: Number(addDialog.fat) || 0,
-        fiber: 0,
-        servingSize: 100,
-        servingUnit: 'g',
-        measurements: [{ unit: 'g' }],
-      })
-      setInputValue(created.name)
-      onChange(created)
-      setAddDialog(null)
-    } catch (err) {
-      // User can retry
-      if (isUnauthorizedError(err)) setAddError(SIGN_IN_REQUIRED_MESSAGE)
-    } finally {
-      setAddSaving(false)
-    }
+    // The modal steals focus; hand it back to the search input.
+    containerRef.current?.querySelector<HTMLInputElement>('input')?.focus()
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
@@ -248,7 +220,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
 
   return (
     <>
-      <div className={`food-search${importing ? ' food-search--importing' : ''}`}>
+      <div ref={containerRef} className={`food-search${importing ? ' food-search--importing' : ''}`}>
         <AutoComplete
           ref={acRef}
           value={inputValue}
@@ -276,60 +248,15 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       </div>
 
       {addDialog && (
-        <Modal
-          visible
-          onHide={() => { setAddDialog(null); setAddError(null) }}
-          header="Add a new food"
-          style={{ width: '420px', maxWidth: '95vw' }}
-        >
-          <form onSubmit={handleAddSubmit} className="add-food-form">
-            <label className="form-field">
-              <span>Name</span>
-              <InputText
-                value={addDialog.name}
-                onChange={e => setAddDialog(d => d ? { ...d, name: e.target.value } : d)}
-                required
-                autoFocus
-              />
-            </label>
-            <label className="form-field">
-              <span>Calories</span>
-              <input
-                type="number"
-                min="0"
-                className="text-input"
-                value={addDialog.calories}
-                onChange={e => setAddDialog(d => d ? { ...d, calories: e.target.value } : d)}
-                required
-              />
-            </label>
-            <div className="form-row">
-              <label className="form-field">
-                <span>Protein (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.protein}
-                  onChange={e => setAddDialog(d => d ? { ...d, protein: e.target.value } : d)} />
-              </label>
-              <label className="form-field">
-                <span>Carbs (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.carbs}
-                  onChange={e => setAddDialog(d => d ? { ...d, carbs: e.target.value } : d)} />
-              </label>
-              <label className="form-field">
-                <span>Fat (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.fat}
-                  onChange={e => setAddDialog(d => d ? { ...d, fat: e.target.value } : d)} />
-              </label>
-            </div>
-            {addError && <p className="add-food-error" role="alert">{addError}</p>}
-            <p className="add-food-note">Nutrition is per 100 g serving. You can edit more details later.</p>
-            <div className="form-actions">
-              <button type="button" className="secondary-button" onClick={() => setAddDialog(null)}>Cancel</button>
-              <button type="submit" className="primary-button" disabled={addSaving}>
-                {addSaving ? 'Saving…' : 'Add food'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+        <QuickAddFoodModal
+          initialName={addDialog.name}
+          onHide={closeAddDialog}
+          onCreated={created => {
+            setInputValue(created.name)
+            onChange(created)
+            closeAddDialog()
+          }}
+        />
       )}
     </>
   )
