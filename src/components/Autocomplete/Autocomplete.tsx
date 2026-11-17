@@ -105,6 +105,8 @@ export default function Autocomplete<T>({
         onChange={handleChange}
         onSelect={handleSelect}
         onFocus={handleFocus}
+        onBlur={() => setQuery(null)}
+        onKeyUp={(e) => { if (e.key === 'Escape') setQuery(null) }}
         itemTemplate={itemTemplate}
         placeholder={placeholder}
         disabled={disabled}
@@ -127,6 +129,7 @@ export default function Autocomplete<T>({
             e.stopPropagation()
           }}
           onClick={() => {
+            setQuery(null)
             onChange('')
             focus() // triggers handleFocus which re-opens the panel
           }}

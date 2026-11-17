@@ -162,6 +162,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
+    setActiveQuery('')
 
     if (item.kind === 'local') {
       setInputValue(item.food.name)
@@ -220,7 +221,9 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       ? 'Searching…'
       : matchCount > 0
         ? resultsMessage(matchCount)
-        : 'No matches'
+        : suggestions.some(g => g.items.some(i => i.kind === 'add'))
+          ? 'No matches. Add as new food is available'
+          : 'No matches'
 
   function handleOnChange(e: AutoCompleteChangeEvent<SuggestionItem>) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,6 +249,8 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           completeMethod={handleComplete}
           onSelect={handleSelect}
           onFocus={handleFocus}
+          onBlur={() => setActiveQuery('')}
+          onKeyUp={e => { if (e.key === 'Escape') setActiveQuery('') }}
           onChange={handleOnChange}
           field="name"
           optionGroupLabel="label"

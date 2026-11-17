@@ -60,6 +60,8 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [noResults, setNoResults] = useState(false)
   const [searching, setSearching] = useState(false)
+  // Set when the list closes (Escape, blur, select) so the live region stops reporting it.
+  const [dismissed, setDismissed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useActiveDescendant(containerRef)
   const [importing, setImporting] = useState(false)
@@ -88,6 +90,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
     setNoResults(false)
+    setDismissed(false)
     if (!query) {
       latestQueryRef.current = ''
       setSuggestions([])
@@ -152,6 +155,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
+    setDismissed(true)
     if (item.kind === 'local') {
       setInputValue(item.product.name)
       onChange(item.product)
@@ -253,6 +257,8 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             completeMethod={handleComplete}
             onSelect={handleSelect}
             onFocus={handleFocus}
+            onBlur={() => setDismissed(true)}
+            onKeyUp={(e) => { if (e.key === 'Escape') setDismissed(true) }}
             onChange={(e) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const val = e.value as any
@@ -284,7 +290,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             message={
               noResults
                 ? 'No products found. Try scanning a barcode.'
-                : searching
+                : dismissed
+                  ? ''
+                  : searching
                   ? 'Searching…'
                   : resultCount > 0
                     ? resultsMessage(resultCount)

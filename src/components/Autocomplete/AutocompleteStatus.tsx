@@ -13,7 +13,7 @@ type AutocompleteStatusProps = {
   visible?: boolean
   /** Extra class for the owner's own styling, e.g. `pantry-search-empty`. */
   className?: string
-  /** Visible only: controls shown after the message, e.g. a "Scan a barcode" button. */
+  /** Visible only: controls shown after the message (outside the live region), e.g. a "Scan a barcode" button. */
   children?: ReactNode
 }
 
@@ -24,13 +24,17 @@ type AutocompleteStatusProps = {
  * to being shown with `visible`.
  */
 export default function AutocompleteStatus({ message, visible = false, className, children }: AutocompleteStatusProps) {
-  const classes = ['autocomplete-status', visible && message ? 'autocomplete-status--visible' : '', className ?? '']
+  const showing = visible && !!message
+  const classes = ['autocomplete-status', showing ? 'autocomplete-status--visible' : '', className ?? '']
     .filter(Boolean)
     .join(' ')
+  // Only the message is the live region, so controls beside it are not read out with it.
   return (
-    <div className={classes} role="status" aria-live="polite">
-      {message && (visible ? <span>{message}</span> : <span className="autocomplete-status-sr">{message}</span>)}
-      {visible && message && children ? <> {children}</> : null}
+    <div className={classes}>
+      <span role="status" aria-live="polite" className={showing ? undefined : 'autocomplete-status-sr'}>
+        {message}
+      </span>
+      {showing && children ? <> {children}</> : null}
     </div>
   )
 }

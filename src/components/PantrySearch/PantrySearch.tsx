@@ -42,6 +42,8 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [noResults, setNoResults] = useState(false)
   const [searching, setSearching] = useState(false)
+  // Set when the list closes (Escape, blur, select) so the live region stops reporting it.
+  const [dismissed, setDismissed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useActiveDescendant(containerRef)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -53,6 +55,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
     latestQueryRef.current = query
     setNoResults(false)
     setSearching(true)
+    setDismissed(false)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
@@ -74,6 +77,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
 
   function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as PantryItem
+    setDismissed(true)
     setInputValue(itemDisplayName(item))
     onSelect(item)
   }
@@ -119,6 +123,8 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
         completeMethod={handleComplete}
         onSelect={handleSelect}
         onFocus={handleFocus}
+        onBlur={() => setDismissed(true)}
+        onKeyUp={e => { if (e.key === 'Escape') setDismissed(true) }}
         onChange={handleChange}
         field="id"
         optionGroupLabel="label"
@@ -137,7 +143,9 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
         message={
           noResults
             ? 'Nothing in your pantry matches'
-            : searching
+            : dismissed
+              ? ''
+              : searching
               ? 'Searching…'
               : resultCount > 0
                 ? resultsMessage(resultCount)
