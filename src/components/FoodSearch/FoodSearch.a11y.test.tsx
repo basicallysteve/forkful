@@ -3,8 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import FoodSearch from './FoodSearch'
 import type { Food } from '@/types/Food'
 
+const mockUseSession = vi.fn()
 vi.mock('next-auth/react', () => ({
-  useSession: () => ({ data: { user: { name: 'u' } }, status: 'authenticated' }),
+  useSession: () => mockUseSession(),
 }))
 const mockFetchFoods = vi.fn()
 vi.mock('@/lib/api/foods', () => ({
@@ -26,6 +27,7 @@ function food(id: number, name: string): Food {
 describe('FoodSearch accessibility', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    mockUseSession.mockReturnValue({ data: { user: { name: 'u' } }, status: 'authenticated' })
     mockFetchFoods.mockResolvedValue([])
   })
   afterEach(() => { vi.useRealTimers(); vi.clearAllMocks() })
@@ -64,7 +66,39 @@ describe('FoodSearch accessibility', () => {
     const input = setup()
     fireEvent.change(input, { target: { value: 'zzqxj' } })
     await act(async () => { await vi.advanceTimersByTimeAsync(400) })
-    expect(screen.getByRole('status')).toHaveTextContent('No matches')
+    expect(screen.getByRole('status')).toHaveTextContent('No matches. Add as new food is available')
+  })
+
+  it('announces plain No matches when signed out, since there is no add row', async () => {
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' })
+    const input = setup()
+    fireEvent.change(input, { target: { value: 'zzqxj' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status').textContent).toBe('No matches')
+  })
+
+  it('goes quiet on Escape, on blur and after selecting, and speaks again on the next search', async () => {
+    const input = setup()
+    act(() => input.focus())
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status')).toHaveTextContent('2 results')
+
+    fireEvent.keyUp(input, { key: 'Escape' })
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    fireEvent.change(input, { target: { value: 'apple p' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status')).toHaveTextContent('result')
+
+    fireEvent.blur(input)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    fireEvent.mouseDown(screen.getAllByRole('option')[0])
+    fireEvent.click(screen.getAllByRole('option')[0])
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 
   it('keeps the live region out of the listbox', () => {

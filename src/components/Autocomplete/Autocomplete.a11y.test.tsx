@@ -87,4 +87,49 @@ describe('Autocomplete accessibility', () => {
     await user.tab()
     expect(clear).not.toHaveFocus()
   })
+
+  describe('status goes quiet once the list is closed', () => {
+    it('on Escape', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'ap')
+      expect(screen.getByRole('status')).toHaveTextContent('2 results')
+      await user.keyboard('{Escape}')
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
+    it('on blur', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'ap')
+      await user.tab()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
+    it('on selecting an option', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'ap')
+      await user.click(screen.getByRole('option', { name: /Apple/ }))
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
+    it('on clearing with the x', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'zzz')
+      expect(screen.getByRole('status')).toHaveTextContent('No matches')
+      await user.click(screen.getByRole('button', { name: 'Clear input' }))
+      expect(screen.getByRole('status')).not.toHaveTextContent('No matches')
+    })
+
+    it('and announces again when the user types again', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'ap')
+      await user.keyboard('{Escape}')
+      await user.type(screen.getByRole('combobox'), 'p')
+      expect(screen.getByRole('status')).toHaveTextContent(/result/)
+    })
+  })
 })

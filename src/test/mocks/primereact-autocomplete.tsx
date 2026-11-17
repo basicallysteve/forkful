@@ -19,6 +19,8 @@ interface AutoCompleteProps<T = unknown> {
   onChange?: (e: AutoCompleteChangeEvent) => void
   onSelect?: (e: AutoCompleteSelectEvent) => void
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   itemTemplate?: (suggestion: T, index: number) => React.ReactNode
   optionGroupLabel?: string
   optionGroupChildren?: string
@@ -61,6 +63,8 @@ export const AutoComplete = React.forwardRef<
     onChange,
     onSelect,
     onFocus,
+    onBlur,
+    onKeyUp,
     itemTemplate,
     optionGroupLabel,
     optionGroupChildren,
@@ -156,6 +160,8 @@ export const AutoComplete = React.forwardRef<
         readOnly={readOnly}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
+        onBlur={onBlur}
+        onKeyUp={onKeyUp}
         onKeyDown={handleKeyDown}
       />
       {isOpen && (

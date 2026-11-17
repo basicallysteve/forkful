@@ -54,4 +54,28 @@ describe('PantrySearch accessibility', () => {
     await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant'))
     expect(document.getElementById(input.getAttribute('aria-activedescendant')!)).toHaveTextContent('Flour')
   })
+
+  it('goes quiet on Escape and on blur, and speaks again on the next search', async () => {
+    vi.mocked(apiFetchPantryItems).mockResolvedValue([item(1, 'Flour'), item(2, 'Flax')])
+    const user = userEvent.setup()
+    render(<PantrySearch onSelect={vi.fn()} inputAriaLabel="Pantry item" />)
+    const input = screen.getByRole('combobox')
+    await user.type(input, 'fl')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('2 results'))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    await user.type(input, 'o')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('2 results'))
+    await user.tab()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('goes quiet after selecting an option', async () => {
+    vi.mocked(apiFetchPantryItems).mockResolvedValue([item(1, 'Flour'), item(2, 'Flax')])
+    const user = userEvent.setup()
+    render(<PantrySearch onSelect={vi.fn()} inputAriaLabel="Pantry item" />)
+    await user.type(screen.getByRole('combobox'), 'fl')
+    await user.click(await screen.findByRole('option', { name: /Flour/ }))
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
 })
