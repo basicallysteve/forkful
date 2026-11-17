@@ -96,8 +96,8 @@ describe('FoodSearch accessibility', () => {
 
     fireEvent.change(input, { target: { value: 'apple' } })
     await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    // the first press selects and closes the list, so there is nothing left to click
     fireEvent.mouseDown(screen.getAllByRole('option')[0])
-    fireEvent.click(screen.getAllByRole('option')[0])
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 
