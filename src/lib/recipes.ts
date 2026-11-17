@@ -280,36 +280,40 @@ function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
 
 export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
   const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
-  const [row] = await db.insert(recipes).values({
-    name: data.name,
-    shortId: nanoid(8),
-    slug: toSlug(data.name),
-    meal: data.meal,
-    description: data.description,
-    prepTime: data.prepTime ?? null,
-    cookTime: data.cookTime ?? null,
-    totalTime: data.totalTime ?? null,
-    cuisineType: data.cuisineType ?? null,
-    dietaryTags: data.dietaryTags ?? [],
-    serves: data.serves ?? null,
-    sourceUrl: data.sourceUrl ?? null,
-    sourceName: data.sourceName ?? null,
-    isPublic: data.isPublic ? 1 : 0,
-    nutritionComplete,
-    userId: data.userId ?? null,
-    dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
-    datePublished: data.date_published ? new Date(data.date_published) : null,
-  }).returning()
-  if (data.ingredients && data.ingredients.length > 0) {
-    await db.insert(ingredients).values(
-      data.ingredients.map((ing) => ({
-        recipeId: row.id,
-        foodId: ing.food.id,
-        quantity: String(ing.quantity),
-        servingUnit: ing.servingUnit,
-      }))
-    )
-  }
+  // One transaction: if the ingredient insert fails (e.g. unknown food id) the recipe row rolls back too.
+  const row = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(recipes).values({
+      name: data.name,
+      shortId: nanoid(8),
+      slug: toSlug(data.name),
+      meal: data.meal,
+      description: data.description,
+      prepTime: data.prepTime ?? null,
+      cookTime: data.cookTime ?? null,
+      totalTime: data.totalTime ?? null,
+      cuisineType: data.cuisineType ?? null,
+      dietaryTags: data.dietaryTags ?? [],
+      serves: data.serves ?? null,
+      sourceUrl: data.sourceUrl ?? null,
+      sourceName: data.sourceName ?? null,
+      isPublic: data.isPublic ? 1 : 0,
+      nutritionComplete,
+      userId: data.userId ?? null,
+      dateAdded: data.date_added ? new Date(data.date_added) : new Date(),
+      datePublished: data.date_published ? new Date(data.date_published) : null,
+    }).returning()
+    if (data.ingredients && data.ingredients.length > 0) {
+      await tx.insert(ingredients).values(
+        data.ingredients.map((ing) => ({
+          recipeId: created.id,
+          foodId: ing.food.id,
+          quantity: String(ing.quantity),
+          servingUnit: ing.servingUnit,
+        }))
+      )
+    }
+    return created
+  })
   return buildRecipe(row)
 }
 
@@ -330,32 +334,36 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
   if (data.serves !== undefined) updates.serves = data.serves ?? null
   if (data.isPublic !== undefined) updates.isPublic = data.isPublic ? 1 : 0
 
-  const [row] = await db.update(recipes).set(updates).where(eq(recipes.id, id)).returning()
-  if (!row) return null
+  // One transaction so a failed ingredient replace doesn't leave the recipe without its old ingredients.
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx.update(recipes).set(updates).where(eq(recipes.id, id)).returning()
+    if (!updated) return null
 
-  // Revoke saved bookmarks when recipe is made private
-  if (data.isPublic === false) {
-    await db.update(savedRecipes)
-      .set({ dateDeleted: new Date() })
-      .where(and(eq(savedRecipes.recipeId, id), isNull(savedRecipes.dateDeleted)))
-  }
-
-  if (data.ingredients !== undefined) {
-    const nutritionComplete = computeNutritionComplete(data.ingredients)
-    await db.update(recipes).set({ nutritionComplete }).where(eq(recipes.id, id))
-    await db.delete(ingredients).where(eq(ingredients.recipeId, id))
-    if (data.ingredients.length > 0) {
-      await db.insert(ingredients).values(
-        data.ingredients.map((ing) => ({
-          recipeId: id,
-          foodId: ing.food.id,
-          quantity: String(ing.quantity),
-          servingUnit: ing.servingUnit,
-        }))
-      )
+    // Revoke saved bookmarks when recipe is made private
+    if (data.isPublic === false) {
+      await tx.update(savedRecipes)
+        .set({ dateDeleted: new Date() })
+        .where(and(eq(savedRecipes.recipeId, id), isNull(savedRecipes.dateDeleted)))
     }
-  }
-  return buildRecipe(row)
+
+    if (data.ingredients !== undefined) {
+      const nutritionComplete = computeNutritionComplete(data.ingredients)
+      await tx.update(recipes).set({ nutritionComplete }).where(eq(recipes.id, id))
+      await tx.delete(ingredients).where(eq(ingredients.recipeId, id))
+      if (data.ingredients.length > 0) {
+        await tx.insert(ingredients).values(
+          data.ingredients.map((ing) => ({
+            recipeId: id,
+            foodId: ing.food.id,
+            quantity: String(ing.quantity),
+            servingUnit: ing.servingUnit,
+          }))
+        )
+      }
+    }
+    return updated
+  })
+  return row ? buildRecipe(row) : null
 }
 
 export async function deleteRecipe(id: number): Promise<boolean> {
