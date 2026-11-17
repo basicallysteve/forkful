@@ -4,6 +4,8 @@ import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
 import { useSession } from 'next-auth/react'
+import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
+import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
 import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
 import QuickAddFoodModal from '@/components/QuickAddFoodModal/QuickAddFoodModal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
@@ -68,6 +70,8 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [activeQuery, setActiveQuery] = useState('')
+  useActiveDescendant(containerRef)
   const { status } = useSession()
   // Read through a ref so the debounced callback sees the current auth state
   // Only hide once we know the user is signed out; while the session is still loading the
@@ -81,6 +85,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
 
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
+    setActiveQuery(query)
     if (!query) {
       setSuggestions([])
       return
@@ -201,20 +206,31 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   )
 
   const groupTemplate = (group: SuggestionGroup) => (
-    <div
-      className={`food-search-group-label${group.searching ? ' food-search-group-label--searching' : ''}`}
-      {...(group.searching ? { role: 'status' } : {})}
-    >
+    <div className={`food-search-group-label${group.searching ? ' food-search-group-label--searching' : ''}`}>
       {group.label}
     </div>
   )
+
+  // Announced by the shared live region; the add row is a way out, not a match.
+  const isSearching = suggestions.some(g => g.searching)
+  const matchCount = suggestions.reduce((n, g) => n + g.items.filter(i => i.kind !== 'add').length, 0)
+  const statusMessage = !activeQuery
+    ? ''
+    : isSearching
+      ? 'Searching…'
+      : matchCount > 0
+        ? resultsMessage(matchCount)
+        : 'No matches'
 
   function handleOnChange(e: AutoCompleteChangeEvent<SuggestionItem>) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const val = e.value as any
     if (typeof val === 'string') {
       setInputValue(val)
-      if (!val.trim()) setSuggestions([])
+      if (!val.trim()) {
+        setSuggestions([])
+        setActiveQuery('')
+      }
       onInputChange?.(val)
     }
   }
@@ -242,9 +258,9 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           delay={0}
           scrollHeight="260px"
           inputClassName="text-input"
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          pt={{ input: { 'aria-label': inputAriaLabel } as any }}
+          aria-label={inputAriaLabel}
         />
+        <AutocompleteStatus message={statusMessage} />
         {addError && !addDialog && <p className="add-food-error" role="alert"><SignInRequiredMessage /></p>}
       </div>
 

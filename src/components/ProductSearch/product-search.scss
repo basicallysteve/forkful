@@ -55,14 +55,8 @@
   margin: 8px 0;
 }
 
+// Base text and the shown (empty-state) margin come from AutocompleteStatus.
 .product-search-empty {
-  color: var(--vscode-muted, #5a6a80);
-  font-size: 0.875rem;
-
-  &:not(:empty) {
-    margin: 8px 0;
-  }
-
   &-action {
     background: none;
     border: 0;

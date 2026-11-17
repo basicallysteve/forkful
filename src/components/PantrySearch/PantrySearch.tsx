@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
+import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
+import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
 import { apiFetchPantryItems } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
 import './pantry-search.scss'
@@ -32,12 +34,16 @@ interface PantrySearchProps {
   sourceType?: 'food' | 'product' | 'recipe'
   excludeIds?: number[]
   placeholder?: string
+  inputAriaLabel?: string
 }
 
-export default function PantrySearch({ onSelect, placeholder }: PantrySearchProps) {
+export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = 'Search your pantry' }: PantrySearchProps) {
   const [inputValue, setInputValue] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [noResults, setNoResults] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useActiveDescendant(containerRef)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -46,6 +52,7 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
     const query = e.query.trim()
     latestQueryRef.current = query
     setNoResults(false)
+    setSearching(true)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
@@ -55,10 +62,12 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         if (latestQueryRef.current !== query) return
 
         setSuggestions(items.length > 0 ? [{ label: 'Your pantry', items }] : [])
+        setSearching(false)
         setNoResults(items.length === 0 && query !== '')
       } catch {
         if (latestQueryRef.current !== query) return
         setSuggestions([])
+        setSearching(false)
       }
     }, 300)
   }
@@ -78,6 +87,7 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         latestQueryRef.current = ''
         setSuggestions([])
         setNoResults(false)
+        setSearching(false)
       }
     }
   }
@@ -85,6 +95,8 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
     acRef.current?.search(e, inputValue)
   }
+
+  const resultCount = suggestions.reduce((n, g) => n + g.items.length, 0)
 
   const itemTemplate = (item: PantryItem) => (
     <div className="pantry-search-item">
@@ -98,7 +110,7 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
   )
 
   return (
-    <div className="pantry-search">
+    <div className="pantry-search" ref={containerRef}>
       <AutoComplete
         ref={acRef}
         value={inputValue}
@@ -117,10 +129,21 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         placeholder={placeholder ?? 'Search your pantry…'}
         delay={0}
         inputClassName="text-input"
+        aria-label={inputAriaLabel}
       />
-      <div className="pantry-search-empty" role="status" aria-live="polite">
-        {noResults && 'Nothing in your pantry matches'}
-      </div>
+      <AutocompleteStatus
+        className="pantry-search-empty"
+        visible={noResults}
+        message={
+          noResults
+            ? 'Nothing in your pantry matches'
+            : searching
+              ? 'Searching…'
+              : resultCount > 0
+                ? resultsMessage(resultCount)
+                : ''
+        }
+      />
     </div>
   )
 }

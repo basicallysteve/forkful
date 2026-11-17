@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteChangeEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
+import AutocompleteStatus, { resultsMessage } from './AutocompleteStatus'
+import { useActiveDescendant } from './useActiveDescendant'
 import './autocomplete.scss'
 
 type AutocompleteProps<T> = {
@@ -35,6 +37,9 @@ export default function Autocomplete<T>({
   const [suggestions, setSuggestions] = useState<T[]>([])
   const acRef = useRef<AutoComplete>(null)
   const selectionInProgressRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [query, setQuery] = useState<string | null>(null)
+  useActiveDescendant(containerRef)
 
   function filterOptions(query: string): T[] {
     const q = query.trim().toLowerCase()
@@ -44,6 +49,7 @@ export default function Autocomplete<T>({
   }
 
   function handleComplete(e: AutoCompleteCompleteEvent) {
+    setQuery(e.query)
     setSuggestions(filterOptions(e.query))
   }
 
@@ -57,6 +63,7 @@ export default function Autocomplete<T>({
     const option = e.value as T
     const label = getOptionLabel(option)
     selectionInProgressRef.current = true
+    setQuery(null)
     onChange(label)
     onSelect?.(option)
   }
@@ -80,12 +87,15 @@ export default function Autocomplete<T>({
     )
   }
 
+  const statusMessage =
+    query === null ? '' : suggestions.length > 0 ? resultsMessage(suggestions.length) : query.trim() ? 'No matches' : ''
+
   function focus() {
     (acRef.current?.getInput() as unknown as HTMLInputElement | null)?.focus?.()
   }
 
   return (
-    <div className="autocomplete">
+    <div className="autocomplete" ref={containerRef}>
       <AutoComplete
         ref={acRef}
         value={value}
@@ -101,14 +111,17 @@ export default function Autocomplete<T>({
         readOnly={readOnly}
         delay={0}
         inputClassName={`text-input ingredient-name-input ${inputClassName ?? ''}`.trim()}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pt={{ input: { 'aria-label': inputAriaLabel } as any }}
+        aria-label={inputAriaLabel}
       />
+      <AutocompleteStatus message={statusMessage} />
       {allowClear && !!value && !readOnly && !disabled && (
         <button
           type="button"
           className="autocomplete-clear"
           aria-label="Clear input"
+          // Pointer and screen-reader-cursor only. A keyboard user clears with select-all + Delete,
+          // and a Tab stop between the input and the next field is noise (#240).
+          tabIndex={-1}
           onMouseDown={(e) => {
             e.preventDefault()
             e.stopPropagation()

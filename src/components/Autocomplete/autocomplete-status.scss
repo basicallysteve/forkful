@@ -1,0 +1,21 @@
+.autocomplete-status {
+  color: var(--vscode-muted, #5a6a80);
+  font-size: 0.875rem;
+
+  &--visible {
+    margin: 8px 0;
+  }
+}
+
+// Announced by screen readers, not shown.
+.autocomplete-status-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
