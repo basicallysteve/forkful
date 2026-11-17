@@ -357,6 +357,8 @@
     flex-direction: column;
     gap: 14px;
     overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
   }
 
   .daily-log-error {
@@ -391,6 +393,7 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--vscode-text);
+    overflow-wrap: anywhere;
   }
 
   .log-food-fields {
@@ -404,6 +407,8 @@
       flex-direction: column;
       gap: 6px;
       flex: 1 1 0;
+      // Without this a long unit name sets the field's minimum width and pushes the row past the dialog (#264, #265).
+      min-width: min(100%, 8rem);
 
       &.log-field--slot {
         flex-basis: 100%;
@@ -429,6 +434,16 @@
 
       .p-dropdown {
         padding: 0;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      // A very long unit name wraps inside the select (and its options) instead of widening the row, so the full text stays readable.
+      .p-dropdown .p-dropdown-label,
+      .p-dropdown-item {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        min-width: 0;
       }
     }
   }
