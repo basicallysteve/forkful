@@ -74,4 +74,17 @@ describe('QuickAddFoodModal', () => {
     expect(onCreated).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Add food' })).toBeEnabled()
   })
+
+  it('offers a sign-in link on 401 that opens in a new tab so typed values are kept', async () => {
+    mockCreateFood.mockRejectedValue(new UnauthorizedError())
+    setup()
+    fireEvent.change(screen.getByLabelText('Calories'), { target: { value: '60' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add food' }))
+    const link = await screen.findByRole('link', { name: /sign in/i })
+    expect(link).toHaveAttribute('href', '/login?callbackUrl=%2F')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(screen.getByLabelText('Name')).toHaveValue('Dragon fruit')
+    expect(screen.getByLabelText('Calories')).toHaveValue(60)
+  })
 })
