@@ -29,6 +29,7 @@ interface AutoCompleteProps<T = unknown> {
   readOnly?: boolean
   delay?: number
   pt?: { input?: Record<string, unknown> }
+  'aria-label'?: string
 }
 
 /** Flatten grouped suggestions into a flat list of { group, item, globalIndex } entries. */
@@ -69,6 +70,7 @@ export const AutoComplete = React.forwardRef<
     disabled,
     readOnly,
     pt,
+    'aria-label': ariaLabel,
   },
   ref
 ) {
@@ -144,6 +146,8 @@ export const AutoComplete = React.forwardRef<
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-autocomplete="list"
+        aria-controls={isOpen ? `${inputId}_list` : undefined}
+        aria-label={ariaLabel}
         id={inputId}
         className={`p-autocomplete-input ${inputClassName ?? ''}`}
         value={value}
@@ -153,7 +157,6 @@ export const AutoComplete = React.forwardRef<
         onChange={handleInputChange}
         onFocus={handleInputFocus}
         onKeyDown={handleKeyDown}
-        {...(pt?.input ?? {})}
       />
       {isOpen && (
         <div className="p-autocomplete-panel p-component">
@@ -189,6 +192,7 @@ export const AutoComplete = React.forwardRef<
                               key={childIdx}
                               role="option"
                               aria-selected={globalIdx === highlightedIndex}
+                              data-p-highlight={globalIdx === highlightedIndex}
                               className={`p-autocomplete-item${globalIdx === highlightedIndex ? ' p-focus' : ''}`}
                               onMouseDown={(e) => {
                                 e.preventDefault()
@@ -210,6 +214,7 @@ export const AutoComplete = React.forwardRef<
                     key={globalIndex}
                     role="option"
                     aria-selected={globalIndex === highlightedIndex}
+                    data-p-highlight={globalIndex === highlightedIndex}
                     className={`p-autocomplete-item${globalIndex === highlightedIndex ? ' p-focus' : ''}`}
                     onMouseDown={(e) => {
                       e.preventDefault()
