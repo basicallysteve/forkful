@@ -141,6 +141,14 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
     else actionsRef.current?.scrollIntoView({ block: 'nearest' })
   }
 
+  // PrimeReact's dialog closes on a global document Esc listener, which also fires when a Dropdown consumed
+  // the key to close its list. While a list is open, stop the key here (a React handler runs before the
+  // document one) so the first Esc closes the list and the next closes the dialog. The Dropdown has only
+  // queued its close at this point, so its panel is still in the DOM exactly when this Esc is meant for it.
+  function keepDialogOpenWhileListOpen(e: React.KeyboardEvent<HTMLElement>) {
+    if (e.key === 'Escape' && e.currentTarget.querySelector('.p-dropdown-panel')) e.stopPropagation()
+  }
+
   function focusSearch() {
     if (canAutoFocus()) searchRef.current?.focus()
   }
@@ -228,7 +236,7 @@ export default function LogFoodDialog({ visible, mealSlot, mealSlots, seedFoods,
             ← Back to search
           </button>
           <p className="log-food-selected">{selectedFood.name}</p>
-          <div className="log-food-fields">
+          <div className="log-food-fields" onKeyDown={keepDialogOpenWhileListOpen}>
             <label className="log-field" ref={amountWrapRef}>
               <span>Amount</span>
               <QuantityInput value={amount} unit={unit} onChange={setAmount} />
