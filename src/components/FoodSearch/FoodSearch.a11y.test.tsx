@@ -75,6 +75,8 @@ describe('FoodSearch accessibility', () => {
 
   it('follows the highlighted option with aria-activedescendant', async () => {
     const input = setup()
+    // a real user focuses the field before typing; the id sync only runs while it has focus
+    act(() => input.focus())
     fireEvent.change(input, { target: { value: 'apple' } })
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     await act(async () => {})
