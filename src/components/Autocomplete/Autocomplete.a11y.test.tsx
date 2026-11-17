@@ -123,6 +123,18 @@ describe('Autocomplete accessibility', () => {
       expect(screen.getByRole('status')).not.toHaveTextContent('No matches')
     })
 
+    it('whenever the list is closed, even without a key-up or blur', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      const input = screen.getByRole('combobox')
+      await user.type(input, 'ap')
+      expect(screen.getByRole('status')).toHaveTextContent('2 results')
+      // key-down only: the panel closes but no Escape key-up reaches the input
+      fireEvent.keyDown(input, { key: 'Escape' })
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
     it('and announces again when the user types again', async () => {
       const user = userEvent.setup()
       render(<Harness />)

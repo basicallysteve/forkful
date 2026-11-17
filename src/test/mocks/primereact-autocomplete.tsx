@@ -1,4 +1,4 @@
-import React, { useState, useImperativeHandle, useRef } from 'react'
+import React, { useState, useImperativeHandle, useRef, useEffect } from 'react'
 
 interface AutoCompleteCompleteEvent {
   query: string
@@ -21,6 +21,8 @@ interface AutoCompleteProps<T = unknown> {
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
   onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onShow?: () => void
+  onHide?: () => void
   itemTemplate?: (suggestion: T, index: number) => React.ReactNode
   optionGroupLabel?: string
   optionGroupChildren?: string
@@ -65,6 +67,8 @@ export const AutoComplete = React.forwardRef<
     onFocus,
     onBlur,
     onKeyUp,
+    onShow,
+    onHide,
     itemTemplate,
     optionGroupLabel,
     optionGroupChildren,
@@ -81,6 +85,12 @@ export const AutoComplete = React.forwardRef<
   const [panelForcedClosed, setPanelForcedClosed] = useState(false)
   const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const wasOpen = useRef(false)
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) onShow?.()
+    if (!isOpen && wasOpen.current) onHide?.()
+    wasOpen.current = isOpen
+  })
   const spanRef = useRef<HTMLSpanElement>(null)
 
   const isGrouped = !!(optionGroupChildren && suggestions && suggestions.length > 0)
