@@ -6,6 +6,7 @@ import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteCh
 import { useSession } from 'next-auth/react'
 import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
 import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
 import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
 import QuickAddFoodModal from '@/components/QuickAddFoodModal/QuickAddFoodModal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
@@ -72,6 +73,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const containerRef = useRef<HTMLDivElement>(null)
   const [activeQuery, setActiveQuery] = useState('')
   useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
   const { status } = useSession()
   // Read through a ref so the debounced callback sees the current auth state
   // Only hide once we know the user is signed out; while the session is still loading the
@@ -163,6 +165,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
     setActiveQuery('')
+    list.markSelected()
 
     if (item.kind === 'local') {
       setInputValue(item.food.name)
@@ -196,6 +199,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
 
@@ -220,7 +224,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     : isSearching
       ? 'Searching…'
       : matchCount > 0
-        ? resultsMessage(matchCount)
+        ? (list.open ? resultsMessage(matchCount) : '')
         : suggestions.some(g => g.items.some(i => i.kind === 'add'))
           ? 'No matches. Add as new food is available'
           : 'No matches'
@@ -249,6 +253,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           completeMethod={handleComplete}
           onSelect={handleSelect}
           onFocus={handleFocus}
+          {...list.listProps}
           onBlur={() => setActiveQuery('')}
           onKeyUp={e => { if (e.key === 'Escape') setActiveQuery('') }}
           onChange={handleOnChange}

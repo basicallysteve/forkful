@@ -3,6 +3,7 @@ import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteChangeEvent, AutoCompleteSelectEvent } from 'primereact/autocomplete'
 import AutocompleteStatus, { resultsMessage } from './AutocompleteStatus'
 import { useActiveDescendant } from './useActiveDescendant'
+import { useAutocompleteList } from './useAutocompleteList'
 import './autocomplete.scss'
 
 type AutocompleteProps<T> = {
@@ -40,7 +41,7 @@ export default function Autocomplete<T>({
   const containerRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState<string | null>(null)
   // Results are only announced while the list is actually showing.
-  const [open, setOpen] = useState(false)
+  const { open, listProps } = useAutocompleteList()
   useActiveDescendant(containerRef)
 
   function filterOptions(query: string): T[] {
@@ -107,8 +108,7 @@ export default function Autocomplete<T>({
         onChange={handleChange}
         onSelect={handleSelect}
         onFocus={handleFocus}
-        onShow={() => setOpen(true)}
-        onHide={() => setOpen(false)}
+        {...listProps}
         onBlur={() => setQuery(null)}
         onKeyUp={(e) => { if (e.key === 'Escape') setQuery(null) }}
         itemTemplate={itemTemplate}

@@ -5,6 +5,7 @@ import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
 import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
 import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
 import { apiFetchPantryItems } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
 import './pantry-search.scss'
@@ -46,6 +47,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
   const [dismissed, setDismissed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -78,6 +80,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
   function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as PantryItem
     setDismissed(true)
+    list.markSelected()
     setInputValue(itemDisplayName(item))
     onSelect(item)
   }
@@ -97,6 +100,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
 
@@ -123,6 +127,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
         completeMethod={handleComplete}
         onSelect={handleSelect}
         onFocus={handleFocus}
+        {...list.listProps}
         onBlur={() => setDismissed(true)}
         onKeyUp={e => { if (e.key === 'Escape') setDismissed(true) }}
         onChange={handleChange}
@@ -147,7 +152,7 @@ export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = '
               ? ''
               : searching
               ? 'Searching…'
-              : resultCount > 0
+              : resultCount > 0 && list.open
                 ? resultsMessage(resultCount)
                 : ''
         }

@@ -12,6 +12,7 @@ import type { USDABrandedItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
 import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
 import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
 import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
 import BarcodeCreationModal from '@/components/BarcodeCreationModal/BarcodeCreationModal'
 import LinkFoodModal from '@/components/BarcodeCreationModal/LinkFoodModal'
@@ -64,6 +65,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [dismissed, setDismissed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
   const [importing, setImporting] = useState(false)
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
@@ -156,6 +158,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
     setDismissed(true)
+    list.markSelected()
     if (item.kind === 'local') {
       setInputValue(item.product.name)
       onChange(item.product)
@@ -202,6 +205,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   }, [onChange])
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
 
@@ -257,6 +261,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             completeMethod={handleComplete}
             onSelect={handleSelect}
             onFocus={handleFocus}
+            {...list.listProps}
             onBlur={() => setDismissed(true)}
             onKeyUp={(e) => { if (e.key === 'Escape') setDismissed(true) }}
             onChange={(e) => {
@@ -294,7 +299,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
                   ? ''
                   : searching
                   ? 'Searching…'
-                  : resultCount > 0
+                  : resultCount > 0 && list.open
                     ? resultsMessage(resultCount)
                     : ''
             }
