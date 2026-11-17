@@ -117,4 +117,17 @@ describe('ProductSearch no-results message', () => {
     await user.clear(input)
     expect(screen.getByRole('status')).not.toHaveTextContent(MESSAGE)
   })
+
+  it('moves focus into the barcode panel after the scan button is activated by keyboard', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ProductSearch value="" onChange={vi.fn()} />)
+    await user.type(screen.getByRole('combobox'), 'zzzz')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(MESSAGE))
+    await user.tab()
+    expect(screen.getByRole('button', { name: /scan a barcode/i })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByTestId('scanner')).toBeInTheDocument()
+    expect(document.activeElement).not.toBe(document.body)
+    expect(container.contains(document.activeElement)).toBe(true)
+  })
 })
