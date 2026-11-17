@@ -61,7 +61,7 @@ describe('QuickAddFoodModal', () => {
 
   it('closes with Escape', () => {
     const { onHide } = setup()
-    fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape', code: 'Escape' })
     expect(onHide).toHaveBeenCalled()
   })
 
