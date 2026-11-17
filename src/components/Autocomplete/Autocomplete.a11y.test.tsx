@@ -135,6 +135,14 @@ describe('Autocomplete accessibility', () => {
       expect(screen.getByRole('status')).toBeEmptyDOMElement()
     })
 
+    it('after a select even though the input is refocused and searched again', async () => {
+      const user = userEvent.setup()
+      render(<Harness />)
+      await user.type(screen.getByRole('combobox'), 'ap')
+      await user.click(screen.getByRole('option', { name: /Apple/ }))
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+
     it('and announces again when the user types again', async () => {
       const user = userEvent.setup()
       render(<Harness />)

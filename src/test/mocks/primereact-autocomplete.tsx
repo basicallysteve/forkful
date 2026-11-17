@@ -86,6 +86,7 @@ export const AutoComplete = React.forwardRef<
   const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const wasOpen = useRef(false)
+  const justSelected = useRef(false)
   useEffect(() => {
     if (isOpen && !wasOpen.current) onShow?.()
     if (!isOpen && wasOpen.current) onHide?.()
@@ -100,7 +101,8 @@ export const AutoComplete = React.forwardRef<
 
   useImperativeHandle(ref, () => ({
     search(_event: unknown, query: string) {
-      setPanelForcedClosed(false)
+      // Like PrimeReact, the post-select refocus search does not reopen the list.
+      if (!justSelected.current) setPanelForcedClosed(false)
       completeMethod?.({ query })
     },
     getElement() {
@@ -118,10 +120,14 @@ export const AutoComplete = React.forwardRef<
   }
 
   function handleSelectOption(option: unknown) {
+    justSelected.current = true
     setPanelForcedClosed(true)
     setHighlightedIndex(-1)
     onSelect?.({ value: option })
     onChange?.({ value: option })
+    // Real PrimeReact refocuses the input after a select, which fires onFocus.
+    onFocus?.({ target: spanRef.current?.querySelector('input') } as unknown as React.FocusEvent<HTMLInputElement>)
+    setTimeout(() => { justSelected.current = false }, 0)
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {

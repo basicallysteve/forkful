@@ -120,4 +120,16 @@ describe('FoodSearch accessibility', () => {
     expect(el).toHaveAttribute('role', 'option')
     expect(el).toHaveTextContent('Apple')
   })
+
+  it('does not search again when PrimeReact refocuses the input after a select', async () => {
+    const input = setup()
+    act(() => input.focus())
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    const calls = mockFetchFoods.mock.calls.length
+    fireEvent.mouseDown(screen.getAllByRole('option')[0])
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(mockFetchFoods.mock.calls.length).toBe(calls)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
 })

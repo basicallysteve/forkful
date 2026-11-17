@@ -94,4 +94,16 @@ describe('ProductSearch accessibility', () => {
     expect(screen.getByRole('status')).not.toHaveTextContent('Scan a barcode')
     expect(screen.getByRole('button', { name: 'Scan a barcode' })).toBeInTheDocument()
   })
+
+  it('does not search again when PrimeReact refocuses the input after a select', async () => {
+    vi.mocked(apiFetchProducts).mockResolvedValue([product(1, 'Abc Oats')] as never)
+    const user = userEvent.setup()
+    render(<ProductSearch value="" onChange={vi.fn()} inputAriaLabel="Product" />)
+    await user.type(screen.getByRole('combobox'), 'abc')
+    await user.click(await screen.findByRole('option', { name: /Abc Oats/ }))
+    const calls = vi.mocked(apiFetchProducts).mock.calls.length
+    await new Promise((r) => setTimeout(r, 450))
+    expect(vi.mocked(apiFetchProducts).mock.calls.length).toBe(calls)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
 })

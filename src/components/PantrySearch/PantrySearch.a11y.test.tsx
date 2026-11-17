@@ -78,4 +78,16 @@ describe('PantrySearch accessibility', () => {
     await user.click(await screen.findByRole('option', { name: /Flour/ }))
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
+
+  it('does not search again when PrimeReact refocuses the input after a select', async () => {
+    vi.mocked(apiFetchPantryItems).mockResolvedValue([item(1, 'Flour'), item(2, 'Flax')])
+    const user = userEvent.setup()
+    render(<PantrySearch onSelect={vi.fn()} inputAriaLabel="Pantry item" />)
+    await user.type(screen.getByRole('combobox'), 'fl')
+    await user.click(await screen.findByRole('option', { name: /Flour/ }))
+    const calls = vi.mocked(apiFetchPantryItems).mock.calls.length
+    await new Promise((r) => setTimeout(r, 450))
+    expect(vi.mocked(apiFetchPantryItems).mock.calls.length).toBe(calls)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
 })
