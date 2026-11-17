@@ -1,0 +1,120 @@
+// Quick-add Food modal (shared). Form idiom: stacked label above a full-width control.
+.quick-add-food-modal {
+  width: 420px;
+  max-width: 95vw;
+}
+
+.add-food-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+
+    > span {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--vscode-muted);
+    }
+
+    input.text-input {
+      width: 100%;
+      box-sizing: border-box;
+      height: var(--control-height);
+      min-width: 0;
+      border-color: var(--vscode-muted); // >= 3:1 non-text contrast against the modal body
+      background: var(--surface-a);
+      color: var(--vscode-text);
+    }
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .add-food-note {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--vscode-muted);
+  }
+
+  .add-food-error {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--vscode-danger-text);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+    button {
+      height: var(--control-height);
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid var(--vscode-muted);
+      border-radius: var(--border-radius);
+
+      &:focus-visible {
+        outline: 2px solid var(--vscode-text);
+        outline-offset: 2px;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    }
+
+    .secondary-button {
+      background: transparent;
+      color: var(--vscode-text);
+
+      &:hover:not(:disabled) {
+        background: var(--accent-hover-strong);
+        border-color: var(--vscode-text);
+      }
+    }
+
+    // Toggle tokens are the app's AA-checked text-on-accent pair in both themes.
+    .primary-button {
+      background: var(--toggle-active-bg);
+      border-color: var(--toggle-active-bg);
+      color: var(--toggle-active-text);
+
+      &:hover:not(:disabled) {
+        filter: brightness(1.1);
+        border-color: var(--vscode-text);
+      }
+    }
+  }
+}
+
+// Short viewports (phone landscape): put Name and Calories side by side and tighten spacing so the
+// action buttons stay in view without scrolling the dialog.
+@media (max-height: 500px) {
+  .quick-add-food-modal .p-dialog-content {
+    padding: 12px 18px;
+  }
+
+  .add-food-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+
+    > .form-row,
+    > .add-food-note,
+    > .add-food-error,
+    > .form-actions {
+      grid-column: 1 / -1;
+    }
+  }
+}

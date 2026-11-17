@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import FoodSearch from './FoodSearch'
 import type { Food } from '@/types/Food'
 
@@ -152,5 +152,22 @@ describe('FoodSearch add-new row', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(onChange).not.toHaveBeenCalled()
     expect(screen.getByText('Add a new food')).toBeInTheDocument()
+  })
+})
+
+describe('FoodSearch quick-add modal focus', () => {
+  beforeEach(() => {
+    mockUseSession.mockReturnValue({ data: { user: { name: 'u' } }, status: 'authenticated' })
+    mockFetchFoods.mockResolvedValue([])
+    mockSearchOff.mockResolvedValue([])
+  })
+  afterEach(() => { vi.clearAllMocks() })
+
+  it('returns focus to the search input when the modal is cancelled', async () => {
+    const { input } = setup()
+    type(input, 'zzqxj')
+    fireEvent.click(screen.getByRole('option', { name: /Add "zzqxj"/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(input).toHaveFocus())
   })
 })
