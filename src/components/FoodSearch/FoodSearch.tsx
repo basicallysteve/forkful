@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
 import { useSession } from 'next-auth/react'
+import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
 import QuickAddFoodModal from '@/components/QuickAddFoodModal/QuickAddFoodModal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
 import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
@@ -244,7 +245,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pt={{ input: { 'aria-label': inputAriaLabel } as any }}
         />
-        {addError && !addDialog && <p className="add-food-error" role="alert">{addError}</p>}
+        {addError && !addDialog && <p className="add-food-error" role="alert"><SignInRequiredMessage /></p>}
       </div>
 
       {addDialog && (

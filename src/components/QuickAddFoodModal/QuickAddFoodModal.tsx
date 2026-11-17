@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react'
 import Modal from '@/components/Modal/Modal'
 import { apiCreateFood } from '@/lib/api/foods'
-import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
+import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
+import { isUnauthorizedError } from '@/lib/api/errors'
 import type { Food } from '@/types/Food'
 import './quick-add-food-modal.scss'
 
@@ -19,7 +20,7 @@ export interface QuickAddFoodModalProps {
 export default function QuickAddFoodModal({ initialName, onCreated, onHide }: QuickAddFoodModalProps) {
   const [form, setForm] = useState({ name: initialName, calories: '', protein: '0', carbs: '0', fat: '0' })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [needsSignIn, setNeedsSignIn] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -28,7 +29,7 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    setError(null)
+    setNeedsSignIn(false)
     try {
       const created = await apiCreateFood({
         name: form.name,
@@ -44,7 +45,7 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
       onCreated(created)
     } catch (err) {
       // User can retry
-      if (isUnauthorizedError(err)) setError(SIGN_IN_REQUIRED_MESSAGE)
+      if (isUnauthorizedError(err)) setNeedsSignIn(true)
     } finally {
       setSaving(false)
     }
@@ -81,7 +82,7 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
             <input type="number" min="0" step="0.1" className="text-input" value={form.fat} onChange={set('fat')} />
           </label>
         </div>
-        {error && <p className="add-food-error" role="alert">{error}</p>}
+        {needsSignIn && <p className="add-food-error" role="alert"><SignInRequiredMessage /></p>}
         <p className="add-food-note">Nutrition is per 100 g serving. You can edit more details later.</p>
         <div className="form-actions">
           <button type="button" className="secondary-button" onClick={onHide}>Cancel</button>
