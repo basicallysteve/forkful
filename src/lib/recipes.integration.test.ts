@@ -55,6 +55,20 @@ describe('recipes data layer (integration)', () => {
     await pool.end()
   })
 
+  it('createRecipe with a nonexistent food id fails and leaves no recipe row (atomic)', async () => {
+    const missingFood = { ...testFood, id: 2147483000 }
+    await expect(createRecipe({
+      name: 'Test Atomic Ghost',
+      meal: 'Dinner',
+      description: 'must not persist',
+      ingredients: [{ food: missingFood, quantity: 1, calories: 1, servingUnit: 'g' }],
+      date_published: null,
+      isPublic: false,
+    })).rejects.toBeDefined()
+    const { rows } = await pool.query(`SELECT id FROM "recipes" WHERE name = 'Test Atomic Ghost'`)
+    expect(rows).toHaveLength(0)
+  })
+
   it('creates and retrieves a recipe', async () => {
     const created = await createRecipe({
       name: 'Test Pasta',
