@@ -318,3 +318,70 @@ describe('LogFoodDialog picking "No slot"', () => {
     expect(apiCreateFoodLogEntry.mock.calls[0][0].mealSlot).toBeNull()
   })
 })
+
+// #269: Esc closes an open dropdown panel first; the next Esc closes the dialog. These use the real
+// PrimeReact Dropdown, since a mocked one would hide how it handles keys.
+describe('LogFoodDialog Escape with a dropdown panel open', () => {
+  beforeEach(() => {
+    apiCreateFoodLogEntry.mockReset()
+  })
+
+  const cases = [
+    { name: 'unit', index: 0 },
+    { name: 'meal slot', index: 1 },
+  ]
+
+  async function openConfirmStep(onHide: () => void) {
+    openWith([bread], { onHide })
+    fireEvent.click(await screen.findByText('Bread'))
+    await screen.findByLabelText('Amount')
+  }
+
+  function dropdownAt(index: number) {
+    return document.body.querySelectorAll('.p-dropdown')[index] as HTMLElement
+  }
+
+  function pressEscape(index: number) {
+    const input = dropdownAt(index).querySelector('input') as HTMLElement
+    input.focus()
+    fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' })
+  }
+
+  for (const { name, index } of cases) {
+    it(`closes only the ${name} panel on the first Esc, then the dialog on the second`, async () => {
+      const onHide = vi.fn()
+      await openConfirmStep(onHide)
+      fireEvent.click(dropdownAt(index))
+      await waitFor(() => expect(document.querySelector('.p-dropdown-panel')).not.toBeNull())
+
+      pressEscape(index)
+      await waitFor(() => expect(document.querySelector('.p-dropdown-panel')).toBeNull())
+      expect(onHide).not.toHaveBeenCalled()
+      expect(screen.getByLabelText('Amount')).toBeInTheDocument()
+
+      pressEscape(index)
+      await waitFor(() => expect(onHide).toHaveBeenCalledTimes(1))
+      expect(apiCreateFoodLogEntry).not.toHaveBeenCalled()
+    })
+
+    it(`closes the dialog on two back-to-back Esc presses with the ${name} panel open, without waiting for the fade-out`, async () => {
+      const onHide = vi.fn()
+      await openConfirmStep(onHide)
+      fireEvent.click(dropdownAt(index))
+      await waitFor(() => expect(document.querySelector('.p-dropdown-panel')).not.toBeNull())
+
+      pressEscape(index)
+      pressEscape(index)
+      await waitFor(() => expect(onHide).toHaveBeenCalledTimes(1))
+      expect(apiCreateFoodLogEntry).not.toHaveBeenCalled()
+    })
+
+    it(`closes the dialog on Esc when the ${name} panel is closed`, async () => {
+      const onHide = vi.fn()
+      await openConfirmStep(onHide)
+      pressEscape(index)
+      await waitFor(() => expect(onHide).toHaveBeenCalledTimes(1))
+      expect(apiCreateFoodLogEntry).not.toHaveBeenCalled()
+    })
+  }
+})
