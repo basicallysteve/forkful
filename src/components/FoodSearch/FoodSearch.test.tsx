@@ -66,7 +66,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     expect(addRow('zzqxj')).toHaveLength(1)
-    expect(screen.getByText('Searching…')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Searching…')
   })
 
   it('keeps the add row as the last option', () => {
@@ -80,7 +80,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     await flushDebounce()
-    expect(screen.queryByText('Searching…')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).not.toHaveTextContent('Searching…')
     expect(screen.getByRole('option', { name: /Zzqxj Bar/ })).toBeInTheDocument()
     expect(addRow('zzqxj')).toHaveLength(1)
     expectAddRowLast('zzqxj')
@@ -101,7 +101,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     await flushDebounce()
-    expect(screen.queryByText('Searching…')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).not.toHaveTextContent('Searching…')
     expect(addRow('zzqxj')).toHaveLength(1)
   })
 

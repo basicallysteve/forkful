@@ -1,4 +1,4 @@
-import React, { useState, useImperativeHandle, useRef } from 'react'
+import React, { useState, useImperativeHandle, useRef, useEffect } from 'react'
 
 interface AutoCompleteCompleteEvent {
   query: string
@@ -19,6 +19,10 @@ interface AutoCompleteProps<T = unknown> {
   onChange?: (e: AutoCompleteChangeEvent) => void
   onSelect?: (e: AutoCompleteSelectEvent) => void
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
+  onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  onShow?: () => void
+  onHide?: () => void
   itemTemplate?: (suggestion: T, index: number) => React.ReactNode
   optionGroupLabel?: string
   optionGroupChildren?: string
@@ -29,6 +33,7 @@ interface AutoCompleteProps<T = unknown> {
   readOnly?: boolean
   delay?: number
   pt?: { input?: Record<string, unknown> }
+  'aria-label'?: string
 }
 
 /** Flatten grouped suggestions into a flat list of { group, item, globalIndex } entries. */
@@ -60,6 +65,10 @@ export const AutoComplete = React.forwardRef<
     onChange,
     onSelect,
     onFocus,
+    onBlur,
+    onKeyUp,
+    onShow,
+    onHide,
     itemTemplate,
     optionGroupLabel,
     optionGroupChildren,
@@ -69,12 +78,20 @@ export const AutoComplete = React.forwardRef<
     disabled,
     readOnly,
     pt,
+    'aria-label': ariaLabel,
   },
   ref
 ) {
   const [panelForcedClosed, setPanelForcedClosed] = useState(false)
   const isOpen = !!(suggestions && suggestions.length > 0) && !panelForcedClosed
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const wasOpen = useRef(false)
+  const justSelected = useRef(false)
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) onShow?.()
+    if (!isOpen && wasOpen.current) onHide?.()
+    wasOpen.current = isOpen
+  })
   const spanRef = useRef<HTMLSpanElement>(null)
 
   const isGrouped = !!(optionGroupChildren && suggestions && suggestions.length > 0)
@@ -84,7 +101,8 @@ export const AutoComplete = React.forwardRef<
 
   useImperativeHandle(ref, () => ({
     search(_event: unknown, query: string) {
-      setPanelForcedClosed(false)
+      // Like PrimeReact, the post-select refocus search does not reopen the list.
+      if (!justSelected.current) setPanelForcedClosed(false)
       completeMethod?.({ query })
     },
     getElement() {
@@ -102,10 +120,14 @@ export const AutoComplete = React.forwardRef<
   }
 
   function handleSelectOption(option: unknown) {
+    justSelected.current = true
     setPanelForcedClosed(true)
     setHighlightedIndex(-1)
     onSelect?.({ value: option })
     onChange?.({ value: option })
+    // Real PrimeReact refocuses the input after a select, which fires onFocus.
+    onFocus?.({ target: spanRef.current?.querySelector('input') } as unknown as React.FocusEvent<HTMLInputElement>)
+    setTimeout(() => { justSelected.current = false }, 0)
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -144,6 +166,8 @@ export const AutoComplete = React.forwardRef<
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-autocomplete="list"
+        aria-controls={isOpen ? `${inputId}_list` : undefined}
+        aria-label={ariaLabel}
         id={inputId}
         className={`p-autocomplete-input ${inputClassName ?? ''}`}
         value={value}
@@ -152,8 +176,9 @@ export const AutoComplete = React.forwardRef<
         readOnly={readOnly}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
+        onBlur={onBlur}
+        onKeyUp={onKeyUp}
         onKeyDown={handleKeyDown}
-        {...(pt?.input ?? {})}
       />
       {isOpen && (
         <div className="p-autocomplete-panel p-component">
@@ -189,6 +214,7 @@ export const AutoComplete = React.forwardRef<
                               key={childIdx}
                               role="option"
                               aria-selected={globalIdx === highlightedIndex}
+                              data-p-highlight={globalIdx === highlightedIndex}
                               className={`p-autocomplete-item${globalIdx === highlightedIndex ? ' p-focus' : ''}`}
                               onMouseDown={(e) => {
                                 e.preventDefault()
@@ -210,6 +236,7 @@ export const AutoComplete = React.forwardRef<
                     key={globalIndex}
                     role="option"
                     aria-selected={globalIndex === highlightedIndex}
+                    data-p-highlight={globalIndex === highlightedIndex}
                     className={`p-autocomplete-item${globalIndex === highlightedIndex ? ' p-focus' : ''}`}
                     onMouseDown={(e) => {
                       e.preventDefault()
