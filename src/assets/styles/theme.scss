@@ -16,6 +16,7 @@
   --vscode-accent-deep:  #059669;
   --vscode-text:         #0f172a;
   --vscode-muted:        #5a6a80; // >= 4.5:1 on panel-strong (#f1f5f9), where modal labels sit
+  --vscode-danger-text:  #b91c1c; // error text; >= 4.5:1 on panel-strong (--vscode-danger is only ~3:1)
 
   --accent-hover:        rgba(16, 185, 129, 0.07);
   --accent-hover-strong: rgba(16, 185, 129, 0.12);
@@ -73,6 +74,7 @@
   --vscode-accent-deep:  #10b981;
   --vscode-text:         #ecfdf5;
   --vscode-muted:        #5ab88d;
+  --vscode-danger-text:  #fca5a5; // error text; >= 4.5:1 on panel-strong
 
   --accent-hover:        rgba(52, 211, 153, 0.12);
   --accent-hover-strong: rgba(52, 211, 153, 0.20);
