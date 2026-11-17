@@ -66,7 +66,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     expect(addRow('zzqxj')).toHaveLength(1)
-    expect(screen.getByRole('option', { name: /Searching/ })).toBeInTheDocument()
+    expect(screen.getByText('Searching…')).toBeInTheDocument()
   })
 
   it('keeps the add row as the last option', () => {
@@ -80,7 +80,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     await flushDebounce()
-    expect(screen.queryByRole('option', { name: /Searching/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Searching…')).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Zzqxj Bar/ })).toBeInTheDocument()
     expect(addRow('zzqxj')).toHaveLength(1)
     expectAddRowLast('zzqxj')
@@ -101,7 +101,7 @@ describe('FoodSearch add-new row', () => {
     const { input } = setup()
     type(input, 'zzqxj')
     await flushDebounce()
-    expect(screen.queryByRole('option', { name: /Searching/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Searching…')).not.toBeInTheDocument()
     expect(addRow('zzqxj')).toHaveLength(1)
   })
 
@@ -137,11 +137,20 @@ describe('FoodSearch add-new row', () => {
     expect(addRow('zzqxj')).toHaveLength(0)
   })
 
-  it('does nothing when the Searching row is chosen', () => {
+  it('is not an option: the first ArrowDown during Searching highlights the add row', () => {
+    const { input } = setup()
+    type(input, 'zzqxj')
+    expect(screen.queryByRole('option', { name: /Searching/ })).not.toBeInTheDocument()
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    expect(screen.getByRole('option', { name: /Add "zzqxj"/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('opens the add dialog with Enter after one ArrowDown during Searching', () => {
     const { input, onChange } = setup()
     type(input, 'zzqxj')
-    fireEvent.click(screen.getByRole('option', { name: /Searching/ }))
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'Enter' })
     expect(onChange).not.toHaveBeenCalled()
-    expect(screen.queryByText('Add a new food')).not.toBeInTheDocument()
+    expect(screen.getByText('Add a new food')).toBeInTheDocument()
   })
 })
