@@ -56,6 +56,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [inputValue, setInputValue] = useState(value)
   const [activeTab, setActiveTab] = useState<Tab>('search')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
+  const [noResults, setNoResults] = useState(false)
   const [importing, setImporting] = useState(false)
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
@@ -72,7 +73,9 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
 
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
+    setNoResults(false)
     if (!query) {
+      latestQueryRef.current = ''
       setSuggestions([])
       return
     }
@@ -120,8 +123,11 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
         }
 
         setSuggestions(groups)
+        setNoResults(groups.length === 0)
       } catch {
+        if (latestQueryRef.current !== query) return
         setSuggestions([])
+        setNoResults(true)
       }
     }, 400)
   }
@@ -208,6 +214,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
           if (!next) return
           setActiveTab(next)
           setBarcodeError(null)
+          setNoResults(false)
         }}
         options={tabOptions}
         optionLabel="label"
@@ -247,6 +254,23 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             pt={{ input: { 'aria-label': inputAriaLabel } as any }}
           />
+          <div className="product-search-empty" role="status" aria-live="polite">
+            {noResults && (
+              <>
+                <span>No products found. Try scanning a barcode.</span>{' '}
+                <button
+                  type="button"
+                  className="product-search-empty-action"
+                  onClick={() => {
+                    setActiveTab('barcode')
+                    setNoResults(false)
+                  }}
+                >
+                  Scan a barcode
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

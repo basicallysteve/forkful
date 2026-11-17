@@ -37,6 +37,7 @@ interface PantrySearchProps {
 export default function PantrySearch({ onSelect, placeholder }: PantrySearchProps) {
   const [inputValue, setInputValue] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
+  const [noResults, setNoResults] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -44,6 +45,7 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
     latestQueryRef.current = query
+    setNoResults(false)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
@@ -53,7 +55,9 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         if (latestQueryRef.current !== query) return
 
         setSuggestions(items.length > 0 ? [{ label: 'Your pantry', items }] : [])
+        setNoResults(items.length === 0 && query !== '')
       } catch {
+        if (latestQueryRef.current !== query) return
         setSuggestions([])
       }
     }, 300)
@@ -110,6 +114,9 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         delay={0}
         inputClassName="text-input"
       />
+      <div className="pantry-search-empty" role="status" aria-live="polite">
+        {noResults && 'Nothing in your pantry matches'}
+      </div>
     </div>
   )
 }

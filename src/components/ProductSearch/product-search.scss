@@ -54,3 +54,22 @@
   font-size: 0.875rem;
   margin: 8px 0;
 }
+
+.product-search-empty {
+  color: var(--text-muted, #888);
+  font-size: 0.875rem;
+
+  &:not(:empty) {
+    margin: 8px 0;
+  }
+
+  &-action {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--primary, #2563eb);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
