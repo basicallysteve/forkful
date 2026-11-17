@@ -77,8 +77,10 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const acRef = useRef<AutoComplete>(null)
   const { status } = useSession()
   // Read through a ref so the debounced callback sees the current auth state
-  const canAddRef = useRef(false)
-  canAddRef.current = status === 'authenticated'
+  // Only hide once we know the user is signed out; while the session is still loading the
+  // add row shows, so it isn't missing on a fast first keystroke.
+  const canAddRef = useRef(true)
+  canAddRef.current = status !== 'unauthenticated'
 
   useEffect(() => {
     setInputValue(value)
