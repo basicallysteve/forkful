@@ -2,7 +2,7 @@
 
 An entity relationship diagram of the EatForkful database: entity names, keys and relationships, not every column. The source of truth for the actual tables is `src/db/schema.ts`.
 
-The diagram is Steve's (2026-11-17) and may describe the **intended** model, not only today's tables. It currently differs from the schema in several places; those differences are listed in the pull request that added this file (#279) and are waiting on Steve's decision, so the diagram has not been changed to match the schema.
+The diagram is Steve's (2026-11-17) and may describe the **intended** model, not only today's tables. It currently differs from the schema in several places; those differences are listed in the pull request that added this file (#282) and are waiting on Steve's decision, so the diagram has not been changed to match the schema.
 
 A PR that changes `src/db/schema.ts` must update this file or say why not.
 
