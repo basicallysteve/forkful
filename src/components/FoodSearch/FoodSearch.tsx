@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
+import { useSession } from 'next-auth/react'
 import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
@@ -21,10 +22,12 @@ type SuggestionItem =
   | { kind: 'local'; food: Food }
   | { kind: 'off'; product: OFFProduct }
   | { kind: 'add'; name: string }
+  | { kind: 'searching' }
 
 function itemName(s: SuggestionItem): string {
   if (s.kind === 'local') return s.food.name
   if (s.kind === 'off') return s.product.product_name
+  if (s.kind === 'searching') return 'Searching…'
   return `Add "${s.name}" as a new food`
 }
 
@@ -36,7 +39,12 @@ function itemMacros(s: SuggestionItem): string {
     const f = mapOFFProductToFood(s.product)
     return `${f.calories} cal · P ${f.protein}g · C ${f.carbs}g · F ${f.fat}g`
   }
+  if (s.kind === 'searching') return ''
   return 'Fill in macros manually'
+}
+
+function addGroup(query: string): SuggestionGroup {
+  return { label: 'Not found?', items: [{ kind: 'add', name: query }] }
 }
 
 type AddFoodForm = {
@@ -67,6 +75,10 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const { status } = useSession()
+  // Read through a ref so the debounced callback sees the current auth state
+  const canAddRef = useRef(false)
+  canAddRef.current = status === 'authenticated'
 
   useEffect(() => {
     setInputValue(value)
@@ -94,10 +106,15 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
         return an.localeCompare(bn)
       })
       .slice(0, 6)
-    setSuggestions(localMatches.length > 0
-      ? [{ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) }]
-      : []
-    )
+    // Show the panel immediately: local matches, a "Searching…" row while the
+    // online search runs, and the add row (always last, so it stays put).
+    const immediate: SuggestionGroup[] = []
+    if (localMatches.length > 0) {
+      immediate.push({ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) })
+    }
+    immediate.push({ label: 'Online results', items: [{ kind: 'searching' as const }] })
+    if (canAddRef.current) immediate.push(addGroup(query))
+    setSuggestions(immediate)
 
     latestQueryRef.current = query
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -136,18 +153,27 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           groups.push({ label: 'Online results', items: onlineItems })
         }
 
-        // Always offer manual add as a last resort
-        groups.push({ label: 'Not found?', items: [{ kind: 'add' as const, name: query }] })
+        // Offer manual add as a last resort (signed-in users only)
+        if (canAddRef.current) groups.push(addGroup(query))
 
         setSuggestions(groups)
       } catch {
-        // Keep showing local results on error
+        if (latestQueryRef.current !== query) return
+        // Drop "Searching…" but keep local matches and the add row
+        const groups: SuggestionGroup[] = []
+        if (localMatches.length > 0) {
+          groups.push({ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) })
+        }
+        if (canAddRef.current) groups.push(addGroup(query))
+        setSuggestions(groups)
       }
     }, 400)
   }
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
+
+    if (item.kind === 'searching') return
 
     if (item.kind === 'local') {
       setInputValue(item.food.name)
