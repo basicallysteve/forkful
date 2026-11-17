@@ -74,7 +74,11 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
     const val = e.value as any
     if (typeof val === 'string') {
       setInputValue(val)
-      if (!val.trim()) setSuggestions([])
+      if (!val.trim()) {
+        latestQueryRef.current = ''
+        setSuggestions([])
+        setNoResults(false)
+      }
     }
   }
 
