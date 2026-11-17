@@ -364,6 +364,18 @@ describe('LogFoodDialog Escape with a dropdown panel open', () => {
       expect(apiCreateFoodLogEntry).not.toHaveBeenCalled()
     })
 
+    it(`closes the dialog on two back-to-back Esc presses with the ${name} panel open, without waiting for the fade-out`, async () => {
+      const onHide = vi.fn()
+      await openConfirmStep(onHide)
+      fireEvent.click(dropdownAt(index))
+      await waitFor(() => expect(document.querySelector('.p-dropdown-panel')).not.toBeNull())
+
+      pressEscape(index)
+      pressEscape(index)
+      await waitFor(() => expect(onHide).toHaveBeenCalledTimes(1))
+      expect(apiCreateFoodLogEntry).not.toHaveBeenCalled()
+    })
+
     it(`closes the dialog on Esc when the ${name} panel is closed`, async () => {
       const onHide = vi.fn()
       await openConfirmStep(onHide)
