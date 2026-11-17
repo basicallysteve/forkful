@@ -95,3 +95,13 @@
   font-size: 0.8rem;
   color: var(--vscode-danger);
 }
+
+.food-search-group-label--searching {
+  font-style: italic;
+  // The PrimeReact group header bar is slate (#374151) in both themes, so the muted
+  // token reads ~2.9:1 on it; this light grey is ~8.6:1.
+  color: #e5e7eb;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8rem;
+}

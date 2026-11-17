@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
+import { useSession } from 'next-auth/react'
 import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
@@ -14,6 +15,8 @@ import './food-search.scss'
 
 type SuggestionGroup = {
   label: string
+  /** Item-less group shown while the online search runs */
+  searching?: boolean
   items: SuggestionItem[]
 }
 
@@ -37,6 +40,10 @@ function itemMacros(s: SuggestionItem): string {
     return `${f.calories} cal · P ${f.protein}g · C ${f.carbs}g · F ${f.fat}g`
   }
   return 'Fill in macros manually'
+}
+
+function addGroup(query: string): SuggestionGroup {
+  return { label: 'Not found?', items: [{ kind: 'add', name: query }] }
 }
 
 type AddFoodForm = {
@@ -67,6 +74,12 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const { status } = useSession()
+  // Read through a ref so the debounced callback sees the current auth state
+  // Only hide once we know the user is signed out; while the session is still loading the
+  // add row shows, so it isn't missing on a fast first keystroke.
+  const canAddRef = useRef(true)
+  canAddRef.current = status !== 'unauthenticated'
 
   useEffect(() => {
     setInputValue(value)
@@ -94,55 +107,57 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
         return an.localeCompare(bn)
       })
       .slice(0, 6)
-    setSuggestions(localMatches.length > 0
-      ? [{ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) }]
-      : []
-    )
+    // Show the panel immediately: local matches, a "Searching…" row while the
+    // online search runs, and the add row (always last, so it stays put).
+    const immediate: SuggestionGroup[] = []
+    if (localMatches.length > 0) {
+      immediate.push({ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) })
+    }
+    // An item-less group renders as a non-focusable status line, not an option
+    immediate.push({ label: 'Searching…', items: [], searching: true })
+    if (canAddRef.current) immediate.push(addGroup(query))
+    setSuggestions(immediate)
 
     latestQueryRef.current = query
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       if (latestQueryRef.current !== query) return
 
-      try {
-        const [localResult, offResult] = await Promise.allSettled([
-          apiFetchFoods({ search: query }),
-          apiSearchOpenFoodFacts(query),
-        ])
+      const [localResult, offResult] = await Promise.allSettled([
+        apiFetchFoods({ search: query }),
+        apiSearchOpenFoodFacts(query),
+      ])
 
-        if (latestQueryRef.current !== query) return
+      if (latestQueryRef.current !== query) return
 
-        const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
-        const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
+      const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
+      const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
 
-        const localIds = new Set(localFoods.map(f => f.id))
-        const mergedLocal = [
-          ...localMatches,
-          ...serverLocal.filter(f => !localIds.has(f.id) && !localMatches.some(m => m.id === f.id)).slice(0, 3),
-        ]
+      const localIds = new Set(localFoods.map(f => f.id))
+      const mergedLocal = [
+        ...localMatches,
+        ...serverLocal.filter(f => !localIds.has(f.id) && !localMatches.some(m => m.id === f.id)).slice(0, 3),
+      ]
 
-        const localNames = new Set(mergedLocal.map(f => f.name.toLowerCase()))
-        const filteredOFF = offProducts
-          .filter((p: OFFProduct) => p.product_name && !localNames.has(p.product_name.toLowerCase()))
-          .slice(0, 4)
+      const localNames = new Set(mergedLocal.map(f => f.name.toLowerCase()))
+      const filteredOFF = offProducts
+        .filter((p: OFFProduct) => p.product_name && !localNames.has(p.product_name.toLowerCase()))
+        .slice(0, 4)
 
-        const onlineItems: SuggestionItem[] = filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p }))
+      const onlineItems: SuggestionItem[] = filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p }))
 
-        const groups: SuggestionGroup[] = []
-        if (mergedLocal.length > 0) {
-          groups.push({ label: 'In your library', items: mergedLocal.map(f => ({ kind: 'local' as const, food: f })) })
-        }
-        if (onlineItems.length > 0) {
-          groups.push({ label: 'Online results', items: onlineItems })
-        }
-
-        // Always offer manual add as a last resort
-        groups.push({ label: 'Not found?', items: [{ kind: 'add' as const, name: query }] })
-
-        setSuggestions(groups)
-      } catch {
-        // Keep showing local results on error
+      const groups: SuggestionGroup[] = []
+      if (mergedLocal.length > 0) {
+        groups.push({ label: 'In your library', items: mergedLocal.map(f => ({ kind: 'local' as const, food: f })) })
       }
+      if (onlineItems.length > 0) {
+        groups.push({ label: 'Online results', items: onlineItems })
+      }
+
+      // Offer manual add as a last resort (signed-in users only)
+      if (canAddRef.current) groups.push(addGroup(query))
+
+      setSuggestions(groups)
     }, 400)
   }
 
@@ -213,7 +228,12 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   )
 
   const groupTemplate = (group: SuggestionGroup) => (
-    <div className="food-search-group-label">{group.label}</div>
+    <div
+      className={`food-search-group-label${group.searching ? ' food-search-group-label--searching' : ''}`}
+      {...(group.searching ? { role: 'status' } : {})}
+    >
+      {group.label}
+    </div>
   )
 
   function handleOnChange(e: AutoCompleteChangeEvent<SuggestionItem>) {
@@ -247,6 +267,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           placeholder={importing ? 'Importing…' : placeholder}
           disabled={importing}
           delay={0}
+          scrollHeight="260px"
           inputClassName="text-input"
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pt={{ input: { 'aria-label': inputAriaLabel } as any }}
