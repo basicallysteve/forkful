@@ -66,6 +66,15 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const barcodePanelRef = useRef<HTMLDivElement>(null)
+  const focusBarcodePanelRef = useRef(false)
+
+  useEffect(() => {
+    if (activeTab === 'barcode' && focusBarcodePanelRef.current) {
+      focusBarcodePanelRef.current = false
+      barcodePanelRef.current?.focus()
+    }
+  }, [activeTab])
 
   useEffect(() => {
     setInputValue(value)
@@ -266,6 +275,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
                   type="button"
                   className="product-search-empty-action"
                   onClick={() => {
+                    focusBarcodePanelRef.current = true
                     setActiveTab('barcode')
                     setNoResults(false)
                   }}
@@ -279,7 +289,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
       )}
 
       {activeTab === 'barcode' && (
-        <div className="product-search-panel">
+        <div className="product-search-panel" ref={barcodePanelRef} tabIndex={-1}>
           {barcodeError && <p className="product-search-error">{barcodeError}</p>}
           <BarcodeScanner
             onDetected={handleBarcodeDetected}

@@ -56,7 +56,7 @@
 }
 
 .product-search-empty {
-  color: var(--text-muted, #888);
+  color: var(--vscode-muted, #5a6a80);
   font-size: 0.875rem;
 
   &:not(:empty) {
@@ -67,7 +67,7 @@
     background: none;
     border: 0;
     padding: 0;
-    color: var(--vscode-accent, #2563eb);
+    color: var(--vscode-text, #0f172a);
     font: inherit;
     text-decoration: underline;
     cursor: pointer;
