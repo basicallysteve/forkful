@@ -53,4 +53,14 @@ describe('PantrySearch no-results message', () => {
     await waitFor(() => expect(apiFetchPantryItems).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByRole('status')).not.toHaveTextContent(MESSAGE))
   })
+
+  it('hides the message when the input is emptied', async () => {
+    const user = userEvent.setup()
+    render(<PantrySearch onSelect={vi.fn()} />)
+    const input = screen.getByRole('combobox')
+    await user.type(input, 'zz')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(MESSAGE))
+    await user.clear(input)
+    expect(screen.getByRole('status')).not.toHaveTextContent(MESSAGE)
+  })
 })

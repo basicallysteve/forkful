@@ -107,4 +107,14 @@ describe('ProductSearch no-results message', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(MESSAGE))
     expect(screen.queryByText(/add .* as a new/i)).not.toBeInTheDocument()
   })
+
+  it('hides the message when the input is emptied', async () => {
+    const user = userEvent.setup()
+    render(<ProductSearch value="" onChange={vi.fn()} />)
+    const input = screen.getByRole('combobox')
+    await user.type(input, 'zz')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(MESSAGE))
+    await user.clear(input)
+    expect(screen.getByRole('status')).not.toHaveTextContent(MESSAGE)
+  })
 })
