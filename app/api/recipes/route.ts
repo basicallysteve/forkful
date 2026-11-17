@@ -27,6 +27,19 @@ export async function POST(request: Request) {
     userId: session ? session.userId : null,
     isPublic: body.isPublic ?? false,
   }
-  const recipe = await taskRunner.run(() => createRecipe(recipeData))
-  return NextResponse.json(recipe, { status: 201 })
+  try {
+    const recipe = await taskRunner.run(() => createRecipe(recipeData))
+    return NextResponse.json(recipe, { status: 201 })
+  } catch (err) {
+    if (isForeignKeyViolation(err)) {
+      return NextResponse.json({ error: 'One or more ingredients reference a food that does not exist.' }, { status: 400 })
+    }
+    throw err
+  }
+}
+
+// Postgres SQLSTATE 23503 = foreign_key_violation. drizzle may wrap the driver error as `cause`.
+function isForeignKeyViolation(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } } | null
+  return e?.code === '23503' || e?.cause?.code === '23503'
 }
