@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
@@ -236,6 +236,23 @@ export default function Profile({ user }: ProfileProps) {
   // work for mouse, pen and finger, unlike HTML5 drag-and-drop.
   const [draggingSlot, setDraggingSlot] = useState<number | null>(null)
   const mealSlotsRef = useRef(mealSlots)
+  const pendingFocusRef = useRef<string | null>(null)
+
+  // When the focused arrow becomes disabled at the first/last row, hand focus to
+  // the row's other arrow so keyboard users aren't dropped back to the page.
+  useLayoutEffect(() => {
+    const target = pendingFocusRef.current
+    if (!target) return
+    pendingFocusRef.current = null
+    document.querySelector<HTMLButtonElement>(`[data-slot-btn="${target}"]`)?.focus()
+  }, [mealSlots])
+
+  function moveSlotByButton(id: number, index: number, dir: 'up' | 'down') {
+    const to = dir === 'up' ? index - 1 : index + 1
+    const atEdge = dir === 'up' ? to === 0 : to === mealSlots.length - 1
+    pendingFocusRef.current = `${id}-${atEdge ? (dir === 'up' ? 'down' : 'up') : dir}`
+    moveSlot(id, to)
+  }
   mealSlotsRef.current = mealSlots
 
   // Listen on the document while dragging: reordering re-parents the row in the
@@ -613,7 +630,7 @@ export default function Profile({ user }: ProfileProps) {
                       className="meal-slot-handle"
                       role="img"
                       aria-label={`Drag to reorder ${slot.name}`}
-                      onPointerDown={() => setDraggingSlot(slot.id)}
+                      onPointerDown={e => { e.preventDefault(); setDraggingSlot(slot.id) }}
                     >
                       <i className="pi pi-bars" aria-hidden="true" />
                     </span>
@@ -623,7 +640,8 @@ export default function Profile({ user }: ProfileProps) {
                       className="icon-button"
                       aria-label={`Move ${slot.name} up`}
                       disabled={index === 0}
-                      onClick={() => moveSlot(slot.id, index - 1)}
+                      data-slot-btn={`${slot.id}-up`}
+                      onClick={() => moveSlotByButton(slot.id, index, 'up')}
                     >
                       <i className="pi pi-arrow-up" aria-hidden="true" />
                     </button>
@@ -632,7 +650,8 @@ export default function Profile({ user }: ProfileProps) {
                       className="icon-button"
                       aria-label={`Move ${slot.name} down`}
                       disabled={index === mealSlots.length - 1}
-                      onClick={() => moveSlot(slot.id, index + 1)}
+                      data-slot-btn={`${slot.id}-down`}
+                      onClick={() => moveSlotByButton(slot.id, index, 'down')}
                     >
                       <i className="pi pi-arrow-down" aria-hidden="true" />
                     </button>
