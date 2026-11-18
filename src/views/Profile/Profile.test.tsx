@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Profile from './Profile'
 import type { User } from '@/types/User'
@@ -361,6 +361,45 @@ describe('Profile', () => {
         await user.click(screen.getByRole('button', { name: 'Move Lunch up' }))
         expect(screen.getByText('Lunch').closest('li')).toBe(lunchRow)
         expect(names()[0]).toBe('Lunch')
+      })
+
+      it('reorders when the handle is dragged over another row, and stops after pointerup', () => {
+        render(<Profile user={mockUser} />)
+        const handle = screen.getByLabelText('Drag to reorder Breakfast')
+        const rowFor = (n: string) => screen.getByText(n).closest('li') as HTMLElement
+        const spy = vi.fn((_x: number, _y: number) => rowFor('Dinner') as Element | null)
+        document.elementFromPoint = spy
+        fireEvent.pointerDown(handle, { pointerId: 1 })
+        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 5 })
+        expect(names()).toEqual(['Lunch', 'Dinner', 'Breakfast', 'Snack'])
+        fireEvent.pointerUp(document, { pointerId: 1 })
+        spy.mockReturnValue(rowFor('Snack'))
+        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 9 })
+        expect(names()).toEqual(['Lunch', 'Dinner', 'Breakfast', 'Snack'])
+      })
+
+      it('stops dragging on pointercancel', () => {
+        render(<Profile user={mockUser} />)
+        const handle = screen.getByLabelText('Drag to reorder Breakfast')
+        document.elementFromPoint = vi.fn(() => screen.getByText('Lunch').closest('li'))
+        fireEvent.pointerDown(handle, { pointerId: 1 })
+        fireEvent.pointerCancel(document, { pointerId: 1 })
+        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 5 })
+        expect(names()).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+
+      it('prevents the default on handle pointerdown so a mouse drag does not select text', () => {
+        render(<Profile user={mockUser} />)
+        const notPrevented = fireEvent.pointerDown(screen.getByLabelText('Drag to reorder Lunch'), { pointerId: 1 })
+        expect(notPrevented).toBe(false)
+      })
+
+      it('moves focus to the other arrow when the focused arrow becomes disabled', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        await user.click(screen.getByRole('button', { name: 'Move Lunch up' }))
+        expect(screen.getByRole('button', { name: 'Move Lunch up' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Move Lunch down' })).toHaveFocus()
       })
 
       it('saves the reordered slots', async () => {
