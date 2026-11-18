@@ -93,11 +93,13 @@ bun link:product-foods:prod  # Deliberately link in production (.env.production)
 
 ## Deploys and database migrations
 
-Vercel runs `bun run vercel-build`, which is `drizzle-kit migrate && next build`. Migrations run before the app is built, and a failed migration fails the build. In production a failed build keeps the previous deployment live, so new code never ships against a database that is missing its columns.
+Vercel runs `bun run vercel-build`: `drizzle-kit migrate` runs only when `VERCEL_ENV=production`, then `next build`. Preview deployments skip the migration (see [ADR-0031](docs/adr/0031-no-preview-database-migrate-on-production-only.md)).
+
+- **A failed production migration fails the build.** The previous production deployment stays live, so new code never ships against a database that is missing its columns.
+- **Previews don't migrate.** A preview of a branch that needs a new column or table won't have it until the migration has been applied to production (merge, let the production build migrate, then re-check the preview). Until then, features that use the new schema may fail on the preview.
+- **Previews use whatever database their env vars point to.** There is no separate preview database, so don't do destructive testing on a preview: treat it as working against real data.
 
 On Vercel the migrate step reads the platform's env vars (`DATABASE_URL`, then `POSTGRES_URL`, then `DATABASE_POSTGRES_URL`), the same variables and order the app uses at runtime (see `src/db/resolveDrizzleEnv.ts` and `src/db/index.ts`). Nothing reads an env file there.
-
-Which database preview deployments use (a separate preview database, or deliberately shared with production) is an open decision, tracked in #273.
 
 ## Project structure
 
