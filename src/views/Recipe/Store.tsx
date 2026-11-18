@@ -200,7 +200,6 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
           disabled={blank}
           onChange={setIngredientQuantity}
           max={MAX_QUANTITY}
-          showInvalidHint
         />
         </label>
       <label className="form-field">

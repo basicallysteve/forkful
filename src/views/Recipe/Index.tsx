@@ -788,7 +788,6 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                           onChange={(q) => handleIngredientChange(i, 'quantity', q)}
                           ariaLabel={`Ingredient ${i + 1} quantity`}
                           max={MAX_QUANTITY}
-                          showInvalidHint
                         />
                       </label>
                       <label className="ingredient-field ingredient-field-unit">

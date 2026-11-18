@@ -17,13 +17,26 @@ interface QuantityInputProps {
   id?: string
   // Largest accepted amount; no cap when omitted. Over it is invalid while typing and clamps on blur.
   max?: number
-  // Show a short visible message under the box when the amount is zero or over the max.
-  showInvalidHint?: boolean
+  // The messages shown under the box when the amount is invalid. Each defaults to the text below;
+  // a page can override any of them.
+  messages?: Partial<QuantityMessages>
 }
+
+export interface QuantityMessages {
+  // Shown when the amount is zero.
+  belowMin: string
+  // Shown when the amount is over `max` (only reachable when a max is given).
+  aboveMax: string
+}
+
+const defaultMessages = (max: number | undefined): QuantityMessages => ({
+  belowMin: 'Must be above 0',
+  aboveMax: `Maximum is ${max}`,
+})
 
 // Free-text amount field that accepts fractions ("1 1/2", "½") and decimals. Reports the parsed number
 // on every keystroke and tidies the text (e.g. "1.5" -> "1½" for count units) on blur.
-export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id, max, showInvalidHint }: QuantityInputProps) {
+export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id, max, messages }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
   const raw = parseQuantity(text)
   const overCap = raw !== null && max !== undefined && raw > max
@@ -46,7 +59,8 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
   const min = stepQuantity(null, 1, unit)
 
-  const hint = !showInvalidHint || text.trim() === '' ? null : overCap ? `Maximum is ${max}` : parsed !== null && parsed <= 0 ? 'Must be above 0' : null
+  const msgs = { ...defaultMessages(max), ...messages }
+  const hint = text.trim() === '' ? null : overCap ? msgs.aboveMax : parsed !== null && parsed <= 0 ? msgs.belowMin : null
 
   return (
     <>
