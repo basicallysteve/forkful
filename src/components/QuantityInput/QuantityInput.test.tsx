@@ -337,4 +337,30 @@ describe('QuantityInput', () => {
       expect(screen.queryByText('Must be above 0')).not.toBeInTheDocument()
     })
   })
+
+  describe('review round 2 (#247)', () => {
+    it('links the visible hint to the input with aria-describedby and keeps role=status', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      const input = screen.getByLabelText('Amount')
+      expect(input).not.toHaveAttribute('aria-describedby')
+      fireEvent.change(input, { target: { value: '999999999' } })
+      const hint = screen.getByRole('status')
+      expect(hint).toHaveTextContent('Maximum is 9999')
+      expect(hint.id).not.toBe('')
+      expect(input).toHaveAttribute('aria-describedby', hint.id)
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(input).not.toHaveAttribute('aria-describedby')
+    })
+
+    it('gives two boxes on one screen different hint ids', () => {
+      render(
+        <>
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="A" showInvalidHint />
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="B" showInvalidHint />
+        </>,
+      )
+      const [a, b] = screen.getAllByRole('status')
+      expect(a.id).not.toBe(b.id)
+    })
+  })
 })
