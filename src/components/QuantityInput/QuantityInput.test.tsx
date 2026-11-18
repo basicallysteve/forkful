@@ -406,4 +406,39 @@ describe('QuantityInput', () => {
       expect(a.id).not.toBe(b.id)
     })
   })
+
+  describe('allowZero (#247 round 2)', () => {
+    it('treats 0 as valid when allowZero is set: no hint, not aria-invalid, no red class', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} allowZero />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+      expect(input).not.toHaveClass('p-invalid')
+    })
+
+    it('still reports 0 to the parent when allowZero is set', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} allowZero />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      expect(onChange).toHaveBeenLastCalledWith(0)
+    })
+
+    it('still flags a negative or unparseable amount as invalid when allowZero is set', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} allowZero />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '-1' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.change(input, { target: { value: 'abc' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('still flags 0 by default', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+    })
+  })
 })
