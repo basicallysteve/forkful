@@ -8,7 +8,6 @@ import { InputText } from 'primereact/inputtext'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
-import { OrderList } from 'primereact/orderlist'
 import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
@@ -221,9 +220,29 @@ export default function Profile({ user }: ProfileProps) {
     setMealSlotsSuccess(false)
   }
 
-  function reorderSlots(value: { id: number; name: string }[]) {
-    setMealSlots(value)
+  function moveSlot(id: number, to: number) {
+    setMealSlots(prev => {
+      const from = prev.findIndex(s => s.id === id)
+      if (from === -1 || to < 0 || to >= prev.length || to === from) return prev
+      const next = [...prev]
+      const [item] = next.splice(from, 1)
+      next.splice(to, 0, item)
+      return next
+    })
     setMealSlotsSuccess(false)
+  }
+
+  // Touch-friendly drag: pointer events on the handle (touch-action: none in CSS)
+  // work for mouse, pen and finger, unlike HTML5 drag-and-drop.
+  const [draggingSlot, setDraggingSlot] = useState<number | null>(null)
+
+  function dragSlotOver(e: React.PointerEvent, id: number) {
+    if (draggingSlot !== id) return
+    const el = document.elementFromPoint?.(e.clientX, e.clientY)
+    const overId = el?.closest<HTMLElement>('[data-slot-id]')?.dataset.slotId
+    if (overId === undefined || Number(overId) === id) return
+    const to = mealSlots.findIndex(s => s.id === Number(overId))
+    if (to !== -1) moveSlot(id, to)
   }
 
   function addSlot() {
@@ -548,7 +567,7 @@ export default function Profile({ user }: ProfileProps) {
           </div>
           <div className="panel-content">
             <small className="field-hint">
-              The buckets your daily food log groups into. Add a slot, remove one, or drag to reorder —
+              The buckets your daily food log groups into. Add a slot, remove one, or reorder with the handle or arrows —
               whether you eat one meal a day or five, shape the slots how you want.
             </small>
             <div className="meal-slot-add">
@@ -568,29 +587,57 @@ export default function Profile({ user }: ProfileProps) {
             {mealSlots.length === 0 ? (
               <p className="meal-slot-empty">No meal slots yet — add one above.</p>
             ) : (
-              <OrderList
-                className="meal-slot-orderlist"
-                dataKey="id"
-                value={mealSlots}
-                onChange={e => reorderSlots(e.value)}
-                dragdrop
-                itemTemplate={(slot: { id: number; name: string }) => {
-                  return (
-                    <div className="meal-slot-row">
-                      <span className="meal-slot-name">{slot.name}</span>
-                      <button
-                        type="button"
-                        className="icon-button icon-button--danger"
-                        aria-label={`Remove ${slot.name}`}
-                        onClick={() => removeSlot(slot.id)}
-                        onMouseDown={e => e.stopPropagation()}
-                      >
-                        <i className="pi pi-trash" aria-hidden="true" />
-                      </button>
-                    </div>
-                  )
-                }}
-              />
+              <ul className="meal-slot-list" aria-label="Meal slots">
+                {mealSlots.map((slot, index) => (
+                  <li
+                    key={slot.id}
+                    data-slot-id={slot.id}
+                    className={`meal-slot-row${draggingSlot === slot.id ? ' is-dragging' : ''}`}
+                  >
+                    <span
+                      className="meal-slot-handle"
+                      role="img"
+                      aria-label={`Drag to reorder ${slot.name}`}
+                      onPointerDown={e => {
+                        e.currentTarget.setPointerCapture?.(e.pointerId)
+                        setDraggingSlot(slot.id)
+                      }}
+                      onPointerMove={e => dragSlotOver(e, slot.id)}
+                      onPointerUp={() => setDraggingSlot(null)}
+                      onPointerCancel={() => setDraggingSlot(null)}
+                    >
+                      <i className="pi pi-bars" aria-hidden="true" />
+                    </span>
+                    <span className="meal-slot-name">{slot.name}</span>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${slot.name} up`}
+                      disabled={index === 0}
+                      onClick={() => moveSlot(slot.id, index - 1)}
+                    >
+                      <i className="pi pi-arrow-up" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${slot.name} down`}
+                      disabled={index === mealSlots.length - 1}
+                      onClick={() => moveSlot(slot.id, index + 1)}
+                    >
+                      <i className="pi pi-arrow-down" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button icon-button--danger"
+                      aria-label={`Remove ${slot.name}`}
+                      onClick={() => removeSlot(slot.id)}
+                    >
+                      <i className="pi pi-trash" aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
             <div className="panel-footer">
               {mealSlotsSuccess && <span className="success-text">Saved!</span>}
