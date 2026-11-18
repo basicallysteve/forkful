@@ -367,7 +367,7 @@ describe('Profile', () => {
         render(<Profile user={mockUser} />)
         const handle = screen.getByLabelText('Drag to reorder Breakfast')
         const rowFor = (n: string) => screen.getByText(n).closest('li') as HTMLElement
-        const spy = vi.fn((_x: number, _y: number) => rowFor('Dinner') as Element | null)
+        const spy = vi.fn(() => rowFor('Dinner') as Element | null)
         document.elementFromPoint = spy
         fireEvent.pointerDown(handle, { pointerId: 1 })
         fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 5 })
