@@ -324,7 +324,7 @@ describe('QuantityInput', () => {
       expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
       fireEvent.change(input, { target: { value: '0' } })
       expect(input).toHaveClass('p-invalid')
-      expect(screen.getByText('Enter an amount above 0')).toBeVisible()
+      expect(screen.getByText('Must be above 0')).toBeVisible()
       fireEvent.change(input, { target: { value: '999999999' } })
       expect(screen.getByText('Maximum is 9999')).toBeVisible()
       fireEvent.change(input, { target: { value: '5' } })
@@ -334,7 +334,7 @@ describe('QuantityInput', () => {
     it('shows no hint unless asked (Pantry and Log keep their look)', () => {
       render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
       fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
-      expect(screen.queryByText('Enter an amount above 0')).not.toBeInTheDocument()
+      expect(screen.queryByText('Must be above 0')).not.toBeInTheDocument()
     })
   })
 })
