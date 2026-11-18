@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import QuantityInput from './QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
 
 describe('QuantityInput', () => {
   it('reports the parsed number for fraction input', () => {
@@ -228,7 +229,7 @@ describe('QuantityInput', () => {
 
     it('treats a value over 9999 as invalid while typing (reports null, never the huge number)', () => {
       const onChange = vi.fn()
-      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
       const input = screen.getByLabelText('Amount')
       fireEvent.change(input, { target: { value: '999999999' } })
       expect(onChange).toHaveBeenLastCalledWith(null)
@@ -237,7 +238,7 @@ describe('QuantityInput', () => {
 
     it('allows exactly 9999', () => {
       const onChange = vi.fn()
-      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
       const input = screen.getByLabelText('Amount')
       fireEvent.change(input, { target: { value: '9999' } })
       expect(onChange).toHaveBeenLastCalledWith(9999)
@@ -246,7 +247,7 @@ describe('QuantityInput', () => {
 
     it('clamps an over-the-cap value to 9999 on blur and reports it', () => {
       const onChange = vi.fn()
-      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
       const input = screen.getByLabelText('Amount') as HTMLInputElement
       fireEvent.change(input, { target: { value: '999999999' } })
       fireEvent.blur(input)
@@ -256,13 +257,13 @@ describe('QuantityInput', () => {
     })
 
     it('exposes the maximum to assistive tech', () => {
-      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={MAX_QUANTITY} />)
       expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuemax', '9999')
     })
 
     it('ArrowUp stops at the cap', () => {
       const onChange = vi.fn()
-      render(<QuantityInput value={9999} unit="g" onChange={onChange} />)
+      render(<QuantityInput value={9999} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
       fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
       expect(onChange).not.toHaveBeenCalled()
     })
