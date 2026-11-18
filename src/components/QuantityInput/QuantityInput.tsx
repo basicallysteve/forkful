@@ -105,7 +105,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         } else if (parsed !== null) setText(formatQuantity(parsed, unit))
       }}
     />
-    {hint && <small id={hintId} className="quantity-input-hint" role="status">{hint}</small>}
+    {hint && <small id={hintId} className="quantity-input-hint" role="status"><i className="pi pi-exclamation-circle" aria-hidden="true" />{hint}</small>}
     </>
   )
 }
