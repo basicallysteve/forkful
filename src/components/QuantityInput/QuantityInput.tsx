@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
-import { parseQuantity, formatQuantity, stepQuantity } from '@/utils/quantity'
+import { parseQuantity, formatQuantity, stepQuantity, MAX_QUANTITY } from '@/utils/quantity'
 
 interface QuantityInputProps {
   // Parsed amount, or null while the text is empty/invalid.
@@ -20,7 +20,11 @@ interface QuantityInputProps {
 // on every keystroke and tidies the text (e.g. "1.5" -> "1½" for count units) on blur.
 export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
-  const parsed = parseQuantity(text)
+  const raw = parseQuantity(text)
+  const overCap = raw !== null && raw > MAX_QUANTITY
+  // Over the cap counts as invalid (null) while typing; blur clamps it to the cap.
+  const parsed = overCap ? null : raw
+  const justFocused = useRef(false)
   // Follow a value changed from outside (food picked, sizes synced). A change that lands in the render
   // right after our own onChange is the parent's echo (it may normalise, e.g. null -> 0), so the text the
   // user is typing is left alone. A parent that echoes asynchronously would overwrite mid-edit text (no caller does).
@@ -31,7 +35,8 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
     if (!emitted && value !== parsed) setText(value === null ? '' : formatQuantity(value, unit))
   }
   if (emitted) setEmitted(false)
-  const invalid = text.trim() !== '' && parsed === null
+  // Zero is flagged too: an amount must be above 0.
+  const invalid = text.trim() !== '' && (parsed === null || parsed <= 0)
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
   const min = stepQuantity(null, 1, unit)
 
@@ -44,6 +49,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       aria-label={ariaLabel}
       role="spinbutton"
       aria-valuemin={min ?? undefined}
+      aria-valuemax={MAX_QUANTITY}
       aria-valuenow={parsed ?? undefined}
       aria-valuetext={parsed === null ? undefined : formatQuantity(parsed, unit)}
       aria-invalid={invalid}
@@ -51,7 +57,8 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       onChange={(e) => {
         setText(e.target.value)
         setEmitted(true)
-        onChange(parseQuantity(e.target.value))
+        const next = parseQuantity(e.target.value)
+        onChange(next !== null && next > MAX_QUANTITY ? null : next)
       }}
       onKeyDown={(e) => {
         if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
@@ -59,13 +66,29 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         if (e.ctrlKey || e.altKey || e.metaKey || e.nativeEvent.isComposing) return
         e.preventDefault()
         const next = stepQuantity(parsed, e.key === 'ArrowUp' ? 1 : -1, unit)
-        if (next === null) return
+        if (next === null || next > MAX_QUANTITY) return
         setText(formatQuantity(next, unit))
         setEmitted(true)
         onChange(next)
       }}
+      onFocus={(e) => {
+        // Typing replaces the current amount rather than appending to it.
+        justFocused.current = true
+        e.target.select()
+      }}
+      // Browsers collapse the selection on the mouseup that finishes the focusing click; keep it.
+      onMouseUp={(e) => {
+        if (!justFocused.current) return
+        justFocused.current = false
+        e.preventDefault()
+      }}
       onBlur={() => {
-        if (parsed !== null) setText(formatQuantity(parsed, unit))
+        justFocused.current = false
+        if (overCap) {
+          setText(formatQuantity(MAX_QUANTITY, unit))
+          setEmitted(true)
+          onChange(MAX_QUANTITY)
+        } else if (parsed !== null) setText(formatQuantity(parsed, unit))
       }}
     />
   )
