@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Profile from './Profile'
 import type { User } from '@/types/User'
@@ -316,6 +316,61 @@ describe('Profile', () => {
       await user.click(screen.getByRole('button', { name: /save meal slots/i }))
       await waitFor(() => {
         expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+    })
+
+    describe('reordering', () => {
+      const names = () =>
+        within(screen.getByRole('list', { name: 'Meal slots' }))
+          .getAllByRole('listitem')
+          .map(li => li.textContent)
+
+      it('shows a drag handle and up/down buttons on every row', () => {
+        render(<Profile user={mockUser} />)
+        for (const n of ['Breakfast', 'Lunch', 'Dinner', 'Snack']) {
+          expect(screen.getByLabelText(`Drag to reorder ${n}`)).toBeInTheDocument()
+          expect(screen.getByRole('button', { name: `Move ${n} up` })).toBeInTheDocument()
+          expect(screen.getByRole('button', { name: `Move ${n} down` })).toBeInTheDocument()
+        }
+      })
+
+      it('moves a slot up and down with the buttons', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        await user.click(screen.getByRole('button', { name: 'Move Dinner up' }))
+        expect(names()).toEqual(['Breakfast', 'Dinner', 'Lunch', 'Snack'])
+        await user.click(screen.getByRole('button', { name: 'Move Breakfast down' }))
+        expect(names()).toEqual(['Dinner', 'Breakfast', 'Lunch', 'Snack'])
+      })
+
+      it('disables up on the first row and down on the last', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        expect(screen.getByRole('button', { name: 'Move Breakfast up' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Move Snack down' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Move Lunch up' })).toBeEnabled()
+        await user.click(screen.getByRole('button', { name: 'Move Snack up' }))
+        expect(screen.getByRole('button', { name: 'Move Dinner down' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Move Snack down' })).toBeEnabled()
+      })
+
+      it('keeps each row element tied to its slot when reordering', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        const lunchRow = screen.getByText('Lunch').closest('li')
+        await user.click(screen.getByRole('button', { name: 'Move Lunch up' }))
+        expect(screen.getByText('Lunch').closest('li')).toBe(lunchRow)
+        expect(names()[0]).toBe('Lunch')
+      })
+
+      it('saves the reordered slots', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        await user.click(screen.getByRole('button', { name: 'Move Snack up' }))
+        await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+        await waitFor(() => {
+          expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Snack', 'Dinner'])
+        })
       })
     })
 
