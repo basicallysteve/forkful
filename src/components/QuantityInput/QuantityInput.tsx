@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
-import { parseQuantity, formatQuantity, stepQuantity, MAX_QUANTITY } from '@/utils/quantity'
+import { parseQuantity, formatQuantity, stepQuantity } from '@/utils/quantity'
 
 interface QuantityInputProps {
   // Parsed amount, or null while the text is empty/invalid.
@@ -14,14 +14,18 @@ interface QuantityInputProps {
   // Accessible name; defaults to "Amount". Give each box on a screen its own.
   ariaLabel?: string
   id?: string
+  // Largest accepted amount; no cap when omitted. Over it is invalid while typing and clamps on blur.
+  max?: number
+  // Show a short visible message under the box when the amount is zero or over the max.
+  showInvalidHint?: boolean
 }
 
 // Free-text amount field that accepts fractions ("1 1/2", "½") and decimals. Reports the parsed number
 // on every keystroke and tidies the text (e.g. "1.5" -> "1½" for count units) on blur.
-export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id }: QuantityInputProps) {
+export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id, max, showInvalidHint }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
   const raw = parseQuantity(text)
-  const overCap = raw !== null && raw > MAX_QUANTITY
+  const overCap = raw !== null && max !== undefined && raw > max
   // Over the cap counts as invalid (null) while typing; blur clamps it to the cap.
   const parsed = overCap ? null : raw
   const justFocused = useRef(false)
@@ -40,7 +44,10 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
   const min = stepQuantity(null, 1, unit)
 
+  const hint = !showInvalidHint || text.trim() === '' ? null : overCap ? `Maximum is ${max}` : parsed !== null && parsed <= 0 ? 'Must be above 0' : null
+
   return (
+    <>
     <InputText
       value={text}
       inputMode="text"
@@ -49,7 +56,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       aria-label={ariaLabel}
       role="spinbutton"
       aria-valuemin={min ?? undefined}
-      aria-valuemax={MAX_QUANTITY}
+      aria-valuemax={max}
       aria-valuenow={parsed ?? undefined}
       aria-valuetext={parsed === null ? undefined : formatQuantity(parsed, unit)}
       aria-invalid={invalid}
@@ -58,7 +65,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         setText(e.target.value)
         setEmitted(true)
         const next = parseQuantity(e.target.value)
-        onChange(next !== null && next > MAX_QUANTITY ? null : next)
+        onChange(next !== null && max !== undefined && next > max ? null : next)
       }}
       onKeyDown={(e) => {
         if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
@@ -66,10 +73,14 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         if (e.ctrlKey || e.altKey || e.metaKey || e.nativeEvent.isComposing) return
         e.preventDefault()
         const next = stepQuantity(parsed, e.key === 'ArrowUp' ? 1 : -1, unit)
-        if (next === null || next > MAX_QUANTITY) return
+        if (next === null || (max !== undefined && next > max)) return
         setText(formatQuantity(next, unit))
         setEmitted(true)
         onChange(next)
+      }}
+      onMouseDown={() => {
+        // A click inside an already-focused box (e.g. after Tab) places the caret as usual.
+        justFocused.current = false
       }}
       onFocus={(e) => {
         // Typing replaces the current amount rather than appending to it.
@@ -85,11 +96,13 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       onBlur={() => {
         justFocused.current = false
         if (overCap) {
-          setText(formatQuantity(MAX_QUANTITY, unit))
+          setText(formatQuantity(max, unit))
           setEmitted(true)
-          onChange(MAX_QUANTITY)
+          onChange(max)
         } else if (parsed !== null) setText(formatQuantity(parsed, unit))
       }}
     />
+    {hint && <small className="quantity-input-hint" role="status">{hint}</small>}
+    </>
   )
 }

@@ -21,6 +21,8 @@ import { apiFetchFoods } from '@/lib/api/foods'
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import QuantityInput from '@/components/QuantityInput/QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
+import { hasValidQuantities } from '@/views/Recipe/ingredientQuantities'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -693,7 +695,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                   <button type="button" className="ghost-button" onClick={handleCancel}>
                     Cancel
                   </button>
-                  <button type="button" className="primary-button" onClick={handleSave}>
+                  <button type="button" className="primary-button" onClick={handleSave} disabled={!hasValidQuantities(editedRecipe.ingredients)}>
                     Save
                   </button>
                 </>
@@ -785,6 +787,8 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                           unit={ingredient.servingUnit}
                           onChange={(q) => handleIngredientChange(i, 'quantity', q)}
                           ariaLabel={`Ingredient ${i + 1} quantity`}
+                          max={MAX_QUANTITY}
+                          showInvalidHint
                         />
                       </label>
                       <label className="ingredient-field ingredient-field-unit">

@@ -371,6 +371,23 @@
     line-height: 1.5;
   }
 
+  .quantity-input-hint {
+    display: block;
+    margin-top: 4px;
+    color: var(--vscode-danger);
+    font-size: 12px;
+    line-height: 1.4;
+
+    &::before {
+      content: '! ';
+      font-weight: 700;
+    }
+  }
+
+  .text-input.p-invalid {
+    border-color: var(--vscode-danger);
+  }
+
   .has-error {
     border-color: var(--vscode-danger);
   }
