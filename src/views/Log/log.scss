@@ -402,6 +402,11 @@
     gap: 12px;
     align-items: flex-end;
 
+    // Room for QuantityInput's out-of-flow invalid hint under the Amount box (rows wrap on narrow dialogs).
+    &:has(.quantity-input-hint) {
+      row-gap: 26px;
+    }
+
     .log-field {
       display: flex;
       flex-direction: column;
