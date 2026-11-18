@@ -342,13 +342,13 @@ describe('QuantityInput', () => {
     it('with no max, a large amount is valid and shows no hint (no "Maximum is undefined")', () => {
       render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
       fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20000' } })
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
       expect(screen.queryByText(/undefined|Maximum/)).not.toBeInTheDocument()
     })
 
     it('shows no hint for an empty box', () => {
       render(<QuantityInput value={null} unit="g" onChange={() => {}} />)
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
     })
   })
 
@@ -412,7 +412,7 @@ describe('QuantityInput', () => {
       render(<QuantityInput value={1} unit="g" onChange={() => {}} allowZero />)
       const input = screen.getByLabelText('Amount')
       fireEvent.change(input, { target: { value: '0' } })
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
       expect(input).toHaveAttribute('aria-invalid', 'false')
       expect(input).not.toHaveClass('p-invalid')
     })
@@ -439,6 +439,30 @@ describe('QuantityInput', () => {
       fireEvent.change(input, { target: { value: '0' } })
       expect(input).toHaveAttribute('aria-invalid', 'true')
       expect(screen.getByText('Must be above 0')).toBeVisible()
+    })
+  })
+
+  describe('always-reserved hint slot (#247 round 3)', () => {
+    it('renders an empty status slot with the hint class when valid, with no icon, text or describedby', () => {
+      render(<QuantityInput value={5} unit="g" onChange={() => {}} max={9999} />)
+      const slot = screen.getByRole('status')
+      expect(slot).toHaveClass('quantity-input-hint')
+      expect(slot).toBeEmptyDOMElement()
+      expect(screen.getByLabelText('Amount')).not.toHaveAttribute('aria-describedby')
+    })
+
+    it('fills the same slot element with icon and message when invalid, and empties it again', () => {
+      render(<QuantityInput value={5} unit="g" onChange={() => {}} max={9999} />)
+      const input = screen.getByLabelText('Amount')
+      const slot = screen.getByRole('status')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByRole('status')).toBe(slot)
+      expect(slot).toHaveTextContent('Must be above 0')
+      expect(slot.querySelector('i.pi')).not.toBeNull()
+      expect(input).toHaveAttribute('aria-describedby', slot.id)
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(slot).toBeEmptyDOMElement()
+      expect(input).not.toHaveAttribute('aria-describedby')
     })
   })
 })
