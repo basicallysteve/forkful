@@ -319,7 +319,7 @@ describe('QuantityInput', () => {
     })
 
     it('explains an invalid amount visibly, not by colour alone', () => {
-      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
       const input = screen.getByLabelText('Amount')
       expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
       fireEvent.change(input, { target: { value: '0' } })
@@ -331,16 +331,49 @@ describe('QuantityInput', () => {
       expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
     })
 
-    it('shows no hint unless asked (Pantry and Log keep their look)', () => {
+    it('shows the hint without any opt-in prop, also where no max is passed (Pantry, Log)', () => {
       render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
-      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+      expect(input).toHaveAttribute('aria-describedby', screen.getByRole('status').id)
+    })
+
+    it('with no max, a large amount is valid and shows no hint (no "Maximum is undefined")', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20000' } })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByText(/undefined|Maximum/)).not.toBeInTheDocument()
+    })
+
+    it('shows no hint for an empty box', () => {
+      render(<QuantityInput value={null} unit="g" onChange={() => {}} />)
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('messages prop (#247)', () => {
+    it('replaces the default messages when overridden, per message', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={50} messages={{ belowMin: 'Add at least a little', aboveMax: 'Too much for one ingredient' }} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByText('Add at least a little')).toBeVisible()
       expect(screen.queryByText('Must be above 0')).not.toBeInTheDocument()
+      fireEvent.change(input, { target: { value: '500' } })
+      expect(screen.getByText('Too much for one ingredient')).toBeVisible()
+      expect(screen.queryByText('Maximum is 50')).not.toBeInTheDocument()
+    })
+
+    it('keeps the default for a message that is not overridden', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={50} messages={{ aboveMax: 'Too much' }} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      expect(screen.getByText('Must be above 0')).toBeVisible()
     })
   })
 
   describe('review round 2 (#247)', () => {
     it('links the visible hint to the input with aria-describedby and keeps role=status', () => {
-      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
       const input = screen.getByLabelText('Amount')
       expect(input).not.toHaveAttribute('aria-describedby')
       fireEvent.change(input, { target: { value: '999999999' } })
@@ -353,7 +386,7 @@ describe('QuantityInput', () => {
     })
 
     it('marks the hint with a decorative PrimeIcons icon instead of a "!" character', () => {
-      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
       fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '999999999' } })
       const hint = screen.getByRole('status')
       const icon = hint.querySelector('i.pi')
@@ -365,8 +398,8 @@ describe('QuantityInput', () => {
     it('gives two boxes on one screen different hint ids', () => {
       render(
         <>
-          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="A" showInvalidHint />
-          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="B" showInvalidHint />
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="A" />
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="B" />
         </>,
       )
       const [a, b] = screen.getAllByRole('status')
