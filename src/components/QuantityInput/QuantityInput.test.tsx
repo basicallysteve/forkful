@@ -352,6 +352,16 @@ describe('QuantityInput', () => {
       expect(input).not.toHaveAttribute('aria-describedby')
     })
 
+    it('marks the hint with a decorative PrimeIcons icon instead of a "!" character', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '999999999' } })
+      const hint = screen.getByRole('status')
+      const icon = hint.querySelector('i.pi')
+      expect(icon).not.toBeNull()
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+      expect(hint.textContent).toBe('Maximum is 9999')
+    })
+
     it('gives two boxes on one screen different hint ids', () => {
       render(
         <>
