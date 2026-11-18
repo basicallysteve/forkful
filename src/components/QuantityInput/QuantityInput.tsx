@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
+import './quantity-input.scss'
 import { parseQuantity, formatQuantity, stepQuantity } from '@/utils/quantity'
 
 interface QuantityInputProps {
