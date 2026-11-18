@@ -1,6 +1,6 @@
 // Visible invalid state for QuantityInput: red border plus a short icon + message (not colour alone).
-// The hint is out of flow so showing it never moves the controls in its own row; the screens reserve
-// room for it (see the :has(.quantity-input-hint) rules in recipe.scss and store.scss).
+// The hint slot is always rendered (empty when the amount is valid) and out of flow, so filling it never
+// moves anything; the screens reserve room for it permanently (see the :has(.quantity-input-hint) rules).
 label:has(> .quantity-input-hint) {
   position: relative;
 }

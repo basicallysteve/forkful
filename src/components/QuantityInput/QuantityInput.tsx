@@ -122,7 +122,10 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         } else if (parsed !== null) setText(formatQuantity(parsed, unit))
       }}
     />
-    {hint && <small id={hintId} className="quantity-input-hint" role="status"><i className="pi pi-exclamation-circle" aria-hidden="true" />{hint}</small>}
+    {/* Always rendered (empty when valid) so the screens can reserve its room and nothing shifts when it fills. */}
+    <small id={hintId} className="quantity-input-hint" role="status">
+      {hint && <><i className="pi pi-exclamation-circle" aria-hidden="true" />{hint}</>}
+    </small>
     </>
   )
 }
