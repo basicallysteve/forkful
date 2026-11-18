@@ -328,6 +328,34 @@ describe('Recipe View Page', () => {
       expect(screen.queryByText(/\d{2},\d{3},\d{3}/)).not.toBeInTheDocument()
     })
 
+    it('does not save an invalid (zero or blank) quantity (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      const save = screen.getByRole('button', { name: /^save$/i })
+      expect(save).toBeEnabled()
+      await user.click(qty)
+      await user.keyboard('0')
+      expect(save).toBeDisabled()
+      await user.clear(qty)
+      expect(save).toBeDisabled()
+      await user.keyboard('3')
+      expect(save).toBeEnabled()
+    })
+
+    it('shows why an over-cap quantity is invalid while typing (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.click(qty)
+      await user.keyboard('999999999')
+      expect(screen.getByText('Maximum is 9999')).toBeVisible()
+    })
+
     it('a blank quantity stays blank and counts as 0 calories (#247)', async () => {
       const user = userEvent.setup()
       renderWithStores(<Recipe recipe={mockRecipe} />)

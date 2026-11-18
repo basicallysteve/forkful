@@ -111,6 +111,18 @@ describe('LogFoodDialog', () => {
     expect(apiCreateFoodLogEntry).toHaveBeenCalledWith({ foodId: 7, amount: 1.5, unit: 'slice', logDate: '2026-11-12', mealSlot: 'Breakfast' })
   })
 
+  it('still accepts amounts above 9999 (#247)', async () => {
+    render(
+      <LogFoodDialog visible mealSlot="Breakfast" mealSlots={SLOTS} seedFoods={[bread]} onHide={() => {}} onLogged={() => {}} />,
+    )
+    fireEvent.click(await screen.findByText('Bread'))
+    const amount = screen.getByLabelText('Amount') as HTMLInputElement
+    fireEvent.change(amount, { target: { value: '20000' } })
+    fireEvent.blur(amount)
+    expect(amount.value).toBe('20000')
+    expect(amount).toHaveAttribute('aria-invalid', 'false')
+  })
+
   it('shows no sample foods when opened with an empty search and a fresh store', () => {
     render(
       <LogFoodDialog visible mealSlot="Lunch" mealSlots={SLOTS} seedFoods={useFoodStore.getState().foods} onHide={() => {}} onLogged={() => {}} />,

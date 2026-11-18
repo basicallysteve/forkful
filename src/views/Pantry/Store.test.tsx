@@ -214,6 +214,17 @@ describe('Pantry Store Page', () => {
       expect(screen.getByLabelText(/current size\s*\*/i)).toHaveValue('0.5')
     })
 
+    it('still accepts sizes above 9999 (bulk bags in g, bottles in ml) (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PantryStore />)
+      const original = screen.getByLabelText(/original size\s*\*/i)
+      await user.clear(original)
+      await user.type(original, '20000')
+      await user.tab()
+      expect(original).toHaveValue('20000')
+      expect(screen.getByLabelText(/current size\s*\*/i)).toHaveValue('20000')
+    })
+
     it('disables save while an amount is not a valid number', async () => {
       const user = userEvent.setup()
       renderWithProviders(<PantryStore />)

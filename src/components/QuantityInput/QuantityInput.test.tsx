@@ -268,4 +268,73 @@ describe('QuantityInput', () => {
       expect(onChange).not.toHaveBeenCalled()
     })
   })
+  describe('review round 1 (#247)', () => {
+    it('has no cap by default: 20000 stays 20000, also after blur', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '20000' } })
+      expect(onChange).toHaveBeenLastCalledWith(20000)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+      fireEvent.blur(input)
+      expect(input.value).toBe('20000')
+      expect(onChange).toHaveBeenLastCalledWith(20000)
+      expect(input).not.toHaveAttribute('aria-valuemax')
+    })
+
+    it('ArrowUp past 9999 works when there is no cap', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={9999} unit="g" onChange={onChange} />)
+      fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
+      expect(onChange).toHaveBeenLastCalledWith(10000)
+    })
+
+    it('a custom max is honoured and exposed', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={50} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      expect(input).toHaveAttribute('aria-valuemax', '50')
+      fireEvent.change(input, { target: { value: '51' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      fireEvent.blur(input)
+      expect(input.value).toBe('50')
+    })
+
+    it('after a Tab focus, a later mouse click is left alone so a caret can be placed', () => {
+      render(<QuantityInput value={12} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.focus(input) // keyboard focus: no mousedown first
+      fireEvent.mouseDown(input) // the user now clicks inside the box
+      expect(fireEvent.mouseUp(input)).toBe(true) // not cancelled, so the caret lands where clicked
+    })
+
+    it('a focusing mouse click keeps the select-all (mouseup is cancelled once)', () => {
+      render(<QuantityInput value={12} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.mouseDown(input)
+      fireEvent.focus(input)
+      expect(fireEvent.mouseUp(input)).toBe(false)
+      fireEvent.mouseDown(input)
+      expect(fireEvent.mouseUp(input)).toBe(true)
+    })
+
+    it('explains an invalid amount visibly, not by colour alone', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} showInvalidHint />)
+      const input = screen.getByLabelText('Amount')
+      expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveClass('p-invalid')
+      expect(screen.getByText('Enter an amount above 0')).toBeVisible()
+      fireEvent.change(input, { target: { value: '999999999' } })
+      expect(screen.getByText('Maximum is 9999')).toBeVisible()
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
+    })
+
+    it('shows no hint unless asked (Pantry and Log keep their look)', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      expect(screen.queryByText('Enter an amount above 0')).not.toBeInTheDocument()
+    })
+  })
 })

@@ -460,6 +460,17 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(addedQuantity).toHaveValue('9999')
   })
 
+  it('shows why an over-cap quantity is invalid while typing (#247)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
+    await user.click(addedQuantity)
+    await user.keyboard('999999999')
+    expect(screen.getByText('Maximum is 9999')).toBeVisible()
+  })
+
   it('saves the edited quantity and calories, not the values at the time of adding', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Store />)
