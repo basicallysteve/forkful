@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import QuantityInput from './QuantityInput'
 
 describe('QuantityInput', () => {
@@ -169,5 +170,101 @@ describe('QuantityInput', () => {
     const input = screen.getByLabelText('Current Size')
     expect(input).toHaveAttribute('id', 'current-size')
     expect(input).toHaveAttribute('role', 'spinbutton')
+  })
+  describe('replace-on-focus and limits (#247)', () => {
+    function Harness({ start = 0, unit = 'g', spy }: { start?: number | null; unit?: string; spy?: (v: number | null) => void }) {
+      const [v, setV] = useState<number | null>(start)
+      return <QuantityInput value={v} unit={unit} onChange={(n) => { setV(n); spy?.(n) }} />
+    }
+
+    it('typing over the default value replaces it instead of appending', async () => {
+      const user = userEvent.setup()
+      const spy = vi.fn()
+      render(<Harness start={0} spy={spy} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.click(input)
+      await user.keyboard('100')
+      expect(input.value).toBe('100')
+      expect(spy).toHaveBeenLastCalledWith(100)
+    })
+
+    it('tabbing into the box selects its text so the first key replaces it', async () => {
+      const user = userEvent.setup()
+      render(<Harness start={12} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.tab()
+      expect(input).toHaveFocus()
+      expect(input.selectionStart).toBe(0)
+      expect(input.selectionEnd).toBe(2)
+    })
+
+    it('a blank box reports null and stays blank (no snap to 0)', async () => {
+      const user = userEvent.setup()
+      const spy = vi.fn()
+      render(<Harness start={5} spy={spy} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.click(input)
+      await user.keyboard('{Backspace}')
+      expect(spy).toHaveBeenLastCalledWith(null)
+      await user.tab()
+      expect(input.value).toBe('')
+    })
+
+    it('flags zero as invalid', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('rejects negatives and flags them invalid', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '-3' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('treats a value over 9999 as invalid while typing (reports null, never the huge number)', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '999999999' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('allows exactly 9999', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '9999' } })
+      expect(onChange).toHaveBeenLastCalledWith(9999)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+    })
+
+    it('clamps an over-the-cap value to 9999 on blur and reports it', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '999999999' } })
+      fireEvent.blur(input)
+      expect(input.value).toBe('9999')
+      expect(onChange).toHaveBeenLastCalledWith(9999)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+    })
+
+    it('exposes the maximum to assistive tech', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuemax', '9999')
+    })
+
+    it('ArrowUp stops at the cap', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={9999} unit="g" onChange={onChange} />)
+      fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
+      expect(onChange).not.toHaveBeenCalled()
+    })
   })
 })
