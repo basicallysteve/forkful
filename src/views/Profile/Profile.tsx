@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
@@ -235,15 +235,30 @@ export default function Profile({ user }: ProfileProps) {
   // Touch-friendly drag: pointer events on the handle (touch-action: none in CSS)
   // work for mouse, pen and finger, unlike HTML5 drag-and-drop.
   const [draggingSlot, setDraggingSlot] = useState<number | null>(null)
+  const mealSlotsRef = useRef(mealSlots)
+  mealSlotsRef.current = mealSlots
 
-  function dragSlotOver(e: React.PointerEvent, id: number) {
-    if (draggingSlot !== id) return
-    const el = document.elementFromPoint?.(e.clientX, e.clientY)
-    const overId = el?.closest<HTMLElement>('[data-slot-id]')?.dataset.slotId
-    if (overId === undefined || Number(overId) === id) return
-    const to = mealSlots.findIndex(s => s.id === Number(overId))
-    if (to !== -1) moveSlot(id, to)
-  }
+  // Listen on the document while dragging: reordering re-parents the row in the
+  // DOM, which can release pointer capture on the handle mid-drag.
+  useEffect(() => {
+    if (draggingSlot === null) return
+    const onMove = (e: PointerEvent) => {
+      const el = document.elementFromPoint?.(e.clientX, e.clientY)
+      const overId = el?.closest<HTMLElement>('[data-slot-id]')?.dataset.slotId
+      if (overId === undefined || Number(overId) === draggingSlot) return
+      const to = mealSlotsRef.current.findIndex(s => s.id === Number(overId))
+      if (to !== -1) moveSlot(draggingSlot, to)
+    }
+    const onEnd = () => setDraggingSlot(null)
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onEnd)
+    document.addEventListener('pointercancel', onEnd)
+    return () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onEnd)
+      document.removeEventListener('pointercancel', onEnd)
+    }
+  }, [draggingSlot])
 
   function addSlot() {
     const trimmed = newSlot.trim()
@@ -598,13 +613,7 @@ export default function Profile({ user }: ProfileProps) {
                       className="meal-slot-handle"
                       role="img"
                       aria-label={`Drag to reorder ${slot.name}`}
-                      onPointerDown={e => {
-                        e.currentTarget.setPointerCapture?.(e.pointerId)
-                        setDraggingSlot(slot.id)
-                      }}
-                      onPointerMove={e => dragSlotOver(e, slot.id)}
-                      onPointerUp={() => setDraggingSlot(null)}
-                      onPointerCancel={() => setDraggingSlot(null)}
+                      onPointerDown={() => setDraggingSlot(slot.id)}
                     >
                       <i className="pi pi-bars" aria-hidden="true" />
                     </span>
