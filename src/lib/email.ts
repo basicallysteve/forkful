@@ -7,6 +7,31 @@ import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
 import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
 import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
+import { logInfo } from '@/lib/logger'
+
+type EmailPayload = Parameters<Resend['emails']['send']>[0]
+
+/**
+ * Single choke point for outgoing email. RESEND_API_KEY is the production key and is
+ * used only when VERCEL_ENV === 'production' exactly (unset, preview, development and
+ * typos all fail safe). Outside production, if RESEND_SANDBOX_API_KEY is set the email
+ * goes through a client built with that key; otherwise it is logged and skipped.
+ * Log the template only, never the recipient.
+ */
+async function deliver(template: string, payload: EmailPayload): Promise<void> {
+  if (process.env.VERCEL_ENV === 'production') {
+    await new Resend(process.env.RESEND_API_KEY).emails.send(payload)
+    return
+  }
+  const sandboxKey = process.env.RESEND_SANDBOX_API_KEY
+  if (!sandboxKey) {
+    logInfo('Email suppressed outside production', { template })
+    return
+  }
+  logInfo('Email sent via sandbox key outside production', { template })
+  await new Resend(sandboxKey).emails.send(payload)
+}
+
 function makeTrackingPixelUrl(): string | undefined {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   if (!baseUrl) return undefined
@@ -15,10 +40,9 @@ function makeTrackingPixelUrl(): string | undefined {
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const trackingPixelUrl = makeTrackingPixelUrl()
 
-  await resend.emails.send({
+  await deliver('password-reset', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Reset your EatForkful password',
@@ -27,7 +51,6 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
 }
 
 export async function sendGoodbyeEmail({ to, username, action }: { to: string; username: string; action: 'deactivated' | 'deleted' }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   const reactivateUrl = baseUrl ? `${baseUrl}/login` : undefined
   const trackingPixelUrl = makeTrackingPixelUrl()
@@ -35,7 +58,7 @@ export async function sendGoodbyeEmail({ to, username, action }: { to: string; u
     ? 'Your EatForkful account has been deactivated'
     : 'Your EatForkful account has been deleted'
 
-  await resend.emails.send({
+  await deliver('goodbye', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject,
@@ -49,10 +72,9 @@ export async function sendPantryReminderEmail({ to, username, items, pantryUrl }
   items: Array<{ name: string; expirationDate: string; daysUntilExpiry: number }>;
   pantryUrl: string;
 }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const trackingPixelUrl = makeTrackingPixelUrl()
 
-  await resend.emails.send({
+  await deliver('pantry-reminder', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Items in your pantry are expiring soon',
@@ -66,10 +88,9 @@ export async function sendRecipeSuggestionEmail({ to, username, recipes, baseUrl
   recipes: Array<{ name: string; description: string | null; cuisineType: string | null; shortId: string; slug: string }>;
   baseUrl: string;
 }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const trackingPixelUrl = makeTrackingPixelUrl()
 
-  await resend.emails.send({
+  await deliver('recipe-suggestion', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Recipe ideas picked for you',
@@ -78,13 +99,12 @@ export async function sendRecipeSuggestionEmail({ to, username, recipes, baseUrl
 }
 
 export async function sendDeactivationExpiryWarningEmail({ to, username, deletionDate }: { to: string; username: string; deletionDate: Date }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL
   const reactivateUrl = baseUrl ? `${baseUrl}/login` : 'https://eatforkful.com/login'
   const trackingPixelUrl = makeTrackingPixelUrl()
   const formatted = deletionDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
-  await resend.emails.send({
+  await deliver('deactivation-expiry-warning', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: 'Your EatForkful account will be deleted soon',
@@ -106,8 +126,7 @@ export async function sendReviewReportSummaryEmail({ to, reportCount, reports, a
   }>;
   adminUrl: string;
 }): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  await resend.emails.send({
+  await deliver('review-report-summary', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on EatForkful`,
@@ -116,9 +135,8 @@ export async function sendReviewReportSummaryEmail({ to, reportCount, reports, a
 }
 
 export async function sendUserAccountCreationEmail(username: string): Promise<void> {
-  const resend = new Resend(process.env.RESEND_API_KEY)
 
-  await resend.emails.send({
+  await deliver('new-user-notification', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to: "steven@eatforkful.com",
     subject: 'New user signed up',
