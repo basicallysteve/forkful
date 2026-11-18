@@ -8,6 +8,7 @@ import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe as RecipeType } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 import { apiUpdateRecipe } from '@/lib/api/recipes'
+import { ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiUpdateRecipe: vi.fn(async (r) => r),
@@ -611,6 +612,48 @@ describe('Recipe View Page', () => {
   })
 
   describe('Error handling', () => {
+    async function failSave(err: unknown) {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(err)
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      await screen.findByText('Could not save changes')
+    }
+
+    it('shows a connection message and keeps edit mode on network failure', async () => {
+      await failSave(new TypeError('Failed to fetch'))
+      expect(screen.getByText(/check your connection and try again/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    it('shows a sign-in message on 401', async () => {
+      await failSave(new UnauthorizedError())
+      expect(screen.getByText(/sign in/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
+    it('shows the permission message only on 403', async () => {
+      await failSave(new ForbiddenError())
+      expect(screen.getByText(/permission/i)).toBeInTheDocument()
+    })
+
+    it('shows a retry message on 5xx', async () => {
+      await failSave(Object.assign(new Error('Failed to update recipe'), { status: 500 }))
+      expect(screen.getByText(/check your connection and try again/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
+    it('does not claim a permission problem when publish fails on the network', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={{ ...mockRecipe, date_published: null }} />)
+      await user.click(screen.getByRole('button', { name: /publish/i }))
+      await screen.findByText('Could not publish recipe')
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
     it('shows an error toast when save fails', async () => {
       vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
       const user = userEvent.setup()

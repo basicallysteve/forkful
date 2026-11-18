@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { apiFetchRecipes, apiFetchRecipe, apiCreateRecipe, apiUpdateRecipe, apiDeleteRecipe, apiFetchSavedRecipes, apiSaveRecipe, apiUnsaveRecipe, apiIsRecipeSaved, apiFetchRecipeSteps, apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep, apiReorderRecipeSteps, apiUploadImage } from './recipes'
+import { ForbiddenError, UnauthorizedError } from './errors'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 
@@ -237,5 +238,26 @@ describe('apiUploadImage', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
     const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
     await expect(apiUploadImage(file)).rejects.toThrow('Failed to upload image')
+  })
+})
+
+describe('recipe write failures carry their HTTP status', () => {
+  it('apiUpdateRecipe throws ForbiddenError on 403', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response)
+    await expect(apiUpdateRecipe(mockRecipe)).rejects.toBeInstanceOf(ForbiddenError)
+  })
+  it('apiUpdateRecipe throws UnauthorizedError on 401', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response)
+    await expect(apiUpdateRecipe(mockRecipe)).rejects.toBeInstanceOf(UnauthorizedError)
+  })
+  it('apiUpdateRecipe error exposes status 404 and 500', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response)
+    await expect(apiUpdateRecipe(mockRecipe)).rejects.toMatchObject({ status: 404 })
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
+    await expect(apiUpdateRecipe(mockRecipe)).rejects.toMatchObject({ status: 500 })
+  })
+  it('apiDeleteRecipe throws ForbiddenError on 403', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response)
+    await expect(apiDeleteRecipe('abc12345')).rejects.toBeInstanceOf(ForbiddenError)
   })
 })
