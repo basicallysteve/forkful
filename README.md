@@ -93,13 +93,17 @@ bun link:product-foods:prod  # Deliberately link in production (.env.production)
 
 ## Deploys and database migrations
 
-Vercel runs `bun run vercel-build`: `drizzle-kit migrate` runs only when `VERCEL_ENV=production`, then `next build`. Preview deployments skip the migration (see [ADR-0031](docs/adr/0031-no-preview-database-migrate-on-production-only.md)).
+Vercel runs `bun run vercel-build`, which is just `next build`. **The build does NOT run migrations for now.** Migrations are applied manually, as before.
 
-- **A failed production migration fails the build.** The previous production deployment stays live, so new code never ships against a database that is missing its columns.
-- **Previews don't migrate.** A preview of a branch that needs a new column or table won't have it until the migration has been applied to production (merge, let the production build migrate, then re-check the preview). Until then, features that use the new schema may fail on the preview.
+Why it is paused (#273, #276):
+
+- The `pg` driver used by `drizzle-kit migrate` rejects the Supabase pooler certificate with `ssl: true`, so the migrate step fails on Vercel.
+- The databases were built with `db:push`, so the migrations history (`drizzle.__drizzle_migrations`) is unbaselined. Replaying from `0000` fails (for example on `ALTER TABLE foods ADD COLUMN protein`).
+
+The real fix is tracked in #276: a small drizzle-orm `migrate()` script using the `ssl: 'require'` approach from `src/db/index.ts`, after baselining production's `drizzle.__drizzle_migrations`. [ADR-0031](docs/adr/0031-no-preview-database-migrate-on-production-only.md)'s "migrate on production only" decision is on hold until then.
+
+- **Apply schema changes by hand** before or after merging a PR that changes `src/db/schema.ts`. Keep migrations additive and backwards compatible.
 - **Previews use whatever database their env vars point to.** There is no separate preview database, so don't do destructive testing on a preview: treat it as working against real data.
-
-On Vercel the migrate step reads the platform's env vars (`DATABASE_URL`, then `POSTGRES_URL`, then `DATABASE_POSTGRES_URL`), the same variables and order the app uses at runtime (see `src/db/resolveDrizzleEnv.ts` and `src/db/index.ts`). Nothing reads an env file there.
 
 ## Project structure
 

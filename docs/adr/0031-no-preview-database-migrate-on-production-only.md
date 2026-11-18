@@ -1,7 +1,7 @@
 # ADR 0031: No preview database; migrate on production only
 
 ## Status
-Accepted
+Accepted, superseded in part (on hold, 2026-11-18): the "migrate on production only" decision is paused. `vercel-build` is back to `next build` and migrations are applied manually, because `drizzle-kit migrate` fails on Vercel (the `pg` driver rejects the Supabase pooler certificate with `ssl: true`) and the migrations history is unbaselined (databases were built with `db:push`, so replay from `0000` fails). See #273; the real fix is tracked in #276 (a drizzle-orm `migrate()` script using `ssl: 'require'`, after baselining production's `drizzle.__drizzle_migrations`). The no-preview-database decision and the rule that previews never migrate still stand. The text below is the original decision, kept as written.
 
 ## Context
 `vercel-build` used to be `drizzle-kit migrate || true && next build`, which swallowed migration failures (#273). Preview deployments also have no database of their own: their env vars point at the same project as production, so a migration run from a preview build would change the production schema from an unmerged branch.
