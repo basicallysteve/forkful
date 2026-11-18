@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import ClientLayout from './ClientLayout'
 import { auth } from '@/auth'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   icons: {
     icon: '/forkful-favicon.svg',
   },
+}
+
+// viewport-fit=cover makes the sticky toolbar start at the very top (under the iOS status
+// bar) instead of leaving a band of scrolling page content above it. #252
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default async function RootLayout({
