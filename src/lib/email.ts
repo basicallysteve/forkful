@@ -12,17 +12,24 @@ import { logInfo } from '@/lib/logger'
 type EmailPayload = Parameters<Resend['emails']['send']>[0]
 
 /**
- * Single choke point for outgoing email. The Resend key is shared with production,
- * so only VERCEL_ENV === 'production' sends; anything else (unset, preview,
- * development, typos) logs and skips. Log the template only, never the recipient.
+ * Single choke point for outgoing email. RESEND_API_KEY is the production key and is
+ * used only when VERCEL_ENV === 'production' exactly (unset, preview, development and
+ * typos all fail safe). Outside production, if RESEND_SANDBOX_API_KEY is set the email
+ * goes through a client built with that key; otherwise it is logged and skipped.
+ * Log the template only, never the recipient.
  */
 async function deliver(template: string, payload: EmailPayload): Promise<void> {
-  if (process.env.VERCEL_ENV !== 'production') {
+  if (process.env.VERCEL_ENV === 'production') {
+    await new Resend(process.env.RESEND_API_KEY).emails.send(payload)
+    return
+  }
+  const sandboxKey = process.env.RESEND_SANDBOX_API_KEY
+  if (!sandboxKey) {
     logInfo('Email suppressed outside production', { template })
     return
   }
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  await resend.emails.send(payload)
+  logInfo('Email sent via sandbox key outside production', { template })
+  await new Resend(sandboxKey).emails.send(payload)
 }
 
 function makeTrackingPixelUrl(): string | undefined {
