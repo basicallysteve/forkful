@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Safe-area debug (temporary, #252)</title>
+<style>
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #eef2f7; }
+  #probe { position: absolute; visibility: hidden; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+  #sticky { position: sticky; top: 0; z-index: 10; height: 56px; background: #fff; border-bottom: 2px solid #10b981; display: flex; align-items: center; padding: 0 12px; font-weight: 700; }
+  #fixed { position: fixed; left: 0; right: 0; bottom: 0; height: 24px; background: #fde68a; z-index: 10; font-size: 11px; padding: 2px 6px; box-sizing: border-box; }
+  #out { position: sticky; top: 60px; z-index: 9; margin: 8px; padding: 8px; background: #fff; border-radius: 8px; white-space: pre-wrap; font: 12px/1.35 ui-monospace, monospace; }
+  .row { margin: 8px; padding: 18px; background: #fff; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="probe"></div>
+<div id="sticky">STICKY top:0 bar (green line = its bottom)</div>
+<div id="out">loading...</div>
+<div id="fixed">FIXED bottom:0 bar</div>
+<script>
+  for (let i = 1; i <= 60; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'Row ' + i + ' - scroll me, then read the numbers above'; document.body.appendChild(d); }
+  function show() {
+    const cs = getComputedStyle(document.getElementById('probe'));
+    const vv = window.visualViewport;
+    const s = document.getElementById('sticky').getBoundingClientRect();
+    document.getElementById('out').textContent = [
+      'scrollY ' + Math.round(scrollY),
+      'sticky top ' + s.top.toFixed(1) + ' (0 = flush with layout viewport top)',
+      'env inset T/R/B/L ' + [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].join(' / '),
+      'innerW x innerH ' + innerWidth + ' x ' + innerHeight,
+      'clientH ' + document.documentElement.clientHeight,
+      'vv offsetTop ' + (vv ? vv.offsetTop.toFixed(1) : 'n/a') + ' h ' + (vv ? vv.height.toFixed(1) : 'n/a') + ' scale ' + (vv ? vv.scale : 'n/a'),
+      'screen ' + screen.width + ' x ' + screen.height,
+      'standalone ' + (navigator.standalone === true),
+      'UA ' + navigator.userAgent
+    ].join('\n');
+  }
+  addEventListener('scroll', show, { passive: true }); addEventListener('resize', show); show();
+</script>
+</body>
+</html>
