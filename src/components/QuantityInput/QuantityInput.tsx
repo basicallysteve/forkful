@@ -17,6 +17,8 @@ interface QuantityInputProps {
   id?: string
   // Largest accepted amount; no cap when omitted. Over it is invalid while typing and clamps on blur.
   max?: number
+  // Accept 0 as a valid amount (e.g. a used-up pantry item). Default: an amount must be above 0.
+  allowZero?: boolean
   // The messages shown under the box when the amount is invalid. Each defaults to the text below;
   // a page can override any of them.
   messages?: Partial<QuantityMessages>
@@ -36,7 +38,7 @@ const defaultMessages = (max: number | undefined): QuantityMessages => ({
 
 // Free-text amount field that accepts fractions ("1 1/2", "½") and decimals. Reports the parsed number
 // on every keystroke and tidies the text (e.g. "1.5" -> "1½" for count units) on blur.
-export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id, max, messages }: QuantityInputProps) {
+export default function QuantityInput({ value, unit, onChange, className, disabled, ariaLabel = 'Amount', id, max, allowZero, messages }: QuantityInputProps) {
   const [text, setText] = useState(value === null ? '' : formatQuantity(value, unit))
   const raw = parseQuantity(text)
   const overCap = raw !== null && max !== undefined && raw > max
@@ -54,13 +56,14 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
     if (!emitted && value !== parsed) setText(value === null ? '' : formatQuantity(value, unit))
   }
   if (emitted) setEmitted(false)
-  // Zero is flagged too: an amount must be above 0.
-  const invalid = text.trim() !== '' && (parsed === null || parsed <= 0)
+  // Zero is flagged too unless allowZero: an amount must be above 0.
+  const belowMin = parsed !== null && (allowZero ? parsed < 0 : parsed <= 0)
+  const invalid = text.trim() !== '' && (parsed === null || belowMin)
   // Smallest value above 0 the arrows can reach (0.25 for counts, 1 for measures).
-  const min = stepQuantity(null, 1, unit)
+  const min = allowZero ? 0 : stepQuantity(null, 1, unit)
 
   const msgs = { ...defaultMessages(max), ...messages }
-  const hint = text.trim() === '' ? null : overCap ? msgs.aboveMax : parsed !== null && parsed <= 0 ? msgs.belowMin : null
+  const hint = text.trim() === '' ? null : overCap ? msgs.aboveMax : belowMin ? msgs.belowMin : null
 
   return (
     <>
