@@ -150,11 +150,13 @@
 
 // ── Manual overrides via data-theme attribute (higher specificity than :root) ──
 html[data-theme='dark'] {
+  color-scheme: dark;
   @include dark-color-vars;
   --primary-color: #34d399;
 }
 
 html[data-theme='light'] {
+  color-scheme: light;
   @include light-color-vars;
   --primary-color: #10b981;
 }
