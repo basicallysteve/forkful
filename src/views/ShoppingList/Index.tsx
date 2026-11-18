@@ -124,7 +124,9 @@ const SHARE_OUTRO = 'Build your own shopping list at eatforkful.com'
 export function buildShoppingListText(items: ShoppingListItem[]): string {
   const lines = items.map((item) => {
     const quantity = itemQuantityLabel(item)
-    return quantity ? `- ${item.name} — ${quantity}` : `- ${item.name}`
+    // Markdown task item so pasting into Notes and other markdown apps gives a checklist.
+    const box = item.status === 'bought' ? '[x]' : '[ ]'
+    return quantity ? `- ${box} ${item.name} — ${quantity}` : `- ${box} ${item.name}`
   })
   return [SHARE_INTRO, '', ...lines, '', SHARE_OUTRO].join('\n')
 }

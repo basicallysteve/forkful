@@ -692,8 +692,8 @@ describe('ShoppingListView', () => {
       [
         "Hey! I'm sending you my shopping list from EatForkful — you should check it out!",
         '',
-        '- Chicken Breast — 2 oz',
-        '- Trash bags',
+        '- [ ] Chicken Breast — 2 oz',
+        '- [ ] Trash bags',
         '',
         'Build your own shopping list at eatforkful.com',
       ].join('\n'),
@@ -728,7 +728,7 @@ describe('ShoppingListView', () => {
 })
 
 describe('buildShoppingListText', () => {
-  it('wraps a bulleted list in the marketable intro and CTA, mirroring on-screen quantities', () => {
+  it('wraps a markdown checklist in the marketable intro and CTA, mirroring on-screen quantities', () => {
     const text = buildShoppingListText([
       makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz' }),
       makeItem({ id: 2, food: mockFoods[2], amount: 6, unit: 'piece' }),
@@ -739,13 +739,27 @@ describe('buildShoppingListText', () => {
       [
         "Hey! I'm sending you my shopping list from EatForkful — you should check it out!",
         '',
-        '- Chicken Breast — 2 oz',
-        '- Lime — 6 pieces', // custom units pluralise by amount
-        '- Trash bags', // a bare "1" with no unit carries no quantity
+        '- [ ] Chicken Breast — 2 oz',
+        '- [ ] Lime — 6 pieces', // custom units pluralise by amount
+        '- [ ] Trash bags', // a bare "1" with no unit carries no quantity
         '',
         'Build your own shopping list at eatforkful.com',
       ].join('\n'),
     )
+  })
+
+  it('marks bought items as checked (- [x]) and everything else as open (- [ ])', () => {
+    const text = buildShoppingListText([
+      makeItem({ id: 1, food: mockFoods[0], amount: 2, unit: 'oz', status: 'bought' }),
+      makeItem({ id: 2, food: mockFoods[2], amount: 6, unit: 'piece', status: 'to_buy' }),
+      makeItem({ id: 3, sourceType: 'freeform', name: 'Trash bags', food: undefined, amount: 1, unit: null, status: 'bought' }),
+    ])
+
+    expect(text.split('\n').filter((line) => line.startsWith('- '))).toEqual([
+      '- [x] Chicken Breast — 2 oz',
+      '- [ ] Lime — 6 pieces',
+      '- [x] Trash bags',
+    ])
   })
 })
 
