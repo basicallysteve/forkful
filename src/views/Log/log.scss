@@ -402,6 +402,11 @@
     gap: 12px;
     align-items: flex-end;
 
+    // Permanent room for QuantityInput's out-of-flow hint under the Amount box (rows wrap on narrow dialogs).
+    &:has(.quantity-input-hint) {
+      row-gap: 18px;
+    }
+
     .log-field {
       display: flex;
       flex-direction: column;
@@ -478,6 +483,11 @@
 
     .log-food-picker {
       gap: 6px;
+    }
+
+    // The Amount hint's room is always reserved, so tighten the confirm step to keep Cancel/Log in view.
+    .log-food-confirm {
+      gap: 8px;
     }
 
     .log-food-search {

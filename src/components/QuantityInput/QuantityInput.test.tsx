@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import QuantityInput from './QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
 
 describe('QuantityInput', () => {
   it('reports the parsed number for fraction input', () => {
@@ -169,5 +171,298 @@ describe('QuantityInput', () => {
     const input = screen.getByLabelText('Current Size')
     expect(input).toHaveAttribute('id', 'current-size')
     expect(input).toHaveAttribute('role', 'spinbutton')
+  })
+  describe('replace-on-focus and limits (#247)', () => {
+    function Harness({ start = 0, unit = 'g', spy }: { start?: number | null; unit?: string; spy?: (v: number | null) => void }) {
+      const [v, setV] = useState<number | null>(start)
+      return <QuantityInput value={v} unit={unit} onChange={(n) => { setV(n); spy?.(n) }} />
+    }
+
+    it('typing over the default value replaces it instead of appending', async () => {
+      const user = userEvent.setup()
+      const spy = vi.fn()
+      render(<Harness start={0} spy={spy} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.click(input)
+      await user.keyboard('100')
+      expect(input.value).toBe('100')
+      expect(spy).toHaveBeenLastCalledWith(100)
+    })
+
+    it('tabbing into the box selects its text so the first key replaces it', async () => {
+      const user = userEvent.setup()
+      render(<Harness start={12} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.tab()
+      expect(input).toHaveFocus()
+      expect(input.selectionStart).toBe(0)
+      expect(input.selectionEnd).toBe(2)
+    })
+
+    it('a blank box reports null and stays blank (no snap to 0)', async () => {
+      const user = userEvent.setup()
+      const spy = vi.fn()
+      render(<Harness start={5} spy={spy} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      await user.click(input)
+      await user.keyboard('{Backspace}')
+      expect(spy).toHaveBeenLastCalledWith(null)
+      await user.tab()
+      expect(input.value).toBe('')
+    })
+
+    it('flags zero as invalid', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('rejects negatives and flags them invalid', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '-3' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('treats a value over 9999 as invalid while typing (reports null, never the huge number)', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '999999999' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('allows exactly 9999', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '9999' } })
+      expect(onChange).toHaveBeenLastCalledWith(9999)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+    })
+
+    it('clamps an over-the-cap value to 9999 on blur and reports it', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '999999999' } })
+      fireEvent.blur(input)
+      expect(input.value).toBe('9999')
+      expect(onChange).toHaveBeenLastCalledWith(9999)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+    })
+
+    it('exposes the maximum to assistive tech', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={MAX_QUANTITY} />)
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('aria-valuemax', '9999')
+    })
+
+    it('ArrowUp stops at the cap', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={9999} unit="g" onChange={onChange} max={MAX_QUANTITY} />)
+      fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
+      expect(onChange).not.toHaveBeenCalled()
+    })
+  })
+  describe('review round 1 (#247)', () => {
+    it('has no cap by default: 20000 stays 20000, also after blur', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      fireEvent.change(input, { target: { value: '20000' } })
+      expect(onChange).toHaveBeenLastCalledWith(20000)
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+      fireEvent.blur(input)
+      expect(input.value).toBe('20000')
+      expect(onChange).toHaveBeenLastCalledWith(20000)
+      expect(input).not.toHaveAttribute('aria-valuemax')
+    })
+
+    it('ArrowUp past 9999 works when there is no cap', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={9999} unit="g" onChange={onChange} />)
+      fireEvent.keyDown(screen.getByLabelText('Amount'), { key: 'ArrowUp' })
+      expect(onChange).toHaveBeenLastCalledWith(10000)
+    })
+
+    it('a custom max is honoured and exposed', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} max={50} />)
+      const input = screen.getByLabelText('Amount') as HTMLInputElement
+      expect(input).toHaveAttribute('aria-valuemax', '50')
+      fireEvent.change(input, { target: { value: '51' } })
+      expect(onChange).toHaveBeenLastCalledWith(null)
+      fireEvent.blur(input)
+      expect(input.value).toBe('50')
+    })
+
+    it('after a Tab focus, a later mouse click is left alone so a caret can be placed', () => {
+      render(<QuantityInput value={12} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.focus(input) // keyboard focus: no mousedown first
+      fireEvent.mouseDown(input) // the user now clicks inside the box
+      expect(fireEvent.mouseUp(input)).toBe(true) // not cancelled, so the caret lands where clicked
+    })
+
+    it('a focusing mouse click keeps the select-all (mouseup is cancelled once)', () => {
+      render(<QuantityInput value={12} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.mouseDown(input)
+      fireEvent.focus(input)
+      expect(fireEvent.mouseUp(input)).toBe(false)
+      fireEvent.mouseDown(input)
+      expect(fireEvent.mouseUp(input)).toBe(true)
+    })
+
+    it('explains an invalid amount visibly, not by colour alone', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
+      const input = screen.getByLabelText('Amount')
+      expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveClass('p-invalid')
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+      fireEvent.change(input, { target: { value: '999999999' } })
+      expect(screen.getByText('Maximum is 9999')).toBeVisible()
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(screen.queryByText(/Maximum is|above 0/)).not.toBeInTheDocument()
+    })
+
+    it('shows the hint without any opt-in prop, also where no max is passed (Pantry, Log)', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+      expect(input).toHaveAttribute('aria-describedby', screen.getByRole('status').id)
+    })
+
+    it('with no max, a large amount is valid and shows no hint (no "Maximum is undefined")', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20000' } })
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(screen.queryByText(/undefined|Maximum/)).not.toBeInTheDocument()
+    })
+
+    it('shows no hint for an empty box', () => {
+      render(<QuantityInput value={null} unit="g" onChange={() => {}} />)
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    })
+  })
+
+  describe('messages prop (#247)', () => {
+    it('replaces the default messages when overridden, per message', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={50} messages={{ belowMin: 'Add at least a little', aboveMax: 'Too much for one ingredient' }} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByText('Add at least a little')).toBeVisible()
+      expect(screen.queryByText('Must be above 0')).not.toBeInTheDocument()
+      fireEvent.change(input, { target: { value: '500' } })
+      expect(screen.getByText('Too much for one ingredient')).toBeVisible()
+      expect(screen.queryByText('Maximum is 50')).not.toBeInTheDocument()
+    })
+
+    it('keeps the default for a message that is not overridden', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={50} messages={{ aboveMax: 'Too much' }} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+    })
+  })
+
+  describe('review round 2 (#247)', () => {
+    it('links the visible hint to the input with aria-describedby and keeps role=status', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
+      const input = screen.getByLabelText('Amount')
+      expect(input).not.toHaveAttribute('aria-describedby')
+      fireEvent.change(input, { target: { value: '999999999' } })
+      const hint = screen.getByRole('status')
+      expect(hint).toHaveTextContent('Maximum is 9999')
+      expect(hint.id).not.toBe('')
+      expect(input).toHaveAttribute('aria-describedby', hint.id)
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(input).not.toHaveAttribute('aria-describedby')
+    })
+
+    it('marks the hint with a decorative PrimeIcons icon instead of a "!" character', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} max={9999} />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '999999999' } })
+      const hint = screen.getByRole('status')
+      const icon = hint.querySelector('i.pi')
+      expect(icon).not.toBeNull()
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+      expect(hint.textContent).toBe('Maximum is 9999')
+    })
+
+    it('gives two boxes on one screen different hint ids', () => {
+      render(
+        <>
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="A" />
+          <QuantityInput value={0} unit="g" onChange={() => {}} ariaLabel="B" />
+        </>,
+      )
+      const [a, b] = screen.getAllByRole('status')
+      expect(a.id).not.toBe(b.id)
+    })
+  })
+
+  describe('allowZero (#247 round 2)', () => {
+    it('treats 0 as valid when allowZero is set: no hint, not aria-invalid, no red class', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} allowZero />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(input).toHaveAttribute('aria-invalid', 'false')
+      expect(input).not.toHaveClass('p-invalid')
+    })
+
+    it('still reports 0 to the parent when allowZero is set', () => {
+      const onChange = vi.fn()
+      render(<QuantityInput value={1} unit="g" onChange={onChange} allowZero />)
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '0' } })
+      expect(onChange).toHaveBeenLastCalledWith(0)
+    })
+
+    it('still flags a negative or unparseable amount as invalid when allowZero is set', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} allowZero />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '-1' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.change(input, { target: { value: 'abc' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('still flags 0 by default', () => {
+      render(<QuantityInput value={1} unit="g" onChange={() => {}} />)
+      const input = screen.getByLabelText('Amount')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByText('Must be above 0')).toBeVisible()
+    })
+  })
+
+  describe('always-reserved hint slot (#247 round 3)', () => {
+    it('renders an empty status slot with the hint class when valid, with no icon, text or describedby', () => {
+      render(<QuantityInput value={5} unit="g" onChange={() => {}} max={9999} />)
+      const slot = screen.getByRole('status')
+      expect(slot).toHaveClass('quantity-input-hint')
+      expect(slot).toBeEmptyDOMElement()
+      expect(screen.getByLabelText('Amount')).not.toHaveAttribute('aria-describedby')
+    })
+
+    it('fills the same slot element with icon and message when invalid, and empties it again', () => {
+      render(<QuantityInput value={5} unit="g" onChange={() => {}} max={9999} />)
+      const input = screen.getByLabelText('Amount')
+      const slot = screen.getByRole('status')
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(screen.getByRole('status')).toBe(slot)
+      expect(slot).toHaveTextContent('Must be above 0')
+      expect(slot.querySelector('i.pi')).not.toBeNull()
+      expect(input).toHaveAttribute('aria-describedby', slot.id)
+      fireEvent.change(input, { target: { value: '5' } })
+      expect(slot).toBeEmptyDOMElement()
+      expect(input).not.toHaveAttribute('aria-describedby')
+    })
   })
 })

@@ -246,7 +246,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
             </span>
             <div className="size-input-group">
               <label className="size-number">
-                <QuantityInput ariaLabel="Current Size *" value={currentSize} unit={currentUnit} onChange={setCurrentSize} />
+                <QuantityInput ariaLabel="Current Size *" value={currentSize} unit={currentUnit} onChange={setCurrentSize} allowZero />
               </label>
               <Dropdown
                 inputId="current-unit"

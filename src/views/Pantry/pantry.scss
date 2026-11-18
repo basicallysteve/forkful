@@ -856,6 +856,11 @@
       display: flex;
       gap: 8px;
 
+      // Room for QuantityInput's out-of-flow invalid hint so it clears the helper text below.
+      &:has(.quantity-input-hint) {
+        margin-bottom: 20px;
+      }
+
       .size-number {
         flex: 2;
         min-width: 0;

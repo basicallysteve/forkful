@@ -437,6 +437,40 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(screen.getAllByRole('spinbutton', { name: /calories/i })[1]).toHaveValue('300')
   })
 
+  it('typing in the added ingredient quantity replaces the default instead of appending (#247)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
+    await user.click(addedQuantity)
+    await user.keyboard('4')
+    expect(addedQuantity).toHaveValue('4')
+  })
+
+  it('does not let the quantity exceed the cap (#247)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
+    await user.click(addedQuantity)
+    await user.keyboard('999999999')
+    await user.tab()
+    expect(addedQuantity).toHaveValue('9999')
+  })
+
+  it('shows why an over-cap quantity is invalid while typing (#247)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await addHam(user)
+
+    const addedQuantity = screen.getAllByLabelText(/amount/i)[1]
+    await user.click(addedQuantity)
+    await user.keyboard('999999999')
+    expect(screen.getByText('Maximum is 9999')).toBeVisible()
+  })
+
   it('saves the edited quantity and calories, not the values at the time of adding', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Store />)

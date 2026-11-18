@@ -243,6 +243,10 @@
   border-radius: 10px;
   background: var(--vscode-panel);
   margin-bottom: 8px;
+
+  &:has(.quantity-input-hint) {
+    padding-bottom: 20px;
+  }
 }
 
 .ingredient-card-fields {
@@ -252,6 +256,11 @@
   gap: 10px;
   align-items: flex-end;
   min-width: 0;
+
+  // Room for QuantityInput's out-of-flow invalid hint when fields wrap into rows.
+  &:has(.quantity-input-hint) {
+    row-gap: 22px;
+  }
 }
 
 .ingredient-field {

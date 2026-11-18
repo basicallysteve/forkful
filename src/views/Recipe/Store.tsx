@@ -15,6 +15,7 @@ import { apiCreateRecipe } from "@/lib/api/recipes"
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
 import QuantityInput from '@/components/QuantityInput/QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
@@ -198,6 +199,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
           unit={ingredient.servingUnit}
           disabled={blank}
           onChange={setIngredientQuantity}
+          max={MAX_QUANTITY}
         />
         </label>
       <label className="form-field">
