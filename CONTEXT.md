@@ -1,7 +1,7 @@
 # Forkful Domain Glossary
 
 ## User
-A registered person with an account. Identified internally by a numeric `id`. Has a `username` (unique, human-readable), an `email`, and optionally a `password` (null for OAuth-only users).
+A registered person with an account. Identified internally by a numeric `id`. Has a `username` (unique, human-readable), an `email`, and optionally a `password` (null for OAuth-only users). May be an Invited User or a Waitlisted User (see Access Lock).
 
 ## Credential User
 A User who registered via username and password. Can log in with their credentials.
@@ -38,7 +38,7 @@ _Convention_: all modal dialogs in the app use the PrimeReact `Dialog` component
 A transactional email sent to a User upon Account Deactivation or Account Deletion. Always sent regardless of the User's Marketing Email Opt-in status. Distinct from marketing or digest emails.
 
 ## Marketing Email Opt-in
-A boolean preference on a User indicating whether they consent to receive marketing and news emails. Defaults to false (opt-out). Must be explicitly enabled by the user. Surfaced at three points: the sign-up form (Credential Users), the Welcome Page (OAuth Users), and the profile page (all Users). Does not gate transactional emails (e.g. Goodbye Email, password reset).
+A boolean preference on a User indicating whether they consent to receive marketing and news emails. Defaults to false (opt-out). Must be explicitly enabled by the user. Surfaced at four points: the sign-up form (Credential Users), the Welcome Page (OAuth Users), and the profile page (all Users). Also offered as the opt-in on the Waitlist form, where it applies to the Waitlist Entry. Does not gate transactional emails (e.g. Goodbye Email, password reset).
 _Avoid_: email subscription, newsletter opt-in
 
 ## Recipe Suggestion Email Frequency
@@ -66,8 +66,38 @@ An authenticated context identifying the current User. Managed by Auth.js. Repla
 A person browsing Forkful without a Session — not logged in. Can view public Recipes, subject to the Recipe View Limit. Contrast with User.
 _Avoid_: guest, anonymous user
 
+## Waitlist
+The list of people who have asked for access to Forkful while it is invite-only. Contains Waitlist Entries and is managed by the admin.
+
+## Waitlist Entry
+A person's request for access: an email address, an optional name, the date they joined, and whether they opted in to Waitlist Updates. Creating one never creates a User. Joining again with the same email changes nothing, and the response never reveals whether the email was already on the Waitlist or belongs to a User. Removing an entry (by its owner via a removal link, or by the admin) deletes it and never affects a User.
+_Avoid_: signup, lead, pending user
+
+## Invite
+Permission for one email address to use the parts of Forkful that need an account. Created by the admin, either from a Waitlist Entry or by entering an email directly. Never expires; the admin may revoke it. Sending an Invite emails the person an Invite Email.
+_Avoid_: approval, allowlist entry, invite code
+
+## Invite Email
+A transactional email sent when the admin creates an Invite. Links to account creation or Google/Apple sign-in for the invited email. Sent regardless of Marketing Email Opt-in.
+
+## Invited User
+A User whose email has an Invite, or the admin. The only kind of User who can hold a Session.
+
+## Waitlisted User
+A User whose email has no Invite. Their data is preserved, but they cannot sign in or use any account feature, and a Session they already hold stops working on its next request. Distinct from Account Deactivation: a Waitlisted User did not close their account and is never moved toward Account Deletion. Becomes an Invited User when the admin creates an Invite for their email.
+_Avoid_: locked user, deactivated user, pending user
+
+## Access Lock
+The rule that only Invited Users may use the parts of Forkful that need an account. Public pages (marketing pages, blog, legal pages, public Recipes) are outside the Access Lock and stay open to everyone.
+
+## Waitlist Notice
+A one-time transactional email telling Waitlisted Users that Forkful is invite-only for now, that they are on the Waitlist, and that their data is kept. Each Waitlisted User receives it at most once.
+
+## Waitlist Update
+A "what's coming" email written by the admin and sent by hand to people who opted in: Waitlist Entries that opted in, plus Users with Marketing Email Opt-in. Always carries an unsubscribe link and a link to leave the Waitlist.
+
 ## Unlimited Recipe Access
-An entitlement to view Recipes without being subject to the Recipe View Limit. Currently held by every registered User and denied to every Anonymous Visitor. Designed as the extension point for a future free/paid tier split: when tiers ship, only paid Users retain this entitlement and free Users fall under the limit.
+An entitlement to view Recipes without being subject to the Recipe View Limit. Currently held by every Invited User and denied to every Anonymous Visitor. Designed as the extension point for a future free/paid tier split: when tiers ship, only paid Users retain this entitlement and free Users fall under the limit.
 _Avoid_: premium access, unlimited views
 
 ## Recipe View Limit
@@ -75,7 +105,7 @@ The maximum number of distinct public Recipes an Anonymous Visitor may fully vie
 _Avoid_: view quota, metering, paywall count
 
 ## Signup Wall
-The gated state of a Recipe detail page shown to an Anonymous Visitor who has reached the Recipe View Limit. The Recipe's summary (name, Description, times, Cuisine Type, Dietary Tags, ingredient count, Review Aggregate) remains visible, but its Ingredient list and Recipe Steps are withheld and replaced by a prompt to create a free account. Known web crawlers are exempt (see Crawler Exemption).
+The gated state of a Recipe detail page shown to an Anonymous Visitor who has reached the Recipe View Limit. The Recipe's summary (name, Description, times, Cuisine Type, Dietary Tags, ingredient count, Review Aggregate) remains visible, but its Ingredient list and Recipe Steps are withheld and replaced by a prompt to join the Waitlist. Known web crawlers are exempt (see Crawler Exemption).
 _Avoid_: paywall, registration wall, content gate
 
 ## Crawler Exemption
