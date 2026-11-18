@@ -1,5 +1,6 @@
 // Visible invalid state for QuantityInput: red border plus a short "!" message (not colour alone).
-// The hint is out of flow so showing it never shifts the controls around it.
+// The hint is out of flow so showing it never moves the controls in its own row; the screens reserve
+// room for it (see the :has(.quantity-input-hint) rules in recipe.scss and store.scss).
 label:has(> .quantity-input-hint) {
   position: relative;
 }
@@ -9,7 +10,8 @@ label:has(> .quantity-input-hint) {
   top: 100%;
   left: 0;
   margin-top: 1px;
-  color: var(--vscode-danger);
+  // The border keeps the brighter --vscode-danger; text needs --vscode-danger-text for 4.5:1 contrast.
+  color: var(--vscode-danger-text);
   font-size: 11px;
   line-height: 1.2;
   white-space: nowrap;
@@ -25,10 +27,4 @@ input.text-input.p-invalid[role='spinbutton'],
 input.text-input.p-invalid[role='spinbutton']:focus {
   // !important: the screens' own :focus rules (green accent) are more specific than this shared file.
   border-color: var(--vscode-danger) !important;
-}
-
-// Form fields stack their children with a gap, so there the hint can simply take its own line.
-.form-field > .quantity-input-hint {
-  position: static;
-  margin-top: 0;
 }

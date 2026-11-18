@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
 import './quantity-input.scss'
 import { parseQuantity, formatQuantity, stepQuantity } from '@/utils/quantity'
@@ -30,6 +30,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
   // Over the cap counts as invalid (null) while typing; blur clamps it to the cap.
   const parsed = overCap ? null : raw
   const justFocused = useRef(false)
+  const hintId = useId()
   // Follow a value changed from outside (food picked, sizes synced). A change that lands in the render
   // right after our own onChange is the parent's echo (it may normalise, e.g. null -> 0), so the text the
   // user is typing is left alone. A parent that echoes asynchronously would overwrite mid-edit text (no caller does).
@@ -61,6 +62,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
       aria-valuenow={parsed ?? undefined}
       aria-valuetext={parsed === null ? undefined : formatQuantity(parsed, unit)}
       aria-invalid={invalid}
+      aria-describedby={hint ? hintId : undefined}
       className={`text-input ${invalid ? 'p-invalid' : ''} ${className ?? ''}`.trim()}
       onChange={(e) => {
         setText(e.target.value)
@@ -103,7 +105,7 @@ export default function QuantityInput({ value, unit, onChange, className, disabl
         } else if (parsed !== null) setText(formatQuantity(parsed, unit))
       }}
     />
-    {hint && <small className="quantity-input-hint" role="status">{hint}</small>}
+    {hint && <small id={hintId} className="quantity-input-hint" role="status">{hint}</small>}
     </>
   )
 }

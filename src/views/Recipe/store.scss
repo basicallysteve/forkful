@@ -150,6 +150,12 @@
     border-radius: 10px;
     background: var(--vscode-panel);
 
+    // Room for QuantityInput's out-of-flow invalid hint: under the box (row gap) and inside the card.
+    &:has(.quantity-input-hint) {
+      row-gap: 22px;
+      padding-bottom: 20px;
+    }
+
     .form-field {
       padding: 0;
       border: none;
