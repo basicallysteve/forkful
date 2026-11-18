@@ -206,10 +206,10 @@ $mobile-breakpoint: 720px;
     border: 1px solid var(--vscode-border);
     border-radius: 10px;
     background: var(--vscode-panel-strong);
-    // Stay visible while scrolling the card list. 60px clears the sticky app
+    // Stay visible while scrolling the card list. 60px (plus the iOS top inset) clears the sticky app
     // toolbar (and the slightly shorter marketing nav) that sits above.
     position: sticky;
-    top: 60px;
+    top: calc(60px + env(safe-area-inset-top, 0px));
     z-index: 40;
     box-shadow: 0 4px 12px var(--shadow-container);
   }

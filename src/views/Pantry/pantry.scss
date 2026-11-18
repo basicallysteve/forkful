@@ -1013,8 +1013,8 @@
 // Undo toast (PrimeReact Toast). Bottom-left so it clears the bottom-right "Report an issue" widget;
 // on narrow screens it leaves room for that widget on the right.
 .p-toast.pantry-toast.p-toast-bottom-left {
-  left: 16px;
-  bottom: 16px;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
   width: auto;
   padding: 0;
   max-width: min(420px, calc(100vw - 32px));
