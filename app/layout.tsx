@@ -23,6 +23,11 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  // Status-bar tint = toolbar background (--vscode-panel), so the band above the header blends in
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c2b20' },
+  ],
 }
 
 export default async function RootLayout({

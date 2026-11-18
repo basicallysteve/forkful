@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c2b20">
+<title>Header variants debug (temporary, #252)</title>
+<style>
+  :root { --bar: #ffffff; --bar-text: #0f172a; --page: #eef2f7; --row: #ffffff; --row-text: #0f172a; --line: #10b981; color-scheme: light; }
+  /* ?theme=dark forces dark; without it, follows the phone (prefers-color-scheme) */
+  @media (prefers-color-scheme: dark) { :root[data-auto] { --bar: #0c2b20; --bar-text: #e6f4ee; --page: #061812; --row: #123629; --row-text: #e6f4ee; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bar: #0c2b20; --bar-text: #e6f4ee; --page: #061812; --row: #123629; --row-text: #e6f4ee; color-scheme: dark; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--page); color: var(--row-text); }
+  #bar { height: 56px; background: var(--bar); color: var(--bar-text); border-bottom: 2px solid var(--line); display: flex; align-items: center; padding: 0 12px; font-weight: 700; box-sizing: content-box; z-index: 10; }
+  body[data-v="sticky"] #bar { position: sticky; top: 0; }
+  body[data-v="fixed"] #bar { position: fixed; top: 0; left: 0; right: 0; }
+  #spacer { display: none; height: 58px; }
+  body[data-v="fixed"] #spacer { display: block; }
+  #info { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; margin: 0; padding: 4px 8px; background: var(--row); border-top: 1px solid var(--line); white-space: pre-wrap; font: 10px/1.3 ui-monospace, monospace; }
+  body { padding-bottom: 90px; }
+  nav.links { margin: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav.links a { padding: 8px 10px; border-radius: 8px; background: var(--row); color: var(--row-text); text-decoration: none; border: 1px solid var(--line); font-weight: 600; }
+  nav.links a.on { background: var(--line); color: #fff; }
+  .row { margin: 8px; padding: 18px; background: var(--row); border-radius: 8px; }
+  #probe { position: absolute; visibility: hidden; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+</style>
+</head>
+<body>
+<div id="probe"></div>
+<div id="bar"></div>
+<div id="spacer"></div>
+<nav class="links" id="links"></nav>
+<div id="info">loading...</div>
+<div id="rows"></div>
+<nav class="links" id="links2"></nav>
+<script>
+  const q = new URLSearchParams(location.search);
+  const v = q.get('v') === 'fixed' ? 'fixed' : 'sticky';
+  const theme = q.get('theme') === 'dark' ? 'dark' : q.get('theme') === 'light' ? 'light' : 'auto';
+  document.body.dataset.v = v;
+  if (theme === 'auto') document.documentElement.setAttribute('data-auto', ''); else document.documentElement.dataset.theme = theme;
+  // Forced theme: also point every theme-color meta at that bar colour (like the app's toggle does)
+  if (theme !== 'auto') document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = theme === 'dark' ? '#0c2b20' : '#ffffff'; });
+  document.getElementById('bar').textContent = 'A/B: ' + v.toUpperCase() + ' bar | theme=' + theme + ' (green line = bar bottom)';
+  const mk = () => ['sticky', 'fixed'].flatMap(vv => ['auto', 'light', 'dark'].map(t => {
+    const a = document.createElement('a');
+    a.href = '?v=' + vv + (t === 'auto' ? '' : '&theme=' + t);
+    a.textContent = vv + ' / ' + t;
+    if (vv === v && t === theme) a.className = 'on';
+    return a;
+  }));
+  for (const id of ['links', 'links2']) document.getElementById(id).append(...mk());
+  for (let i = 1; i <= 60; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'Row ' + i + ' - scroll, watch the band above the bar'; document.getElementById('rows').appendChild(d); }
+  function show() {
+    const cs = getComputedStyle(document.getElementById('probe'));
+    const vv = window.visualViewport;
+    const s = document.getElementById('bar').getBoundingClientRect();
+    document.getElementById('info').textContent = [
+      'variant ' + v + ', theme ' + theme + ', OS dark ' + matchMedia('(prefers-color-scheme: dark)').matches,
+      'scrollY ' + Math.round(scrollY) + '  bar top ' + s.top.toFixed(1),
+      'env T/R/B/L ' + [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].join(' / '),
+      'innerH ' + innerHeight + '  screen ' + screen.width + 'x' + screen.height + '  vv.offsetTop ' + (vv ? vv.offsetTop.toFixed(1) : 'n/a'),
+      'theme-color metas ' + Array.from(document.querySelectorAll('meta[name=theme-color]')).map(m => m.content).join(',')
+    ].join('\n');
+  }
+  addEventListener('scroll', show, { passive: true }); addEventListener('resize', show); show();
+</script>
+</body>
+</html>
