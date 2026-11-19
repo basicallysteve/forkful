@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
 import { InputText } from 'primereact/inputtext'
+import MealSlotList from './MealSlotList'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
-import { OrderList } from 'primereact/orderlist'
 import { cuisineOptions, dietaryOptions, defaultMealSlots } from '@/constants/userPreferences'
 import {
   apiUpdatePreferences,
@@ -221,8 +221,8 @@ export default function Profile({ user }: ProfileProps) {
     setMealSlotsSuccess(false)
   }
 
-  function reorderSlots(value: { id: number; name: string }[]) {
-    setMealSlots(value)
+  function reorderSlots(next: { id: number; name: string }[]) {
+    setMealSlots(next)
     setMealSlotsSuccess(false)
   }
 
@@ -568,29 +568,7 @@ export default function Profile({ user }: ProfileProps) {
             {mealSlots.length === 0 ? (
               <p className="meal-slot-empty">No meal slots yet — add one above.</p>
             ) : (
-              <OrderList
-                className="meal-slot-orderlist"
-                dataKey="id"
-                value={mealSlots}
-                onChange={e => reorderSlots(e.value)}
-                dragdrop
-                itemTemplate={(slot: { id: number; name: string }) => {
-                  return (
-                    <div className="meal-slot-row">
-                      <span className="meal-slot-name">{slot.name}</span>
-                      <button
-                        type="button"
-                        className="icon-button icon-button--danger"
-                        aria-label={`Remove ${slot.name}`}
-                        onClick={() => removeSlot(slot.id)}
-                        onMouseDown={e => e.stopPropagation()}
-                      >
-                        <i className="pi pi-trash" aria-hidden="true" />
-                      </button>
-                    </div>
-                  )
-                }}
-              />
+              <MealSlotList slots={mealSlots} onReorder={reorderSlots} onRemove={removeSlot} />
             )}
             <div className="panel-footer">
               {mealSlotsSuccess && <span className="success-text">Saved!</span>}

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Profile from './Profile'
 import type { User } from '@/types/User'
@@ -316,6 +316,94 @@ describe('Profile', () => {
       await user.click(screen.getByRole('button', { name: /save meal slots/i }))
       await waitFor(() => {
         expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+    })
+
+    describe('reordering', () => {
+      const names = () =>
+        within(screen.getByRole('list', { name: 'Meal slots' }))
+          .getAllByRole('listitem')
+          .map(li => li.textContent)
+
+      // jsdom has no layout; stack the rows so dnd-kit's keyboard coordinates can
+      // tell which row is above/below.
+      let rectSpy: ReturnType<typeof vi.spyOn>
+      beforeEach(() => {
+        rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+          const li = this.closest('li')
+          const index = li ? Array.from(li.parentElement!.children).indexOf(li) : 0
+          const top = li ? index * 50 : 0
+          return { x: 0, y: top, top, left: 0, right: 300, bottom: top + 40, width: 300, height: 40, toJSON: () => ({}) } as DOMRect
+        })
+      })
+      afterEach(() => rectSpy.mockRestore())
+
+      it('gives every row a keyboard-focusable handle named "Reorder <slot>"', () => {
+        render(<Profile user={mockUser} />)
+        for (const n of ['Breakfast', 'Lunch', 'Dinner', 'Snack']) {
+          const handle = screen.getByRole('button', { name: `Reorder ${n}` })
+          expect(handle.tabIndex).toBeGreaterThanOrEqual(0)
+        }
+      })
+
+      it('uses a deterministic dnd-kit describedby id so SSR and client markup match', () => {
+        const { unmount } = render(<Profile user={mockUser} />)
+        const first = screen.getByRole('button', { name: 'Reorder Breakfast' }).getAttribute('aria-describedby')
+        unmount()
+        render(<Profile user={mockUser} />)
+        const second = screen.getByRole('button', { name: 'Reorder Breakfast' }).getAttribute('aria-describedby')
+        expect(first).toBe(second)
+      })
+
+      it('renders no up/down arrow buttons', () => {
+        render(<Profile user={mockUser} />)
+        expect(screen.queryByRole('button', { name: /^move .* (up|down)$/i })).not.toBeInTheDocument()
+      })
+
+      it('reorders with the keyboard: Space, ArrowDown, Space', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        screen.getByRole('button', { name: 'Reorder Breakfast' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowDown}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()).toEqual(['Lunch', 'Breakfast', 'Dinner', 'Snack']))
+      })
+
+      it('cancels a keyboard drag with Escape and keeps the order', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        screen.getByRole('button', { name: 'Reorder Breakfast' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowDown}')
+        await user.keyboard('{Escape}')
+        expect(names()).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+
+      it('saves the reordered slots', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        screen.getByRole('button', { name: 'Reorder Snack' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowUp}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()).toEqual(['Breakfast', 'Lunch', 'Snack', 'Dinner']))
+        await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+        await waitFor(() => {
+          expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Snack', 'Dinner'])
+        })
+      })
+
+      it('keeps each row element tied to its slot when reordering', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        const lunchRow = screen.getByText('Lunch').closest('li')
+        screen.getByRole('button', { name: 'Reorder Lunch' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowUp}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()[0]).toBe('Lunch'))
+        expect(screen.getByText('Lunch').closest('li')).toBe(lunchRow)
       })
     })
 
