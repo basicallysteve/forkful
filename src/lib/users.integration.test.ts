@@ -10,8 +10,10 @@ const pool = new Pool({
 })
 
 async function clearUsers() {
-  await pool.query("DELETE FROM login_attempts");
-  await pool.query("DELETE FROM users WHERE username LIKE 'test%'");
+  // Scoped: only attempts for ITest users, or user-less attempts from the IPs this suite uses.
+  await pool.query("DELETE FROM login_attempts WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itest%')");
+  await pool.query("DELETE FROM login_attempts WHERE user_id IS NULL AND ip_address IN ('127.0.0.1', '10.0.0.1', '10.0.0.2', '192.168.1.1', '192.168.2.1')");
+  await pool.query("DELETE FROM users WHERE username LIKE 'itest%'");
 }
 
 describe('users integration tests', () => {
@@ -24,8 +26,8 @@ describe('users integration tests', () => {
 
     it('should sign up a new user', async () => {
         const user = {
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -37,15 +39,15 @@ describe('users integration tests', () => {
 
     it('should not allow duplicate email', async () => {
         const user1 = {
-            username: 'testuser1',
-            email: 'testUser@gmail.com',
+            username: 'itestuser1',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
         }
         const user2 = {
-            username: 'testuser2',
-            email: 'testUser@gmail.com',
+            username: 'itestuser2',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -56,15 +58,15 @@ describe('users integration tests', () => {
 
     it('should not allow duplicate username', async () => {
         const user1 = {
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
         }
         const user2 = {
-            username: 'testuser',
-            email: 'testUser2@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser2@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -75,8 +77,8 @@ describe('users integration tests', () => {
 
     it("should hash the user's password", async () => {
         const user = {
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -87,8 +89,8 @@ describe('users integration tests', () => {
 
     it('should store cuisine preferences and dietary restrictions', async () => {
         const user = {
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: ['Italian', 'Mexican'],
             dietaryRestrictions: ['Vegetarian', 'Gluten-Free'],
@@ -100,8 +102,8 @@ describe('users integration tests', () => {
 
     it('should default a new user to an empty nutrition goal', async () => {
         const newUser = await signUp({
-            username: 'testgoal',
-            email: 'testgoal@gmail.com',
+            username: 'itestgoal',
+            email: 'itestgoal@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -111,8 +113,8 @@ describe('users integration tests', () => {
 
     it('should write and read back a full nutrition goal', async () => {
         const newUser = await signUp({
-            username: 'testgoal',
-            email: 'testgoal@gmail.com',
+            username: 'itestgoal',
+            email: 'itestgoal@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -124,8 +126,8 @@ describe('users integration tests', () => {
 
     it('should persist per-field nullability of the nutrition goal', async () => {
         const newUser = await signUp({
-            username: 'testgoal',
-            email: 'testgoal@gmail.com',
+            username: 'itestgoal',
+            email: 'itestgoal@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -138,8 +140,8 @@ describe('users integration tests', () => {
 
     it('should clear a previously set nutrition goal', async () => {
         const newUser = await signUp({
-            username: 'testgoal',
-            email: 'testgoal@gmail.com',
+            username: 'itestgoal',
+            email: 'itestgoal@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -152,8 +154,8 @@ describe('users integration tests', () => {
 
     it('should seed the four default meal slots on account creation', async () => {
         const newUser = await signUp({
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -163,8 +165,8 @@ describe('users integration tests', () => {
 
     it('should round-trip meal slots in their configured order', async () => {
         const newUser = await signUp({
-            username: 'testuser',
-            email: 'testUser@gmail.com',
+            username: 'itestuser',
+            email: 'itestUser@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: [],
@@ -177,37 +179,37 @@ describe('users integration tests', () => {
 
     it('should login a user successfully', async () => {
         const user = {
-            username: 'testlogin',
-            email: 'testlogin@gmail.com',
+            username: 'itestlogin',
+            email: 'itestlogin@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: []
         }
         await signUp(user)
-        const loggedIn = await login({ username: 'testlogin', password: 'password123', ipAddress: '127.0.0.1' })
-        expect(loggedIn.username).toBe('testlogin')
+        const loggedIn = await login({ username: 'itestlogin', password: 'password123', ipAddress: '127.0.0.1' })
+        expect(loggedIn.username).toBe('itestlogin')
     })
 
     it('should reject login for non-existent user', async () => {
-        await expect(login({ username: 'testnonexistent', password: 'password123', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
+        await expect(login({ username: 'itestnonexistent', password: 'password123', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
     })
 
     it('should reject login with wrong password', async () => {
         const user = {
-            username: 'testlogin2',
-            email: 'testlogin2@gmail.com',
+            username: 'itestlogin2',
+            email: 'itestlogin2@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: []
         }
         await signUp(user)
-        await expect(login({ username: 'testlogin2', password: 'wrongpassword', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
+        await expect(login({ username: 'itestlogin2', password: 'wrongpassword', ipAddress: '127.0.0.1' })).rejects.toThrow('Invalid username or password')
     })
 
     it('should block login after 5 failed attempts for the same user', async () => {
         const user = {
-            username: 'testlogin3',
-            email: 'testlogin3@gmail.com',
+            username: 'itestlogin3',
+            email: 'itestlogin3@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: []
@@ -218,13 +220,13 @@ describe('users integration tests', () => {
             await trackLoginAttempt({ userId: Number(newUser.id), successful: false, ipAddress: '10.0.0.1' })
         }
 
-        await expect(login({ username: 'testlogin3', password: 'password123', ipAddress: '10.0.0.2' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
+        await expect(login({ username: 'itestlogin3', password: 'password123', ipAddress: '10.0.0.2' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
     })
 
     it('should block login after 5 failed attempts from the same IP', async () => {
         const user = {
-            username: 'testlogin4',
-            email: 'testlogin4@gmail.com',
+            username: 'itestlogin4',
+            email: 'itestlogin4@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: []
@@ -236,13 +238,13 @@ describe('users integration tests', () => {
         }
 
         // Different username, same IP — should still be blocked
-        await expect(login({ username: 'testnonexistent', password: 'password123', ipAddress: '192.168.1.1' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
+        await expect(login({ username: 'itestnonexistent', password: 'password123', ipAddress: '192.168.1.1' })).rejects.toThrow('Too many failed login attempts. Please try again later.')
     })
 
     it('should not block login attempts from a different IP', async () => {
         const user = {
-            username: 'testlogin5',
-            email: 'testlogin5@gmail.com',
+            username: 'itestlogin5',
+            email: 'itestlogin5@gmail.com',
             password: 'password123',
             cuisinePreferences: [],
             dietaryRestrictions: []
@@ -256,7 +258,7 @@ describe('users integration tests', () => {
         }
 
         // Different IP — should not be blocked by the IP rate limit or per-user rate limit
-        const loggedIn = await login({ username: 'testlogin5', password: 'password123', ipAddress: '192.168.2.2' })
-        expect(loggedIn.username).toBe('testlogin5')
+        const loggedIn = await login({ username: 'itestlogin5', password: 'password123', ipAddress: '192.168.2.2' })
+        expect(loggedIn.username).toBe('itestlogin5')
     })
 })

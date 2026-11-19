@@ -16,16 +16,16 @@ const connectionString = process.env.DATABASE_URL || `postgresql://${process.env
 const pool = new Pool({ connectionString })
 
 async function cleanup() {
-  await pool.query(`DELETE FROM pantry_items WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'TestPantry%')`)
-  await pool.query(`DELETE FROM recipes WHERE name LIKE 'TestPantry%'`)
-  await pool.query(`DELETE FROM foods WHERE name LIKE 'TestPantry%'`)
-  await pool.query(`DELETE FROM users WHERE username LIKE 'testpantry%'`)
+  await pool.query(`DELETE FROM pantry_items WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'ITestPantry%')`)
+  await pool.query(`DELETE FROM recipes WHERE name LIKE 'ITestPantry%'`)
+  await pool.query(`DELETE FROM foods WHERE name LIKE 'ITestPantry%'`)
+  await pool.query(`DELETE FROM users WHERE username LIKE 'itestpantry%'`)
 }
 
 async function createTestUser(suffix: string) {
   const user = await signUp({
-    username: `testpantry${suffix}`,
-    email: `testpantry${suffix}@test.com`,
+    username: `itestpantry${suffix}`,
+    email: `itestpantry${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
@@ -38,7 +38,7 @@ async function createTestUser(suffix: string) {
 
 async function createTestFood() {
   return createFood({
-    name: 'TestPantry Chicken',
+    name: 'ITestPantry Chicken',
     calories: 165,
     protein: 31,
     carbs: 0,
@@ -68,7 +68,7 @@ describe('pantry data layer (integration)', () => {
     })
 
     expect(created.id).toBeDefined()
-    expect(created.food!.name).toBe('TestPantry Chicken')
+    expect(created.food!.name).toBe('ITestPantry Chicken')
     expect(created.originalSize.size).toBe(2)
     expect(created.currentSize.size).toBe(1.5)
     expect(created.status).toBe('good')
@@ -346,7 +346,7 @@ describe('pantry data layer (integration)', () => {
     it('suggests deducting 2 slice from 100 g stock, leaving 44 g', async () => {
       const user = await createTestUser('slice')
       const food = await createFood({
-        name: 'TestPantry Loaf',
+        name: 'ITestPantry Loaf',
         calories: 80,
         protein: 3,
         carbs: 15,
@@ -357,7 +357,7 @@ describe('pantry data layer (integration)', () => {
         measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }],
       })
       const recipe = await createRecipe({
-        name: 'TestPantry Toast',
+        name: 'ITestPantry Toast',
         meal: 'Breakfast',
         description: '',
         ingredients: [{ food, quantity: 2, calories: 0, servingUnit: 'slice' }],
@@ -383,7 +383,7 @@ describe('pantry data layer (integration)', () => {
     it('falls back to manual entry when the custom unit is uncalibrated', async () => {
       const user = await createTestUser('uncal')
       const food = await createFood({
-        name: 'TestPantry Roll',
+        name: 'ITestPantry Roll',
         calories: 80,
         protein: 3,
         carbs: 15,
@@ -394,7 +394,7 @@ describe('pantry data layer (integration)', () => {
         measurements: [{ unit: 'g' }, { unit: 'slice' }],
       })
       const recipe = await createRecipe({
-        name: 'TestPantry Sandwich',
+        name: 'ITestPantry Sandwich',
         meal: 'Lunch',
         description: '',
         ingredients: [{ food, quantity: 2, calories: 0, servingUnit: 'slice' }],

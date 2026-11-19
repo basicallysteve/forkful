@@ -30,21 +30,21 @@ const pool = new Pool({ connectionString })
 async function cleanup() {
   // Trip Completion turns bought lines into pantry items; clear those first so the FK back to the
   // shopping line (onDelete set null) and the food/product deletes below have nothing dangling.
-  await pool.query(`DELETE FROM pantry_items WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%')`)
-  await pool.query(`DELETE FROM shopping_list_items WHERE shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%'))`)
-  await pool.query(`DELETE FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testshopping%')`)
+  await pool.query(`DELETE FROM pantry_items WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itestshopping%')`)
+  await pool.query(`DELETE FROM shopping_list_items WHERE shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itestshopping%'))`)
+  await pool.query(`DELETE FROM shopping_lists WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itestshopping%')`)
   // Recipes drag their ingredients along (ingredients cascade on recipe delete); do this before the
   // foods delete so no ingredient row is left pointing at a food that's about to go.
-  await pool.query(`DELETE FROM recipes WHERE name LIKE 'TestShopping%'`)
-  await pool.query(`DELETE FROM products WHERE name LIKE 'TestShopping%'`)
-  await pool.query(`DELETE FROM foods WHERE name LIKE 'TestShopping%'`)
-  await pool.query(`DELETE FROM users WHERE username LIKE 'testshopping%'`)
+  await pool.query(`DELETE FROM recipes WHERE name LIKE 'ITestShopping%'`)
+  await pool.query(`DELETE FROM products WHERE name LIKE 'ITestShopping%'`)
+  await pool.query(`DELETE FROM foods WHERE name LIKE 'ITestShopping%'`)
+  await pool.query(`DELETE FROM users WHERE username LIKE 'itestshopping%'`)
 }
 
 async function createTestUser(suffix: string) {
   const user = await signUp({
-    username: `testshopping${suffix}`,
-    email: `testshopping${suffix}@test.com`,
+    username: `itestshopping${suffix}`,
+    email: `itestshopping${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
@@ -55,7 +55,7 @@ async function createTestUser(suffix: string) {
   return { ...user, id: Number(user.id) }
 }
 
-async function createTestFood(name = 'TestShopping Chicken') {
+async function createTestFood(name = 'ITestShopping Chicken') {
   return createFood({
     name,
     calories: 165,
@@ -69,7 +69,7 @@ async function createTestFood(name = 'TestShopping Chicken') {
   })
 }
 
-async function createTestProduct(name = 'TestShopping Cereal') {
+async function createTestProduct(name = 'ITestShopping Cereal') {
   return createProduct({
     name,
     calories: 120,
@@ -114,7 +114,7 @@ describe('shopping list data layer (integration)', () => {
       unit: 'oz',
     })
 
-    expect(created.food?.name).toBe('TestShopping Chicken')
+    expect(created.food?.name).toBe('ITestShopping Chicken')
     expect(created.sourceType).toBe('food')
     expect(created.status).toBe('to_buy')
     expect(created.amount).toBe(2)
@@ -123,7 +123,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('lists shopping list items for the active list', async () => {
     const user = await createTestUser('c')
-    const food = await createTestFood('TestShopping Rice')
+    const food = await createTestFood('ITestShopping Rice')
 
     await createShoppingListFoodItem({
       userId: user.id,
@@ -135,14 +135,14 @@ describe('shopping list data layer (integration)', () => {
     const items = await getShoppingListItems(user.id)
 
     expect(items).toHaveLength(1)
-    expect(items[0].food?.name).toBe('TestShopping Rice')
+    expect(items[0].food?.name).toBe('ITestShopping Rice')
     expect(items[0].sourceType).toBe('food')
     expect(items[0].status).toBe('to_buy')
   })
 
   it('merges a duplicate food + unit line into the existing open line', async () => {
     const user = await createTestUser('d')
-    const food = await createTestFood('TestShopping Merge')
+    const food = await createTestFood('ITestShopping Merge')
 
     const first = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
     const second = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
@@ -157,7 +157,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('keeps the same food as separate lines when the unit differs', async () => {
     const user = await createTestUser('e')
-    const food = await createTestFood('TestShopping Units')
+    const food = await createTestFood('ITestShopping Units')
 
     await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
     await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'oz' })
@@ -168,7 +168,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('adds a product item with sourceType product, constrained to the product’s units', async () => {
     const user = await createTestUser('f')
-    const product = await createTestProduct('TestShopping Cereal')
+    const product = await createTestProduct('ITestShopping Cereal')
 
     const created = await createShoppingListProductItem({
       userId: user.id,
@@ -179,7 +179,7 @@ describe('shopping list data layer (integration)', () => {
 
     expect(created.sourceType).toBe('product')
     expect(created.status).toBe('to_buy')
-    expect(created.name).toBe('TestShopping Cereal')
+    expect(created.name).toBe('ITestShopping Cereal')
     expect(created.product?.id).toBe(product.id)
     expect(created.food).toBeUndefined()
     expect(created.amount).toBe(2)
@@ -195,20 +195,20 @@ describe('shopping list data layer (integration)', () => {
 
     const withUnit = await createShoppingListFreeformItem({
       userId: user.id,
-      name: 'TestShopping Trash bags',
+      name: 'ITestShopping Trash bags',
       amount: 2,
       unit: 'box',
     })
 
     expect(withUnit.sourceType).toBe('freeform')
-    expect(withUnit.name).toBe('TestShopping Trash bags')
+    expect(withUnit.name).toBe('ITestShopping Trash bags')
     expect(withUnit.food).toBeUndefined()
     expect(withUnit.product).toBeUndefined()
     expect(withUnit.unit).toBe('box')
 
     const withoutUnit = await createShoppingListFreeformItem({
       userId: user.id,
-      name: 'TestShopping Napkins',
+      name: 'ITestShopping Napkins',
       amount: 1,
     })
 
@@ -216,7 +216,7 @@ describe('shopping list data layer (integration)', () => {
 
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(2)
-    expect(items.map((item) => item.name).sort()).toEqual(['TestShopping Napkins', 'TestShopping Trash bags'])
+    expect(items.map((item) => item.name).sort()).toEqual(['ITestShopping Napkins', 'ITestShopping Trash bags'])
   })
 
   it('rejects freeform name/unit that exceed the column limits before hitting the DB', async () => {
@@ -227,13 +227,13 @@ describe('shopping list data layer (integration)', () => {
     ).rejects.toThrow('Name is too long')
 
     await expect(
-      createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Long Unit', amount: 1, unit: 'x'.repeat(51) })
+      createShoppingListFreeformItem({ userId: user.id, name: 'ITestShopping Long Unit', amount: 1, unit: 'x'.repeat(51) })
     ).rejects.toThrow('Unit is too long')
   })
 
   it('rejects an amount above the numeric(10,2) ceiling, including via a merge', async () => {
     const user = await createTestUser('k')
-    const food = await createTestFood('TestShopping Overflow')
+    const food = await createTestFood('ITestShopping Overflow')
 
     await expect(
       createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 100_000_000, unit: 'g' })
@@ -254,13 +254,13 @@ describe('shopping list data layer (integration)', () => {
   it('merges a duplicate freeform name + unit line, case-insensitively', async () => {
     const user = await createTestUser('h')
 
-    const first = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Foil', amount: 1, unit: 'roll' })
+    const first = await createShoppingListFreeformItem({ userId: user.id, name: 'ITestShopping Foil', amount: 1, unit: 'roll' })
     // Different casing still merges; the existing line keeps its original casing.
-    const second = await createShoppingListFreeformItem({ userId: user.id, name: 'testshopping foil', amount: 2, unit: 'roll' })
+    const second = await createShoppingListFreeformItem({ userId: user.id, name: 'ITestShopping foil', amount: 2, unit: 'roll' })
 
     expect(second.id).toBe(first.id)
     expect(second.amount).toBe(3)
-    expect(second.name).toBe('TestShopping Foil')
+    expect(second.name).toBe('ITestShopping Foil')
 
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(1)
@@ -268,12 +268,12 @@ describe('shopping list data layer (integration)', () => {
 
   it('lists all three variants together on the active list', async () => {
     const user = await createTestUser('i')
-    const food = await createTestFood('TestShopping Mixed Food')
-    const product = await createTestProduct('TestShopping Mixed Product')
+    const food = await createTestFood('ITestShopping Mixed Food')
+    const product = await createTestProduct('ITestShopping Mixed Product')
 
     await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
     await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
-    await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping Mixed Freeform', amount: 1 })
+    await createShoppingListFreeformItem({ userId: user.id, name: 'ITestShopping Mixed Freeform', amount: 1 })
 
     const items = await getShoppingListItems(user.id)
     expect(items).toHaveLength(3)
@@ -282,7 +282,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('hard-deletes a line off the active list and reports success', async () => {
     const user = await createTestUser('j')
-    const food = await createTestFood('TestShopping Deletable')
+    const food = await createTestFood('ITestShopping Deletable')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
 
@@ -300,7 +300,7 @@ describe('shopping list data layer (integration)', () => {
   it('returns false and leaves the line intact when another user tries to delete it', async () => {
     const owner = await createTestUser('k')
     const intruder = await createTestUser('l')
-    const food = await createTestFood('TestShopping Owned')
+    const food = await createTestFood('ITestShopping Owned')
 
     const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
 
@@ -321,7 +321,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('transitions a line through every status reversibly without touching its Food reference', async () => {
     const user = await createTestUser('n')
-    const food = await createTestFood('TestShopping Transitions')
+    const food = await createTestFood('ITestShopping Transitions')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
     expect(created.status).toBe('to_buy')
@@ -341,7 +341,7 @@ describe('shopping list data layer (integration)', () => {
   it('returns null and leaves the status intact when another user tries to update it', async () => {
     const owner = await createTestUser('o')
     const intruder = await createTestUser('p')
-    const food = await createTestFood('TestShopping Guarded')
+    const food = await createTestFood('ITestShopping Guarded')
 
     const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
 
@@ -355,7 +355,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('records and clears a Line Price and expiration without touching the status or reference', async () => {
     const user = await createTestUser('q')
-    const food = await createTestFood('TestShopping Priced')
+    const food = await createTestFood('ITestShopping Priced')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
     expect(created.linePrice).toBeNull()
@@ -377,7 +377,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('rounds the persisted Line Price to the numeric(10,2) column and rejects a negative price', async () => {
     const user = await createTestUser('r')
-    const food = await createTestFood('TestShopping Rounding')
+    const food = await createTestFood('ITestShopping Rounding')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
 
@@ -393,7 +393,7 @@ describe('shopping list data layer (integration)', () => {
   it('returns null when another user tries to set a line’s price', async () => {
     const owner = await createTestUser('s')
     const intruder = await createTestUser('t')
-    const food = await createTestFood('TestShopping PriceGuarded')
+    const food = await createTestFood('ITestShopping PriceGuarded')
 
     const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 1, unit: 'g' })
 
@@ -406,7 +406,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('splits a line into date-grouped lines, partitioning amount and distributing price', async () => {
     const user = await createTestUser('u')
-    const food = await createTestFood('TestShopping Splittable')
+    const food = await createTestFood('ITestShopping Splittable')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
     await updateShoppingListItemDetails(created.id, user.id, { linePrice: 6 })
@@ -438,7 +438,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('rejects a split whose portions do not sum to the line amount', async () => {
     const user = await createTestUser('v')
-    const food = await createTestFood('TestShopping BadSplit')
+    const food = await createTestFood('ITestShopping BadSplit')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 6, unit: 'g' })
 
@@ -457,7 +457,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('rejects a split whose portion rounds to a zero amount', async () => {
     const user = await createTestUser('y')
-    const food = await createTestFood('TestShopping SubCent')
+    const food = await createTestFood('ITestShopping SubCent')
 
     const created = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'g' })
 
@@ -478,7 +478,7 @@ describe('shopping list data layer (integration)', () => {
   it('returns null when another user tries to split a line', async () => {
     const owner = await createTestUser('w')
     const intruder = await createTestUser('x')
-    const food = await createTestFood('TestShopping SplitGuarded')
+    const food = await createTestFood('ITestShopping SplitGuarded')
 
     const created = await createShoppingListFoodItem({ userId: owner.id, foodId: food.id, amount: 2, unit: 'g' })
 
@@ -495,8 +495,8 @@ describe('shopping list data layer (integration)', () => {
 
   it('completes a trip: bought food/product lines become pantry items with carried size/expiration and provenance', async () => {
     const user = await createTestUser('tripA')
-    const food = await createTestFood('TestShopping TripFood')
-    const product = await createTestProduct('TestShopping TripProduct')
+    const food = await createTestFood('ITestShopping TripFood')
+    const product = await createTestProduct('ITestShopping TripProduct')
 
     const foodLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
     const productLine = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
@@ -543,7 +543,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('does not transfer a bought line whose product was soft-deleted since it was added', async () => {
     const user = await createTestUser('tripSoftDel')
-    const product = await createTestProduct('TestShopping TripSoftDeleted')
+    const product = await createTestProduct('ITestShopping TripSoftDeleted')
 
     const line = await createShoppingListProductItem({ userId: user.id, productId: product.id, amount: 1, unit: 'box' })
     await updateShoppingListItemStatus(line.id, user.id, 'bought')
@@ -562,7 +562,7 @@ describe('shopping list data layer (integration)', () => {
   it('does not transfer bought freeform lines to the pantry on completion', async () => {
     const user = await createTestUser('tripB')
 
-    const freeform = await createShoppingListFreeformItem({ userId: user.id, name: 'TestShopping TripBags', amount: 3, unit: 'box' })
+    const freeform = await createShoppingListFreeformItem({ userId: user.id, name: 'ITestShopping TripBags', amount: 3, unit: 'box' })
     await updateShoppingListItemStatus(freeform.id, user.id, 'bought')
 
     const result = await completeShoppingTrip(user.id, { keepUnbought: false })
@@ -574,9 +574,9 @@ describe('shopping list data layer (integration)', () => {
 
   it('keeps still-unbought lines on a fresh active list when the batch prompt is kept', async () => {
     const user = await createTestUser('tripC')
-    const bought = await createTestFood('TestShopping TripKeptBought')
-    const toBuy = await createTestFood('TestShopping TripKeptToBuy')
-    const unavailable = await createTestFood('TestShopping TripKeptUnavailable')
+    const bought = await createTestFood('ITestShopping TripKeptBought')
+    const toBuy = await createTestFood('ITestShopping TripKeptToBuy')
+    const unavailable = await createTestFood('ITestShopping TripKeptUnavailable')
 
     const boughtLine = await createShoppingListFoodItem({ userId: user.id, foodId: bought.id, amount: 1, unit: 'g' })
     const toBuyLine = await createShoppingListFoodItem({ userId: user.id, foodId: toBuy.id, amount: 1, unit: 'g' })
@@ -599,8 +599,8 @@ describe('shopping list data layer (integration)', () => {
 
   it('drops still-unbought lines with the archive when the batch prompt is not kept', async () => {
     const user = await createTestUser('tripD')
-    const bought = await createTestFood('TestShopping TripDropBought')
-    const toBuy = await createTestFood('TestShopping TripDropToBuy')
+    const bought = await createTestFood('ITestShopping TripDropBought')
+    const toBuy = await createTestFood('ITestShopping TripDropToBuy')
 
     const boughtLine = await createShoppingListFoodItem({ userId: user.id, foodId: bought.id, amount: 1, unit: 'g' })
     const toBuyLine = await createShoppingListFoodItem({ userId: user.id, foodId: toBuy.id, amount: 1, unit: 'g' })
@@ -621,7 +621,7 @@ describe('shopping list data layer (integration)', () => {
 
   it('adds a new line onto a fresh active list after a completion archived the previous one', async () => {
     const user = await createTestUser('tripReadd')
-    const food = await createTestFood('TestShopping TripReadd')
+    const food = await createTestFood('ITestShopping TripReadd')
 
     const firstLine = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'g' })
     await updateShoppingListItemStatus(firstLine.id, user.id, 'bought')
@@ -656,9 +656,9 @@ describe('shopping list data layer (integration)', () => {
   describe('Pantry-Gap Fill', () => {
     it('adds only the shortfall for a partially-stocked ingredient', async () => {
       const user = await createTestUser('gapA')
-      const food = await createTestFood('TestShopping Flour')
+      const food = await createTestFood('ITestShopping Flour')
       const recipe = await createRecipe({
-        name: 'TestShopping Bread',
+        name: 'ITestShopping Bread',
         meal: 'Dinner',
         description: '',
         ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
@@ -692,9 +692,9 @@ describe('shopping list data layer (integration)', () => {
 
     it('skips an ingredient that is already fully in stock', async () => {
       const user = await createTestUser('gapB')
-      const food = await createTestFood('TestShopping Sugar')
+      const food = await createTestFood('ITestShopping Sugar')
       const recipe = await createRecipe({
-        name: 'TestShopping Cookies',
+        name: 'ITestShopping Cookies',
         meal: 'Dinner',
         description: '',
         ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
@@ -722,9 +722,9 @@ describe('shopping list data layer (integration)', () => {
     it('falls back to the full required quantity when stock cannot be converted', async () => {
       const user = await createTestUser('gapC')
       // "each" is an Uncalibrated Custom Unit — gram stock can't be converted to it.
-      const food = await createTestFood('TestShopping Eggs')
+      const food = await createTestFood('ITestShopping Eggs')
       const recipe = await createRecipe({
-        name: 'TestShopping Omelette',
+        name: 'ITestShopping Omelette',
         meal: 'Breakfast',
         description: '',
         ingredients: [{ food, quantity: 6, calories: 0, servingUnit: 'each' }],
@@ -751,10 +751,10 @@ describe('shopping list data layer (integration)', () => {
 
     it('counts product-sourced pantry stock (matched via parentFoodId) toward the shortfall', async () => {
       const user = await createTestUser('gapE')
-      const food = await createTestFood('TestShopping Milk')
+      const food = await createTestFood('ITestShopping Milk')
       // A branded product linked to the ingredient Food — Meal-Prep-Deduction-style matching on parentFoodId.
       const product = await createProduct({
-        name: 'TestShopping Branded Milk',
+        name: 'ITestShopping Branded Milk',
         parentFoodId: food.id,
         calories: 60,
         protein: 3,
@@ -766,7 +766,7 @@ describe('shopping list data layer (integration)', () => {
         measurements: [{ unit: 'g' }],
       })
       const recipe = await createRecipe({
-        name: 'TestShopping Latte',
+        name: 'ITestShopping Latte',
         meal: 'Breakfast',
         description: '',
         ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
@@ -795,7 +795,7 @@ describe('shopping list data layer (integration)', () => {
     it('credits gram stock against a Calibrated Custom Unit ingredient (slice = 28 g)', async () => {
       const user = await createTestUser('gapSlice')
       const food = await createFood({
-        name: 'TestShopping Loaf',
+        name: 'ITestShopping Loaf',
         calories: 80,
         protein: 3,
         carbs: 15,
@@ -806,7 +806,7 @@ describe('shopping list data layer (integration)', () => {
         measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }],
       })
       const recipe = await createRecipe({
-        name: 'TestShopping Toast',
+        name: 'ITestShopping Toast',
         meal: 'Breakfast',
         description: '',
         ingredients: [{ food, quantity: 4, calories: 0, servingUnit: 'slice' }],
@@ -832,9 +832,9 @@ describe('shopping list data layer (integration)', () => {
 
     it('merges the shortfall into an existing open line for the same Food and unit', async () => {
       const user = await createTestUser('gapF')
-      const food = await createTestFood('TestShopping Butter')
+      const food = await createTestFood('ITestShopping Butter')
       const recipe = await createRecipe({
-        name: 'TestShopping Pastry',
+        name: 'ITestShopping Pastry',
         meal: 'Dinner',
         description: '',
         ingredients: [{ food, quantity: 200, calories: 0, servingUnit: 'g' }],
@@ -876,7 +876,7 @@ describe('shopping list data layer (integration)', () => {
   describe('Archived lists & price history', () => {
     it('lists archived lists most-recent-first with a bought-line count and total spent', async () => {
       const user = await createTestUser('archIndex')
-      const food = await createTestFood('TestShopping ArchFood')
+      const food = await createTestFood('ITestShopping ArchFood')
 
       // First trip: two bought lines, one priced ($5) and one left unpriced. Total spent = 5.
       const lineA = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
@@ -907,7 +907,7 @@ describe('shopping list data layer (integration)', () => {
 
     it('returns an archived list’s bought lines with their Line Prices and the total spent', async () => {
       const user = await createTestUser('archDetail')
-      const food = await createTestFood('TestShopping ArchDetailFood')
+      const food = await createTestFood('ITestShopping ArchDetailFood')
 
       const boughtPriced = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 2, unit: 'oz' })
       const boughtUnpriced = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 3, unit: 'g' })
@@ -931,7 +931,7 @@ describe('shopping list data layer (integration)', () => {
 
     it('omits an archived list that has no bought lines from the index', async () => {
       const user = await createTestUser('archEmpty')
-      const food = await createTestFood('TestShopping ArchEmptyFood')
+      const food = await createTestFood('ITestShopping ArchEmptyFood')
 
       // First trip: a real bought line, so this archived list should appear.
       const bought = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'oz' })
@@ -965,7 +965,7 @@ describe('shopping list data layer (integration)', () => {
     it('returns null for an active list, another user’s list, or a missing id', async () => {
       const owner = await createTestUser('archOwner')
       const other = await createTestUser('archOther')
-      const food = await createTestFood('TestShopping ArchScopeFood')
+      const food = await createTestFood('ITestShopping ArchScopeFood')
 
       // An active (un-completed) list is not retrievable via the archived reader.
       const activeList = await getOrCreateActiveShoppingList(owner.id)
@@ -984,7 +984,7 @@ describe('shopping list data layer (integration)', () => {
 
     it('purges archived lists with no bought lines but keeps ones that had a purchase', async () => {
       const user = await createTestUser('archPurge')
-      const food = await createTestFood('TestShopping ArchPurgeFood')
+      const food = await createTestFood('ITestShopping ArchPurgeFood')
 
       // A trip with a real purchase — this archived list must survive the purge.
       const bought = await createShoppingListFoodItem({ userId: user.id, foodId: food.id, amount: 1, unit: 'oz' })
@@ -1016,9 +1016,9 @@ describe('shopping list data layer (integration)', () => {
   describe('scan-to-buy (ADR-0021)', () => {
     it('upgrades a planned food line to the scanned product in place and marks it bought', async () => {
       const user = await createTestUser('scan-upgrade')
-      const food = await createTestFood('TestShopping Milk')
+      const food = await createTestFood('ITestShopping Milk')
       const product = await createProduct({
-        name: 'TestShopping Lucerne 2% Milk',
+        name: 'ITestShopping Lucerne 2% Milk',
         barcode: '0001112223334',
         parentFoodId: food.id,
         calories: 120, protein: 8, carbs: 12, fat: 5, fiber: 0,
@@ -1049,9 +1049,9 @@ describe('shopping list data layer (integration)', () => {
 
     it('adds a new already-bought product line for an off-list scan (impulse buy)', async () => {
       const user = await createTestUser('scan-impulse')
-      const food = await createTestFood('TestShopping Bread')
+      const food = await createTestFood('ITestShopping Bread')
       const product = await createProduct({
-        name: 'TestShopping Artisan Loaf',
+        name: 'ITestShopping Artisan Loaf',
         barcode: '0002223334445',
         parentFoodId: food.id,
         calories: 90, protein: 3, carbs: 18, fat: 1, fiber: 1,
@@ -1074,7 +1074,7 @@ describe('shopping list data layer (integration)', () => {
     it('checks off a planned product line for the same product without duplicating it', async () => {
       const user = await createTestUser('scan-checked')
       const product = await createProduct({
-        name: 'TestShopping Cola',
+        name: 'ITestShopping Cola',
         barcode: '0003334445556',
         calories: 140, protein: 0, carbs: 39, fat: 0, fiber: 0,
         servingSize: 1, servingUnit: 'can', measurements: [{ unit: 'can' }],
@@ -1101,9 +1101,9 @@ describe('shopping list data layer (integration)', () => {
 
     it('keeps the upgraded product reference when the line is later un-checked', async () => {
       const user = await createTestUser('scan-uncheck')
-      const food = await createTestFood('TestShopping Yogurt')
+      const food = await createTestFood('ITestShopping Yogurt')
       const product = await createProduct({
-        name: 'TestShopping Chobani Yogurt',
+        name: 'ITestShopping Chobani Yogurt',
         barcode: '0004445556667',
         parentFoodId: food.id,
         calories: 100, protein: 12, carbs: 6, fat: 0, fiber: 0,
