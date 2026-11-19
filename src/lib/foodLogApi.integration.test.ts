@@ -26,7 +26,7 @@ describe('POST /api/log (integration)', () => {
   })
 
   afterEach(async () => {
-    await pool.query(`DELETE FROM users WHERE username LIKE 'testlogapi%'`)
+    await pool.query(`DELETE FROM users WHERE username LIKE 'itestlogapi%'`)
   })
 
   afterAll(async () => {
@@ -35,14 +35,14 @@ describe('POST /api/log (integration)', () => {
 
   it('returns 404 and logs nothing when the foodId does not exist', async () => {
     const user = await signUp({
-      username: 'testlogapia',
-      email: 'testlogapia@test.com',
+      username: 'itestlogapia',
+      email: 'itestlogapia@test.com',
       password: 'password123',
       cuisinePreferences: [],
       dietaryRestrictions: [],
     })
     const userId = Number(user.id)
-    vi.mocked(getSessionUser).mockResolvedValue({ userId, username: 'testlogapia', avatarUrl: null, needsOnboarding: false, needsPasswordReset: false })
+    vi.mocked(getSessionUser).mockResolvedValue({ userId, username: 'itestlogapia', avatarUrl: null, needsOnboarding: false, needsPasswordReset: false })
 
     const res = await POST(postRequest({ foodId: 2147483000, amount: 1, unit: 'g', logDate: '2026-11-16' }))
 

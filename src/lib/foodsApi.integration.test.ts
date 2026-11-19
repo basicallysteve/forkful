@@ -16,7 +16,7 @@ const pool = new Pool({
 const signedIn = { userId: 1, username: 'agent', avatarUrl: null, needsOnboarding: false, needsPasswordReset: false }
 
 const newFood = {
-  name: 'Test Route Apple',
+  name: 'ITest Route Apple',
   calories: 95,
   protein: 0.5,
   carbs: 25,
@@ -43,7 +43,7 @@ describe('food write routes require sign-in (integration)', () => {
   })
 
   afterEach(async () => {
-    await pool.query(`DELETE FROM "foods" WHERE name LIKE 'Test%'`)
+    await pool.query(`DELETE FROM "foods" WHERE name LIKE 'ITest%'`)
   })
 
   afterAll(async () => {
@@ -55,15 +55,15 @@ describe('food write routes require sign-in (integration)', () => {
       vi.mocked(getSessionUser).mockResolvedValue(null)
       const res = await POST(jsonRequest('POST', newFood))
       expect(res.status).toBe(401)
-      expect(await getFoodBySlug('test-route-apple')).toBeNull()
+      expect(await getFoodBySlug('itest-route-apple')).toBeNull()
     })
 
     it('creates the food with a session', async () => {
       vi.mocked(getSessionUser).mockResolvedValue(signedIn)
       const res = await POST(jsonRequest('POST', newFood))
       expect(res.status).toBe(201)
-      expect((await res.json()).name).toBe('Test Route Apple')
-      expect(await getFoodBySlug('test-route-apple')).not.toBeNull()
+      expect((await res.json()).name).toBe('ITest Route Apple')
+      expect(await getFoodBySlug('itest-route-apple')).not.toBeNull()
     })
   })
 
@@ -71,17 +71,17 @@ describe('food write routes require sign-in (integration)', () => {
     it('returns 401 and changes nothing without a session', async () => {
       await createFood(newFood)
       vi.mocked(getSessionUser).mockResolvedValue(null)
-      const res = await PUT(jsonRequest('PUT', { calories: 1 }), params('test-route-apple'))
+      const res = await PUT(jsonRequest('PUT', { calories: 1 }), params('itest-route-apple'))
       expect(res.status).toBe(401)
-      expect((await getFoodBySlug('test-route-apple'))?.calories).toBe(95)
+      expect((await getFoodBySlug('itest-route-apple'))?.calories).toBe(95)
     })
 
     it('updates the food with a session', async () => {
       await createFood(newFood)
       vi.mocked(getSessionUser).mockResolvedValue(signedIn)
-      const res = await PUT(jsonRequest('PUT', { calories: 100 }), params('test-route-apple'))
+      const res = await PUT(jsonRequest('PUT', { calories: 100 }), params('itest-route-apple'))
       expect(res.status).toBe(200)
-      expect((await getFoodBySlug('test-route-apple'))?.calories).toBe(100)
+      expect((await getFoodBySlug('itest-route-apple'))?.calories).toBe(100)
     })
   })
 
@@ -89,17 +89,17 @@ describe('food write routes require sign-in (integration)', () => {
     it('returns 401 and deletes nothing without a session', async () => {
       await createFood(newFood)
       vi.mocked(getSessionUser).mockResolvedValue(null)
-      const res = await DELETE(jsonRequest('DELETE'), params('test-route-apple'))
+      const res = await DELETE(jsonRequest('DELETE'), params('itest-route-apple'))
       expect(res.status).toBe(401)
-      expect(await getFoodBySlug('test-route-apple')).not.toBeNull()
+      expect(await getFoodBySlug('itest-route-apple')).not.toBeNull()
     })
 
     it('deletes the food with a session', async () => {
       await createFood(newFood)
       vi.mocked(getSessionUser).mockResolvedValue(signedIn)
-      const res = await DELETE(jsonRequest('DELETE'), params('test-route-apple'))
+      const res = await DELETE(jsonRequest('DELETE'), params('itest-route-apple'))
       expect(res.status).toBe(204)
-      expect(await getFoodBySlug('test-route-apple')).toBeNull()
+      expect(await getFoodBySlug('itest-route-apple')).toBeNull()
     })
   })
 })

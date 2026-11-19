@@ -9,16 +9,16 @@ const connectionString = process.env.DATABASE_URL || `postgresql://${process.env
 const pool = new Pool({ connectionString })
 
 async function cleanup() {
-  await pool.query(`DELETE FROM food_log_entries WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'TestLog%')`)
-  await pool.query(`DELETE FROM food_log_entries WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testlog%')`)
-  await pool.query(`DELETE FROM foods WHERE name LIKE 'TestLog%'`)
-  await pool.query(`DELETE FROM users WHERE username LIKE 'testlog%'`)
+  await pool.query(`DELETE FROM food_log_entries WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'ITestLog%')`)
+  await pool.query(`DELETE FROM food_log_entries WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itestlog%')`)
+  await pool.query(`DELETE FROM foods WHERE name LIKE 'ITestLog%'`)
+  await pool.query(`DELETE FROM users WHERE username LIKE 'itestlog%'`)
 }
 
 async function createTestUser(suffix: string) {
   const user = await signUp({
-    username: `testlog${suffix}`,
-    email: `testlog${suffix}@test.com`,
+    username: `itestlog${suffix}`,
+    email: `itestlog${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
@@ -28,7 +28,7 @@ async function createTestUser(suffix: string) {
 
 async function createTestFood() {
   return createFood({
-    name: 'TestLog Chicken',
+    name: 'ITestLog Chicken',
     calories: 200,
     protein: 30,
     carbs: 0,
@@ -60,7 +60,7 @@ describe('food log data layer (integration)', () => {
     expect(entry.calories).toBe(400)
     expect(entry.protein).toBe(60)
     expect(entry.fat).toBe(16)
-    expect(entry.food?.name).toBe('TestLog Chicken')
+    expect(entry.food?.name).toBe('ITestLog Chicken')
     expect(entry.logDate).toBe('2026-08-19')
   })
 
