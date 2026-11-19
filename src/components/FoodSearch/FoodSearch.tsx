@@ -45,6 +45,12 @@ function itemMacros(s: SuggestionItem): string {
   return 'Fill in macros manually'
 }
 
+/** True when a Food already has exactly this name (case-insensitive), so adding it would duplicate. */
+function hasExactName(foods: Food[], query: string): boolean {
+  const q = query.toLowerCase()
+  return foods.some(f => f.name.trim().toLowerCase() === q)
+}
+
 function addGroup(query: string): SuggestionGroup {
   return { label: 'Not found?', items: [{ kind: 'add', name: query }] }
 }
@@ -116,7 +122,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     }
     // An item-less group renders as a non-focusable status line, not an option
     immediate.push({ label: 'Searching…', items: [], searching: true })
-    if (canAddRef.current) immediate.push(addGroup(query))
+    if (canAddRef.current && !hasExactName(localFoods, query)) immediate.push(addGroup(query))
     setSuggestions(immediate)
 
     latestQueryRef.current = query
@@ -156,7 +162,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       }
 
       // Offer manual add as a last resort (signed-in users only)
-      if (canAddRef.current) groups.push(addGroup(query))
+      if (canAddRef.current && !hasExactName([...localFoods, ...serverLocal], query)) groups.push(addGroup(query))
 
       setSuggestions(groups)
     }, 400)
@@ -196,6 +202,12 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     setAddError(null)
     // The modal steals focus; hand it back to the search input.
     containerRef.current?.querySelector<HTMLInputElement>('input')?.focus()
+  }
+
+  function selectFromDialog(food: Food) {
+    setInputValue(food.name)
+    onChange(food)
+    closeAddDialog()
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
@@ -278,11 +290,8 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
         <QuickAddFoodModal
           initialName={addDialog.name}
           onHide={closeAddDialog}
-          onCreated={created => {
-            setInputValue(created.name)
-            onChange(created)
-            closeAddDialog()
-          }}
+          onCreated={selectFromDialog}
+          onExisting={selectFromDialog}
         />
       )}
     </>

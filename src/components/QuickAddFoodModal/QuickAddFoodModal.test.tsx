@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import QuickAddFoodModal from './QuickAddFoodModal'
-import { UnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
+import { UnauthorizedError, HttpError, SIGN_IN_REQUIRED_MESSAGE, describeSaveFailure } from '@/lib/api/errors'
 
 const mockCreateFood = vi.fn()
+const mockFetchFoods = vi.fn()
 vi.mock('@/lib/api/foods', () => ({
   apiCreateFood: (...a: unknown[]) => mockCreateFood(...a),
+  apiFetchFoods: (...a: unknown[]) => mockFetchFoods(...a),
 }))
 
 function setup(initialName = 'Dragon fruit') {
   const onCreated = vi.fn()
+  const onExisting = vi.fn()
   const onHide = vi.fn()
-  render(<QuickAddFoodModal initialName={initialName} onCreated={onCreated} onHide={onHide} />)
-  return { onCreated, onHide }
+  render(<QuickAddFoodModal initialName={initialName} onCreated={onCreated} onExisting={onExisting} onHide={onHide} />)
+  return { onCreated, onExisting, onHide }
 }
 
 describe('QuickAddFoodModal', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => { vi.clearAllMocks(); mockFetchFoods.mockResolvedValue([]) })
 
   it('shows the header and prefills the name', () => {
     setup()
@@ -86,5 +89,69 @@ describe('QuickAddFoodModal', () => {
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
     expect(screen.getByLabelText('Name')).toHaveValue('Dragon fruit')
     expect(screen.getByLabelText('Calories')).toHaveValue(60)
+  })
+
+  function submit() {
+    fireEvent.change(screen.getByLabelText('Calories'), { target: { value: '60' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add food' }))
+  }
+
+  it('shows an error, stays open and keeps the typed values when the create fails', async () => {
+    mockCreateFood.mockRejectedValue(new HttpError('Failed to create food', 500))
+    const { onCreated, onHide } = setup()
+    fireEvent.change(screen.getByLabelText('Protein (g)'), { target: { value: '2.5' } })
+    submit()
+    expect(await screen.findByRole('alert')).toHaveTextContent(describeSaveFailure(new HttpError('x', 500)))
+    expect(onCreated).not.toHaveBeenCalled()
+    expect(onHide).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Name')).toHaveValue('Dragon fruit')
+    expect(screen.getByLabelText('Calories')).toHaveValue(60)
+    expect(screen.getByLabelText('Protein (g)')).toHaveValue(2.5)
+    expect(screen.getByRole('button', { name: 'Add food' })).toBeEnabled()
+  })
+
+  it('shows an error when the request itself fails (offline)', async () => {
+    mockCreateFood.mockRejectedValue(new TypeError('Failed to fetch'))
+    setup()
+    submit()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not save/i)
+  })
+
+  it('clears the error when the user retries and it succeeds', async () => {
+    mockCreateFood.mockRejectedValueOnce(new HttpError('Failed to create food', 500))
+    mockCreateFood.mockResolvedValueOnce({ id: 9, name: 'Dragon fruit' })
+    const { onCreated } = setup()
+    submit()
+    await screen.findByRole('alert')
+    fireEvent.click(screen.getByRole('button', { name: 'Add food' }))
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('selects the existing food instead of creating when the name already exists, ignoring case and spacing', async () => {
+    const existing = { id: 3, name: 'dragon FRUIT' }
+    mockFetchFoods.mockResolvedValue([{ id: 4, name: 'Dragon fruit juice' }, existing])
+    const { onCreated, onExisting } = setup('  Dragon Fruit ')
+    submit()
+    await waitFor(() => expect(onExisting).toHaveBeenCalledWith(existing))
+    expect(mockCreateFood).not.toHaveBeenCalled()
+    expect(onCreated).not.toHaveBeenCalled()
+  })
+
+  it('creates when only a partial name match exists', async () => {
+    mockFetchFoods.mockResolvedValue([{ id: 4, name: 'Dragon fruit juice' }])
+    mockCreateFood.mockResolvedValue({ id: 7, name: 'Dragon fruit' })
+    const { onCreated, onExisting } = setup()
+    submit()
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
+    expect(onExisting).not.toHaveBeenCalled()
+  })
+
+  it('still creates when the duplicate lookup fails', async () => {
+    mockFetchFoods.mockRejectedValue(new Error('boom'))
+    mockCreateFood.mockResolvedValue({ id: 7, name: 'Dragon fruit' })
+    const { onCreated } = setup()
+    submit()
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
   })
 })
