@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react'
 import Modal from '@/components/Modal/Modal'
-import { apiCreateFood } from '@/lib/api/foods'
+import { apiCreateFood, apiFetchFoods } from '@/lib/api/foods'
 import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
-import { isUnauthorizedError } from '@/lib/api/errors'
+import { isUnauthorizedError, describeSaveFailure } from '@/lib/api/errors'
 import type { Food } from '@/types/Food'
 import './quick-add-food-modal.scss'
 
@@ -13,14 +13,28 @@ export interface QuickAddFoodModalProps {
   initialName: string
   /** Fired with the created Food; the parent closes the modal. */
   onCreated: (food: Food) => void
+  /** Fired instead of `onCreated` when a Food with the same name (case-insensitive) already exists. */
+  onExisting?: (food: Food) => void
   onHide: () => void
 }
 
+/** A Food whose name equals `name` ignoring case and surrounding spaces, or undefined (also when the lookup fails). */
+async function findExistingFood(name: string): Promise<Food | undefined> {
+  const wanted = name.trim().toLowerCase()
+  try {
+    const matches = await apiFetchFoods({ search: name.trim() })
+    return matches.find(f => f.name.trim().toLowerCase() === wanted)
+  } catch {
+    return undefined
+  }
+}
+
 /** Quick-add Food dialog: name, calories and macros, saved per 100 g. Shared by food search inputs. */
-export default function QuickAddFoodModal({ initialName, onCreated, onHide }: QuickAddFoodModalProps) {
+export default function QuickAddFoodModal({ initialName, onCreated, onExisting, onHide }: QuickAddFoodModalProps) {
   const [form, setForm] = useState({ name: initialName, calories: '', protein: '0', carbs: '0', fat: '0' })
   const [saving, setSaving] = useState(false)
   const [needsSignIn, setNeedsSignIn] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const nameRef = useRef<HTMLInputElement>(null)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -30,7 +44,13 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
     e.preventDefault()
     setSaving(true)
     setNeedsSignIn(false)
+    setError(null)
     try {
+      const existing = await findExistingFood(form.name)
+      if (existing) {
+        ;(onExisting ?? onCreated)(existing)
+        return
+      }
       const created = await apiCreateFood({
         name: form.name,
         calories: Number(form.calories) || 0,
@@ -44,8 +64,9 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
       })
       onCreated(created)
     } catch (err) {
-      // User can retry
+      // Stay open with the typed values so the user can retry
       if (isUnauthorizedError(err)) setNeedsSignIn(true)
+      else setError(describeSaveFailure(err))
     } finally {
       setSaving(false)
     }
@@ -82,6 +103,7 @@ export default function QuickAddFoodModal({ initialName, onCreated, onHide }: Qu
             <input type="number" min="0" step="0.1" className="text-input" value={form.fat} onChange={set('fat')} />
           </label>
         </div>
+        {error && <p className="add-food-error" role="alert">{error}</p>}
         {needsSignIn && <p className="add-food-error" role="alert"><SignInRequiredMessage /></p>}
         <p className="add-food-note">Nutrition is per 100 g serving. You can edit more details later.</p>
         <div className="form-actions">
