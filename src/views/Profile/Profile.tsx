@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react'
 import { InputText } from 'primereact/inputtext'
+import MealSlotList from './MealSlotList'
 import Modal from '@/components/Modal/Modal'
 import { Password } from 'primereact/password'
 import { Dropdown } from 'primereact/dropdown'
@@ -220,62 +221,10 @@ export default function Profile({ user }: ProfileProps) {
     setMealSlotsSuccess(false)
   }
 
-  function moveSlot(id: number, to: number) {
-    setMealSlots(prev => {
-      const from = prev.findIndex(s => s.id === id)
-      if (from === -1 || to < 0 || to >= prev.length || to === from) return prev
-      const next = [...prev]
-      const [item] = next.splice(from, 1)
-      next.splice(to, 0, item)
-      return next
-    })
+  function reorderSlots(next: { id: number; name: string }[]) {
+    setMealSlots(next)
     setMealSlotsSuccess(false)
   }
-
-  // Touch-friendly drag: pointer events on the handle (touch-action: none in CSS)
-  // work for mouse, pen and finger, unlike HTML5 drag-and-drop.
-  const [draggingSlot, setDraggingSlot] = useState<number | null>(null)
-  const mealSlotsRef = useRef(mealSlots)
-  const pendingFocusRef = useRef<string | null>(null)
-
-  // When the focused arrow becomes disabled at the first/last row, hand focus to
-  // the row's other arrow so keyboard users aren't dropped back to the page.
-  useLayoutEffect(() => {
-    const target = pendingFocusRef.current
-    if (!target) return
-    pendingFocusRef.current = null
-    document.querySelector<HTMLButtonElement>(`[data-slot-btn="${target}"]`)?.focus()
-  }, [mealSlots])
-
-  function moveSlotByButton(id: number, index: number, dir: 'up' | 'down') {
-    const to = dir === 'up' ? index - 1 : index + 1
-    const atEdge = dir === 'up' ? to === 0 : to === mealSlots.length - 1
-    pendingFocusRef.current = `${id}-${atEdge ? (dir === 'up' ? 'down' : 'up') : dir}`
-    moveSlot(id, to)
-  }
-  mealSlotsRef.current = mealSlots
-
-  // Listen on the document while dragging: reordering re-parents the row in the
-  // DOM, which can release pointer capture on the handle mid-drag.
-  useEffect(() => {
-    if (draggingSlot === null) return
-    const onMove = (e: PointerEvent) => {
-      const el = document.elementFromPoint?.(e.clientX, e.clientY)
-      const overId = el?.closest<HTMLElement>('[data-slot-id]')?.dataset.slotId
-      if (overId === undefined || Number(overId) === draggingSlot) return
-      const to = mealSlotsRef.current.findIndex(s => s.id === Number(overId))
-      if (to !== -1) moveSlot(draggingSlot, to)
-    }
-    const onEnd = () => setDraggingSlot(null)
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup', onEnd)
-    document.addEventListener('pointercancel', onEnd)
-    return () => {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onEnd)
-      document.removeEventListener('pointercancel', onEnd)
-    }
-  }, [draggingSlot])
 
   function addSlot() {
     const trimmed = newSlot.trim()
@@ -599,7 +548,7 @@ export default function Profile({ user }: ProfileProps) {
           </div>
           <div className="panel-content">
             <small className="field-hint">
-              The buckets your daily food log groups into. Add a slot, remove one, or reorder with the handle or arrows —
+              The buckets your daily food log groups into. Add a slot, remove one, or drag to reorder —
               whether you eat one meal a day or five, shape the slots how you want.
             </small>
             <div className="meal-slot-add">
@@ -619,53 +568,7 @@ export default function Profile({ user }: ProfileProps) {
             {mealSlots.length === 0 ? (
               <p className="meal-slot-empty">No meal slots yet — add one above.</p>
             ) : (
-              <ul className="meal-slot-list" aria-label="Meal slots">
-                {mealSlots.map((slot, index) => (
-                  <li
-                    key={slot.id}
-                    data-slot-id={slot.id}
-                    className={`meal-slot-row${draggingSlot === slot.id ? ' is-dragging' : ''}`}
-                  >
-                    <span
-                      className="meal-slot-handle"
-                      role="img"
-                      aria-label={`Drag to reorder ${slot.name}`}
-                      onPointerDown={e => { e.preventDefault(); setDraggingSlot(slot.id) }}
-                    >
-                      <i className="pi pi-bars" aria-hidden="true" />
-                    </span>
-                    <span className="meal-slot-name">{slot.name}</span>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Move ${slot.name} up`}
-                      disabled={index === 0}
-                      data-slot-btn={`${slot.id}-up`}
-                      onClick={() => moveSlotByButton(slot.id, index, 'up')}
-                    >
-                      <i className="pi pi-arrow-up" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={`Move ${slot.name} down`}
-                      disabled={index === mealSlots.length - 1}
-                      data-slot-btn={`${slot.id}-down`}
-                      onClick={() => moveSlotByButton(slot.id, index, 'down')}
-                    >
-                      <i className="pi pi-arrow-down" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button icon-button--danger"
-                      aria-label={`Remove ${slot.name}`}
-                      onClick={() => removeSlot(slot.id)}
-                    >
-                      <i className="pi pi-trash" aria-hidden="true" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <MealSlotList slots={mealSlots} onReorder={reorderSlots} onRemove={removeSlot} />
             )}
             <div className="panel-footer">
               {mealSlotsSuccess && <span className="success-text">Saved!</span>}

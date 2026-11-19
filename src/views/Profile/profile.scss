@@ -276,8 +276,16 @@
     border-radius: 8px;
     background: var(--vscode-panel-strong);
 
+    position: relative;
+
     &.is-dragging {
+      z-index: 1;
       border-color: var(--vscode-accent);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none !important;
     }
 
     .meal-slot-handle {
@@ -287,10 +295,27 @@
       width: 30px;
       height: 30px;
       flex-shrink: 0;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
       color: var(--vscode-muted);
       cursor: grab;
       touch-action: none; // let the finger drag instead of scrolling the page
       user-select: none;
+
+      &:hover {
+        color: var(--vscode-text);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--vscode-accent);
+        outline-offset: 1px;
+      }
+    }
+
+    &.is-dragging .meal-slot-handle {
+      cursor: grabbing;
     }
 
     .meal-slot-name {
