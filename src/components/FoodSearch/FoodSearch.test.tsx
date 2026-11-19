@@ -155,6 +155,41 @@ describe('FoodSearch add-new row', () => {
   })
 })
 
+describe('FoodSearch add row only on a true miss', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockUseSession.mockReturnValue({ data: { user: { name: 'u' } }, status: 'authenticated' })
+    mockFetchFoods.mockResolvedValue([])
+    mockSearchOff.mockResolvedValue([])
+  })
+  afterEach(() => { vi.useRealTimers(); vi.clearAllMocks() })
+
+  it('hides the add row when a local food has exactly the typed name, ignoring case', async () => {
+    const { input } = setup([food(1, 'Apple')])
+    type(input, 'aPPle')
+    expect(addRow('aPPle')).toHaveLength(0)
+    await flushDebounce()
+    expect(addRow('aPPle')).toHaveLength(0)
+    expect(screen.getByRole('option', { name: /Apple/ })).toBeInTheDocument()
+  })
+
+  it('hides the add row when the server returns an exact-name food the local list lacks', async () => {
+    mockFetchFoods.mockResolvedValue([food(2, 'Dragon fruit')])
+    const { input } = setup([food(1, 'Apple')])
+    type(input, 'dragon fruit')
+    await flushDebounce()
+    expect(addRow('dragon fruit')).toHaveLength(0)
+  })
+
+  it('still shows the add row when the typed text only partly matches a name', async () => {
+    const { input } = setup([food(1, 'Apple pie')])
+    type(input, 'apple')
+    expect(addRow('apple')).toHaveLength(1)
+    await flushDebounce()
+    expect(addRow('apple')).toHaveLength(1)
+  })
+})
+
 describe('FoodSearch quick-add modal focus', () => {
   beforeEach(() => {
     mockUseSession.mockReturnValue({ data: { user: { name: 'u' } }, status: 'authenticated' })
