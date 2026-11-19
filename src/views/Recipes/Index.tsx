@@ -1,5 +1,6 @@
 'use client'
 
+import { describeSaveFailure } from '@/lib/api/errors'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
@@ -150,7 +151,7 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
         const fresh = await apiFetchRecipes()
         setRecipes(fresh)
       } catch { /* keep optimistic state if refresh also fails */ }
-      toast.current?.show({ severity: 'error', summary: 'Could not delete recipes', detail: 'You may not have permission to delete one or more of the selected recipes.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not delete recipes', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -165,7 +166,7 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
     } catch (err) {
       console.error('Failed to unpublish recipes on server:', err)
       original.forEach(recipe => updateRecipe(recipe))
-      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipes', detail: 'You may not have permission to edit one or more of the selected recipes.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipes', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 

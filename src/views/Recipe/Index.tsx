@@ -1,5 +1,6 @@
 'use client'
 
+import { describeSaveFailure } from '@/lib/api/errors'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
@@ -159,7 +160,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
-      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -380,7 +381,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -396,7 +397,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -412,7 +413,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
