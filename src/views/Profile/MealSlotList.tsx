@@ -92,6 +92,7 @@ export default function MealSlotList({ slots, onReorder, onRemove }: Props) {
 
   return (
     <DndContext
+      id="meal-slots-dnd"
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}

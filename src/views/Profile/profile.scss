@@ -256,8 +256,8 @@
     }
   }
 
-  // Reorderable list: a drag handle (pointer events, works by touch) plus
-  // up/down buttons as the accessible fallback.
+  // Reorderable list (@dnd-kit sortable): a focusable drag handle that works by
+  // mouse and touch, and by keyboard (Space to pick up, arrows, Space/Enter to drop).
   .meal-slot-list {
     list-style: none;
     margin: 0;
@@ -289,6 +289,7 @@
     }
 
     .meal-slot-handle {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -312,6 +313,13 @@
         outline: 2px solid var(--vscode-accent);
         outline-offset: 1px;
       }
+    }
+
+    // Grow the touch target to 44x44 without making the row taller.
+    .meal-slot-handle::before {
+      content: '';
+      position: absolute;
+      inset: -7px;
     }
 
     &.is-dragging .meal-slot-handle {
