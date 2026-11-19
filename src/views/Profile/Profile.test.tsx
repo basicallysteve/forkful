@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Profile from './Profile'
 import type { User } from '@/types/User'
@@ -325,91 +325,76 @@ describe('Profile', () => {
           .getAllByRole('listitem')
           .map(li => li.textContent)
 
-      it('shows a drag handle and up/down buttons on every row', () => {
+      // jsdom has no layout; stack the rows so dnd-kit's keyboard coordinates can
+      // tell which row is above/below.
+      let rectSpy: ReturnType<typeof vi.spyOn>
+      beforeEach(() => {
+        rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+          const li = this.closest('li')
+          const index = li ? Array.from(li.parentElement!.children).indexOf(li) : 0
+          const top = li ? index * 50 : 0
+          return { x: 0, y: top, top, left: 0, right: 300, bottom: top + 40, width: 300, height: 40, toJSON: () => ({}) } as DOMRect
+        })
+      })
+      afterEach(() => rectSpy.mockRestore())
+
+      it('gives every row a keyboard-focusable handle named "Reorder <slot>"', () => {
         render(<Profile user={mockUser} />)
         for (const n of ['Breakfast', 'Lunch', 'Dinner', 'Snack']) {
-          expect(screen.getByLabelText(`Drag to reorder ${n}`)).toBeInTheDocument()
-          expect(screen.getByRole('button', { name: `Move ${n} up` })).toBeInTheDocument()
-          expect(screen.getByRole('button', { name: `Move ${n} down` })).toBeInTheDocument()
+          const handle = screen.getByRole('button', { name: `Reorder ${n}` })
+          expect(handle.tabIndex).toBeGreaterThanOrEqual(0)
         }
       })
 
-      it('moves a slot up and down with the buttons', async () => {
-        const user = userEvent.setup()
+      it('renders no up/down arrow buttons', () => {
         render(<Profile user={mockUser} />)
-        await user.click(screen.getByRole('button', { name: 'Move Dinner up' }))
-        expect(names()).toEqual(['Breakfast', 'Dinner', 'Lunch', 'Snack'])
-        await user.click(screen.getByRole('button', { name: 'Move Breakfast down' }))
-        expect(names()).toEqual(['Dinner', 'Breakfast', 'Lunch', 'Snack'])
+        expect(screen.queryByRole('button', { name: /^move .* (up|down)$/i })).not.toBeInTheDocument()
       })
 
-      it('disables up on the first row and down on the last', async () => {
+      it('reorders with the keyboard: Space, ArrowDown, Space', async () => {
         const user = userEvent.setup()
         render(<Profile user={mockUser} />)
-        expect(screen.getByRole('button', { name: 'Move Breakfast up' })).toBeDisabled()
-        expect(screen.getByRole('button', { name: 'Move Snack down' })).toBeDisabled()
-        expect(screen.getByRole('button', { name: 'Move Lunch up' })).toBeEnabled()
-        await user.click(screen.getByRole('button', { name: 'Move Snack up' }))
-        expect(screen.getByRole('button', { name: 'Move Dinner down' })).toBeDisabled()
-        expect(screen.getByRole('button', { name: 'Move Snack down' })).toBeEnabled()
+        screen.getByRole('button', { name: 'Reorder Breakfast' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowDown}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()).toEqual(['Lunch', 'Breakfast', 'Dinner', 'Snack']))
+      })
+
+      it('cancels a keyboard drag with Escape and keeps the order', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        screen.getByRole('button', { name: 'Reorder Breakfast' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowDown}')
+        await user.keyboard('{Escape}')
+        expect(names()).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Snack'])
+      })
+
+      it('saves the reordered slots', async () => {
+        const user = userEvent.setup()
+        render(<Profile user={mockUser} />)
+        screen.getByRole('button', { name: 'Reorder Snack' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowUp}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()).toEqual(['Breakfast', 'Lunch', 'Snack', 'Dinner']))
+        await user.click(screen.getByRole('button', { name: /save meal slots/i }))
+        await waitFor(() => {
+          expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Snack', 'Dinner'])
+        })
       })
 
       it('keeps each row element tied to its slot when reordering', async () => {
         const user = userEvent.setup()
         render(<Profile user={mockUser} />)
         const lunchRow = screen.getByText('Lunch').closest('li')
-        await user.click(screen.getByRole('button', { name: 'Move Lunch up' }))
+        screen.getByRole('button', { name: 'Reorder Lunch' }).focus()
+        await user.keyboard(' ')
+        await user.keyboard('{ArrowUp}')
+        await user.keyboard(' ')
+        await waitFor(() => expect(names()[0]).toBe('Lunch'))
         expect(screen.getByText('Lunch').closest('li')).toBe(lunchRow)
-        expect(names()[0]).toBe('Lunch')
-      })
-
-      it('reorders when the handle is dragged over another row, and stops after pointerup', () => {
-        render(<Profile user={mockUser} />)
-        const handle = screen.getByLabelText('Drag to reorder Breakfast')
-        const rowFor = (n: string) => screen.getByText(n).closest('li') as HTMLElement
-        const spy = vi.fn(() => rowFor('Dinner') as Element | null)
-        document.elementFromPoint = spy
-        fireEvent.pointerDown(handle, { pointerId: 1 })
-        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 5 })
-        expect(names()).toEqual(['Lunch', 'Dinner', 'Breakfast', 'Snack'])
-        fireEvent.pointerUp(document, { pointerId: 1 })
-        spy.mockReturnValue(rowFor('Snack'))
-        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 9 })
-        expect(names()).toEqual(['Lunch', 'Dinner', 'Breakfast', 'Snack'])
-      })
-
-      it('stops dragging on pointercancel', () => {
-        render(<Profile user={mockUser} />)
-        const handle = screen.getByLabelText('Drag to reorder Breakfast')
-        document.elementFromPoint = vi.fn(() => screen.getByText('Lunch').closest('li'))
-        fireEvent.pointerDown(handle, { pointerId: 1 })
-        fireEvent.pointerCancel(document, { pointerId: 1 })
-        fireEvent.pointerMove(document, { pointerId: 1, clientX: 5, clientY: 5 })
-        expect(names()).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Snack'])
-      })
-
-      it('prevents the default on handle pointerdown so a mouse drag does not select text', () => {
-        render(<Profile user={mockUser} />)
-        const notPrevented = fireEvent.pointerDown(screen.getByLabelText('Drag to reorder Lunch'), { pointerId: 1 })
-        expect(notPrevented).toBe(false)
-      })
-
-      it('moves focus to the other arrow when the focused arrow becomes disabled', async () => {
-        const user = userEvent.setup()
-        render(<Profile user={mockUser} />)
-        await user.click(screen.getByRole('button', { name: 'Move Lunch up' }))
-        expect(screen.getByRole('button', { name: 'Move Lunch up' })).toBeDisabled()
-        expect(screen.getByRole('button', { name: 'Move Lunch down' })).toHaveFocus()
-      })
-
-      it('saves the reordered slots', async () => {
-        const user = userEvent.setup()
-        render(<Profile user={mockUser} />)
-        await user.click(screen.getByRole('button', { name: 'Move Snack up' }))
-        await user.click(screen.getByRole('button', { name: /save meal slots/i }))
-        await waitFor(() => {
-          expect(apiUpdateMealSlots).toHaveBeenCalledWith('1', ['Breakfast', 'Lunch', 'Snack', 'Dinner'])
-        })
       })
     })
 
