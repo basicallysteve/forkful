@@ -346,6 +346,15 @@ describe('Profile', () => {
         }
       })
 
+      it('uses a deterministic dnd-kit describedby id so SSR and client markup match', () => {
+        const { unmount } = render(<Profile user={mockUser} />)
+        const first = screen.getByRole('button', { name: 'Reorder Breakfast' }).getAttribute('aria-describedby')
+        unmount()
+        render(<Profile user={mockUser} />)
+        const second = screen.getByRole('button', { name: 'Reorder Breakfast' }).getAttribute('aria-describedby')
+        expect(first).toBe(second)
+      })
+
       it('renders no up/down arrow buttons', () => {
         render(<Profile user={mockUser} />)
         expect(screen.queryByRole('button', { name: /^move .* (up|down)$/i })).not.toBeInTheDocument()
