@@ -274,7 +274,8 @@
     padding: 24px;
     border: 1px dashed var(--vscode-border);
     border-radius: 10px;
-    color: var(--vscode-muted);
+    // Muted text on this tinted panel measured 4.43:1 in light; mix toward the body text colour to reach 4.5:1.
+    color: color-mix(in srgb, var(--vscode-muted) 80%, var(--vscode-text));
     background: var(--accent-hover);
     text-align: center;
 
@@ -805,7 +806,9 @@
   .form-section {
     margin-bottom: 18px;
 
-    label {
+    // .field-heading is the visible title of the size boxes; clicking it focuses the amount input.
+    label,
+    .field-heading {
       display: block;
       margin-bottom: 8px;
       font-size: 12px;
@@ -821,7 +824,8 @@
     input,
     select {
       width: 100%;
-      padding: 10px 12px;
+      height: var(--control-height);
+      padding: 0 12px;
       border: 1px solid var(--vscode-border);
       border-radius: 8px;
       background: var(--vscode-panel);
@@ -852,8 +856,24 @@
       display: flex;
       gap: 8px;
 
+      // Room for QuantityInput's out-of-flow invalid hint so it clears the helper text below.
+      &:has(.quantity-input-hint) {
+        margin-bottom: 20px;
+      }
+
       .size-number {
         flex: 2;
+        min-width: 0;
+        margin-bottom: 0;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
       }
 
       .size-unit {
@@ -870,6 +890,9 @@
       }
 
       .p-dropdown.size-unit {
+        display: flex;
+        align-items: center;
+        height: var(--control-height);
         border: 1px solid var(--vscode-border);
         border-radius: 8px;
         background: var(--vscode-panel);
@@ -878,6 +901,28 @@
         cursor: pointer;
         box-sizing: border-box;
         transition: border-color 120ms ease, box-shadow 120ms ease;
+
+        // The inner label must not add its own box (padding/height/background) inside the outer one
+        .p-dropdown-label {
+          flex: 1;
+          height: auto;
+          padding: 0 12px;
+          border: 0;
+          background: transparent;
+          box-shadow: none;
+          color: inherit;
+        }
+
+        .p-dropdown-trigger {
+          width: auto;
+          padding-right: 12px;
+          color: var(--vscode-muted);
+        }
+
+        &:not(.p-disabled).p-focus {
+          border-color: var(--vscode-accent);
+          box-shadow: var(--focus-ring);
+        }
       }
     }
 

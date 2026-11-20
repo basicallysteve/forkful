@@ -10,6 +10,9 @@ import { mapUSDABrandedToProduct, importUSDABrandedProduct } from '@/lib/usda'
 import type { Product } from '@/types/Product'
 import type { USDABrandedItem } from '@/lib/usda'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
+import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
+import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
 import BarcodeScanner from '@/components/BarcodeScanner/BarcodeScanner'
 import BarcodeCreationModal from '@/components/BarcodeCreationModal/BarcodeCreationModal'
 import LinkFoodModal from '@/components/BarcodeCreationModal/LinkFoodModal'
@@ -56,6 +59,13 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const [inputValue, setInputValue] = useState(value)
   const [activeTab, setActiveTab] = useState<Tab>('search')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
+  const [noResults, setNoResults] = useState(false)
+  const [searching, setSearching] = useState(false)
+  // Set when the list closes (Escape, blur, select) so the live region stops reporting it.
+  const [dismissed, setDismissed] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
   const [importing, setImporting] = useState(false)
   const [barcodeLoading, setBarcodeLoading] = useState(false)
   const [barcodeError, setBarcodeError] = useState<string | null>(null)
@@ -65,6 +75,15 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const barcodePanelRef = useRef<HTMLDivElement>(null)
+  const focusBarcodePanelRef = useRef(false)
+
+  useEffect(() => {
+    if (activeTab === 'barcode' && focusBarcodePanelRef.current) {
+      focusBarcodePanelRef.current = false
+      barcodePanelRef.current?.focus()
+    }
+  }, [activeTab])
 
   useEffect(() => {
     setInputValue(value)
@@ -72,10 +91,15 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
 
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
+    setNoResults(false)
+    setDismissed(false)
     if (!query) {
+      latestQueryRef.current = ''
       setSuggestions([])
+      setSearching(false)
       return
     }
+    setSearching(true)
 
     latestQueryRef.current = query
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -120,14 +144,21 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
         }
 
         setSuggestions(groups)
+        setNoResults(groups.length === 0)
+        setSearching(false)
       } catch {
+        if (latestQueryRef.current !== query) return
         setSuggestions([])
+        setNoResults(true)
+        setSearching(false)
       }
     }, 400)
   }
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
+    setDismissed(true)
+    list.markSelected()
     if (item.kind === 'local') {
       setInputValue(item.product.name)
       onChange(item.product)
@@ -174,8 +205,11 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   }, [onChange])
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
+
+  const resultCount = suggestions.reduce((n, g) => n + g.items.length, 0)
 
   const itemTemplate = (item: SuggestionItem) => (
     <div className="product-search-item">
@@ -200,7 +234,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
   )
 
   return (
-    <div className="product-search">
+    <div className="product-search" ref={containerRef}>
       <SelectButton
         value={activeTab}
         onChange={(e) => {
@@ -208,6 +242,7 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
           if (!next) return
           setActiveTab(next)
           setBarcodeError(null)
+          setNoResults(false)
         }}
         options={tabOptions}
         optionLabel="label"
@@ -226,12 +261,20 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             completeMethod={handleComplete}
             onSelect={handleSelect}
             onFocus={handleFocus}
+            {...list.listProps}
+            onBlur={() => setDismissed(true)}
+            onKeyUp={(e) => { if (e.key === 'Escape') setDismissed(true) }}
             onChange={(e) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const val = e.value as any
               if (typeof val === 'string') {
                 setInputValue(val)
-                if (!val.trim()) setSuggestions([])
+                if (!val.trim()) {
+                  latestQueryRef.current = ''
+                  setSuggestions([])
+                  setNoResults(false)
+                  setSearching(false)
+                }
               }
             }}
             field="name"
@@ -244,14 +287,40 @@ export default function ProductSearch({ value, onChange, placeholder, inputAriaL
             disabled={importing}
             delay={0}
             inputClassName="text-input"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            pt={{ input: { 'aria-label': inputAriaLabel } as any }}
+            aria-label={inputAriaLabel}
           />
+          <AutocompleteStatus
+            className="product-search-empty"
+            visible={noResults}
+            message={
+              noResults
+                ? 'No products found. Try scanning a barcode.'
+                : dismissed
+                  ? ''
+                  : searching
+                  ? 'Searching…'
+                  : resultCount > 0 && list.open
+                    ? resultsMessage(resultCount)
+                    : ''
+            }
+          >
+            <button
+              type="button"
+              className="product-search-empty-action"
+              onClick={() => {
+                focusBarcodePanelRef.current = true
+                setActiveTab('barcode')
+                setNoResults(false)
+              }}
+            >
+              Scan a barcode
+            </button>
+          </AutocompleteStatus>
         </div>
       )}
 
       {activeTab === 'barcode' && (
-        <div className="product-search-panel">
+        <div className="product-search-panel" ref={barcodePanelRef} tabIndex={-1}>
           {barcodeError && <p className="product-search-error">{barcodeError}</p>}
           <BarcodeScanner
             onDetected={handleBarcodeDetected}

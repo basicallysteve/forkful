@@ -3,6 +3,9 @@
 import { useRef, useState } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
+import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
+import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
 import { apiFetchPantryItems } from '@/lib/api/pantry'
 import type { PantryItem } from '@/types/PantryItem'
 import './pantry-search.scss'
@@ -32,11 +35,19 @@ interface PantrySearchProps {
   sourceType?: 'food' | 'product' | 'recipe'
   excludeIds?: number[]
   placeholder?: string
+  inputAriaLabel?: string
 }
 
-export default function PantrySearch({ onSelect, placeholder }: PantrySearchProps) {
+export default function PantrySearch({ onSelect, placeholder, inputAriaLabel = 'Search your pantry' }: PantrySearchProps) {
   const [inputValue, setInputValue] = useState('')
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
+  const [noResults, setNoResults] = useState(false)
+  const [searching, setSearching] = useState(false)
+  // Set when the list closes (Escape, blur, select) so the live region stops reporting it.
+  const [dismissed, setDismissed] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
@@ -44,6 +55,9 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
     latestQueryRef.current = query
+    setNoResults(false)
+    setSearching(true)
+    setDismissed(false)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
@@ -53,14 +67,20 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         if (latestQueryRef.current !== query) return
 
         setSuggestions(items.length > 0 ? [{ label: 'Your pantry', items }] : [])
+        setSearching(false)
+        setNoResults(items.length === 0 && query !== '')
       } catch {
+        if (latestQueryRef.current !== query) return
         setSuggestions([])
+        setSearching(false)
       }
     }, 300)
   }
 
   function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as PantryItem
+    setDismissed(true)
+    list.markSelected()
     setInputValue(itemDisplayName(item))
     onSelect(item)
   }
@@ -70,13 +90,21 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
     const val = e.value as any
     if (typeof val === 'string') {
       setInputValue(val)
-      if (!val.trim()) setSuggestions([])
+      if (!val.trim()) {
+        latestQueryRef.current = ''
+        setSuggestions([])
+        setNoResults(false)
+        setSearching(false)
+      }
     }
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
+
+  const resultCount = suggestions.reduce((n, g) => n + g.items.length, 0)
 
   const itemTemplate = (item: PantryItem) => (
     <div className="pantry-search-item">
@@ -90,7 +118,7 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
   )
 
   return (
-    <div className="pantry-search">
+    <div className="pantry-search" ref={containerRef}>
       <AutoComplete
         ref={acRef}
         value={inputValue}
@@ -99,6 +127,9 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         completeMethod={handleComplete}
         onSelect={handleSelect}
         onFocus={handleFocus}
+        {...list.listProps}
+        onBlur={() => setDismissed(true)}
+        onKeyUp={e => { if (e.key === 'Escape') setDismissed(true) }}
         onChange={handleChange}
         field="id"
         optionGroupLabel="label"
@@ -109,6 +140,22 @@ export default function PantrySearch({ onSelect, placeholder }: PantrySearchProp
         placeholder={placeholder ?? 'Search your pantry…'}
         delay={0}
         inputClassName="text-input"
+        aria-label={inputAriaLabel}
+      />
+      <AutocompleteStatus
+        className="pantry-search-empty"
+        visible={noResults}
+        message={
+          noResults
+            ? 'Nothing in your pantry matches'
+            : dismissed
+              ? ''
+              : searching
+              ? 'Searching…'
+              : resultCount > 0 && list.open
+                ? resultsMessage(resultCount)
+                : ''
+        }
       />
     </div>
   )

@@ -22,6 +22,7 @@ function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): F
     fat: Number(row.fat),
     fiber: Number(row.fiber),
     logDate: row.logDate,
+    mealSlot: row.mealSlot ?? null,
     dateAdded: row.dateAdded,
   }
 }
@@ -60,6 +61,8 @@ export type CreateFoodLogEntryData = {
   unit: string
   // The user-local calendar day (YYYY-MM-DD), derived on the client and sent with the write.
   logDate: string
+  // Optional Meal Slot label snapshot; null/omitted logs the entry with no slot.
+  mealSlot?: string | null
 }
 
 export async function createFoodLogEntry(data: CreateFoodLogEntryData): Promise<FoodLogEntry> {
@@ -94,6 +97,7 @@ export async function createFoodLogEntry(data: CreateFoodLogEntryData): Promise<
       fat: String(macros.fat),
       fiber: String(macros.fiber),
       logDate: data.logDate,
+      mealSlot: data.mealSlot ?? null,
     })
     .returning()
 

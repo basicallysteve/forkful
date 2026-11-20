@@ -129,6 +129,18 @@ describe('Food View Page', () => {
       expect(deleteFood).toHaveBeenCalledWith(1)
     })
 
+    it('shows a sign-in message and keeps the food when the server answers 401', async () => {
+      const user = userEvent.setup()
+      const deleteFood = vi.fn().mockReturnValue(true)
+      vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 401 }))
+      renderWithProviders(<FoodIndex food={mockFood} />, { deleteFood })
+
+      await user.click(screen.getByRole('button', { name: /delete/i }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/sign in/i)
+      expect(deleteFood).not.toHaveBeenCalled()
+    })
+
     it('disables Delete button when food is used in recipe', () => {
       const isFoodUsedInRecipe = vi.fn().mockReturnValue(true)
       renderWithProviders(<FoodIndex food={mockFood} />, { isFoodUsedInRecipe })

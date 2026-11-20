@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Tag } from 'primereact/tag'
 import { useRouter } from 'next/navigation'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 
@@ -19,16 +20,19 @@ export default function FoodIndex({ food }: FoodIndexProps) {
   const isFoodUsedInRecipe = useFoodStore((state) => state.isFoodUsedInRecipe)
   const recipes = useRecipeStore((state) => state.recipes)
   const router = useRouter()
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const isUsedInRecipe = useMemo(() => isFoodUsedInRecipe(food.id, recipes), [food.id, recipes, isFoodUsedInRecipe])
 
   async function handleDelete() {
     if (isUsedInRecipe) return
+    setDeleteError(null)
     try {
       await apiDeleteFood(toSlug(food.name))
       deleteFood(food.id)
       router.push('/foods')
     } catch (err) {
-      console.error('Failed to delete food from server:', err)
+      if (isUnauthorizedError(err)) setDeleteError(SIGN_IN_REQUIRED_MESSAGE)
+      else console.error('Failed to delete food from server:', err)
     }
   }
 
@@ -86,6 +90,12 @@ export default function FoodIndex({ food }: FoodIndexProps) {
               )}
             </div>
           </div>
+
+          {deleteError && (
+            <div className="delete-error" role="alert">
+              {deleteError}
+            </div>
+          )}
 
           <div className="panel-content">
             <div className="nutrition-section">

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import ClientLayout from './ClientLayout'
 import { auth } from '@/auth'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   icons: {
     icon: '/forkful-favicon.svg',
   },
+}
+
+// Tells the browser (Safari's adaptive dark mode in particular) that the page themes itself
+export const viewport: Viewport = {
+  colorScheme: 'light dark',
 }
 
 export default async function RootLayout({

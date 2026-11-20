@@ -3,12 +3,14 @@ import { createFoodLogEntry, getDailyLog } from '@/lib/foodLog'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import { isPositiveInteger } from '@/utils/number'
+import { captureError, logInfo } from '@/lib/logger'
 
 type CreateBody = {
   foodId?: number
   amount?: number
   unit?: string
   logDate?: string
+  mealSlot?: string | null
 }
 
 // A plain user-local calendar day: YYYY-MM-DD that is also a real date (rejects 2026-13-40).
@@ -51,6 +53,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid logDate (YYYY-MM-DD) is required' }, { status: 400 })
   }
 
+  // The slot is an optional label snapshot: absent or null means no slot; otherwise a trimmed 1-50 char
+  // string (the same cap the profile enforces on slot names).
+  let mealSlot: string | null = null
+  if (body.mealSlot != null) {
+    const trimmed = typeof body.mealSlot === 'string' ? body.mealSlot.trim() : ''
+    if (trimmed === '' || trimmed.length > 50) {
+      return NextResponse.json({ error: 'mealSlot must be a 1-50 character string or null' }, { status: 400 })
+    }
+    mealSlot = trimmed
+  }
+
   try {
     const entry = await taskRunner.run(() => createFoodLogEntry({
       userId: user.userId,
@@ -58,7 +71,10 @@ export async function POST(request: Request) {
       amount: body.amount!,
       unit: body.unit!.trim(),
       logDate: body.logDate!,
-    }))
+      mealSlot,
+    }), 'foodLog.create')
+    // Example: constant message, IDs as attributes, no personal data.
+    logInfo('food log entry created', { foodId: body.foodId, unit: body.unit.trim() })
     return NextResponse.json(entry, { status: 201 })
   } catch (err) {
     if (err instanceof Error && err.message === 'Food not found') {
@@ -78,7 +94,7 @@ export async function POST(request: Request) {
       )
     }
     // Never leak the raw query/driver message to the client; log server-side and return a clean 500.
-    console.error('Failed to create food log entry', err)
+    captureError(err, { area: 'food-log', attributes: { foodId: body.foodId } })
     return NextResponse.json({ error: 'Could not save the log entry. Please try again.' }, { status: 500 })
   }
 }

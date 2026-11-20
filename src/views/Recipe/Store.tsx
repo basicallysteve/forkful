@@ -14,6 +14,8 @@ import { useFoodStore } from "@/stores/food"
 import { apiCreateRecipe } from "@/lib/api/recipes"
 import { InputText } from 'primereact/inputtext'
 import { InputNumber } from 'primereact/inputnumber'
+import QuantityInput from '@/components/QuantityInput/QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Tag } from 'primereact/tag'
@@ -22,6 +24,7 @@ import { Editor } from 'primereact/editor'
 import MarkdownImport from './MarkdownImport'
 import RecipeImporter from './RecipeImporter'
 import './markdownImport.scss'
+import { hasValidQuantities } from './ingredientQuantities'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -190,13 +193,13 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         </label>
       <label className="form-field">
         <span className="field-label">Quantity</span>
-        <InputNumber
+        <QuantityInput
           className="ingredient-quantity-input"
-          min={0}
           value={blank ? null : ingredient.quantity}
+          unit={ingredient.servingUnit}
           disabled={blank}
-          onValueChange={(e) => setIngredientQuantity(e.value)}
-          aria-label="Quantity"
+          onChange={setIngredientQuantity}
+          max={MAX_QUANTITY}
         />
         </label>
       <label className="form-field">
@@ -306,7 +309,9 @@ function Store() {
   }, [recipe.ingredients, recipes])
 
   const canSave = useMemo(() => {
-    return !!(recipe.name && recipe.meal && recipe.description)
+    // A stored row with invalid or zero quantity text has quantity 0; block saving it as "0 slice".
+    const quantitiesValid = hasValidQuantities(recipe.ingredients)
+    return !!(recipe.name && recipe.meal && recipe.description && quantitiesValid)
   }, [recipe])
 
     const canPublish = useMemo(() => {

@@ -3,9 +3,14 @@
 import { useRef, useState, useEffect } from 'react'
 import { AutoComplete } from 'primereact/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteSelectEvent, AutoCompleteChangeEvent } from 'primereact/autocomplete'
-import { InputText } from 'primereact/inputtext'
-import Modal from '@/components/Modal/Modal'
+import { useSession } from 'next-auth/react'
+import AutocompleteStatus, { resultsMessage } from '@/components/Autocomplete/AutocompleteStatus'
+import { useActiveDescendant } from '@/components/Autocomplete/useActiveDescendant'
+import { useAutocompleteList } from '@/components/Autocomplete/useAutocompleteList'
+import SignInRequiredMessage from '@/components/SignInRequiredMessage/SignInRequiredMessage'
+import QuickAddFoodModal from '@/components/QuickAddFoodModal/QuickAddFoodModal'
 import { apiFetchFoods, apiCreateFood } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import { apiSearchOpenFoodFacts, mapOFFProductToFood } from '@/lib/api/openFoodFacts'
 import type { Food } from '@/types/Food'
 import type { OFFProduct } from '@/types/OpenFoodFacts'
@@ -13,6 +18,8 @@ import './food-search.scss'
 
 type SuggestionGroup = {
   label: string
+  /** Item-less group shown while the online search runs */
+  searching?: boolean
   items: SuggestionItem[]
 }
 
@@ -38,13 +45,17 @@ function itemMacros(s: SuggestionItem): string {
   return 'Fill in macros manually'
 }
 
-type AddFoodForm = {
-  name: string
-  calories: string
-  protein: string
-  carbs: string
-  fat: string
+/** True when a Food already has exactly this name (case-insensitive), so adding it would duplicate. */
+function hasExactName(foods: Food[], query: string): boolean {
+  const q = query.toLowerCase()
+  return foods.some(f => f.name.trim().toLowerCase() === q)
 }
+
+function addGroup(query: string): SuggestionGroup {
+  return { label: 'Not found?', items: [{ kind: 'add', name: query }] }
+}
+
+type AddFoodRequest = { name: string }
 
 interface FoodSearchProps {
   value: string
@@ -60,11 +71,21 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([])
   const [importing, setImporting] = useState(false)
-  const [addDialog, setAddDialog] = useState<AddFoodForm | null>(null)
-  const [addSaving, setAddSaving] = useState(false)
+  const [addDialog, setAddDialog] = useState<AddFoodRequest | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestQueryRef = useRef<string>('')
   const acRef = useRef<AutoComplete>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [activeQuery, setActiveQuery] = useState('')
+  useActiveDescendant(containerRef)
+  const list = useAutocompleteList()
+  const { status } = useSession()
+  // Read through a ref so the debounced callback sees the current auth state
+  // Only hide once we know the user is signed out; while the session is still loading the
+  // add row shows, so it isn't missing on a fast first keystroke.
+  const canAddRef = useRef(true)
+  canAddRef.current = status !== 'unauthenticated'
 
   useEffect(() => {
     setInputValue(value)
@@ -72,6 +93,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
 
   async function handleComplete(e: AutoCompleteCompleteEvent) {
     const query = e.query.trim()
+    setActiveQuery(query)
     if (!query) {
       setSuggestions([])
       return
@@ -92,60 +114,64 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
         return an.localeCompare(bn)
       })
       .slice(0, 6)
-    setSuggestions(localMatches.length > 0
-      ? [{ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) }]
-      : []
-    )
+    // Show the panel immediately: local matches, a "Searching…" row while the
+    // online search runs, and the add row (always last, so it stays put).
+    const immediate: SuggestionGroup[] = []
+    if (localMatches.length > 0) {
+      immediate.push({ label: 'In your library', items: localMatches.map(f => ({ kind: 'local' as const, food: f })) })
+    }
+    // An item-less group renders as a non-focusable status line, not an option
+    immediate.push({ label: 'Searching…', items: [], searching: true })
+    if (canAddRef.current && !hasExactName(localFoods, query)) immediate.push(addGroup(query))
+    setSuggestions(immediate)
 
     latestQueryRef.current = query
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       if (latestQueryRef.current !== query) return
 
-      try {
-        const [localResult, offResult] = await Promise.allSettled([
-          apiFetchFoods({ search: query }),
-          apiSearchOpenFoodFacts(query),
-        ])
+      const [localResult, offResult] = await Promise.allSettled([
+        apiFetchFoods({ search: query }),
+        apiSearchOpenFoodFacts(query),
+      ])
 
-        if (latestQueryRef.current !== query) return
+      if (latestQueryRef.current !== query) return
 
-        const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
-        const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
+      const serverLocal = localResult.status === 'fulfilled' ? localResult.value : []
+      const offProducts = offResult.status  === 'fulfilled' ? offResult.value   : []
 
-        const localIds = new Set(localFoods.map(f => f.id))
-        const mergedLocal = [
-          ...localMatches,
-          ...serverLocal.filter(f => !localIds.has(f.id) && !localMatches.some(m => m.id === f.id)).slice(0, 3),
-        ]
+      const localIds = new Set(localFoods.map(f => f.id))
+      const mergedLocal = [
+        ...localMatches,
+        ...serverLocal.filter(f => !localIds.has(f.id) && !localMatches.some(m => m.id === f.id)).slice(0, 3),
+      ]
 
-        const localNames = new Set(mergedLocal.map(f => f.name.toLowerCase()))
-        const filteredOFF = offProducts
-          .filter((p: OFFProduct) => p.product_name && !localNames.has(p.product_name.toLowerCase()))
-          .slice(0, 4)
+      const localNames = new Set(mergedLocal.map(f => f.name.toLowerCase()))
+      const filteredOFF = offProducts
+        .filter((p: OFFProduct) => p.product_name && !localNames.has(p.product_name.toLowerCase()))
+        .slice(0, 4)
 
-        const onlineItems: SuggestionItem[] = filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p }))
+      const onlineItems: SuggestionItem[] = filteredOFF.map((p: OFFProduct) => ({ kind: 'off' as const, product: p }))
 
-        const groups: SuggestionGroup[] = []
-        if (mergedLocal.length > 0) {
-          groups.push({ label: 'In your library', items: mergedLocal.map(f => ({ kind: 'local' as const, food: f })) })
-        }
-        if (onlineItems.length > 0) {
-          groups.push({ label: 'Online results', items: onlineItems })
-        }
-
-        // Always offer manual add as a last resort
-        groups.push({ label: 'Not found?', items: [{ kind: 'add' as const, name: query }] })
-
-        setSuggestions(groups)
-      } catch {
-        // Keep showing local results on error
+      const groups: SuggestionGroup[] = []
+      if (mergedLocal.length > 0) {
+        groups.push({ label: 'In your library', items: mergedLocal.map(f => ({ kind: 'local' as const, food: f })) })
       }
+      if (onlineItems.length > 0) {
+        groups.push({ label: 'Online results', items: onlineItems })
+      }
+
+      // Offer manual add as a last resort (signed-in users only)
+      if (canAddRef.current && !hasExactName([...localFoods, ...serverLocal], query)) groups.push(addGroup(query))
+
+      setSuggestions(groups)
     }, 400)
   }
 
   async function handleSelect(e: AutoCompleteSelectEvent) {
     const item = e.value as SuggestionItem
+    setActiveQuery('')
+    list.markSelected()
 
     if (item.kind === 'local') {
       setInputValue(item.food.name)
@@ -154,7 +180,7 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
     }
 
     if (item.kind === 'add') {
-      setAddDialog({ name: item.name, calories: '', protein: '0', carbs: '0', fat: '0' })
+      setAddDialog({ name: item.name })
       return
     }
 
@@ -163,40 +189,29 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
       const created = await apiCreateFood(mapOFFProductToFood(item.product))
       setInputValue(created.name)
       onChange(created)
-    } catch {
-      // Import failed — no-op, user can try again
+    } catch (err) {
+      // Import failed — user can try again
+      if (isUnauthorizedError(err)) setAddError(SIGN_IN_REQUIRED_MESSAGE)
     } finally {
       setImporting(false)
     }
   }
 
-  async function handleAddSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!addDialog) return
-    setAddSaving(true)
-    try {
-      const created = await apiCreateFood({
-        name: addDialog.name,
-        calories: Number(addDialog.calories) || 0,
-        protein: Number(addDialog.protein) || 0,
-        carbs: Number(addDialog.carbs) || 0,
-        fat: Number(addDialog.fat) || 0,
-        fiber: 0,
-        servingSize: 100,
-        servingUnit: 'g',
-        measurements: [{ unit: 'g' }],
-      })
-      setInputValue(created.name)
-      onChange(created)
-      setAddDialog(null)
-    } catch {
-      // Silently fail — user can retry
-    } finally {
-      setAddSaving(false)
-    }
+  function closeAddDialog() {
+    setAddDialog(null)
+    setAddError(null)
+    // The modal steals focus; hand it back to the search input.
+    containerRef.current?.querySelector<HTMLInputElement>('input')?.focus()
+  }
+
+  function selectFromDialog(food: Food) {
+    setInputValue(food.name)
+    onChange(food)
+    closeAddDialog()
   }
 
   function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    if (list.isRefocusAfterSelect()) return
     acRef.current?.search(e, inputValue)
   }
 
@@ -208,22 +223,40 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
   )
 
   const groupTemplate = (group: SuggestionGroup) => (
-    <div className="food-search-group-label">{group.label}</div>
+    <div className={`food-search-group-label${group.searching ? ' food-search-group-label--searching' : ''}`}>
+      {group.label}
+    </div>
   )
+
+  // Announced by the shared live region; the add row is a way out, not a match.
+  const isSearching = suggestions.some(g => g.searching)
+  const matchCount = suggestions.reduce((n, g) => n + g.items.filter(i => i.kind !== 'add').length, 0)
+  const statusMessage = !activeQuery
+    ? ''
+    : isSearching
+      ? 'Searching…'
+      : matchCount > 0
+        ? (list.open ? resultsMessage(matchCount) : '')
+        : suggestions.some(g => g.items.some(i => i.kind === 'add'))
+          ? 'No matches. Add as new food is available'
+          : 'No matches'
 
   function handleOnChange(e: AutoCompleteChangeEvent<SuggestionItem>) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const val = e.value as any
     if (typeof val === 'string') {
       setInputValue(val)
-      if (!val.trim()) setSuggestions([])
+      if (!val.trim()) {
+        setSuggestions([])
+        setActiveQuery('')
+      }
       onInputChange?.(val)
     }
   }
 
   return (
     <>
-      <div className={`food-search${importing ? ' food-search--importing' : ''}`}>
+      <div ref={containerRef} className={`food-search${importing ? ' food-search--importing' : ''}`}>
         <AutoComplete
           ref={acRef}
           value={inputValue}
@@ -232,6 +265,9 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           completeMethod={handleComplete}
           onSelect={handleSelect}
           onFocus={handleFocus}
+          {...list.listProps}
+          onBlur={() => setActiveQuery('')}
+          onKeyUp={e => { if (e.key === 'Escape') setActiveQuery('') }}
           onChange={handleOnChange}
           field="name"
           optionGroupLabel="label"
@@ -242,66 +278,21 @@ export default function FoodSearch({ value, localFoods, onChange, onInputChange,
           placeholder={importing ? 'Importing…' : placeholder}
           disabled={importing}
           delay={0}
+          scrollHeight="260px"
           inputClassName="text-input"
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          pt={{ input: { 'aria-label': inputAriaLabel } as any }}
+          aria-label={inputAriaLabel}
         />
+        <AutocompleteStatus message={statusMessage} />
+        {addError && !addDialog && <p className="add-food-error" role="alert"><SignInRequiredMessage /></p>}
       </div>
 
       {addDialog && (
-        <Modal
-          visible
-          onHide={() => setAddDialog(null)}
-          header="Add a new food"
-          style={{ width: '420px', maxWidth: '95vw' }}
-        >
-          <form onSubmit={handleAddSubmit} className="add-food-form">
-            <label className="form-field">
-              <span>Name</span>
-              <InputText
-                value={addDialog.name}
-                onChange={e => setAddDialog(d => d ? { ...d, name: e.target.value } : d)}
-                required
-                autoFocus
-              />
-            </label>
-            <label className="form-field">
-              <span>Calories</span>
-              <input
-                type="number"
-                min="0"
-                className="text-input"
-                value={addDialog.calories}
-                onChange={e => setAddDialog(d => d ? { ...d, calories: e.target.value } : d)}
-                required
-              />
-            </label>
-            <div className="form-row">
-              <label className="form-field">
-                <span>Protein (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.protein}
-                  onChange={e => setAddDialog(d => d ? { ...d, protein: e.target.value } : d)} />
-              </label>
-              <label className="form-field">
-                <span>Carbs (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.carbs}
-                  onChange={e => setAddDialog(d => d ? { ...d, carbs: e.target.value } : d)} />
-              </label>
-              <label className="form-field">
-                <span>Fat (g)</span>
-                <input type="number" min="0" step="0.1" className="text-input" value={addDialog.fat}
-                  onChange={e => setAddDialog(d => d ? { ...d, fat: e.target.value } : d)} />
-              </label>
-            </div>
-            <p className="add-food-note">Nutrition is per 100 g serving. You can edit more details later.</p>
-            <div className="form-actions">
-              <button type="button" className="secondary-button" onClick={() => setAddDialog(null)}>Cancel</button>
-              <button type="submit" className="primary-button" disabled={addSaving}>
-                {addSaving ? 'Saving…' : 'Add food'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+        <QuickAddFoodModal
+          initialName={addDialog.name}
+          onHide={closeAddDialog}
+          onCreated={selectFromDialog}
+          onExisting={selectFromDialog}
+        />
       )}
     </>
   )

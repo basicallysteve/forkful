@@ -1,5 +1,6 @@
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
+import { assertWriteOk } from './errors'
 
 export type FoodQueryOptions = {
   search?: string
@@ -32,7 +33,7 @@ export async function apiCreateFood(data: Omit<Food, 'id'>): Promise<Food> {
     body: JSON.stringify(data),
     credentials: 'same-origin',
   })
-  if (!res.ok) throw new Error('Failed to create food')
+  assertWriteOk(res, 'Failed to create food')
   return res.json()
 }
 
@@ -44,11 +45,11 @@ export async function apiUpdateFood(food: Food): Promise<Food> {
     body: JSON.stringify(food),
     credentials: 'same-origin',
   })
-  if (!res.ok) throw new Error('Failed to update food')
+  assertWriteOk(res, 'Failed to update food')
   return res.json()
 }
 
 export async function apiDeleteFood(slug: string): Promise<void> {
   const res = await fetch(`/api/foods/${slug}`, { method: 'DELETE', credentials: 'same-origin' })
-  if (!res.ok && res.status !== 204) throw new Error('Failed to delete food')
+  assertWriteOk(res, 'Failed to delete food', [204])
 }

@@ -8,6 +8,7 @@ import { Skeleton } from 'primereact/skeleton'
 import { useFoodStore } from '@/stores/food'
 import { useRecipeStore } from '@/stores/recipes'
 import { apiDeleteFood, apiFetchFoods } from '@/lib/api/foods'
+import { isUnauthorizedError, SIGN_IN_REQUIRED_MESSAGE } from '@/lib/api/errors'
 import type { Food } from '@/types/Food'
 import { toSlug } from '@/utils/slug'
 import { InputText } from 'primereact/inputtext'
@@ -129,10 +130,17 @@ export default function Foods() {
       }
     })
 
-    foodsToDelete.forEach(food => deleteFood(food.id))
     try {
       await Promise.all(foodsToDelete.map(food => apiDeleteFood(toSlug(food.name))))
-    } catch (err) { console.error('Failed to delete foods from server:', err) }
+    } catch (err) {
+      if (isUnauthorizedError(err)) {
+        // Nothing was deleted server-side; keep the foods in the list.
+        setDeleteError(SIGN_IN_REQUIRED_MESSAGE)
+        return
+      }
+      console.error('Failed to delete foods from server:', err)
+    }
+    foodsToDelete.forEach(food => deleteFood(food.id))
 
     if (foodsInUse.length > 0) {
       setDeleteError(

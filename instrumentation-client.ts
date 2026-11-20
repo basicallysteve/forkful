@@ -1,4 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
+import { scrubLog } from '@/lib/sentry/scrubLog'
+import { replayOptions } from '@/lib/sentry/replayOptions'
 
 // Client-side Sentry init. In Next.js (App Router + Turbopack) this file is the
 // supported entry point for browser instrumentation — the legacy
@@ -7,13 +9,20 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: true,
   tracesSampleRate: 1.0,
+  // Browser profiling: profile 10% of sessions, for the duration of each sampled trace.
+  // Requires the `Document-Policy: js-profiling` response header (set in next.config.ts).
+  profileSessionSampleRate: 0.1,
+  profileLifecycle: 'trace',
   replaysSessionSampleRate: 0.2,
   replaysOnErrorSampleRate: 1.0,
-  environment: process.env.NODE_ENV,
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+  enableLogs: true,
+  beforeSendLog: scrubLog,
+  sendDefaultPii: false,
   integrations: [
     Sentry.browserProfilingIntegration(),
     Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
+    Sentry.replayIntegration(replayOptions),
     Sentry.feedbackIntegration({
       autoInject: true,
       // Match the OS/user-toggle preference set by Forkful's ThemeToggle

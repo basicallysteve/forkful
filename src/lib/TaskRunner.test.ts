@@ -15,6 +15,11 @@ describe('TaskRunner', () => {
     ).rejects.toThrow('Task failed')
   })
 
+  it('accepts an optional span name without changing the result', async () => {
+    const runner = new TaskRunner()
+    expect(await runner.run(async () => 'ok', 'recipe.create')).toBe('ok')
+  })
+
   it('taskRunner singleton is a TaskRunner instance', () => {
     expect(taskRunner).toBeInstanceOf(TaskRunner)
   })

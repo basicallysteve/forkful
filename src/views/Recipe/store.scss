@@ -150,6 +150,12 @@
     border-radius: 10px;
     background: var(--vscode-panel);
 
+    // Room for QuantityInput's out-of-flow invalid hint: under the box (row gap) and inside the card.
+    &:has(.quantity-input-hint) {
+      row-gap: 22px;
+      padding-bottom: 20px;
+    }
+
     .form-field {
       padding: 0;
       border: none;
@@ -180,12 +186,12 @@
 
     .p-inputtext,
     .p-inputnumber-input {
-      height: 42px;
+      height: var(--control-height);
       padding: 0 12px;
     }
 
     .p-dropdown {
-      height: 42px;
+      height: var(--control-height);
       align-items: center;
     }
 
@@ -211,8 +217,8 @@
 
     .ingredient-action-button {
       justify-self: end;
-      height: 42px;
-      min-width: 42px;
+      height: var(--control-height);
+      min-width: var(--control-height);
     }
   }
 

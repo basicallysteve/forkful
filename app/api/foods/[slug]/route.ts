@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getFoodBySlug, updateFood, deleteFood } from '@/lib/foods'
+import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import type { Food } from '@/types/Food'
 
@@ -13,6 +14,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { slug } = await params
   const existing = await getFoodBySlug(slug)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -22,6 +25,8 @@ export async function PUT(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { slug } = await params
   const existing = await getFoodBySlug(slug)
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })

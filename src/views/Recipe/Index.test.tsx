@@ -8,6 +8,7 @@ import { useFoodStore, resetFoodStore } from '@/stores/food'
 import type { Recipe as RecipeType } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
 import { apiUpdateRecipe } from '@/lib/api/recipes'
+import { ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiUpdateRecipe: vi.fn(async (r) => r),
@@ -284,7 +285,87 @@ describe('Recipe View Page', () => {
       await user.clear(quantityInputs[0])
       await user.type(quantityInputs[0], '5')
 
-      expect(quantityInputs[0]).toHaveValue(5)
+      expect(quantityInputs[0]).toHaveValue('5')
+    })
+
+    it('typing over a quantity replaces it instead of appending (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.click(qty)
+      await user.keyboard('4')
+
+      expect(qty).toHaveValue('4')
+      expect(screen.getByText('400 calories')).toBeInTheDocument()
+    })
+
+    it('accepts fractions in the quantity box like the new-recipe editor (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.click(qty)
+      await user.keyboard('1/2')
+
+      // Ham 0.5 * 75 = 38 (rounded) + Cheese 100
+      expect(screen.getByText('138 calories')).toBeInTheDocument()
+    })
+
+    it('does not accept a huge quantity: calories never balloon (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.click(qty)
+      await user.keyboard('999999999')
+      expect(qty).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.queryByText(/\d{2},\d{3},\d{3}/)).not.toBeInTheDocument()
+      await user.tab()
+      expect(qty).toHaveValue('9999')
+      expect(screen.queryByText(/\d{2},\d{3},\d{3}/)).not.toBeInTheDocument()
+    })
+
+    it('does not save an invalid (zero or blank) quantity (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      const save = screen.getByRole('button', { name: /^save$/i })
+      expect(save).toBeEnabled()
+      await user.click(qty)
+      await user.keyboard('0')
+      expect(save).toBeDisabled()
+      await user.clear(qty)
+      expect(save).toBeDisabled()
+      await user.keyboard('3')
+      expect(save).toBeEnabled()
+    })
+
+    it('shows why an over-cap quantity is invalid while typing (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.click(qty)
+      await user.keyboard('999999999')
+      expect(screen.getByText('Maximum is 9999')).toBeVisible()
+    })
+
+    it('a blank quantity stays blank and counts as 0 calories (#247)', async () => {
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+
+      const qty = screen.getAllByRole('spinbutton', { name: /ingredient \d+ quantity/i })[0]
+      await user.clear(qty)
+      expect(qty).toHaveValue('')
+      expect(screen.getByText('100 calories')).toBeInTheDocument()
     })
 
     it('updates calories when quantity changes for existing ingredient', async () => {
@@ -531,6 +612,48 @@ describe('Recipe View Page', () => {
   })
 
   describe('Error handling', () => {
+    async function failSave(err: unknown) {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(err)
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={mockRecipe} />)
+      await user.click(screen.getByRole('button', { name: /edit/i }))
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      await screen.findByText('Could not save changes')
+    }
+
+    it('shows a connection message and keeps edit mode on network failure', async () => {
+      await failSave(new TypeError('Failed to fetch'))
+      expect(screen.getByText(/check your connection and try again/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    })
+
+    it('shows a sign-in message on 401', async () => {
+      await failSave(new UnauthorizedError())
+      expect(screen.getByText(/sign in/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
+    it('shows the permission message only on 403', async () => {
+      await failSave(new ForbiddenError())
+      expect(screen.getByText(/permission/i)).toBeInTheDocument()
+    })
+
+    it('shows a retry message on 5xx', async () => {
+      await failSave(Object.assign(new Error('Failed to update recipe'), { status: 500 }))
+      expect(screen.getByText(/check your connection and try again/i)).toBeInTheDocument()
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
+    it('does not claim a permission problem when publish fails on the network', async () => {
+      vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      const user = userEvent.setup()
+      renderWithStores(<Recipe recipe={{ ...mockRecipe, date_published: null }} />)
+      await user.click(screen.getByRole('button', { name: /publish/i }))
+      await screen.findByText('Could not publish recipe')
+      expect(screen.queryByText(/permission/i)).not.toBeInTheDocument()
+    })
+
     it('shows an error toast when save fails', async () => {
       vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
       const user = userEvent.setup()

@@ -1,0 +1,135 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import FoodSearch from './FoodSearch'
+import type { Food } from '@/types/Food'
+
+const mockUseSession = vi.fn()
+vi.mock('next-auth/react', () => ({
+  useSession: () => mockUseSession(),
+}))
+const mockFetchFoods = vi.fn()
+vi.mock('@/lib/api/foods', () => ({
+  apiFetchFoods: (...a: unknown[]) => mockFetchFoods(...a),
+  apiCreateFood: vi.fn(),
+}))
+vi.mock('@/lib/api/openFoodFacts', () => ({
+  apiSearchOpenFoodFacts: vi.fn().mockResolvedValue([]),
+  mapOFFProductToFood: vi.fn(),
+}))
+
+function food(id: number, name: string): Food {
+  return {
+    id, name, calories: 100, protein: 1, carbs: 1, fat: 1, fiber: 0,
+    servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }],
+  }
+}
+
+describe('FoodSearch accessibility', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockUseSession.mockReturnValue({ data: { user: { name: 'u' } }, status: 'authenticated' })
+    mockFetchFoods.mockResolvedValue([])
+  })
+  afterEach(() => { vi.useRealTimers(); vi.clearAllMocks() })
+
+  function setup() {
+    render(
+      <FoodSearch
+        value=""
+        localFoods={[food(1, 'Apple'), food(2, 'Apple pie')]}
+        onChange={vi.fn()}
+        inputAriaLabel="Ingredient food"
+      />,
+    )
+    return screen.getByRole('combobox', { name: 'Ingredient food' })
+  }
+
+  it('names the input from inputAriaLabel', () => {
+    expect(setup()).toBeInTheDocument()
+  })
+
+  it('announces Searching… in the single live region, then the result count', async () => {
+    const input = setup()
+    fireEvent.change(input, { target: { value: 'apple' } })
+    const status = screen.getByRole('status')
+    expect(screen.getAllByRole('status')).toHaveLength(1)
+    expect(status).toHaveAttribute('aria-live', 'polite')
+    expect(status).toHaveTextContent('Searching…')
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(status).not.toHaveTextContent('Searching…')
+    // the add row is not counted as a match
+    expect(status).toHaveTextContent('2 results')
+  })
+
+  it('announces No matches when only the add row is left', async () => {
+    const input = setup()
+    fireEvent.change(input, { target: { value: 'zzqxj' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status')).toHaveTextContent('No matches. Add as new food is available')
+  })
+
+  it('announces plain No matches when signed out, since there is no add row', async () => {
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' })
+    const input = setup()
+    fireEvent.change(input, { target: { value: 'zzqxj' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status').textContent).toBe('No matches')
+  })
+
+  it('goes quiet on Escape, on blur and after selecting, and speaks again on the next search', async () => {
+    const input = setup()
+    act(() => input.focus())
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status')).toHaveTextContent('2 results')
+
+    fireEvent.keyUp(input, { key: 'Escape' })
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    fireEvent.change(input, { target: { value: 'apple p' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(screen.getByRole('status')).toHaveTextContent('result')
+
+    fireEvent.blur(input)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    // the first press selects and closes the list, so there is nothing left to click
+    fireEvent.mouseDown(screen.getAllByRole('option')[0])
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('keeps the live region out of the listbox', () => {
+    const input = setup()
+    fireEvent.change(input, { target: { value: 'zzqxj' } })
+    expect(screen.getByRole('listbox').querySelector('[role="status"]')).toBeNull()
+  })
+
+  it('follows the highlighted option with aria-activedescendant', async () => {
+    const input = setup()
+    // a real user focuses the field before typing; the id sync only runs while it has focus
+    act(() => input.focus())
+    fireEvent.change(input, { target: { value: 'apple' } })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    await act(async () => {})
+    const id = input.getAttribute('aria-activedescendant')
+    expect(id).toBeTruthy()
+    const el = document.getElementById(id!)
+    expect(el).toHaveAttribute('role', 'option')
+    expect(el).toHaveTextContent('Apple')
+  })
+
+  it('does not search again when PrimeReact refocuses the input after a select', async () => {
+    const input = setup()
+    act(() => input.focus())
+    fireEvent.change(input, { target: { value: 'apple' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    const calls = mockFetchFoods.mock.calls.length
+    fireEvent.mouseDown(screen.getAllByRole('option')[0])
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(mockFetchFoods.mock.calls.length).toBe(calls)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+})

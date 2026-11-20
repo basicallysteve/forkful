@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getFoods, createFood } from '@/lib/foods'
+import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
 import type { Food } from '@/types/Food'
 import type { FoodQueryOptions } from '@/lib/foods'
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const user = await getSessionUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body: Omit<Food, 'id'> = await request.json()
   const food = await taskRunner.run(() => createFood(body))
   return NextResponse.json(food, { status: 201 })

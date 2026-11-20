@@ -105,5 +105,5 @@ URLs use slugs derived from names (`toSlug()` in `src/utils/slug.ts`). Slugs are
 **Integration tests** (`vitest.integration.config.ts`, node environment):
 - Require a real Postgres connection. Copy `.env.example` to `.env.local` and set `DATABASE_URL` to your Supabase Transaction Pooler URL before running.
 - Run serially (`fileParallelism: false`), 30-second timeout.
-- Tests clean up after themselves by deleting rows matching `name LIKE 'Test%'`.
+- Tests clean up after themselves by deleting rows matching `name LIKE 'ITest%'` (usernames `itest%`). The `ITest` prefix keeps the suite from colliding with the manual `Test…` data that agents create in the shared dev database; never use `Test%` in integration tests.
 - In CI, the schema is pushed with `db:push` before tests run; `DATABASE_URL` env var is used (not the individual `DATABASE_*` vars).

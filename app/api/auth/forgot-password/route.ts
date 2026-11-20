@@ -3,6 +3,7 @@ import { createPasswordResetToken, getOAuthProvidersForEmail, checkPasswordReset
 import { sendPasswordResetEmail } from '@/lib/email'
 import { taskRunner } from '@/lib/TaskRunner'
 import { getClientIp } from '@/lib/ip'
+import { captureError, logWarn } from '@/lib/logger'
 
 export async function POST(request: Request) {
   const ipAddress = getClientIp(request.headers)
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
   try {
     await checkPasswordResetRateLimit(ipAddress)
   } catch (error) {
+    // Example: expected, non-exceptional event -> warn log, not an exception.
+    // Note: no IP or email in attributes.
+    logWarn('password reset rate limited')
     const message = error instanceof Error ? error.message : 'Too many requests'
     return NextResponse.json({ error: message }, { status: 429 })
   }
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
     // Email not found — same response as success to prevent enumeration
     return NextResponse.json({ type: 'success' })
   } catch (error) {
-    console.error('[forgot-password]', error)
+    captureError(error, { area: 'auth' })
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
 }

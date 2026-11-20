@@ -41,6 +41,9 @@ export function parseQuantity(input: string): number | null {
   return null
 }
 
+// Largest amount a recipe ingredient box accepts (10,000 g is already 10 kg).
+export const MAX_QUANTITY = 9999
+
 const FRACTION_TOLERANCE = 0.01
 
 function decimalString(value: number): string {

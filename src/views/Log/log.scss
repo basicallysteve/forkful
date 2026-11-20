@@ -14,7 +14,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 12px;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     margin: 0;
   }
 
@@ -26,7 +26,7 @@
 
   .daily-log-date {
     margin: 0;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     font-size: 14px;
   }
 
@@ -70,12 +70,13 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
   }
 
   .daily-log-meals {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    // One section per Meal Slot, stacked: each lists its entries as rows, so the stack suits any slot count.
+    grid-template-columns: 1fr;
     gap: 12px;
 
     .daily-log-meal {
@@ -110,12 +111,60 @@
 
     .daily-log-meal-chevron {
       font-size: 12px;
-      color: var(--vscode-text-muted, #9aa0a6);
+      color: var(--vscode-muted);
     }
 
     .daily-log-meal-body {
       display: flex;
       flex-direction: column;
+      gap: 12px;
+    }
+
+    .daily-log-rows {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .daily-log-row {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--vscode-border);
+      font-size: 14px;
+      color: var(--vscode-text);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    // Name, amount and kcal share one line; the long macro line wraps beneath, so nothing needs sideways scroll.
+    .daily-log-row-main {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .daily-log-row-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .daily-log-row-amount,
+    .daily-log-row-cal {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .daily-log-row-cal {
+      font-weight: 600;
+    }
+
+    .daily-log-row-macros {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--vscode-muted);
     }
 
     .daily-log-meal-add {
@@ -142,42 +191,12 @@
     font-size: 14px;
   }
 
-  .daily-log-entries {
-    margin-top: 24px;
-  }
-
-  .daily-log-entries-title {
-    margin: 0 0 12px;
-    font-size: 16px;
-    color: var(--vscode-text);
-  }
-
   .daily-log-empty {
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
     padding: 24px;
     text-align: center;
     border: 1px dashed var(--vscode-border);
     border-radius: 12px;
-  }
-
-  .daily-log-table {
-    width: 100%;
-    border-collapse: collapse;
-
-    th, td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--vscode-border);
-      font-size: 14px;
-      color: var(--vscode-text);
-    }
-
-    th {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--vscode-text-muted, #9aa0a6);
-    }
   }
 
   @media (max-width: 640px) {
@@ -187,28 +206,120 @@
       grid-template-columns: repeat(3, 1fr);
     }
 
-    .daily-log-meals {
-      grid-template-columns: 1fr;
-    }
+  }
+}
 
-    .daily-log-table {
-      display: block;
-      overflow-x: auto;
-    }
+// The log dialog's backdrop. The 60px sticky toolbar sits under the dimmed mask, so pad the mask to
+// frame the dialog below the header (top) and above the floating "Report an issue" button (bottom).
+// Declared at the top level because the mask is portaled to <body> too.
+.p-dialog-mask.log-food-mask {
+  --log-dialog-top: 76px;
+  --log-dialog-bottom: 72px;
+  box-sizing: border-box;
+  padding: var(--log-dialog-top) 12px var(--log-dialog-bottom);
+
+  // Short (landscape phone) viewports: the feedback button sits in the bottom-right corner, so reserve
+  // a right-hand band for it instead of a bottom one, which leaves height for more than four results.
+  @media (max-height: 600px) {
+    --log-dialog-top: 62px;
+    --log-dialog-bottom: 6px;
+    padding-right: 180px;
   }
 }
 
 // The log dialog is portaled to <body> by PrimeReact, outside the `.daily-log` tree, so its styles
 // live at the top level rather than nested under `.daily-log`.
 .log-food-dialog {
+  &.p-dialog {
+    margin: 0;
+    max-height: 100%;
+  }
+
+  .p-dialog-content {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .log-food-picker,
+  .log-food-confirm {
+    min-height: 0;
+  }
+
   .log-food-picker {
     display: flex;
     flex-direction: column;
+    flex: 0 1 auto;
     gap: 12px;
   }
 
   .log-food-search {
     width: 100%;
+  }
+
+  // The results list takes whatever height the dialog has left (the dialog is capped to the padded mask)
+  // and scrolls inside it, so the header and search box stay put.
+  .log-food-results {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    border: 1px solid var(--vscode-border);
+    border-radius: 8px;
+  }
+
+  .log-food-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li:last-child .log-food-item {
+      border-bottom: none;
+    }
+  }
+
+  .log-food-hint,
+  .log-food-empty {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--vscode-muted);
+  }
+
+  .log-food-hint {
+    border-top: 1px solid var(--vscode-border);
+  }
+
+  // No panel of its own: the strip sits on the dialog surface.
+  .log-food-empty {
+    background: transparent;
+    text-align: center;
+
+    a {
+      color: var(--vscode-accent);
+    }
+  }
+
+  .log-food-search-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-left: 3px solid #ef4444;
+    border-radius: 4px;
+    background: color-mix(in srgb, #ef4444 12%, transparent);
+    color: var(--vscode-text);
+    font-size: 14px;
+  }
+
+  .log-food-retry {
+    border: 1px solid var(--vscode-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--vscode-accent);
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
   }
 
   .log-food-item {
@@ -237,18 +348,32 @@
 
   .log-food-item-macros {
     font-size: 12px;
-    color: var(--vscode-text-muted, #9aa0a6);
+    color: var(--vscode-muted);
   }
 
+  // Scrolls on its own if the amount step is taller than the space the dialog has.
   .log-food-confirm {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0;
   }
 
   .daily-log-error {
     color: #ef4444;
     margin: 0;
+    font-size: 14px;
+  }
+
+  .log-food-warning {
+    margin: 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--vscode-warning);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--vscode-warning) 12%, transparent);
+    color: var(--vscode-text);
     font-size: 14px;
   }
 
@@ -268,22 +393,35 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--vscode-text);
+    overflow-wrap: anywhere;
   }
 
   .log-food-fields {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: flex-end;
+
+    // Permanent room for QuantityInput's out-of-flow hint under the Amount box (rows wrap on narrow dialogs).
+    &:has(.quantity-input-hint) {
+      row-gap: 18px;
+    }
 
     .log-field {
       display: flex;
       flex-direction: column;
       gap: 6px;
       flex: 1 1 0;
+      // Without this a long unit name sets the field's minimum width and pushes the row past the dialog (#264, #265).
+      min-width: min(100%, 8rem);
+
+      &.log-field--slot {
+        flex-basis: 100%;
+      }
 
       span {
         font-size: 12px;
-        color: var(--vscode-text-muted, #9aa0a6);
+        color: var(--vscode-muted);
       }
 
       // Match Amount (InputNumber) and Unit (Dropdown) heights — same pattern as shoppingList.scss.
@@ -301,6 +439,16 @@
 
       .p-dropdown {
         padding: 0;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      // A very long unit name wraps inside the select (and its options) instead of widening the row, so the full text stays readable.
+      .p-dropdown .p-dropdown-label,
+      .p-dropdown-item {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        min-width: 0;
       }
     }
   }
@@ -309,6 +457,65 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+
+  // The unit panel is portaled to <body> and opens over Log/Cancel at every dialog width (#267). While
+  // the panel is open (not merely focused), reserve its max height (200px) under the Amount/Unit row.
+  .log-food-confirm:has(.log-field [aria-expanded='true']) .log-food-actions {
+    margin-top: 12.5rem;
+  }
+
+  // The Meal Slot list is taller (250px), so reserve a little more while it is open.
+  .log-food-confirm:has(.log-field--slot [aria-expanded='true']) .log-food-actions {
+    margin-top: 15.75rem;
+  }
+
+  @media (max-height: 600px) {
+    // Doubled class so these beat modal.scss's `.app-modal .p-dialog-*` regardless of load order.
+    &.app-modal .p-dialog-header {
+      padding: 6px 14px;
+    }
+
+    &.app-modal .p-dialog-content {
+      padding: 8px 14px;
+      gap: 6px;
+    }
+
+    .log-food-picker {
+      gap: 6px;
+    }
+
+    // The Amount hint's room is always reserved, so tighten the confirm step to keep Cancel/Log in view.
+    .log-food-confirm {
+      gap: 8px;
+    }
+
+    .log-food-search {
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+
+    .log-food-item {
+      padding: 3px 10px;
+      line-height: 1.15;
+    }
+
+    // Short windows: cap the Unit and Meal Slot lists so trigger, options and the reserved space fit; they scroll inside.
+    .log-field .p-dropdown-items-wrapper {
+      max-height: 170px !important;
+    }
+
+    // Compact rows so the default four slots plus "No slot" show without scrolling the list.
+    .log-field .p-dropdown-item {
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+
+    // Both listed: the slot selector is more specific, so it would otherwise keep the taller 15.75rem reserve above.
+    .log-food-confirm:has(.log-field [aria-expanded='true']) .log-food-actions,
+    .log-food-confirm:has(.log-field--slot [aria-expanded='true']) .log-food-actions {
+      margin-top: 11rem;
+    }
   }
 
   .log-food-cancel,

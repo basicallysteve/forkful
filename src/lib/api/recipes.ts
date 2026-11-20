@@ -1,3 +1,4 @@
+import { assertWriteOk } from './errors'
 import type { Recipe, CreateRecipeInput } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 import type { ParsedRecipe } from '@/utils/recipeMarkdownParser'
@@ -34,7 +35,7 @@ export async function apiCreateRecipe(data: CreateRecipeInput): Promise<Recipe> 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error('Failed to create recipe')
+  assertWriteOk(res, 'Failed to create recipe')
   return res.json()
 }
 
@@ -44,13 +45,13 @@ export async function apiUpdateRecipe(recipe: Recipe): Promise<Recipe> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(recipe),
   })
-  if (!res.ok) throw new Error('Failed to update recipe')
+  assertWriteOk(res, 'Failed to update recipe')
   return res.json()
 }
 
 export async function apiDeleteRecipe(shortId: string): Promise<void> {
   const res = await fetch(`/api/recipes/${shortId}`, { method: 'DELETE' })
-  if (!res.ok && res.status !== 204) throw new Error('Failed to delete recipe')
+  assertWriteOk(res, 'Failed to delete recipe', [204])
 }
 
 export async function apiFetchSavedRecipes(): Promise<Recipe[]> {

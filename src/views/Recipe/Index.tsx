@@ -1,5 +1,6 @@
 'use client'
 
+import { describeSaveFailure } from '@/lib/api/errors'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Toast } from 'primereact/toast'
@@ -20,6 +21,9 @@ import {
 import { apiFetchFoods } from '@/lib/api/foods'
 import { Editor } from 'primereact/editor'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
+import QuantityInput from '@/components/QuantityInput/QuantityInput'
+import { MAX_QUANTITY } from '@/utils/quantity'
+import { hasValidQuantities } from '@/views/Recipe/ingredientQuantities'
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -156,7 +160,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       setEditMode(false)
     } catch (err) {
       console.error('Failed to persist recipe update:', err)
-      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not save changes', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -213,13 +217,13 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     return Math.round(raw)
   }
 
-  function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number) {
+  function handleIngredientChange(index: number, field: keyof Ingredient, value: string | number | null) {
     setEditedRecipe(prev => {
       const updatedIngredients = [...prev.ingredients]
       const ing = updatedIngredients[index]
       if (field === 'quantity') {
-        const numValue = Number(value)
-        const newQuantity = isNaN(numValue) || value === '' ? 0 : numValue
+        // QuantityInput reports null for blank or invalid text; treat it as 0.
+        const newQuantity = value === null || value === '' || isNaN(Number(value)) ? 0 : Number(value)
         updatedIngredients[index] = {
           ...ing,
           quantity: newQuantity,
@@ -377,7 +381,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not publish recipe', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -393,7 +397,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not unpublish recipe', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -409,7 +413,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
       updateRecipeInStore(currentRecipe)
       setCurrentRecipe(currentRecipe)
       setEditedRecipe(currentRecipe)
-      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: 'You may not have permission to edit this recipe.', life: 4000 })
+      toast.current?.show({ severity: 'error', summary: 'Could not change visibility', detail: describeSaveFailure(err), life: 4000 })
     }
   }
 
@@ -692,7 +696,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                   <button type="button" className="ghost-button" onClick={handleCancel}>
                     Cancel
                   </button>
-                  <button type="button" className="primary-button" onClick={handleSave}>
+                  <button type="button" className="primary-button" onClick={handleSave} disabled={!hasValidQuantities(editedRecipe.ingredients)}>
                     Save
                   </button>
                 </>
@@ -778,13 +782,13 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
                       </label>
                       <label className="ingredient-field ingredient-field-qty">
                         <span className="ingredient-field-label">Qty</span>
-                        <input
-                          type="number"
+                        <QuantityInput
                           className="ingredient-qty-input"
                           value={ingredient.quantity}
-                          min={0}
-                          onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
-                          aria-label={`Ingredient ${i + 1} quantity`}
+                          unit={ingredient.servingUnit}
+                          onChange={(q) => handleIngredientChange(i, 'quantity', q)}
+                          ariaLabel={`Ingredient ${i + 1} quantity`}
+                          max={MAX_QUANTITY}
                         />
                       </label>
                       <label className="ingredient-field ingredient-field-unit">

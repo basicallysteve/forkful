@@ -1,0 +1,36 @@
+// Visible invalid state for QuantityInput: red border plus a short icon + message (not colour alone).
+// The hint slot is always rendered (empty when the amount is valid) and out of flow, so filling it never
+// moves anything; the screens reserve room for it permanently (see the :has(.quantity-input-hint) rules).
+label:has(> .quantity-input-hint) {
+  position: relative;
+}
+
+.quantity-input-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 1px !important;
+  // The border keeps the brighter --vscode-danger; text needs --vscode-danger-text for 4.5:1 contrast.
+  // !important on colour and margin: screens style their own `small` helper text more specifically.
+  color: var(--vscode-danger-text) !important;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  // Labels around the box may be uppercase/bold; the message should read as a plain sentence.
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+
+  .pi {
+    font-size: 11px;
+    margin-right: 3px;
+    vertical-align: -1px;
+  }
+}
+
+input.text-input.p-invalid[role='spinbutton'],
+input.text-input.p-invalid[role='spinbutton']:focus {
+  // !important: the screens' own :focus rules (green accent) are more specific than this shared file.
+  border-color: var(--vscode-danger) !important;
+}

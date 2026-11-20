@@ -15,18 +15,18 @@ let testFood: Food
 let testUser: User
 
 async function cleanupRecipes() {
-  await pool.query(`DELETE FROM "saved_recipes" WHERE recipe_id IN (SELECT id FROM "recipes" WHERE name LIKE 'Test%')`)
-  await pool.query(`DELETE FROM "recipes" WHERE name LIKE 'Test%'`)
+  await pool.query(`DELETE FROM "saved_recipes" WHERE recipe_id IN (SELECT id FROM "recipes" WHERE name LIKE 'ITest%')`)
+  await pool.query(`DELETE FROM "recipes" WHERE name LIKE 'ITest%'`)
 }
 
 async function cleanupUsers() {
-  await pool.query(`DELETE FROM "users" WHERE username LIKE 'testuser_%'`)
+  await pool.query(`DELETE FROM "users" WHERE username LIKE 'itestuser_%'`)
 }
 
 describe('recipes data layer (integration)', () => {
   beforeAll(async () => {
     testFood = await createFood({
-      name: 'Test Ingredient Food',
+      name: 'ITest Ingredient Food',
       calories: 100,
       protein: 5,
       carbs: 10,
@@ -37,8 +37,8 @@ describe('recipes data layer (integration)', () => {
       measurements: [{ unit: 'g' }],
     })
     testUser = await signUp({
-      username: `testuser_${Date.now()}`,
-      email: `testuser_${Date.now()}@example.com`,
+      username: `itestuser_${Date.now()}`,
+      email: `itestuser_${Date.now()}@example.com`,
       password: 'Password1!',
       cuisinePreferences: [],
       dietaryRestrictions: [],
@@ -55,9 +55,23 @@ describe('recipes data layer (integration)', () => {
     await pool.end()
   })
 
+  it('createRecipe with a nonexistent food id fails and leaves no recipe row (atomic)', async () => {
+    const missingFood = { ...testFood, id: 2147483000 }
+    await expect(createRecipe({
+      name: 'ITest Atomic Ghost',
+      meal: 'Dinner',
+      description: 'must not persist',
+      ingredients: [{ food: missingFood, quantity: 1, calories: 1, servingUnit: 'g' }],
+      date_published: null,
+      isPublic: false,
+    })).rejects.toBeDefined()
+    const { rows } = await pool.query(`SELECT id FROM "recipes" WHERE name = 'ITest Atomic Ghost'`)
+    expect(rows).toHaveLength(0)
+  })
+
   it('creates and retrieves a recipe', async () => {
     const created = await createRecipe({
-      name: 'Test Pasta',
+      name: 'ITest Pasta',
       meal: 'Dinner',
       description: 'A test pasta dish',
       ingredients: [{ food: testFood, quantity: 200, calories: 200, servingUnit: 'g' }],
@@ -65,77 +79,77 @@ describe('recipes data layer (integration)', () => {
       isPublic: true,
     })
     expect(created.id).toBeDefined()
-    expect(created.name).toBe('Test Pasta')
+    expect(created.name).toBe('ITest Pasta')
     expect(created.ingredients).toHaveLength(1)
-    expect(created.ingredients[0].food.name).toBe('Test Ingredient Food')
+    expect(created.ingredients[0].food.name).toBe('ITest Ingredient Food')
 
     const fetched = await getRecipeByShortId(created.shortId)
     expect(fetched).not.toBeNull()
-    expect(fetched!.name).toBe('Test Pasta')
+    expect(fetched!.name).toBe('ITest Pasta')
   })
 
   it('lists public recipes without a viewer', async () => {
-    await createRecipe({ name: 'Test Public Salad', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
-    await createRecipe({ name: 'Test Private Soup', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
+    await createRecipe({ name: 'ITest Public Salad', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+    await createRecipe({ name: 'ITest Private Soup', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
 
     const all = await getRecipes()
-    const testResults = all.filter(r => r.name.startsWith('Test'))
-    expect(testResults.some(r => r.name === 'Test Public Salad')).toBe(true)
-    expect(testResults.some(r => r.name === 'Test Private Soup')).toBe(false)
+    const testResults = all.filter(r => r.name.startsWith('ITest'))
+    expect(testResults.some(r => r.name === 'ITest Public Salad')).toBe(true)
+    expect(testResults.some(r => r.name === 'ITest Private Soup')).toBe(false)
   })
 
   it('lists own private recipes when viewerId is provided', async () => {
     const userId = Number(testUser.id)
-    await createRecipe({ name: 'Test Owner Private', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false, userId })
-    await createRecipe({ name: 'Test Other Private', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
+    await createRecipe({ name: 'ITest Owner Private', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false, userId })
+    await createRecipe({ name: 'ITest Other Private', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })
 
     const results = await getRecipes({ viewerId: userId })
-    const testResults = results.filter(r => r.name.startsWith('Test'))
-    expect(testResults.some(r => r.name === 'Test Owner Private')).toBe(true)
-    expect(testResults.some(r => r.name === 'Test Other Private')).toBe(false)
+    const testResults = results.filter(r => r.name.startsWith('ITest'))
+    expect(testResults.some(r => r.name === 'ITest Owner Private')).toBe(true)
+    expect(testResults.some(r => r.name === 'ITest Other Private')).toBe(false)
   })
 
   it('filters recipes by published status', async () => {
     const now = new Date()
-    await createRecipe({ name: 'Test Published', meal: 'Lunch', description: '', ingredients: [], date_published: now, isPublic: true })
-    await createRecipe({ name: 'Test Draft', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: true })
+    await createRecipe({ name: 'ITest Published', meal: 'Lunch', description: '', ingredients: [], date_published: now, isPublic: true })
+    await createRecipe({ name: 'ITest Draft', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: true })
 
     const published = await getRecipes({ published: true })
-    const testPublished = published.filter(r => r.name.startsWith('Test'))
+    const testPublished = published.filter(r => r.name.startsWith('ITest'))
     expect(testPublished.every(r => r.date_published !== null)).toBe(true)
 
     const drafts = await getRecipes({ published: false })
-    const testDrafts = drafts.filter(r => r.name.startsWith('Test'))
+    const testDrafts = drafts.filter(r => r.name.startsWith('ITest'))
     expect(testDrafts.every(r => r.date_published === null)).toBe(true)
   })
 
   it('filters recipes by ingredient', async () => {
     await createRecipe({
-      name: 'Test With Ingredient',
+      name: 'ITest With Ingredient',
       meal: 'Dinner',
       description: '',
       ingredients: [{ food: testFood, quantity: 100, calories: 100, servingUnit: 'g' }],
       date_published: new Date(),
       isPublic: true,
     })
-    await createRecipe({ name: 'Test Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+    await createRecipe({ name: 'ITest Without Ingredient', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
 
     const results = await getRecipes({ ingredient: 'test ingredient food' })
-    const testResults = results.filter(r => r.name.startsWith('Test'))
+    const testResults = results.filter(r => r.name.startsWith('ITest'))
     expect(testResults.length).toBeGreaterThanOrEqual(1)
-    expect(testResults.some(r => r.name === 'Test With Ingredient')).toBe(true)
-    expect(testResults.some(r => r.name === 'Test Without Ingredient')).toBe(false)
+    expect(testResults.some(r => r.name === 'ITest With Ingredient')).toBe(true)
+    expect(testResults.some(r => r.name === 'ITest Without Ingredient')).toBe(false)
   })
 
   it('updates a recipe', async () => {
-    const created = await createRecipe({ name: 'Test UpdateMe', meal: 'Lunch', description: 'old', ingredients: [], date_published: null, isPublic: true })
+    const created = await createRecipe({ name: 'ITest UpdateMe', meal: 'Lunch', description: 'old', ingredients: [], date_published: null, isPublic: true })
     const updated = await updateRecipe(created.id, { description: 'new description' })
     expect(updated?.description).toBe('new description')
-    expect(updated?.name).toBe('Test UpdateMe')
+    expect(updated?.name).toBe('ITest UpdateMe')
   })
 
   it('soft-deletes a recipe', async () => {
-    const created = await createRecipe({ name: 'Test DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null, isPublic: true })
+    const created = await createRecipe({ name: 'ITest DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null, isPublic: true })
     const deleted = await deleteRecipe(created.id)
     expect(deleted).toBe(true)
 
@@ -145,7 +159,7 @@ describe('recipes data layer (integration)', () => {
 
   describe('saved recipes', () => {
     it('saves and retrieves a public recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test Saveable', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest Saveable', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
       const userId = Number(testUser.id)
 
       await saveRecipe(userId, recipe.id)
@@ -156,7 +170,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('unsaves a recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test UnsaveMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest UnsaveMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
       const userId = Number(testUser.id)
 
       await saveRecipe(userId, recipe.id)
@@ -170,7 +184,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('re-saving a previously unsaved recipe works', async () => {
-      const recipe = await createRecipe({ name: 'Test ResaveMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest ResaveMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
       const userId = Number(testUser.id)
 
       await saveRecipe(userId, recipe.id)
@@ -181,7 +195,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('revokes saved bookmarks when recipe is made private via updateRecipe', async () => {
-      const recipe = await createRecipe({ name: 'Test RevokeMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest RevokeMe', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
       const userId = Number(testUser.id)
 
       await saveRecipe(userId, recipe.id)
@@ -195,7 +209,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('getSavedRecipes excludes private recipes as defense-in-depth', async () => {
-      const recipe = await createRecipe({ name: 'Test DefenseRecipe', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest DefenseRecipe', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: true })
       const userId = Number(testUser.id)
 
       await saveRecipe(userId, recipe.id)
@@ -213,14 +227,14 @@ describe('recipes data layer (integration)', () => {
       const published = new Date()
 
       const [r1, r2, r3] = await Promise.all([
-        createRecipe({ name: 'Test Top One', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test Top Two', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test Top Three', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Top One', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Top Two', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Top Three', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
       ])
 
       // r2 saved twice, r1 once, r3 zero times
       await saveRecipe(userId, r2.id)
-      const userId2 = Number((await signUp({ username: `testuser_top_${Date.now()}`, email: `testuser_top_${Date.now()}@example.com`, password: 'Password1!', cuisinePreferences: [], dietaryRestrictions: [] })).id)
+      const userId2 = Number((await signUp({ username: `itestuser_top_${Date.now()}`, email: `itestuser_top_${Date.now()}@example.com`, password: 'Password1!', cuisinePreferences: [], dietaryRestrictions: [] })).id)
       await saveRecipe(userId2, r2.id)
       await saveRecipe(userId, r1.id)
 
@@ -233,9 +247,9 @@ describe('recipes data layer (integration)', () => {
     it('respects the limit parameter', async () => {
       const published = new Date()
       await Promise.all([
-        createRecipe({ name: 'Test Limit A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test Limit B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test Limit C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Limit A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Limit B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest Limit C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
       ])
 
       const top = await getTopRecipes(2)
@@ -244,13 +258,13 @@ describe('recipes data layer (integration)', () => {
 
     it('excludes unpublished and private recipes', async () => {
       await Promise.all([
-        createRecipe({ name: 'Test Unpublished', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true }),
-        createRecipe({ name: 'Test Private', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: false }),
+        createRecipe({ name: 'ITest Unpublished', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true }),
+        createRecipe({ name: 'ITest Private', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: false }),
       ])
 
       const top = await getTopRecipes(10)
-      expect(top.some(r => r.name === 'Test Unpublished')).toBe(false)
-      expect(top.some(r => r.name === 'Test Private')).toBe(false)
+      expect(top.some(r => r.name === 'ITest Unpublished')).toBe(false)
+      expect(top.some(r => r.name === 'ITest Private')).toBe(false)
     })
   })
 
@@ -260,9 +274,9 @@ describe('recipes data layer (integration)', () => {
       const published = new Date()
 
       const [r1, r2, r3] = await Promise.all([
-        createRecipe({ name: 'Test SavedOrder A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test SavedOrder B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
-        createRecipe({ name: 'Test SavedOrder C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest SavedOrder A', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest SavedOrder B', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
+        createRecipe({ name: 'ITest SavedOrder C', meal: 'Lunch', description: '', ingredients: [], date_published: published, isPublic: true }),
       ])
 
       await saveRecipe(userId, r1.id)
@@ -285,7 +299,7 @@ describe('recipes data layer (integration)', () => {
     }
 
     it('increments an anonymous view on a public recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test ViewAnon', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest ViewAnon', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
       expect(await readViewCount(recipe.id)).toBe(0)
 
       await incrementRecipeView(recipe.shortId)
@@ -295,7 +309,7 @@ describe('recipes data layer (integration)', () => {
 
     it('increments a view from a non-author viewer', async () => {
       const authorId = Number(testUser.id)
-      const recipe = await createRecipe({ name: 'Test ViewNonAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
+      const recipe = await createRecipe({ name: 'ITest ViewNonAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
 
       await incrementRecipeView(recipe.shortId, authorId + 1)
 
@@ -304,7 +318,7 @@ describe('recipes data layer (integration)', () => {
 
     it("excludes the author's own view", async () => {
       const authorId = Number(testUser.id)
-      const recipe = await createRecipe({ name: 'Test ViewAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
+      const recipe = await createRecipe({ name: 'ITest ViewAuthor', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true, userId: authorId })
 
       await incrementRecipeView(recipe.shortId, authorId)
 
@@ -312,7 +326,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('is a no-op for a private recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test ViewPrivate', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false })
+      const recipe = await createRecipe({ name: 'ITest ViewPrivate', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: false })
 
       await incrementRecipeView(recipe.shortId)
 
@@ -320,7 +334,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('is a no-op for a public but unpublished (draft) recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test ViewPublicDraft', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest ViewPublicDraft', meal: 'Lunch', description: '', ingredients: [], date_published: null, isPublic: true })
 
       await incrementRecipeView(recipe.shortId)
 
@@ -328,7 +342,7 @@ describe('recipes data layer (integration)', () => {
     })
 
     it('is a no-op for a soft-deleted recipe', async () => {
-      const recipe = await createRecipe({ name: 'Test ViewDeleted', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
+      const recipe = await createRecipe({ name: 'ITest ViewDeleted', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
       await deleteRecipe(recipe.id)
 
       await incrementRecipeView(recipe.shortId)

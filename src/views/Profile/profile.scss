@@ -165,7 +165,7 @@
 
   .field-hint {
     font-size: 12px;
-    color: var(--vscode-text-muted, #8b8b8b);
+    color: var(--vscode-muted);
     margin: 0 0 4px;
   }
 
@@ -185,7 +185,7 @@
 
   .nutrition-goal-unit {
     font-size: 12px;
-    color: var(--vscode-text-muted, #8b8b8b);
+    color: var(--vscode-muted);
     white-space: nowrap;
   }
 
@@ -256,52 +256,15 @@
     }
   }
 
-  // PrimeReact's OrderList, stripped of its default chrome so it reads as part
-  // of this panel: drag-and-drop only (no move-button column), and each row is a
-  // read-only card. Names are create/delete only — not edited in place.
-  .meal-slot-orderlist {
-    // Reordering is drag-only; hide the move-button control column entirely.
-    .p-orderlist-controls {
-      display: none;
-    }
-
-    .p-orderlist-list-container {
-      border: none;
-      background: transparent;
-    }
-
-    .p-orderlist-list {
-      min-height: auto;
-      padding: 0;
-      border: none;
-      background: transparent;
-    }
-
-    // The <li> is only a drag wrapper; the visible card is .meal-slot-row.
-    .p-orderlist-item {
-      padding: 0;
-      margin-bottom: 8px;
-      background: transparent;
-      border-radius: 8px;
-      transition: none;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      // Neutralise PrimeReact's blue selection/hover so it matches the theme.
-      &.p-highlight,
-      &.p-focus,
-      &:hover {
-        background: transparent;
-        color: inherit;
-        box-shadow: none;
-      }
-
-      &.p-highlight .meal-slot-row {
-        border-color: var(--vscode-accent);
-      }
-    }
+  // Reorderable list (@dnd-kit sortable): a focusable drag handle that works by
+  // mouse and touch, and by keyboard (Space to pick up, arrows, Space/Enter to drop).
+  .meal-slot-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .meal-slot-row {
@@ -312,7 +275,56 @@
     border: 1px solid var(--vscode-border);
     border-radius: 8px;
     background: var(--vscode-panel-strong);
-    cursor: grab;
+
+    position: relative;
+
+    &.is-dragging {
+      z-index: 1;
+      border-color: var(--vscode-accent);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none !important;
+    }
+
+    .meal-slot-handle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--vscode-muted);
+      cursor: grab;
+      touch-action: none; // let the finger drag instead of scrolling the page
+      user-select: none;
+
+      &:hover {
+        color: var(--vscode-text);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--vscode-accent);
+        outline-offset: 1px;
+      }
+    }
+
+    // Grow the touch target to 44x44 without making the row taller.
+    .meal-slot-handle::before {
+      content: '';
+      position: absolute;
+      inset: -7px;
+    }
+
+    &.is-dragging .meal-slot-handle {
+      cursor: grabbing;
+    }
 
     .meal-slot-name {
       flex: 1;

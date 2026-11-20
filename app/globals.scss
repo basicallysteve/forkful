@@ -18,6 +18,8 @@
 
 // ── Global element resets ─────────────────────────────────────────────────────
 :root {
+  // One height for form controls (inputs, dropdowns, selects, dates) so rows line up (#223)
+  --control-height: 42px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;

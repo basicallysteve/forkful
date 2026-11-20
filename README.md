@@ -91,6 +91,20 @@ bun link:product-foods       # AI-link unlinked products to parent foods in .env
 bun link:product-foods:prod  # Deliberately link in production (.env.production)
 ```
 
+## Deploys and database migrations
+
+Vercel runs `bun run vercel-build`, which is just `next build`. **The build does NOT run migrations for now.** Migrations are applied manually, as before.
+
+Why it is paused (#273, #276):
+
+- The `pg` driver used by `drizzle-kit migrate` rejects the Supabase pooler certificate with `ssl: true`, so the migrate step fails on Vercel.
+- The databases were built with `db:push`, so the migrations history (`drizzle.__drizzle_migrations`) is unbaselined. Replaying from `0000` fails (for example on `ALTER TABLE foods ADD COLUMN protein`).
+
+The real fix is tracked in #276: a small drizzle-orm `migrate()` script using the `ssl: 'require'` approach from `src/db/index.ts`, after baselining production's `drizzle.__drizzle_migrations`. [ADR-0031](docs/adr/0031-no-preview-database-migrate-on-production-only.md)'s "migrate on production only" decision is on hold until then.
+
+- **Apply schema changes by hand** before or after merging a PR that changes `src/db/schema.ts`. Keep migrations additive and backwards compatible.
+- **Previews use whatever database their env vars point to.** There is no separate preview database, so don't do destructive testing on a preview: treat it as working against real data.
+
 ## Project structure
 
 ```

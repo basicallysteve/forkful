@@ -2,23 +2,23 @@ import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
 import { createFoodLogEntry, getDailyLog } from './foodLog'
 import { createFood } from './foods'
-import { signUp } from './users'
+import { signUp, updateMealSlots } from './users'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
 const pool = new Pool({ connectionString })
 
 async function cleanup() {
-  await pool.query(`DELETE FROM food_log_entries WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'TestLog%')`)
-  await pool.query(`DELETE FROM food_log_entries WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'testlog%')`)
-  await pool.query(`DELETE FROM foods WHERE name LIKE 'TestLog%'`)
-  await pool.query(`DELETE FROM users WHERE username LIKE 'testlog%'`)
+  await pool.query(`DELETE FROM food_log_entries WHERE food_id IN (SELECT id FROM foods WHERE name LIKE 'ITestLog%')`)
+  await pool.query(`DELETE FROM food_log_entries WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'itestlog%')`)
+  await pool.query(`DELETE FROM foods WHERE name LIKE 'ITestLog%'`)
+  await pool.query(`DELETE FROM users WHERE username LIKE 'itestlog%'`)
 }
 
 async function createTestUser(suffix: string) {
   const user = await signUp({
-    username: `testlog${suffix}`,
-    email: `testlog${suffix}@test.com`,
+    username: `itestlog${suffix}`,
+    email: `itestlog${suffix}@test.com`,
     password: 'password123',
     cuisinePreferences: [],
     dietaryRestrictions: [],
@@ -28,7 +28,7 @@ async function createTestUser(suffix: string) {
 
 async function createTestFood() {
   return createFood({
-    name: 'TestLog Chicken',
+    name: 'ITestLog Chicken',
     calories: 200,
     protein: 30,
     carbs: 0,
@@ -60,7 +60,7 @@ describe('food log data layer (integration)', () => {
     expect(entry.calories).toBe(400)
     expect(entry.protein).toBe(60)
     expect(entry.fat).toBe(16)
-    expect(entry.food?.name).toBe('TestLog Chicken')
+    expect(entry.food?.name).toBe('ITestLog Chicken')
     expect(entry.logDate).toBe('2026-08-19')
   })
 
@@ -133,5 +133,30 @@ describe('food log data layer (integration)', () => {
     const bLog = await getDailyLog(userB.id, '2026-08-19')
     expect(bLog.entries).toHaveLength(0)
     expect(bLog.total.calories).toBe(0)
+  })
+
+  it('persists the Meal Slot label and reads it back; omitted stays null', async () => {
+    const user = await createTestUser('h')
+    const food = await createTestFood()
+    const base = { userId: user.id, foodId: food.id, amount: 100, unit: 'g', logDate: '2026-08-19' }
+
+    const withSlot = await createFoodLogEntry({ ...base, mealSlot: 'Brunch' })
+    const without = await createFoodLogEntry(base)
+    expect(withSlot.mealSlot).toBe('Brunch')
+    expect(without.mealSlot).toBeNull()
+
+    const daily = await getDailyLog(user.id, '2026-08-19')
+    expect(daily.entries.map((e) => e.mealSlot)).toEqual(['Brunch', null])
+  })
+
+  it('keeps the label snapshot when the User later removes the slot', async () => {
+    const user = await createTestUser('i')
+    const food = await createTestFood()
+    await createFoodLogEntry({ userId: user.id, foodId: food.id, amount: 100, unit: 'g', logDate: '2026-08-19', mealSlot: 'Brunch' })
+
+    await updateMealSlots(user.id, ['Breakfast'])
+
+    const daily = await getDailyLog(user.id, '2026-08-19')
+    expect(daily.entries[0].mealSlot).toBe('Brunch')
   })
 })
