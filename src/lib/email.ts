@@ -13,6 +13,9 @@ import { buildInviteLink } from '@/lib/inviteLink'
 import { logInfo } from '@/lib/logger'
 
 type EmailPayload = Parameters<Resend['emails']['send']>[0]
+// Resend resolves { data: null, error } on API failures instead of throwing. Most callers
+// ignore this result; sendInviteEmail checks it. undefined means the send was suppressed.
+type SendResult = Awaited<ReturnType<Resend['emails']['send']>> | undefined
 
 /**
  * Single choke point for outgoing email. RESEND_API_KEY is the production key and is
@@ -21,10 +24,9 @@ type EmailPayload = Parameters<Resend['emails']['send']>[0]
  * goes through a client built with that key; otherwise it is logged and skipped.
  * Log the template only, never the recipient.
  */
-async function deliver(template: string, payload: EmailPayload): Promise<void> {
+async function deliver(template: string, payload: EmailPayload): Promise<SendResult> {
   if (process.env.VERCEL_ENV === 'production') {
-    await new Resend(process.env.RESEND_API_KEY).emails.send(payload)
-    return
+    return await new Resend(process.env.RESEND_API_KEY).emails.send(payload)
   }
   const sandboxKey = process.env.RESEND_SANDBOX_API_KEY
   if (!sandboxKey) {
@@ -32,7 +34,7 @@ async function deliver(template: string, payload: EmailPayload): Promise<void> {
     return
   }
   logInfo('Email sent via sandbox key outside production', { template })
-  await new Resend(sandboxKey).emails.send(payload)
+  return await new Resend(sandboxKey).emails.send(payload)
 }
 
 function makeTrackingPixelUrl(): string | undefined {
@@ -158,10 +160,14 @@ export async function sendWaitlistNotificationEmail(entry: { email: string; name
 
 /** The single-use code travels only in the link inside the email body; it is never logged. */
 export async function sendInviteEmail({ to, code }: { to: string; code: string }): Promise<void> {
-  await deliver('invite', {
+  const result = await deliver('invite', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: "You're invited to EatForkful",
     react: InviteEmail({ inviteUrl: buildInviteLink(to, code) }),
   })
+  if (result?.error) {
+    // Only the Resend error name and status: its message may echo the address or payload.
+    throw new Error(`Invite email send failed: ${result.error.name} (${result.error.statusCode ?? 'no status'})`)
+  }
 }

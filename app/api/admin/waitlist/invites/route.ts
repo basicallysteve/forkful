@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server'
 import { getSessionUser, isAdmin } from '@/lib/auth'
 import { createInvite } from '@/lib/invites'
 import { sendInviteEmail } from '@/lib/email'
+import { withTimeout } from '@/lib/withTimeout'
 import { isValidWaitlistEmail } from '@/lib/waitlist'
 import { isValidDbId } from '@/lib/dbId'
 import { captureError } from '@/lib/logger'
+
+const INVITE_EMAIL_TIMEOUT_MS = 10_000
 
 export async function POST(request: Request) {
   const session = await getSessionUser()
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
     // logged by area only: the address and the code must stay out of logs.
     let emailSent = true
     try {
-      await sendInviteEmail({ to: result.email, code: result.code })
+      await withTimeout(sendInviteEmail({ to: result.email, code: result.code }), INVITE_EMAIL_TIMEOUT_MS)
     } catch (error) {
       emailSent = false
       captureError(error, { area: 'waitlist' })
