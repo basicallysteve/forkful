@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser, isAdmin } from '@/lib/auth'
 import { deleteWaitlistEntry } from '@/lib/waitlist'
+import { isValidDbId } from '@/lib/dbId'
 import { captureError } from '@/lib/logger'
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!isAdmin(session.userId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const id = Number((await params).id)
-  if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  if (!isValidDbId(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
     if (!(await deleteWaitlistEntry(id))) return NextResponse.json({ error: 'Not found' }, { status: 404 })

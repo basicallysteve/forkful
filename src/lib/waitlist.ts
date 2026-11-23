@@ -91,7 +91,8 @@ export async function leaveWaitlist(token: string | undefined): Promise<'removed
 }
 
 export type WaitlistAdminEntry = {
-  id: number
+  /** Null for an Invite created for an email that is not on the Waitlist. */
+  entryId: number | null
   email: string
   name: string | null
   marketingEmailOptIn: boolean
@@ -103,11 +104,15 @@ export type WaitlistAdminEntry = {
   hasAccount: boolean
 }
 
-/** Admin list of the Waitlist, newest first. Emails match case-insensitively. */
+/**
+ * Admin list, newest first: every Waitlist Entry plus every Invite whose email is not on the
+ * Waitlist (entry-less rows). An email that is on both appears once, as the entry. Emails match
+ * case-insensitively.
+ */
 export async function listWaitlist(): Promise<WaitlistAdminEntry[]> {
   const rows = await db
     .select({
-      id: waitlistEntries.id,
+      entryId: waitlistEntries.id,
       email: waitlistEntries.email,
       name: waitlistEntries.name,
       marketingEmailOptIn: waitlistEntries.marketingEmailOptIn,
@@ -117,7 +122,22 @@ export async function listWaitlist(): Promise<WaitlistAdminEntry[]> {
     })
     .from(waitlistEntries)
     .orderBy(desc(waitlistEntries.dateAdded), desc(waitlistEntries.id))
-  return rows.map((r) => ({ ...r, invited: r.inviteId !== null }))
+  const entries: WaitlistAdminEntry[] = rows.map((r) => ({ ...r, invited: r.inviteId !== null }))
+
+  const inviteOnly = await db
+    .select({
+      email: invites.email,
+      dateAdded: invites.dateAdded,
+      inviteId: invites.id,
+      hasAccount: sql<boolean>`exists (select 1 from ${users} u where lower(u.email) = lower(invites.email))`,
+    })
+    .from(invites)
+    .where(sql`not exists (select 1 from ${waitlistEntries} w where lower(w.email) = lower(invites.email))`)
+  const detached: WaitlistAdminEntry[] = inviteOnly.map((r) => ({
+    ...r, entryId: null, name: null, marketingEmailOptIn: false, invited: true,
+  }))
+
+  return [...entries, ...detached].sort((a, b) => b.dateAdded.getTime() - a.dateAdded.getTime())
 }
 
 /** Admin removal of a Waitlist Entry. Returns false when it did not exist. Never touches a User or an Invite. */

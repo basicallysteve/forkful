@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser, isAdmin } from '@/lib/auth'
 import { createInvite } from '@/lib/invites'
 import { isValidWaitlistEmail } from '@/lib/waitlist'
+import { isValidDbId } from '@/lib/dbId'
 import { captureError } from '@/lib/logger'
 
 export async function POST(request: Request) {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
   }
 
   let input: Parameters<typeof createInvite>[0]
-  if (typeof body.entryId === 'number' && Number.isInteger(body.entryId)) {
+  if (isValidDbId(body.entryId)) {
     input = { entryId: body.entryId }
   } else if (body.email !== undefined) {
     if (!isValidWaitlistEmail(body.email)) {

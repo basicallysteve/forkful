@@ -1,7 +1,8 @@
 import { ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 
 export type WaitlistAdminRow = {
-  id: number
+  /** Null for an Invite whose email is not on the Waitlist. */
+  entryId: number | null
   email: string
   name: string | null
   marketingEmailOptIn: boolean
