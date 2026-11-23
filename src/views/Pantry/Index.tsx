@@ -11,7 +11,7 @@ import type { PantryQueryOptions } from '@/lib/pantry'
 import { toSlug } from '@/utils/slug'
 import { itemDisplayName } from '@/utils/pantryItemName'
 import { formatPrice } from '@/utils/currency'
-import { formatDisplayDate } from '@/utils/dateHelpers'
+import { formatDisplayDate, formatUtcDisplayDate } from '@/utils/dateHelpers'
 import { apiFetchPantryItems, apiDeletePantryItem, apiDeletePantryItems, apiUpdatePantryItem } from '@/lib/api/pantry'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
@@ -214,9 +214,15 @@ export default function Pantry() {
     }
   }
 
+  // Frozen date is a real instant (local time); expiration is a date-only value stored at UTC midnight.
   function formatDate(date: Date | null): string {
     if (!date) return 'No expiration'
     return formatDisplayDate(new Date(date))
+  }
+
+  function formatExpiration(date: Date | null): string {
+    if (!date) return 'No expiration'
+    return formatUtcDisplayDate(new Date(date))
   }
 
   function getStatusLabel(status: PantryItemStatus): string {
@@ -448,7 +454,7 @@ export default function Pantry() {
                         {item.frozenDate ? (
                           <Tag severity="info" value="Frozen" />
                         ) : (
-                          formatDate(item.expirationDate)
+                          formatExpiration(item.expirationDate)
                         )}
                       </td>
                       <td>
@@ -551,7 +557,7 @@ export default function Pantry() {
                             {item.frozenDate ? 'Frozen:' : 'Expires:'}
                           </span>
                           <span className="detail-value">
-                            {item.frozenDate ? formatDate(item.frozenDate) : formatDate(item.expirationDate)}
+                            {item.frozenDate ? formatDate(item.frozenDate) : formatExpiration(item.expirationDate)}
                           </span>
                         </div>
                         {item.purchasePrice != null && (

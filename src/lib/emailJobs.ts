@@ -59,7 +59,7 @@ export async function processPantryReminders(frequency: 'daily' | 'weekly'): Pro
       const daysUntilExpiry = Math.ceil(msUntil / (24 * 60 * 60 * 1000))
       return {
         name: item.name,
-        expirationDate: expDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        expirationDate: expDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
         daysUntilExpiry,
       }
     })

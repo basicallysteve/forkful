@@ -24,7 +24,7 @@ function itemDisplayName(item: PantryItem): string {
 function itemMeta(item: PantryItem): string {
   const size = `${item.currentSize.size} ${item.currentSize.unit ?? ''}`
   if (item.expirationDate) {
-    const exp = item.expirationDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    const exp = item.expirationDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
     return `${size} · expires ${exp}`
   }
   return size

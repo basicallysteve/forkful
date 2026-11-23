@@ -25,6 +25,11 @@ export function formatUtcDateForInput(date: Date): string {
   return moment.utc(date).format('YYYY-MM-DD')
 }
 
+// Display counterpart of formatUtcDateForInput (e.g. "Dec 25, 2026") for date-only values.
+export function formatUtcDisplayDate(date: Date): string {
+  return moment.utc(date).format('MMM D, YYYY')
+}
+
 export function parseInputDateAsUtc(value: string): Date {
   return moment.utc(value, 'YYYY-MM-DD').toDate()
 }
