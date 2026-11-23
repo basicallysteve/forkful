@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useEffectEvent } from 'react'
 import Link from 'next/link'
 
 import { Card } from 'primereact/card'
@@ -59,6 +59,8 @@ export default function Pantry() {
 
   const [pending, setPending] = useState<PendingDelete[]>([])
   const pendingTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
+  // Ids of deletes still waiting out their undo window, by key; flushed if the user leaves first.
+  const unsentDeletes = useRef(new Map<number, number[]>())
   const nextKey = useRef(0)
   const deleteLocked = useRef(false)
   const toast = useRef<Toast>(null)
@@ -70,12 +72,6 @@ export default function Pantry() {
     const hidden = new Set(pending.flatMap((entry) => entry.ids))
     return hidden.size === 0 ? allItems : allItems.filter((item) => !hidden.has(item.id))
   }, [allItems, pending])
-
-  useEffect(() => {
-    const timers = pendingTimers.current
-    // Leaving the page drops any unsent delete, so the item stays (the safe default).
-    return () => timers.forEach(clearTimeout)
-  }, [])
 
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -115,6 +111,7 @@ export default function Pantry() {
     const key = nextKey.current++
     setActionError(null)
     setPending((current) => [...current, { key, ids, message, sending: false }])
+    unsentDeletes.current.set(key, ids)
     pendingTimers.current.set(key, setTimeout(() => sendDelete(key, ids), UNDO_WINDOW_MS))
     // Sticky: our timer decides when the toast goes, so it can never outlive or cut short the undo window.
     const toastMessage: ToastMessage = {
@@ -141,6 +138,33 @@ export default function Pantry() {
     toastMessages.current.delete(key)
   }
 
+  // Leaving the page (reload, close, route change) inside the undo window must not lose the delete:
+  // send every unsent delete now (keepalive, so it outlives the page) instead of waiting for the timer.
+  const flushUnsentDeletes = useEffectEvent(() => {
+    const unsent = unsentDeletes.current
+    if (unsent.size === 0) return
+    unsent.forEach((ids, key) => {
+      clearTimeout(pendingTimers.current.get(key))
+      pendingTimers.current.delete(key)
+      removeToast(key)
+      // Fire and forget: the page is going away. A failed delete just shows the item again on the next load.
+      if (ids.length === 1) apiDeletePantryItem(ids[0]).catch(() => {})
+      else apiDeletePantryItems(ids).catch(() => {})
+      ids.forEach((id) => deleteItem(id))
+    })
+    unsent.clear()
+    setPending([])
+  })
+
+  useEffect(() => {
+    const onPageHide = () => flushUnsentDeletes()
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      flushUnsentDeletes()
+    }
+  }, [])
+
   function dropPending(key: number) {
     pendingTimers.current.delete(key)
     removeToast(key)
@@ -149,6 +173,7 @@ export default function Pantry() {
 
   async function sendDelete(key: number, ids: number[]) {
     pendingTimers.current.delete(key)
+    unsentDeletes.current.delete(key)
     removeToast(key)
     setPending((current) => current.map((entry) => (entry.key === key ? { ...entry, sending: true } : entry)))
     try {
@@ -171,6 +196,7 @@ export default function Pantry() {
   function handleUndo(key: number) {
     const timer = pendingTimers.current.get(key)
     if (timer) clearTimeout(timer)
+    unsentDeletes.current.delete(key)
     dropPending(key)
   }
 
