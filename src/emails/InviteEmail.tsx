@@ -44,7 +44,7 @@ export function InviteEmail({ inviteUrl }: Props) {
       </table>
 
       <p style={{ margin: '0 0 16px', fontSize: 13, color: '#71717a' }}>
-        Prefer Google or Apple? Sign in with this email address and you need no code.
+        Prefer Google? Sign in with Google using this email address and you need no code.
       </p>
       <p style={{ margin: '0 0 4px', fontSize: 13, color: '#71717a' }}>
         Or copy and paste this link into your browser:
