@@ -52,3 +52,20 @@
 .autocomplete-item-content--add .suggestion-name {
   font-style: italic;
 }
+
+// A long typed name must not widen the list past the viewport: truncate the echoed text
+// (the full label stays in the title and the option's accessible name).
+.autocomplete-item-content--add {
+  min-width: 0;
+
+  .suggestion-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// Cap the list (inline or portaled) at the viewport minus the page gutters.
+.p-autocomplete-panel {
+  max-width: calc(100vw - 32px);
+}

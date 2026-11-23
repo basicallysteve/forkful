@@ -108,7 +108,7 @@ export default function Autocomplete<T>({
     if (isAddNew(option)) {
       return (
         <div className="autocomplete-item-content autocomplete-item-content--add">
-          <span className="suggestion-name">{addNewLabel(option.name)}</span>
+          <span className="suggestion-name" title={addNewLabel(option.name)}>{addNewLabel(option.name)}</span>
         </div>
       )
     }

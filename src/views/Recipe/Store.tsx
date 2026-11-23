@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -37,8 +37,14 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   const setFoods = useFoodStore((state) => state.setFoods)
   const { status } = useSession()
   // Add-new is for the blank "new ingredient" row, and only for signed-in users (Food writes need sign-in).
-  const canAddFood = !isStored && status !== 'unauthenticated'
+  const canAddFood = !isStored && status === 'authenticated'
   const [addFoodName, setAddFoodName] = useState<string | null>(null)
+  const nameFieldRef = useRef<HTMLLabelElement>(null)
+  // The modal takes focus away; give it back to the name input when it closes.
+  function closeAddFood() {
+    setAddFoodName(null)
+    setTimeout(() => nameFieldRef.current?.querySelector('input')?.focus(), 0)
+  }
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
@@ -93,7 +99,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   function handleFoodAdded(food: Food) {
     const known = useFoodStore.getState().foods
     if (!known.some(f => f.id === food.id)) setFoods([...known, food])
-    setAddFoodName(null)
+    closeAddFood()
     setIngredientName(food.name)
     setMissingFood(false)
     handleFoodSelect(food)
@@ -174,7 +180,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   return (
     <div className={`ingredient-input ${isStored ? 'ingredient-input--stored' : 'ingredient-input--new'}`} role="group" aria-label={isStored ? `Ingredient ${ingredient.food.name}` : 'Add an ingredient'}>
       {!isStored && <span className="ingredient-input-title">Add an ingredient</span>}
-        <label className={`form-field ${missingFood && !canAddFood ? 'has-error' : ''}`}>
+        <label ref={nameFieldRef} className={`form-field ${missingFood && !canAddFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
               value={ingredientName}
@@ -212,7 +218,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
       {addFoodName !== null && (
         <QuickAddFoodModal
           initialName={addFoodName}
-          onHide={() => setAddFoodName(null)}
+          onHide={closeAddFood}
           onCreated={handleFoodAdded}
           onExisting={handleFoodAdded}
         />
