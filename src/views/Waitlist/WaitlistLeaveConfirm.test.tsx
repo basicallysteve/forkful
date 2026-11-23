@@ -7,7 +7,9 @@ function res(status: number, body: object) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
 }
 
-beforeEach(() => vi.mocked(fetch).mockReset())
+beforeEach(() => {
+  vi.mocked(fetch).mockReset()
+})
 
 describe('WaitlistLeaveConfirm', () => {
   it('removes nothing until the button is pressed', () => {
