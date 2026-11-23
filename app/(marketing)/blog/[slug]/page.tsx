@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import { AutoPlayVideo } from '@/components/AutoPlayVideo/AutoPlayVideo'
 import { getAllPosts, getPost } from '@/lib/mdx'
 import { absoluteUrl, blogPostingJsonLd, DEFAULT_OG_IMAGE_PATH, serializeJsonLd } from '@/lib/seo'
 import { formatPostDate } from '@/utils/formatPostDate'
@@ -61,7 +62,7 @@ export default async function BlogPostPage({ params }: Props) {
         )}
       </header>
       <div className={styles.body}>
-        <MDXRemote source={post.content} />
+        <MDXRemote source={post.content} components={{ AutoPlayVideo }} />
       </div>
     </article>
   )
