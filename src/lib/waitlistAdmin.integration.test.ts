@@ -20,7 +20,7 @@ describe('waitlist admin data layer', () => {
   afterEach(async () => {
     await pool.query("DELETE FROM invites WHERE email LIKE 'itest%'")
     await pool.query("DELETE FROM waitlist_entries WHERE email LIKE 'itest%'")
-    await pool.query("DELETE FROM users WHERE email LIKE 'itest-wl%'")
+    await pool.query("DELETE FROM users WHERE email ILIKE 'itest-wl%'")
   })
   afterAll(async () => {
     await pool.end()
@@ -59,20 +59,20 @@ describe('waitlist admin data layer', () => {
   })
 
   it('lists newest first with invited and has-account flags, and never exposes the code hash', async () => {
-    const older = await addEntry('itest-old@example.com', true)
+    const older = await addEntry('itest-wl-old@example.com', true)
     await pool.query("UPDATE waitlist_entries SET date_added = now() - interval '2 days' WHERE id = $1", [older])
-    const mid = await addEntry('itest-new@example.com')
+    const mid = await addEntry('itest-wl-new@example.com')
     await pool.query("UPDATE waitlist_entries SET date_added = now() - interval '1 day' WHERE id = $1", [mid])
     await pool.query("INSERT INTO users (username, email) VALUES ('itest-wl-user', 'ITEST-WL-user@example.com')")
     await addEntry('itest-wl-user@example.com')
-    await createInvite({ email: 'itest-old@example.com' })
+    await createInvite({ email: 'itest-wl-old@example.com' })
 
     const list = (await listWaitlist()).filter((e) => e.email.startsWith('itest'))
-    expect(list.map((e) => e.email)).toEqual(['itest-wl-user@example.com', 'itest-new@example.com', 'itest-old@example.com'])
+    expect(list.map((e) => e.email)).toEqual(['itest-wl-user@example.com', 'itest-wl-new@example.com', 'itest-wl-old@example.com'])
     const byEmail = Object.fromEntries(list.map((e) => [e.email, e]))
-    expect(byEmail['itest-old@example.com']).toMatchObject({ invited: true, hasAccount: false, marketingEmailOptIn: true })
-    expect(byEmail['itest-old@example.com'].inviteId).toEqual(expect.any(Number))
-    expect(byEmail['itest-new@example.com']).toMatchObject({ invited: false, inviteId: null, hasAccount: false })
+    expect(byEmail['itest-wl-old@example.com']).toMatchObject({ invited: true, hasAccount: false, marketingEmailOptIn: true })
+    expect(byEmail['itest-wl-old@example.com'].inviteId).toEqual(expect.any(Number))
+    expect(byEmail['itest-wl-new@example.com']).toMatchObject({ invited: false, inviteId: null, hasAccount: false })
     expect(byEmail['itest-wl-user@example.com'].hasAccount).toBe(true)
     expect(JSON.stringify(list)).not.toMatch(/code/i)
   })
