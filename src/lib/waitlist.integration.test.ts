@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
 import { joinWaitlist, leaveWaitlist, signWaitlistLeaveToken } from './waitlist'
 
@@ -11,10 +11,15 @@ async function rows(email: string) {
 }
 
 describe('waitlist integration tests', () => {
+  // The leave token is signed with AUTH_SECRET, which CI does not have: use a test secret.
+  beforeAll(() => {
+    vi.stubEnv('AUTH_SECRET', 'itest-secret')
+  })
   afterEach(async () => {
     await pool.query("DELETE FROM waitlist_entries WHERE email LIKE 'itest%'")
   })
   afterAll(async () => {
+    vi.unstubAllEnvs()
     await pool.end()
   })
 
