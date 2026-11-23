@@ -91,4 +91,27 @@ describe('Autocomplete add-new row', () => {
     await user.keyboard('{ArrowDown}{Enter}')
     expect(onAddNew).toHaveBeenCalledWith('zzz')
   })
+
+  it('announces that adding is available when nothing matches', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAddNew={vi.fn()} />)
+    await user.type(screen.getByPlaceholderText('Ingredient'), 'zzz')
+    expect(screen.getByRole('status')).toHaveTextContent('No matches. Add as new food is available')
+  })
+
+  it('counts only real matches in the announcement, not the add row', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAddNew={vi.fn()} />)
+    await user.type(screen.getByPlaceholderText('Ingredient'), 'blue')
+    expect(screen.getByRole('status')).toHaveTextContent('1 result')
+  })
+
+  it('keeps a long typed name in the row as a tooltip and accessible name, so CSS can truncate it', async () => {
+    const user = userEvent.setup()
+    render(<Harness onAddNew={vi.fn()} />)
+    const long = 'Longname '.repeat(30).trim()
+    await user.type(screen.getByPlaceholderText('Ingredient'), long)
+    const row = screen.getByRole('option', { name: `Add "${long}" as a new food` })
+    expect(row.querySelector('[title]')).toHaveAttribute('title', `Add "${long}" as a new food`)
+  })
 })

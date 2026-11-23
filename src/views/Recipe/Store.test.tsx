@@ -726,4 +726,16 @@ describe('Store Page - add a new food from the ingredient input (#237)', () => {
     expect(mockApiCreateFood).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Add ingredient' })).toBeEnabled()
   })
+
+  it('returns focus to the ingredient input when the modal is cancelled', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    const input = screen.getAllByPlaceholderText('Select food')[0]
+    await user.type(input, 'Dragon fruit')
+    await user.click(screen.getByRole('option', { name: /as a new food/i }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(input).toHaveFocus())
+  })
 })
