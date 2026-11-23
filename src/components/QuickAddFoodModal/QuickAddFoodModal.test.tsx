@@ -154,4 +154,31 @@ describe('QuickAddFoodModal', () => {
     submit()
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
   })
+
+  describe('mask clicks right after opening (double-click on the add row)', () => {
+    const maskEl = () => document.querySelector('.p-dialog-mask') as HTMLElement
+
+    it('ignores a mask click that lands just after the modal opens', async () => {
+      const { onHide } = setup()
+      await waitFor(() => expect(maskEl()).toBeTruthy())
+      fireEvent.pointerDown(maskEl())
+      fireEvent.pointerUp(maskEl())
+      expect(onHide).not.toHaveBeenCalled()
+      expect(screen.getByText('Add a new food')).toBeInTheDocument()
+    })
+
+    it('still dismisses on a mask click once the modal has settled', async () => {
+      const { onHide } = setup()
+      await waitFor(() => expect(maskEl()).toBeTruthy())
+      await new Promise(r => setTimeout(r, 600))
+      fireEvent.pointerUp(maskEl())
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('Cancel still closes immediately', () => {
+      const { onHide } = setup()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+  })
 })
