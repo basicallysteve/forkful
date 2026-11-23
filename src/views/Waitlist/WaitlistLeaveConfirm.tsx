@@ -36,7 +36,7 @@ export default function WaitlistLeaveConfirm({ token }: { token: string }) {
     }
   }
 
-  if (phase === 'removed' || phase === 'invalid') return <WaitlistLeaveView status={phase} />
+  if (phase === 'removed' || phase === 'invalid') return <WaitlistLeaveView status={phase} focusOnMount />
 
   return (
     <div className={styles.page}>

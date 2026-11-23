@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiJoinWaitlist } from '@/lib/api/waitlist'
 import styles from './Waitlist.module.scss'
 
@@ -15,6 +15,12 @@ export default function WaitlistForm() {
   const [optIn, setOptIn] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const confirmationRef = useRef<HTMLParagraphElement>(null)
+
+  // The form unmounts on success; move focus to the confirmation so keyboard and screen-reader users keep their place.
+  useEffect(() => {
+    if (phase === 'done') confirmationRef.current?.focus()
+  }, [phase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -36,7 +42,7 @@ export default function WaitlistForm() {
 
   if (phase === 'done') {
     return (
-      <p className={styles.confirmation} role="status">
+      <p ref={confirmationRef} tabIndex={-1} className={styles.confirmation} role="status">
         You&apos;re on the list. We&apos;ll email you when your invite is ready.
       </p>
     )
