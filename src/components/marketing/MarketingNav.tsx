@@ -12,7 +12,7 @@ export default function MarketingNav() {
         <Link href="/about" className={styles.link}>About</Link>
         <Link href="/blog" className={styles.link}>Blog</Link>
         <Link href="/login" className={styles.linkSecondary}>Log in</Link>
-        <Link href="/create-account" className={styles.cta}>Get started free</Link>
+        <Link href="/waitlist" className={styles.cta}>Join the waitlist</Link>
       </nav>
     </header>
   )

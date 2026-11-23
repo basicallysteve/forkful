@@ -74,10 +74,11 @@ describe('Home — unauthenticated view', () => {
     expect(screen.getByText('Your kitchen, organised.')).toBeInTheDocument()
   })
 
-  it('renders the Get started free CTA linking to /create-account', () => {
+  it('renders the Join the waitlist CTA linking to /waitlist', () => {
     render(<Home isAuthenticated={false} recipes={[]} />)
-    const cta = screen.getByRole('link', { name: /get started free/i })
-    expect(cta).toHaveAttribute('href', '/create-account')
+    const cta = screen.getByRole('link', { name: /join the waitlist/i })
+    expect(cta).toHaveAttribute('href', '/waitlist')
+    expect(screen.queryByRole('link', { name: /get started free/i })).not.toBeInTheDocument()
   })
 
   it('renders the Log in secondary link', () => {
