@@ -1,7 +1,7 @@
 import crypto from 'crypto'
-import { eq, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { waitlistEntries } from '@/db/schema'
+import { invites, users, waitlistEntries } from '@/db/schema'
 import { taskRunner } from '@/lib/TaskRunner'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -88,4 +88,63 @@ export async function leaveWaitlist(token: string | undefined): Promise<'removed
     'waitlist.leave',
   )
   return 'removed'
+}
+
+export type WaitlistAdminEntry = {
+  /** Null for an Invite created for an email that is not on the Waitlist. */
+  entryId: number | null
+  email: string
+  name: string | null
+  marketingEmailOptIn: boolean
+  dateAdded: Date
+  /** The Invite's id when one exists (used to revoke); the code hash is never returned. */
+  inviteId: number | null
+  invited: boolean
+  /** A `users` row exists with this email. */
+  hasAccount: boolean
+}
+
+/**
+ * Admin list, newest first: every Waitlist Entry plus every Invite whose email is not on the
+ * Waitlist (entry-less rows). An email that is on both appears once, as the entry. Emails match
+ * case-insensitively.
+ */
+export async function listWaitlist(): Promise<WaitlistAdminEntry[]> {
+  const rows = await db
+    .select({
+      entryId: waitlistEntries.id,
+      email: waitlistEntries.email,
+      name: waitlistEntries.name,
+      marketingEmailOptIn: waitlistEntries.marketingEmailOptIn,
+      dateAdded: waitlistEntries.dateAdded,
+      inviteId: sql<number | null>`(select i.id from ${invites} i where lower(i.email) = lower(waitlist_entries.email) limit 1)`,
+      hasAccount: sql<boolean>`exists (select 1 from ${users} u where lower(u.email) = lower(waitlist_entries.email))`,
+    })
+    .from(waitlistEntries)
+    .orderBy(desc(waitlistEntries.dateAdded), desc(waitlistEntries.id))
+  const entries: WaitlistAdminEntry[] = rows.map((r) => ({ ...r, invited: r.inviteId !== null }))
+
+  const inviteOnly = await db
+    .select({
+      email: invites.email,
+      dateAdded: invites.dateAdded,
+      inviteId: invites.id,
+      hasAccount: sql<boolean>`exists (select 1 from ${users} u where lower(u.email) = lower(invites.email))`,
+    })
+    .from(invites)
+    .where(sql`not exists (select 1 from ${waitlistEntries} w where lower(w.email) = lower(invites.email))`)
+  const detached: WaitlistAdminEntry[] = inviteOnly.map((r) => ({
+    ...r, entryId: null, name: null, marketingEmailOptIn: false, invited: true,
+  }))
+
+  return [...entries, ...detached].sort((a, b) => b.dateAdded.getTime() - a.dateAdded.getTime())
+}
+
+/** Admin removal of a Waitlist Entry. Returns false when it did not exist. Never touches a User or an Invite. */
+export async function deleteWaitlistEntry(id: number): Promise<boolean> {
+  const removed = await taskRunner.run(
+    () => db.delete(waitlistEntries).where(eq(waitlistEntries.id, id)).returning({ id: waitlistEntries.id }),
+    'waitlist.admin-delete',
+  )
+  return removed.length > 0
 }
