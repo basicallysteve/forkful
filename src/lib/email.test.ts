@@ -12,7 +12,7 @@ vi.mock('resend', () => ({
 }))
 vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 
-import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail, sendInviteEmail } from '@/lib/email'
 import { logInfo } from '@/lib/logger'
 
 describe('email send guard', () => {
@@ -106,5 +106,56 @@ describe('email send guard', () => {
       expect(send).toHaveBeenCalledTimes(1)
       expect(logInfo).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('sendInviteEmail', () => {
+  beforeEach(() => {
+    send.mockClear()
+    vi.mocked(logInfo).mockClear()
+    vi.stubEnv('RESEND_API_KEY', 'prod-key')
+    vi.stubEnv('RESEND_SANDBOX_API_KEY', '')
+    vi.stubEnv('AUTH_URL', 'https://app.example.com')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('sends one Invite Email to the invitee in production, with the code only in the body', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    await sendInviteEmail({ to: 'pat@example.com', code: 'RAW_CODE' })
+    expect(send).toHaveBeenCalledTimes(1)
+    const payload = send.mock.calls[0][0]
+    expect(payload.to).toBe('pat@example.com')
+    expect(payload.subject).not.toContain('RAW_CODE')
+    expect(JSON.stringify(payload.react.props)).toContain('code=RAW_CODE')
+  })
+
+  it('rejects when Resend resolves an error, without the address, code or payload in the message', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    send.mockResolvedValueOnce({
+      data: null,
+      error: { name: 'rate_limit_exceeded', message: 'bad to pat@example.com RAW_CODE', statusCode: 429 },
+    })
+    const failure = await sendInviteEmail({ to: 'pat@example.com', code: 'RAW_CODE' }).then(() => null, (e: Error) => e)
+    expect(failure).toBeInstanceOf(Error)
+    expect(failure!.message).toContain('rate_limit_exceeded')
+    expect(failure!.message).not.toMatch(/pat@example|RAW_CODE/)
+  })
+
+  it('still resolves for existing callers when Resend resolves an error (only the invite path checks)', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    send.mockResolvedValueOnce({ data: null, error: { name: 'x', message: 'y', statusCode: 500 } })
+    await expect(sendPasswordResetEmail('a@example.com', 'https://x.test/reset')).resolves.toBeUndefined()
+  })
+
+  it('suppresses the Invite Email outside production and logs neither address nor code', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    await sendInviteEmail({ to: 'pat@example.com', code: 'RAW_CODE' })
+    expect(send).not.toHaveBeenCalled()
+    const logged = JSON.stringify(vi.mocked(logInfo).mock.calls)
+    expect(logged).toContain('invite')
+    expect(logged).not.toContain('pat@example.com')
+    expect(logged).not.toContain('RAW_CODE')
   })
 })
