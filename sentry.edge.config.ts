@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { scrubLog } from '@/lib/sentry/scrubLog'
+import { scrubEvent } from '@/lib/sentry/scrubError'
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -11,6 +12,7 @@ Sentry.init({
   // Structured logs via Sentry.logger (see src/lib/logger.ts).
   enableLogs: true,
   beforeSendLog: scrubLog,
+  beforeSend: scrubEvent,
   // Never attach IPs, cookies or headers automatically.
   sendDefaultPii: false,
 })

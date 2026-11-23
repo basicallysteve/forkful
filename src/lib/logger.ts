@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { describeDbError, stripSqlParams } from '@/lib/sentry/scrubError'
 
 /**
  * Thin wrapper over Sentry's structured logger so call sites share one convention:
@@ -26,14 +27,27 @@ interface CaptureErrorOptions {
   attributes?: LogAttributes
 }
 
+/** Copy of a database error whose message (and stack header) has no bound params. */
+function withoutSqlParams(error: Error): Error {
+  const message = stripSqlParams(error.message)
+  if (message === error.message) return error
+  const clean = new Error(message, { cause: error.cause })
+  clean.name = error.name
+  clean.stack = error.stack?.replace(error.message, () => message)
+  return clean
+}
+
 export function captureError(error: unknown, { area, attributes }: CaptureErrorOptions) {
-  Sentry.captureException(error, {
+  const safe = error instanceof Error ? withoutSqlParams(error) : error
+  const message = safe instanceof Error ? safe.message : String(safe)
+  Sentry.captureException(safe, {
     tags: { area },
     ...(attributes ? { extra: attributes } : {}),
   })
-  Sentry.logger.error(error instanceof Error ? error.message : String(error), {
+  Sentry.logger.error(message, {
     area,
+    ...describeDbError(message),
     ...attributes,
-    errorName: error instanceof Error ? error.name : 'NonError',
+    errorName: safe instanceof Error ? safe.name : 'NonError',
   })
 }
