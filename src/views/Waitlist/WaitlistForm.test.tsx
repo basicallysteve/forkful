@@ -36,6 +36,16 @@ describe('WaitlistForm', () => {
     }))
   })
 
+  it('moves focus to the confirmation message after a successful submit', async () => {
+    const user = userEvent.setup()
+    render(<WaitlistForm />)
+    await user.type(screen.getByLabelText(/email/i), 'sam@example.com')
+    await user.click(screen.getByRole('button', { name: /join the waitlist/i }))
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent("You're on the list.")
+    expect(status).toHaveFocus()
+  })
+
   it('sends opt-in true when the box is ticked', async () => {
     const user = userEvent.setup()
     render(<WaitlistForm />)

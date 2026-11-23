@@ -13,4 +13,9 @@ describe('WaitlistLeaveView', () => {
     expect(screen.getByText('This link is invalid')).toBeInTheDocument()
     expect(screen.queryByText(/removed from the waitlist/i)).not.toBeInTheDocument()
   })
+
+  it('does not steal focus on a plain page load', () => {
+    render(<WaitlistLeaveView status="invalid" />)
+    expect(screen.getByRole('heading')).not.toHaveFocus()
+  })
 })

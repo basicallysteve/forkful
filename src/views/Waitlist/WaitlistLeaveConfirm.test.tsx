@@ -30,6 +30,15 @@ describe('WaitlistLeaveConfirm', () => {
     }))
   })
 
+  it('moves focus to the confirmation heading after a successful removal', async () => {
+    vi.mocked(fetch).mockImplementation(() => res(200, { ok: true }))
+    const user = userEvent.setup()
+    render(<WaitlistLeaveConfirm token="tok" />)
+    await user.click(screen.getByRole('button', { name: 'Remove me from the waitlist' }))
+    const heading = await screen.findByRole('heading', { name: "You've been removed from the waitlist" })
+    expect(heading).toHaveFocus()
+  })
+
   it('shows "This link is invalid" when the server rejects the token', async () => {
     vi.mocked(fetch).mockImplementation(() => res(400, { error: 'This link is invalid' }))
     const user = userEvent.setup()
