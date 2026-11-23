@@ -33,7 +33,7 @@ function withoutSqlParams(error: Error): Error {
   if (message === error.message) return error
   const clean = new Error(message, { cause: error.cause })
   clean.name = error.name
-  clean.stack = error.stack?.replace(error.message, message)
+  clean.stack = error.stack?.replace(error.message, () => message)
   return clean
 }
 
