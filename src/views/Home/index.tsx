@@ -30,7 +30,7 @@ function HeroSection() {
           Discover recipes, track your pantry, and log your meals — all in one place.
         </p>
         <div className={styles.heroCtas}>
-          <Link href="/create-account" className="primary-button">Get started free</Link>
+          <Link href="/waitlist" className="primary-button">Join the waitlist</Link>
           <Link href="/login" className={styles.loginLink}>Already have an account? Log in</Link>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { joinWaitlist, isValidWaitlistEmail, normalizeEmail } from '@/lib/waitlist'
 import { sendWaitlistNotificationEmail } from '@/lib/email'
 import { captureError } from '@/lib/logger'
@@ -24,12 +24,14 @@ export async function POST(request: Request) {
   try {
     const { created } = await joinWaitlist(entry)
     if (created) {
-      // Fire and forget: the visitor's response must not depend on, or reveal, the notification.
-      sendWaitlistNotificationEmail({
+      // after() keeps the function alive until the email is sent, without the visitor's
+      // response waiting on (or revealing) it.
+      const notification = {
         email: normalizeEmail(entry.email),
         name: entry.name?.trim() || null,
         marketingEmailOptIn: entry.marketingEmailOptIn,
-      }).catch((error) => captureError(error, { area: 'waitlist' }))
+      }
+      after(() => sendWaitlistNotificationEmail(notification).catch((error) => captureError(error, { area: 'waitlist' })))
     }
   } catch (error) {
     captureError(error, { area: 'waitlist' })
