@@ -1,7 +1,7 @@
 import crypto from 'crypto'
-import { eq, sql } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { waitlistEntries } from '@/db/schema'
+import { invites, users, waitlistEntries } from '@/db/schema'
 import { taskRunner } from '@/lib/TaskRunner'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -88,4 +88,43 @@ export async function leaveWaitlist(token: string | undefined): Promise<'removed
     'waitlist.leave',
   )
   return 'removed'
+}
+
+export type WaitlistAdminEntry = {
+  id: number
+  email: string
+  name: string | null
+  marketingEmailOptIn: boolean
+  dateAdded: Date
+  /** The Invite's id when one exists (used to revoke); the code hash is never returned. */
+  inviteId: number | null
+  invited: boolean
+  /** A `users` row exists with this email. */
+  hasAccount: boolean
+}
+
+/** Admin list of the Waitlist, newest first. Emails match case-insensitively. */
+export async function listWaitlist(): Promise<WaitlistAdminEntry[]> {
+  const rows = await db
+    .select({
+      id: waitlistEntries.id,
+      email: waitlistEntries.email,
+      name: waitlistEntries.name,
+      marketingEmailOptIn: waitlistEntries.marketingEmailOptIn,
+      dateAdded: waitlistEntries.dateAdded,
+      inviteId: sql<number | null>`(select i.id from ${invites} i where lower(i.email) = lower(waitlist_entries.email) limit 1)`,
+      hasAccount: sql<boolean>`exists (select 1 from ${users} u where lower(u.email) = lower(waitlist_entries.email))`,
+    })
+    .from(waitlistEntries)
+    .orderBy(desc(waitlistEntries.dateAdded), desc(waitlistEntries.id))
+  return rows.map((r) => ({ ...r, invited: r.inviteId !== null }))
+}
+
+/** Admin removal of a Waitlist Entry. Returns false when it did not exist. Never touches a User or an Invite. */
+export async function deleteWaitlistEntry(id: number): Promise<boolean> {
+  const removed = await taskRunner.run(
+    () => db.delete(waitlistEntries).where(eq(waitlistEntries.id, id)).returning({ id: waitlistEntries.id }),
+    'waitlist.admin-delete',
+  )
+  return removed.length > 0
 }
