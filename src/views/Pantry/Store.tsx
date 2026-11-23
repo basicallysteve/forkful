@@ -11,7 +11,7 @@ import type { Food } from '@/types/Food'
 import type { Product } from '@/types/Product'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import ProductSearch from '@/components/ProductSearch/ProductSearch'
-import { getTodayDateString, formatDateForInput } from '@/utils/dateHelpers'
+import { getTodayDateString, formatUtcDateForInput } from '@/utils/dateHelpers'
 import { canConvert, getAllowedUnits, MASS_UNITS, VOLUME_UNITS, CUSTOM_UNITS } from '@/utils/unitConversion'
 import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { Dropdown } from 'primereact/dropdown'
@@ -50,7 +50,7 @@ export default function PantryStore({ existingItem }: PantryStoreProps) {
   const [currentUnit, setCurrentUnit] = useState<string>(existingItem?.currentSize.unit || existingItem?.originalSize.unit || 'oz')
   const [expirationDate, setExpirationDate] = useState<string>(
     existingItem?.expirationDate
-      ? formatDateForInput(existingItem.expirationDate)
+      ? formatUtcDateForInput(existingItem.expirationDate)
       : ''
   )
   const [saving, setSaving] = useState(false)
