@@ -14,8 +14,9 @@ describe('InviteEmail', () => {
     expect(html).toContain(`href="${link.replace(/&/g, '&amp;')}"`)
   })
 
-  it('says Google or Apple sign-in with the invited email needs no code', () => {
-    expect(text()).toMatch(/Google or Apple/)
+  it('says Google sign-in with the invited email needs no code', () => {
+    expect(text()).toMatch(/Prefer Google\? Sign in with Google using this email address/)
+    expect(text()).not.toMatch(/Apple/)
     expect(text()).toMatch(/no code/i)
   })
 
