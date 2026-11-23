@@ -128,6 +128,24 @@ describe('POST /api/admin/waitlist/invites', () => {
       expect(res.headers.get('Cache-Control')).toContain('no-store')
     })
 
+    it('gives up on a send that hangs after 10 seconds: emailSent false, logged, code still returned', async () => {
+      vi.useFakeTimers()
+      try {
+        mockCreate.mockResolvedValue(created)
+        mockSendInvite.mockReturnValue(new Promise(() => {}))
+        const pending = POST(req({ email: 'pat@example.com' }))
+        await vi.advanceTimersByTimeAsync(0)
+        await vi.advanceTimersByTimeAsync(10_000)
+        const res = await pending
+        expect(res.status).toBe(201)
+        expect(await res.json()).toMatchObject({ code: 'RAWCODE', emailSent: false })
+        expect(mockCapture).toHaveBeenCalledTimes(1)
+        expect(mockCapture.mock.calls[0][1]).toEqual({ area: 'waitlist' })
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('logs a failed send with the area only, never the address or the code', async () => {
       mockCreate.mockResolvedValue(created)
       mockSendInvite.mockRejectedValue(new Error('resend down'))
