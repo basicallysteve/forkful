@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGE_PATH } from '@/lib/seo'
 import styles from './layout.module.scss'
 
 export const metadata: Metadata = {
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Recipes worth repeating.',
   openGraph: {
     siteName: 'EatForkful',
-    images: [{ url: '/og-default.png' }],
+    images: [{ url: DEFAULT_OG_IMAGE_PATH }],
   },
   twitter: {
     card: 'summary_large_image',
