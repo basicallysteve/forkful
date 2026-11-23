@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser, isAdmin } from '@/lib/auth'
 import { createInvite } from '@/lib/invites'
+import { sendInviteEmail } from '@/lib/email'
 import { isValidWaitlistEmail } from '@/lib/waitlist'
 import { isValidDbId } from '@/lib/dbId'
 import { captureError } from '@/lib/logger'
@@ -33,9 +34,18 @@ export async function POST(request: Request) {
     const result = await createInvite(input)
     if (result.status === 'entry-not-found') return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
     if (result.status === 'already-invited') return NextResponse.json({ error: 'Already invited' }, { status: 409 })
+    // A failed send never rolls back the Invite; the admin sees emailSent: false. The error is
+    // logged by area only: the address and the code must stay out of logs.
+    let emailSent = true
+    try {
+      await sendInviteEmail({ to: result.email, code: result.code })
+    } catch (error) {
+      emailSent = false
+      captureError(error, { area: 'waitlist' })
+    }
     // The raw code is returned exactly once and must never be cached, stored or logged.
     return NextResponse.json(
-      { inviteId: result.inviteId, email: result.email, code: result.code },
+      { inviteId: result.inviteId, email: result.email, code: result.code, emailSent },
       { status: 201, headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (error) {
