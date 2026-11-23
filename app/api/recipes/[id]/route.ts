@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getRecipeByShortId, updateRecipe, deleteRecipe } from '@/lib/recipes'
 import { getSessionUser } from '@/lib/auth'
 import { taskRunner } from '@/lib/TaskRunner'
+import { isForeignKeyViolation } from '@/utils/dbErrors'
 import type { Recipe } from '@/types/Recipe'
 
 type Params = { params: Promise<{ id: string }> }
@@ -26,8 +27,15 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   const body: Partial<Omit<Recipe, 'id'>> = await request.json()
-  const updated = await taskRunner.run(() => updateRecipe(existing.id, body))
-  return NextResponse.json(updated)
+  try {
+    const updated = await taskRunner.run(() => updateRecipe(existing.id, body))
+    return NextResponse.json(updated)
+  } catch (err) {
+    if (isForeignKeyViolation(err)) {
+      return NextResponse.json({ error: 'One or more ingredients reference a food that does not exist.' }, { status: 400 })
+    }
+    throw err
+  }
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
