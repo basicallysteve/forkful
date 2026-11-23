@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { scrubLog } from '@/lib/sentry/scrubLog'
+import { scrubEvent } from '@/lib/sentry/scrubError'
 import { replayOptions } from '@/lib/sentry/replayOptions'
 
 // Client-side Sentry init. In Next.js (App Router + Turbopack) this file is the
@@ -18,6 +19,7 @@ Sentry.init({
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
   enableLogs: true,
   beforeSendLog: scrubLog,
+  beforeSend: scrubEvent,
   sendDefaultPii: false,
   integrations: [
     Sentry.browserProfilingIntegration(),
