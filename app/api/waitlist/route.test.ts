@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockJoin = vi.fn()
 const mockNotify = vi.fn()
+const afterCallbacks: Array<() => unknown> = []
+
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (fn: () => unknown) => { afterCallbacks.push(fn) },
+}))
 
 vi.mock('@/db', () => ({ db: {} }))
 vi.mock('@/lib/TaskRunner', () => ({ taskRunner: { run: (fn: () => unknown) => fn() } }))
@@ -23,7 +29,13 @@ function req(body: unknown) {
   })
 }
 
+async function flushAfter() {
+  const pending = afterCallbacks.splice(0)
+  for (const fn of pending) await fn()
+}
+
 beforeEach(() => {
+  afterCallbacks.length = 0
   mockJoin.mockReset()
   mockNotify.mockReset().mockResolvedValue(undefined)
 })
@@ -34,12 +46,24 @@ describe('POST /api/waitlist', () => {
     const res = await POST(req({ email: 'sam@example.com', name: 'Sam', marketingEmailOptIn: false }))
     expect(res.status).toBe(200)
     expect(mockJoin).toHaveBeenCalledWith({ email: 'sam@example.com', name: 'Sam', marketingEmailOptIn: false })
+    await flushAfter()
+    expect(mockNotify).toHaveBeenCalledTimes(1)
+  })
+
+  it('defers the notification with after() so the response does not wait on it', async () => {
+    mockJoin.mockResolvedValue({ created: true })
+    await POST(req({ email: 'sam@example.com' }))
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(afterCallbacks).toHaveLength(1)
+    await flushAfter()
     expect(mockNotify).toHaveBeenCalledTimes(1)
   })
 
   it('sends no notification for a duplicate', async () => {
     mockJoin.mockResolvedValue({ created: false })
     await POST(req({ email: 'SAM@Example.com', name: 'Sam', marketingEmailOptIn: true }))
+    await flushAfter()
+    expect(afterCallbacks).toHaveLength(0)
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
@@ -57,6 +81,7 @@ describe('POST /api/waitlist', () => {
     mockNotify.mockRejectedValue(new Error('resend down'))
     const res = await POST(req({ email: 'sam@example.com' }))
     expect(res.status).toBe(200)
+    await expect(flushAfter()).resolves.toBeUndefined()
   })
 
   it.each([
