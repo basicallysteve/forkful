@@ -1,15 +1,18 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/mdx'
+import { absoluteUrl, DEFAULT_OG_IMAGE_PATH } from '@/lib/seo'
 import styles from './page.module.scss'
 
 export const metadata: Metadata = {
   title: 'Blog',
   description: 'Updates, ideas, and notes from the EatForkful kitchen.',
+  alternates: { canonical: absoluteUrl('/blog') },
   openGraph: {
     title: 'EatForkful Blog',
     description: 'Updates, ideas, and notes from the EatForkful kitchen.',
-    images: [{ url: '/og-default.png' }],
+    url: absoluteUrl('/blog'),
+    images: [{ url: absoluteUrl(DEFAULT_OG_IMAGE_PATH) }],
   },
 }
 
