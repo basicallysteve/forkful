@@ -18,6 +18,12 @@ export interface QuickAddFoodModalProps {
   onHide: () => void
 }
 
+/**
+ * Mask clicks in this window after opening are ignored. The modal opens on the first click of a
+ * double-click, so the second click lands on the new mask and would dismiss it straight away (#359).
+ */
+const OPEN_GRACE_MS = 400
+
 /** A Food whose name equals `name` ignoring case and surrounding spaces, or undefined (also when the lookup fails). */
 async function findExistingFood(name: string): Promise<Food | undefined> {
   const wanted = name.trim().toLowerCase()
@@ -36,6 +42,7 @@ export default function QuickAddFoodModal({ initialName, onCreated, onExisting, 
   const [needsSignIn, setNeedsSignIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+  const openedAt = useRef(Date.now())
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
@@ -72,10 +79,18 @@ export default function QuickAddFoodModal({ initialName, onCreated, onExisting, 
     }
   }
 
+  // Only mask clicks wait out the grace window; Escape and the X still close at once.
+  function handleDialogHide(event?: { target?: unknown }) {
+    const target = event?.target
+    const fromMask = target instanceof Element && target.classList.contains('p-dialog-mask')
+    if (fromMask && Date.now() - openedAt.current < OPEN_GRACE_MS) return
+    onHide()
+  }
+
   return (
     <Modal
       visible
-      onHide={onHide}
+      onHide={handleDialogHide}
       onShow={() => nameRef.current?.focus()}
       header="Add a new food"
       className="quick-add-food-modal"
