@@ -5,7 +5,8 @@ import './modal.scss'
 
 interface ModalProps {
   visible: boolean
-  onHide: () => void
+  // PrimeReact passes the originating event (e.g. so a consumer can tell a mask click from Escape).
+  onHide: (event?: { target?: unknown }) => void
   header: React.ReactNode
   footer?: React.ReactNode
   style?: React.CSSProperties
