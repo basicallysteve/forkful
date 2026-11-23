@@ -2,34 +2,44 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 const mockLeave = vi.fn()
-vi.mock('@/lib/waitlist', () => ({ leaveWaitlist: (...a: unknown[]) => mockLeave(...a) }))
+const mockVerify = vi.fn()
+vi.mock('@/lib/waitlist', () => ({
+  leaveWaitlist: (...a: unknown[]) => mockLeave(...a),
+  verifyWaitlistLeaveToken: (...a: unknown[]) => mockVerify(...a),
+}))
 
 import WaitlistLeavePage from './page'
 
-beforeEach(() => mockLeave.mockReset())
+beforeEach(() => {
+  mockLeave.mockReset()
+  mockVerify.mockReset()
+})
 
 async function renderPage(token?: string) {
   const ui = await WaitlistLeavePage({ searchParams: Promise.resolve(token === undefined ? {} : { token }) })
   render(ui)
 }
 
-describe('/waitlist/leave', () => {
-  it('removes the entry for a valid token and says so', async () => {
-    mockLeave.mockResolvedValue('removed')
+describe('GET /waitlist/leave', () => {
+  it('shows a confirmation button for a valid token and does NOT delete', async () => {
+    mockVerify.mockReturnValue('sam@example.com')
     await renderPage('good-token')
-    expect(mockLeave).toHaveBeenCalledWith('good-token')
-    expect(screen.getByText("You've been removed from the waitlist")).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove me from the waitlist' })).toBeInTheDocument()
+    expect(screen.queryByText("You've been removed from the waitlist")).not.toBeInTheDocument()
+    expect(mockLeave).not.toHaveBeenCalled()
   })
 
-  it('shows "This link is invalid" for a tampered token', async () => {
-    mockLeave.mockResolvedValue('invalid')
+  it('shows "This link is invalid" for a tampered token and deletes nothing', async () => {
+    mockVerify.mockReturnValue(null)
     await renderPage('bad-token')
     expect(screen.getByText('This link is invalid')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove me from the waitlist' })).not.toBeInTheDocument()
+    expect(mockLeave).not.toHaveBeenCalled()
   })
 
-  it('shows "This link is invalid" without calling the lib when the token is missing', async () => {
+  it('shows "This link is invalid" when the token is missing', async () => {
     await renderPage()
-    expect(mockLeave).not.toHaveBeenCalled()
     expect(screen.getByText('This link is invalid')).toBeInTheDocument()
+    expect(mockLeave).not.toHaveBeenCalled()
   })
 })

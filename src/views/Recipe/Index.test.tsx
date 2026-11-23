@@ -726,6 +726,8 @@ describe('Recipe View Page', () => {
     it('renders the summary and the Signup Wall CTAs', () => {
       renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
       expect(screen.getByText('Korean Beef Bowls')).toBeInTheDocument()
+      expect(screen.getByText('Join the waitlist to see the full recipe')).toBeInTheDocument()
+      expect(screen.queryByText('Create a free account to see the full recipe')).not.toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Join the waitlist' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Sign up free' })).not.toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
@@ -734,8 +736,9 @@ describe('Recipe View Page', () => {
     it('teases the withheld content without leaking exact counts', () => {
       renderWithStores(<Recipe recipe={gatedRecipe} gated isLoggedIn={false} />)
       expect(
-        screen.getByText(/full ingredient list, step-by-step instructions, and nutrition/i),
+        screen.getByText('Ingredients and steps unlock when your invite arrives.'),
       ).toBeInTheDocument()
+      expect(screen.queryByText(/free once you sign up/i)).not.toBeInTheDocument()
     })
 
     it('does not render the Steps section when gated', () => {
