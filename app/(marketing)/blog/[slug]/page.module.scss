@@ -82,4 +82,24 @@
     border-top: 1px solid var(--vscode-border);
     margin: 2rem 0;
   }
+
+  figure {
+    margin: 1.5rem 0;
+  }
+
+  video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    border: 1px solid var(--vscode-border);
+  }
+
+  figcaption {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-color-secondary);
+    margin-top: 0.5rem;
+  }
 }

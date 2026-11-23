@@ -1,0 +1,42 @@
+---
+title: What's cooking
+description: Undo on pantry delete, fractions in amount boxes, and the first pieces of serving definitions. Setting your own servings is next.
+date: '2026-11-24'
+---
+
+Two things came out of the kitchen recently. One is small and makes the pantry less nerve-wracking. The other is a bigger idea I've been working toward, and the first pieces of it are in. Both come from the same place: I want the experience to be the best it can be for our chefs.
+
+## Fresh out of the oven: Undo on pantry delete
+
+Deleting something from your pantry used to be final the moment you clicked. If you hit the wrong row, you had to add the item back and re-enter its quantity and expiry.
+
+Now when you delete a pantry item, it leaves the list straight away and a toast appears: "Deleted Chicken Breast", with an Undo button. Click Undo and the item comes back in the same place in the list. If you don't, the delete goes through after a few seconds. Selecting several rows and choosing Delete gives you one toast for the whole batch, and one Undo brings them all back. If a delete fails on the server, the rows come back and you get the usual error message.
+
+A pantry is something you tidy in a hurry, usually with a bag in one hand. Being able to take a delete back means you can clear things out quickly without checking each click twice.
+
+See the clip: Undo on pantry delete.
+
+<figure>
+  <AutoPlayVideo aria-label="Screen recording. Deleting Chicken Breast from the pantry shows a Deleted Chicken Breast toast with an Undo button, and Undo puts the row back. Then two rows are deleted together and one Undo restores both.">
+    <source src="/blog/undo-pantry-delete.webm" type="video/webm" />
+    Your browser can't play this video. Screen recording. Deleting Chicken Breast from the pantry shows a Deleted Chicken Breast toast with an Undo button, and Undo puts the row back. Then two rows are deleted together and one Undo restores both.
+  </AutoPlayVideo>
+  <figcaption>Undo on pantry delete: delete Chicken Breast, click Undo and the row returns, then delete two rows and undo them together.</figcaption>
+</figure>
+
+## On the stove: serving definitions
+
+Grams and millilitres are exact and precise. They're also not how anyone cooks. We live in a human world, with human servings.
+
+My protein powder is 1 scoop = 30 g. I don't have time to sit over a food scale for every meal, but tracking and understanding my nutrition is important to me. Serving definitions are meant to bridge that gap: a food can say what one scoop weighs, so the app can turn a scoop into grams and keep the estimate accurate. The engine that does that conversion is built. I'm really excited about setting a food's scoop on screen, the next piece. Once it's in, a scoop can just be a scoop.
+
+What has landed so far:
+
+- **More count units.** Scoop, stick, tablet, pouch, punnet, bar and packet join the existing ones. You'll find them in the unit picker when you add or edit a food.
+- **Fractions in amount boxes.** In the food log, the recipe ingredient rows and the pantry form, you can type "1 1/2" or "½" in an amount box and it understands you. It tidies the display to 1½ when you leave the field. The boxes are also properly labelled for screen readers.
+- **The conversion engine underneath.** If a unit has a known weight, a count like "2 scoops" converts to grams. If it only has a volume, it goes to millilitres. When both are known, grams win. If the app can't work it out, it says so rather than guessing.
+- **Pantry deduction and pantry gap use it.** Say a slice is 28 g and you have 100 g in the pantry. Using 2 slices now suggests taking off 56 g and leaves you with 44 g. Where the app can't convert, you still enter the amount yourself.
+
+A [waitlist](/waitlist) is coming next month.
+
+Steve
