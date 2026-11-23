@@ -5,6 +5,7 @@ import {
   apiCreatePantryItem,
   apiUpdatePantryItem,
   apiDeletePantryItem,
+  apiDeletePantryItems,
 } from './pantry'
 import type { PantryItem } from '@/types/PantryItem'
 
@@ -121,7 +122,8 @@ describe('apiDeletePantryItem', () => {
   it('sends DELETE request', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 } as Response)
     await expect(apiDeletePantryItem(1)).resolves.toBeUndefined()
-    expect(fetch).toHaveBeenCalledWith('/api/pantry/1', { method: 'DELETE' })
+    // keepalive lets the request finish even if the page is reloaded or closed mid-flight (#316)
+    expect(fetch).toHaveBeenCalledWith('/api/pantry/1', { method: 'DELETE', keepalive: true })
   })
 
   it('accepts 204 as success even when ok is false', async () => {
@@ -132,5 +134,18 @@ describe('apiDeletePantryItem', () => {
   it('throws on non-204 error response', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 } as Response)
     await expect(apiDeletePantryItem(1)).rejects.toThrow('Failed to delete pantry item')
+  })
+})
+
+describe('apiDeletePantryItems', () => {
+  it('sends the bulk DELETE with keepalive so it survives a reload', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ deletedIds: [1, 2] }) } as Response)
+    await expect(apiDeletePantryItems([1, 2])).resolves.toEqual([1, 2])
+    expect(fetch).toHaveBeenCalledWith('/api/pantry', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [1, 2] }),
+      keepalive: true,
+    })
   })
 })
