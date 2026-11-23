@@ -15,6 +15,11 @@ describe('stripSqlParams', () => {
     expect(out).not.toContain('egg')
   })
 
+  it('strips params when the Failed query marker is wrapped in another message', () => {
+    const out = stripSqlParams(`save failed: ${DB_MESSAGE}`)
+    expect(out).toBe(`save failed: Failed query: ${SQL}`)
+  })
+
   it('leaves non-database messages unchanged, even if they mention params', () => {
     expect(stripSqlParams('boom')).toBe('boom')
     expect(stripSqlParams('bad request\nparams: a,b')).toBe('bad request\nparams: a,b')
@@ -48,5 +53,30 @@ describe('scrubEvent', () => {
   it('returns events without messages unchanged', () => {
     const event = { type: undefined } as unknown as ErrorEvent
     expect(scrubEvent(event)).toEqual(event)
+  })
+
+  it('strips params from breadcrumb messages and string data values', () => {
+    const event = {
+      type: undefined,
+      breadcrumbs: [
+        { category: 'console', message: DB_MESSAGE },
+        { category: 'console', message: 'fine', data: { arguments: [DB_MESSAGE], note: DB_MESSAGE, n: 3 } },
+      ],
+    } as unknown as ErrorEvent
+    const out = scrubEvent(event)
+    expect(JSON.stringify(out.breadcrumbs)).not.toContain('8080')
+    expect(out.breadcrumbs?.[0].message).toContain(SQL)
+    expect(out.breadcrumbs?.[1].data?.n).toBe(3)
+  })
+
+  it('fails open instead of throwing on malformed events', () => {
+    const event = {
+      type: undefined,
+      get message(): string {
+        throw new Error('bad')
+      },
+    } as unknown as ErrorEvent
+    expect(() => scrubEvent(event)).not.toThrow()
+    expect(scrubEvent(event)).toBe(event)
   })
 })

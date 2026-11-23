@@ -51,6 +51,15 @@ describe('logger', () => {
       expect(captured.stack ?? '').not.toContain('8080')
     })
 
+    it('keeps $ replacement patterns in the message literal in the stack', () => {
+      const err = new Error('Failed query: select $& from "foods"\nparams: 8080')
+      captureError(err, { area: 'x' })
+      const captured = (sentry.captureException.mock.calls[0] as unknown as [Error])[0]
+      expect(captured.message).toBe('Failed query: select $& from "foods"')
+      expect(captured.stack).toContain('Failed query: select $& from "foods"')
+      expect(captured.stack ?? '').not.toContain('8080')
+    })
+
     it('does not add db attributes to non-database errors', () => {
       captureError(new Error('boom'), { area: 'x' })
       expect(sentry.logger.error).toHaveBeenCalledWith('boom', { area: 'x', errorName: 'Error' })
