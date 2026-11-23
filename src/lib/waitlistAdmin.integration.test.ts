@@ -77,6 +77,45 @@ describe('waitlist admin data layer', () => {
     expect(JSON.stringify(list)).not.toMatch(/code/i)
   })
 
+  it('two simultaneous invites for the same email give one created and one already-invited', async () => {
+    const results = await Promise.all([
+      createInvite({ email: 'itest-wl-race@example.com' }),
+      createInvite({ email: 'ITEST-WL-race@example.com' }),
+    ])
+    expect(results.map((r) => r.status).sort()).toEqual(['already-invited', 'created'])
+    expect(await inviteRows('itest-wl-race@example.com')).toHaveLength(1)
+  })
+
+  it('lists an Invite for an email not on the waitlist as an entry-less row, and drops it after revoke', async () => {
+    await pool.query("INSERT INTO users (username, email) VALUES ('itest-wl-ghost', 'itest-wl-ghost@example.com')")
+    const result = await createInvite({ email: 'itest-wl-ghost@example.com' })
+    if (result.status !== 'created') throw new Error('expected created')
+    const rows = (await listWaitlist()).filter((e) => e.email === 'itest-wl-ghost@example.com')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ entryId: null, invited: true, hasAccount: true, inviteId: result.inviteId, marketingEmailOptIn: false })
+    expect(rows[0].dateAdded).toBeInstanceOf(Date)
+
+    await revokeInvite(result.inviteId)
+    expect((await listWaitlist()).filter((e) => e.email === 'itest-wl-ghost@example.com')).toHaveLength(0)
+  })
+
+  it('lists an email that is both on the waitlist and invited once, as the entry', async () => {
+    const entryId = await addEntry('itest-wl-both@example.com')
+    await createInvite({ email: 'itest-wl-both@example.com' })
+    const rows = (await listWaitlist()).filter((e) => e.email === 'itest-wl-both@example.com')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ entryId, invited: true })
+  })
+
+  it('sorts entry-less Invites among entries by date, newest first', async () => {
+    const e = await addEntry('itest-wl-e1@example.com')
+    await pool.query("UPDATE waitlist_entries SET date_added = now() - interval '3 days' WHERE id = $1", [e])
+    await createInvite({ email: 'itest-wl-i1@example.com' })
+    await pool.query("UPDATE invites SET date_added = now() - interval '1 day' WHERE lower(email) = 'itest-wl-i1@example.com'")
+    const order = (await listWaitlist()).filter((r) => r.email.startsWith('itest-wl-')).map((r) => r.email)
+    expect(order).toEqual(['itest-wl-i1@example.com', 'itest-wl-e1@example.com'])
+  })
+
   it('revoke removes the Invite and leaves the entry and any user alone', async () => {
     await pool.query("INSERT INTO users (username, email) VALUES ('itest-wl-keep', 'itest-wl-keep@example.com')")
     await addEntry('itest-wl-keep@example.com')

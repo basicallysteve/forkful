@@ -76,6 +76,18 @@ describe('POST /api/admin/waitlist/invites', () => {
     expect(body.code).toBeUndefined()
   })
 
+  it('rejects an entryId outside the int4 range with 400 before reaching the database', async () => {
+    for (const entryId of [0, -1, 2147483648, 1.5]) {
+      expect((await POST(req({ entryId }))).status).toBe(400)
+    }
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('accepts the largest int4 entryId', async () => {
+    mockCreate.mockResolvedValue({ status: 'entry-not-found' })
+    expect((await POST(req({ entryId: 2147483647 }))).status).toBe(404)
+  })
+
   it('returns 404 when the entry does not exist', async () => {
     mockCreate.mockResolvedValue({ status: 'entry-not-found' })
     const res = await POST(req({ entryId: 999 }))

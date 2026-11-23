@@ -36,6 +36,13 @@ describe('DELETE /api/admin/waitlist/entries/[id]', () => {
     expect(mockRemove).not.toHaveBeenCalled()
   })
 
+  it('returns 400 for ids outside the int4 range', async () => {
+    for (const id of ['0', '-3', '2147483648', '1.5']) {
+      expect((await call(id)).status).toBe(400)
+    }
+    expect(mockRemove).not.toHaveBeenCalled()
+  })
+
   it('deletes the entry for the admin', async () => {
     const res = await call('5')
     expect(res.status).toBe(200)

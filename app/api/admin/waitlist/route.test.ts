@@ -33,7 +33,7 @@ describe('GET /api/admin/waitlist', () => {
 
   it('returns the entries for the admin', async () => {
     mockSession.mockResolvedValue({ userId: 1 })
-    const entries = [{ id: 3, email: 'a@example.com', name: null, marketingEmailOptIn: true, dateAdded: '2026-11-23T00:00:00.000Z', inviteId: null, invited: false, hasAccount: false }]
+    const entries = [{ entryId: null, email: 'a@example.com', name: null, marketingEmailOptIn: true, dateAdded: '2026-11-23T00:00:00.000Z', inviteId: null, invited: false, hasAccount: false }]
     mockList.mockResolvedValue(entries)
     const res = await GET()
     expect(res.status).toBe(200)
