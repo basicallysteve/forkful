@@ -36,4 +36,24 @@ describe('logger', () => {
     captureError('oops', { area: 'x' })
     expect(sentry.logger.error).toHaveBeenCalledWith('oops', { area: 'x', errorName: 'NonError' })
   })
+
+  describe('database errors', () => {
+    const msg = 'Failed query: insert into "food_log_entries" ("user_id") values ($1)\nparams: 2,food,8080,1,egg'
+
+    it('logs and captures without the bound params, keeping the Failed query prefix', () => {
+      captureError(new Error(msg), { area: 'food-log' })
+      const logged = sentry.logger.error.mock.calls[0] as unknown as [string, Record<string, unknown>]
+      expect(logged[0]).toBe('Failed query: insert into "food_log_entries" ("user_id") values ($1)')
+      expect(logged[1]).toMatchObject({ area: 'food-log', dbOperation: 'insert', dbTable: 'food_log_entries' })
+      const captured = (sentry.captureException.mock.calls[0] as unknown as [Error])[0]
+      expect(captured.message).toBe(logged[0])
+      expect(captured.message).not.toContain('8080')
+      expect(captured.stack ?? '').not.toContain('8080')
+    })
+
+    it('does not add db attributes to non-database errors', () => {
+      captureError(new Error('boom'), { area: 'x' })
+      expect(sentry.logger.error).toHaveBeenCalledWith('boom', { area: 'x', errorName: 'Error' })
+    })
+  })
 })
