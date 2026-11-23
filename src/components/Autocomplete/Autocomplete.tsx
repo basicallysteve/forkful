@@ -19,7 +19,19 @@ type AutocompleteProps<T> = {
   renderOptionMeta?: (option: T) => string | undefined
   allowClear?: boolean
   inputClassName?: string
+  /**
+   * Opt-in "add new" row. When set, a final suggestion (`addNewLabel(typed text)`) appears while the typed
+   * text matches no option exactly (case-insensitive). Choosing it calls `onAddNew(typed text)`; the caller
+   * decides what that means (and omits the prop when adding isn't allowed, e.g. signed out).
+   */
+  onAddNew?: (name: string) => void
+  addNewLabel?: (name: string) => string
 }
+
+/** Synthetic suggestion standing for the add-new row. Never reaches `onSelect`. */
+type AddNewItem = { addNew: true; name: string }
+const isAddNew = (x: unknown): x is AddNewItem =>
+  typeof x === 'object' && x !== null && (x as AddNewItem).addNew === true
 
 export default function Autocomplete<T>({
   value,
@@ -34,8 +46,10 @@ export default function Autocomplete<T>({
   renderOptionMeta,
   allowClear = true,
   inputClassName = '',
+  onAddNew,
+  addNewLabel = (name) => `Add "${name}" as a new food`,
 }: AutocompleteProps<T>) {
-  const [suggestions, setSuggestions] = useState<T[]>([])
+  const [suggestions, setSuggestions] = useState<(T | AddNewItem)[]>([])
   const acRef = useRef<AutoComplete>(null)
   const selectionInProgressRef = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -44,11 +58,15 @@ export default function Autocomplete<T>({
   const { open, listProps } = useAutocompleteList()
   useActiveDescendant(containerRef)
 
-  function filterOptions(query: string): T[] {
+  function filterOptions(query: string): (T | AddNewItem)[] {
     const q = query.trim().toLowerCase()
-    return !q
+    const matches = !q
       ? options.slice(0, 6)
       : options.filter((opt) => getOptionLabel(opt).toLowerCase().includes(q)).slice(0, 6)
+    // The add row is last so it stays put, and only appears on a true miss (no exact name).
+    const exact = options.some((opt) => getOptionLabel(opt).trim().toLowerCase() === q)
+    if (!onAddNew || !q || exact) return matches
+    return [...matches, { addNew: true, name: query.trim() }]
   }
 
   function handleComplete(e: AutoCompleteCompleteEvent) {
@@ -63,6 +81,12 @@ export default function Autocomplete<T>({
   }
 
   function handleSelect(e: AutoCompleteSelectEvent) {
+    if (isAddNew(e.value)) {
+      // Keep the typed text; the caller opens its add flow.
+      setQuery(null)
+      onAddNew?.(e.value.name)
+      return
+    }
     const option = e.value as T
     const label = getOptionLabel(option)
     selectionInProgressRef.current = true
@@ -72,6 +96,7 @@ export default function Autocomplete<T>({
   }
 
   function handleChange(e: AutoCompleteChangeEvent) {
+    if (isAddNew(e.value)) return
     if (typeof e.value === 'string') {
       onChange(e.value)
     } else if (e.value == null) {
@@ -79,7 +104,14 @@ export default function Autocomplete<T>({
     }
   }
 
-  const itemTemplate = (option: T) => {
+  const itemTemplate = (option: T | AddNewItem) => {
+    if (isAddNew(option)) {
+      return (
+        <div className="autocomplete-item-content autocomplete-item-content--add">
+          <span className="suggestion-name" title={addNewLabel(option.name)}>{addNewLabel(option.name)}</span>
+        </div>
+      )
+    }
     const label = getOptionLabel(option)
     const meta = renderOptionMeta?.(option)
     return (
@@ -90,8 +122,10 @@ export default function Autocomplete<T>({
     )
   }
 
+  const matchCount = suggestions.filter((o) => !isAddNew(o)).length
+  const hasAddRow = suggestions.some(isAddNew)
   const statusMessage =
-    query === null ? '' : suggestions.length > 0 ? (open ? resultsMessage(suggestions.length) : '') : query.trim() ? 'No matches' : ''
+    query === null ? '' : matchCount > 0 ? (open ? resultsMessage(matchCount) : '') : query.trim() ? (hasAddRow ? 'No matches. Add as new food is available' : 'No matches') : ''
 
   function focus() {
     (acRef.current?.getInput() as unknown as HTMLInputElement | null)?.focus?.()

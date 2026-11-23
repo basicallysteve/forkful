@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
 import { apiCreateRecipe } from '@/lib/api/recipes'
@@ -10,6 +10,13 @@ import type { Food } from '@/types/Food'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiCreateRecipe: vi.fn(async (r) => ({ ...r, id: 3 })),
+}))
+
+const mockApiFetchFoods = vi.fn()
+const mockApiCreateFood = vi.fn()
+vi.mock('@/lib/api/foods', () => ({
+  apiFetchFoods: (...a: unknown[]) => mockApiFetchFoods(...a),
+  apiCreateFood: (...a: unknown[]) => mockApiCreateFood(...a),
 }))
 
 // Mock foods
@@ -669,5 +676,66 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     await user.click(await screen.findByRole('option', { name: 'oz', hidden: true }))
 
     expect(unitDropdown()).toHaveTextContent('oz')
+  })
+})
+
+describe('Store Page - add a new food from the ingredient input (#237)', () => {
+  const created: Food = { id: 99, name: 'Dragon fruit', calories: 60, protein: 0, carbs: 0, fat: 0, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }] }
+
+  beforeEach(() => {
+    mockApiFetchFoods.mockReset()
+    mockApiCreateFood.mockReset()
+    mockApiFetchFoods.mockResolvedValue([])
+    mockApiCreateFood.mockResolvedValue(created)
+  })
+
+  it('offers an add row instead of the red error when the food is unknown', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Dragon fruit')
+    expect(screen.getByRole('option', { name: 'Add "Dragon fruit" as a new food' })).toBeInTheDocument()
+    expect(screen.queryByText('Please select a food from the list.')).not.toBeInTheDocument()
+  })
+
+  it('opens the quick-add modal prefilled and selects the new food after saving', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Dragon fruit')
+    await user.click(screen.getByRole('option', { name: /as a new food/i }))
+    expect(within(screen.getByRole('dialog')).getByLabelText('Name')).toHaveValue('Dragon fruit')
+    await user.type(within(screen.getByRole('dialog')).getByLabelText('Calories'), '60')
+    await user.click(screen.getByRole('button', { name: 'Add food' }))
+    await waitFor(() => expect(screen.queryByText('Add a new food')).not.toBeInTheDocument())
+    expect(screen.getAllByPlaceholderText('Select food')[0]).toHaveValue('Dragon fruit')
+    expect(useFoodStore.getState().foods.some(f => f.id === 99)).toBe(true)
+    expect(screen.getByRole('button', { name: 'Add ingredient' })).toBeEnabled()
+  })
+
+  it('selects the existing food when the name already exists in the library', async () => {
+    mockApiFetchFoods.mockResolvedValue([{ ...created, id: 77, name: 'dragon FRUIT' }])
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Dragon fruit')
+    await user.click(screen.getByRole('option', { name: /as a new food/i }))
+    await user.type(within(screen.getByRole('dialog')).getByLabelText('Calories'), '60')
+    await user.click(screen.getByRole('button', { name: 'Add food' }))
+    await waitFor(() => expect(screen.queryByText('Add a new food')).not.toBeInTheDocument())
+    expect(mockApiCreateFood).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Add ingredient' })).toBeEnabled()
+  })
+
+  it('returns focus to the ingredient input when the modal is cancelled', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Store />)
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    const input = screen.getAllByPlaceholderText('Select food')[0]
+    await user.type(input, 'Dragon fruit')
+    await user.click(screen.getByRole('option', { name: /as a new food/i }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(input).toHaveFocus())
   })
 })

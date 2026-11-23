@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import type { Recipe, CreateRecipeInput } from "@/types/Recipe"
 import type { Ingredient } from "@/types/Ingredient"
 import type { Food } from "@/types/Food"
 import Autocomplete from "@/components/Autocomplete/Autocomplete"
+import QuickAddFoodModal from "@/components/QuickAddFoodModal/QuickAddFoodModal"
 import { toRecipeUrl } from "@/utils/slug"
 import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
 import { useRecipeStore } from "@/stores/recipes"
@@ -32,6 +34,17 @@ const DEFAULT_SERVING_UNIT = 'g'
 function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAdd?: (ingredient: Ingredient) => void, onChange?: (ingredient: Ingredient) => void, onRemove?: () => void, storedIngredient?: Ingredient }) {
   const isStored = !!storedIngredient
   const foods = useFoodStore((state) => state.foods)
+  const setFoods = useFoodStore((state) => state.setFoods)
+  const { status } = useSession()
+  // Add-new is for the blank "new ingredient" row, and only for signed-in users (Food writes need sign-in).
+  const canAddFood = !isStored && status === 'authenticated'
+  const [addFoodName, setAddFoodName] = useState<string | null>(null)
+  const nameFieldRef = useRef<HTMLLabelElement>(null)
+  // The modal takes focus away; give it back to the name input when it closes.
+  function closeAddFood() {
+    setAddFoodName(null)
+    setTimeout(() => nameFieldRef.current?.querySelector('input')?.focus(), 0)
+  }
 
   const defaultFood = foods.length > 0 ? foods[0] : null
 
@@ -80,6 +93,16 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
         servingUnit: defaultFood.servingUnit || DEFAULT_SERVING_UNIT
       })
     }
+  }
+
+  /** The quick-add modal saved a Food (or found an existing one with that name): select it in this row. */
+  function handleFoodAdded(food: Food) {
+    const known = useFoodStore.getState().foods
+    if (!known.some(f => f.id === food.id)) setFoods([...known, food])
+    closeAddFood()
+    setIngredientName(food.name)
+    setMissingFood(false)
+    handleFoodSelect(food)
   }
 
   function handleFoodSelect(food: Food) {
@@ -157,7 +180,7 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
   return (
     <div className={`ingredient-input ${isStored ? 'ingredient-input--stored' : 'ingredient-input--new'}`} role="group" aria-label={isStored ? `Ingredient ${ingredient.food.name}` : 'Add an ingredient'}>
       {!isStored && <span className="ingredient-input-title">Add an ingredient</span>}
-        <label className={`form-field ${missingFood ? 'has-error' : ''}`}>
+        <label ref={nameFieldRef} className={`form-field ${missingFood && !canAddFood ? 'has-error' : ''}`}>
         <span className="field-label">Ingredient Name</span>
             <Autocomplete
               value={ingredientName}
@@ -184,13 +207,22 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
               placeholder="Select food"
               inputAriaLabel="Ingredient name"
               readOnly={isStored}
-              inputClassName={missingFood ? 'input-error' : ''}
+              inputClassName={missingFood && !canAddFood ? 'input-error' : ''}
+              onAddNew={canAddFood ? setAddFoodName : undefined}
               renderOptionMeta={(opt) => opt.calories ? `${opt.calories} cal/serving` : undefined}
             />
-            {missingFood && (
+            {missingFood && !canAddFood && (
               <span className="field-error" role="alert">Please select a food from the list.</span>
             )}
         </label>
+      {addFoodName !== null && (
+        <QuickAddFoodModal
+          initialName={addFoodName}
+          onHide={closeAddFood}
+          onCreated={handleFoodAdded}
+          onExisting={handleFoodAdded}
+        />
+      )}
       <label className="form-field">
         <span className="field-label">Quantity</span>
         <QuantityInput
