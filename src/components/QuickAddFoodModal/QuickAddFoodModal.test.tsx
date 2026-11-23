@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import QuickAddFoodModal from './QuickAddFoodModal'
 import { UnauthorizedError, HttpError, SIGN_IN_REQUIRED_MESSAGE, describeSaveFailure } from '@/lib/api/errors'
 
@@ -155,29 +155,71 @@ describe('QuickAddFoodModal', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
   })
 
-  describe('mask clicks right after opening (double-click on the add row)', () => {
+  describe('open grace window (400 ms, fake clock)', () => {
     const maskEl = () => document.querySelector('.p-dialog-mask') as HTMLElement
+    const closeButton = () => document.querySelector('.p-dialog-header-close') as HTMLElement
 
-    it('ignores a mask click that lands just after the modal opens', async () => {
-      const { onHide } = setup()
-      await waitFor(() => expect(maskEl()).toBeTruthy())
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    })
+    afterEach(() => { vi.useRealTimers() })
+
+    const advance = (ms: number) => act(() => { vi.advanceTimersByTime(ms) })
+
+    function openAndWait() {
+      const handlers = setup()
+      expect(maskEl()).toBeTruthy()
+      return handlers
+    }
+
+    it('ignores a mask click that lands just after the modal opens', () => {
+      const { onHide } = openAndWait()
       fireEvent.pointerDown(maskEl())
       fireEvent.pointerUp(maskEl())
       expect(onHide).not.toHaveBeenCalled()
       expect(screen.getByText('Add a new food')).toBeInTheDocument()
     })
 
-    it('still dismisses on a mask click once the modal has settled', async () => {
-      const { onHide } = setup()
-      await waitFor(() => expect(maskEl()).toBeTruthy())
-      await new Promise(r => setTimeout(r, 600))
+    it('ignores a mask click at 399 ms', () => {
+      const { onHide } = openAndWait()
+      advance(399)
+      fireEvent.pointerUp(maskEl())
+      expect(onHide).not.toHaveBeenCalled()
+    })
+
+    it('dismisses on a mask click at 401 ms', () => {
+      const { onHide } = openAndWait()
+      advance(401)
+      fireEvent.pointerUp(maskEl())
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('still dismisses on a mask click once the modal has settled', () => {
+      const { onHide } = openAndWait()
+      advance(600)
       fireEvent.pointerUp(maskEl())
       expect(onHide).toHaveBeenCalledTimes(1)
     })
 
     it('Cancel still closes immediately', () => {
-      const { onHide } = setup()
+      const { onHide } = openAndWait()
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('Escape closes immediately inside the window', () => {
+      const { onHide } = openAndWait()
+      advance(50)
+      fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape', code: 'Escape' })
+      expect(onHide).toHaveBeenCalledTimes(1)
+    })
+
+    it('the X closes immediately inside the window', () => {
+      const { onHide } = openAndWait()
+      advance(50)
+      expect(closeButton()).toBeTruthy()
+      fireEvent.click(closeButton())
       expect(onHide).toHaveBeenCalledTimes(1)
     })
   })
