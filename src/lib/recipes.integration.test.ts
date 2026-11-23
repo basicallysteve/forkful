@@ -148,6 +148,22 @@ describe('recipes data layer (integration)', () => {
     expect(updated?.name).toBe('ITest UpdateMe')
   })
 
+  it('updating only date_published keeps the recipe ingredients (#336)', async () => {
+    const created = await createRecipe({
+      name: 'ITest KeepIngredients',
+      meal: 'Lunch',
+      description: '',
+      ingredients: [{ food: testFood, quantity: 100, calories: 100, servingUnit: 'g' }],
+      date_published: new Date(),
+      isPublic: true,
+    })
+    const updated = await updateRecipe(created.id, { date_published: null })
+    expect(updated?.date_published).toBeNull()
+    const reloaded = await getRecipeByShortId(created.shortId)
+    expect(reloaded?.ingredients).toHaveLength(1)
+    expect(reloaded?.ingredients[0].food.id).toBe(testFood.id)
+  })
+
   it('soft-deletes a recipe', async () => {
     const created = await createRecipe({ name: 'ITest DeleteMe', meal: 'Snack', description: '', ingredients: [], date_published: null, isPublic: true })
     const deleted = await deleteRecipe(created.id)

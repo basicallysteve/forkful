@@ -5,11 +5,12 @@ import Recipes from './Index'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
 import type { Recipe } from '@/types/Recipe'
 import type { Food } from '@/types/Food'
-import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
+import { apiDeleteRecipe, apiPatchRecipe, apiFetchRecipes } from '@/lib/api/recipes'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiDeleteRecipe: vi.fn(async () => {}),
   apiUpdateRecipe: vi.fn(async (r: Recipe) => r),
+  apiPatchRecipe: vi.fn(async () => ({})),
   apiFetchRecipes: vi.fn(async () => []),
 }))
 
@@ -578,7 +579,7 @@ describe('Error handling', () => {
   })
 
   it('shows an error toast and rolls back when unpublish fails', async () => {
-    vi.mocked(apiUpdateRecipe).mockRejectedValueOnce(new Error('Forbidden'))
+    vi.mocked(apiPatchRecipe).mockRejectedValueOnce(new Error('Forbidden'))
     const user = userEvent.setup()
     renderWithProviders(<Recipes isAuthenticated />)
 

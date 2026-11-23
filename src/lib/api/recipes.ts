@@ -49,6 +49,18 @@ export async function apiUpdateRecipe(recipe: Recipe): Promise<Recipe> {
   return res.json()
 }
 
+// Sends only the given fields. Use this where the caller holds a list-view recipe (no ingredients):
+// the server replaces a recipe's ingredients whenever the body has an `ingredients` key.
+export async function apiPatchRecipe(shortId: string, patch: Partial<Omit<Recipe, 'id'>>): Promise<Recipe> {
+  const res = await fetch(`/api/recipes/${shortId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  assertWriteOk(res, 'Failed to update recipe')
+  return res.json()
+}
+
 export async function apiDeleteRecipe(shortId: string): Promise<void> {
   const res = await fetch(`/api/recipes/${shortId}`, { method: 'DELETE' })
   assertWriteOk(res, 'Failed to delete recipe', [204])
