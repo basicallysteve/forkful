@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { leaveWaitlist } from '@/lib/waitlist'
+import { verifyWaitlistLeaveToken } from '@/lib/waitlist'
+import WaitlistLeaveConfirm from '@/views/Waitlist/WaitlistLeaveConfirm'
 import WaitlistLeaveView from '@/views/Waitlist/WaitlistLeaveView'
 
 export const metadata: Metadata = {
@@ -7,6 +8,10 @@ export const metadata: Metadata = {
   robots: { index: false },
 }
 
+/**
+ * A GET never removes anyone (email scanners prefetch links). A valid token shows a
+ * confirmation button that POSTs the removal; anything else shows "This link is invalid".
+ */
 export default async function WaitlistLeavePage({
   searchParams,
 }: {
@@ -14,6 +19,6 @@ export default async function WaitlistLeavePage({
 }) {
   const { token } = await searchParams
   const value = typeof token === 'string' ? token : undefined
-  const status = value ? await leaveWaitlist(value) : 'invalid'
-  return <WaitlistLeaveView status={status} />
+  if (!value || !verifyWaitlistLeaveToken(value)) return <WaitlistLeaveView status="invalid" />
+  return <WaitlistLeaveConfirm token={value} />
 }

@@ -16,9 +16,9 @@ export default function SignupWall() {
   return (
     <section className="signup-wall" aria-label="Join the waitlist to see the full recipe">
       <div className="signup-wall-inner">
-        <h3 className="signup-wall-heading">Create a free account to see the full recipe</h3>
+        <h3 className="signup-wall-heading">Join the waitlist to see the full recipe</h3>
         <p className="signup-wall-tease">
-          Get the full ingredient list, step-by-step instructions, and nutrition — free once you sign up.
+          Ingredients and steps unlock when your invite arrives.
         </p>
         <div className="signup-wall-actions">
           <Link href="/waitlist" className="primary-button signup-wall-cta">
