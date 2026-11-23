@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/mdx'
 import { absoluteUrl, DEFAULT_OG_IMAGE_PATH } from '@/lib/seo'
+import { formatPostDate } from '@/utils/formatPostDate'
 import styles from './page.module.scss'
 
 export const metadata: Metadata = {
@@ -32,7 +33,7 @@ export default function BlogIndexPage() {
                 <span className={styles.postTitle}>{post.title}</span>
                 {post.date && (
                   <time className={styles.postDate} dateTime={post.date}>
-                    {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    {formatPostDate(post.date)}
                   </time>
                 )}
                 {post.description && (

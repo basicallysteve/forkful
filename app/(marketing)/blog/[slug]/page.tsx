@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import { getAllPosts, getPost } from '@/lib/mdx'
 import { absoluteUrl, blogPostingJsonLd, DEFAULT_OG_IMAGE_PATH, serializeJsonLd } from '@/lib/seo'
+import { formatPostDate } from '@/utils/formatPostDate'
 import styles from './page.module.scss'
 
 interface Props {
@@ -55,7 +56,7 @@ export default async function BlogPostPage({ params }: Props) {
         <h1 className={styles.title}>{post.title}</h1>
         {post.date && (
           <time className={styles.date} dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatPostDate(post.date)}
           </time>
         )}
       </header>
