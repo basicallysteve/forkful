@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Store from './Store'
 import { apiCreateRecipe } from '@/lib/api/recipes'
@@ -683,6 +683,8 @@ describe('Store Page - add a new food from the ingredient input (#237)', () => {
   const created: Food = { id: 99, name: 'Dragon fruit', calories: 60, protein: 0, carbs: 0, fat: 0, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }] }
 
   beforeEach(() => {
+    mockApiFetchFoods.mockReset()
+    mockApiCreateFood.mockReset()
     mockApiFetchFoods.mockResolvedValue([])
     mockApiCreateFood.mockResolvedValue(created)
   })
@@ -702,8 +704,8 @@ describe('Store Page - add a new food from the ingredient input (#237)', () => {
     await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
     await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Dragon fruit')
     await user.click(screen.getByRole('option', { name: /as a new food/i }))
-    expect(screen.getByLabelText('Name')).toHaveValue('Dragon fruit')
-    await user.type(screen.getByLabelText('Calories'), '60')
+    expect(within(screen.getByRole('dialog')).getByLabelText('Name')).toHaveValue('Dragon fruit')
+    await user.type(within(screen.getByRole('dialog')).getByLabelText('Calories'), '60')
     await user.click(screen.getByRole('button', { name: 'Add food' }))
     await waitFor(() => expect(screen.queryByText('Add a new food')).not.toBeInTheDocument())
     expect(screen.getAllByPlaceholderText('Select food')[0]).toHaveValue('Dragon fruit')
@@ -718,7 +720,7 @@ describe('Store Page - add a new food from the ingredient input (#237)', () => {
     await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
     await user.type(screen.getAllByPlaceholderText('Select food')[0], 'Dragon fruit')
     await user.click(screen.getByRole('option', { name: /as a new food/i }))
-    await user.type(screen.getByLabelText('Calories'), '60')
+    await user.type(within(screen.getByRole('dialog')).getByLabelText('Calories'), '60')
     await user.click(screen.getByRole('button', { name: 'Add food' }))
     await waitFor(() => expect(screen.queryByText('Add a new food')).not.toBeInTheDocument())
     expect(mockApiCreateFood).not.toHaveBeenCalled()
