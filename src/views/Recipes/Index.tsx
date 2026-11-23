@@ -3,7 +3,7 @@
 import { describeSaveFailure } from '@/lib/api/errors'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRecipeStore } from '@/stores/recipes'
-import { apiDeleteRecipe, apiUpdateRecipe, apiFetchRecipes } from '@/lib/api/recipes'
+import { apiDeleteRecipe, apiPatchRecipe, apiFetchRecipes } from '@/lib/api/recipes'
 import type { Recipe } from '@/types/Recipe'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
@@ -162,7 +162,8 @@ export default function Recipes({ forYouRecipes = [], dietaryRestrictions = [], 
     toUpdate.forEach(recipe => updateRecipe(recipe))
     setSelectedRecipes(new Set())
     try {
-      await Promise.all(toUpdate.map(recipe => apiUpdateRecipe(recipe)))
+      // List-view recipes carry no ingredients, so send only the changed field (#336).
+      await Promise.all(toUpdate.map(recipe => apiPatchRecipe(recipe.shortId, { date_published: null })))
     } catch (err) {
       console.error('Failed to unpublish recipes on server:', err)
       original.forEach(recipe => updateRecipe(recipe))
