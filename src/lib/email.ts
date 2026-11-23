@@ -7,6 +7,7 @@ import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
 import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
 import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
+import { WaitlistNotificationEmail } from '@/emails/WaitlistNotificationEmail'
 import { logInfo } from '@/lib/logger'
 
 type EmailPayload = Parameters<Resend['emails']['send']>[0]
@@ -144,3 +145,11 @@ export async function sendUserAccountCreationEmail(username: string): Promise<vo
   })
 }
 
+export async function sendWaitlistNotificationEmail(entry: { email: string; name: string | null; marketingEmailOptIn: boolean }): Promise<void> {
+  await deliver('waitlist-notification', {
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
+    to: 'steven@eatforkful.com',
+    subject: 'Someone joined the waitlist',
+    react: WaitlistNotificationEmail(entry),
+  })
+}

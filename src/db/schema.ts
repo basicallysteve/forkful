@@ -348,3 +348,28 @@ export const reviewReports = pgTable('review_reports', {
   reviewIdIdx: index('review_reports_review_id_idx').on(t.reviewId),
   dateAddedIdx: index('review_reports_date_added_idx').on(t.dateAdded),
 }));
+
+// Invite-only access (ADR-0032). Creating a Waitlist Entry never creates a User.
+export const waitlistEntries = pgTable('waitlist_entries', {
+  id: serial('id').primaryKey(),
+  // Stored trimmed and lowercased; the unique index also guards raw inserts.
+  email: varchar('email', { length: 254 }).notNull(),
+  name: varchar('name', { length: 100 }),
+  marketingEmailOptIn: boolean('marketing_email_opt_in').notNull().default(false),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  emailUnique: uniqueIndex('waitlist_entries_email_lower_unique').on(sql`lower(${t.email})`),
+}));
+
+// Permission for one email address to use account features. Never expires; revoking deletes the row.
+export const invites = pgTable('invites', {
+  id: serial('id').primaryKey(),
+  email: varchar('email', { length: 254 }).notNull(),
+  // SHA-256 hex of the single-use code for email/password sign-up. Never store the raw code.
+  codeHash: varchar('code_hash', { length: 64 }).notNull(),
+  codeUsedAt: timestamp('code_used_at'),
+  dateAdded: timestamp('date_added').defaultNow().notNull(),
+}, (t) => ({
+  emailUnique: uniqueIndex('invites_email_lower_unique').on(sql`lower(${t.email})`),
+  codeHashUnique: unique('invites_code_hash_unique').on(t.codeHash),
+}));

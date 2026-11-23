@@ -253,6 +253,13 @@
       "when": 1794853238282,
       "tag": "0035_goofy_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795443089601,
+      "tag": "0036_amazing_steel_serpent",
+      "breakpoints": true
     }
   ]
 }
