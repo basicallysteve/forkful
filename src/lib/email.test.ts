@@ -12,7 +12,7 @@ vi.mock('resend', () => ({
 }))
 vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 
-import { sendPasswordResetEmail, sendUserAccountCreationEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail } from '@/lib/email'
 import { logInfo } from '@/lib/logger'
 
 describe('email send guard', () => {
@@ -54,6 +54,22 @@ describe('email send guard', () => {
     await sendUserAccountCreationEmail('someone')
     expect(send).not.toHaveBeenCalled()
     expect(logInfo).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes the waitlist notification through the guard without logging the visitor email', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    await sendWaitlistNotificationEmail({ email: 'visitor@example.com', name: 'Visitor', marketingEmailOptIn: false })
+    expect(send).not.toHaveBeenCalled()
+    const [message, attrs] = vi.mocked(logInfo).mock.calls[0]
+    expect(attrs).toMatchObject({ template: 'waitlist-notification' })
+    expect(JSON.stringify([message, attrs])).not.toContain('visitor@example.com')
+  })
+
+  it('sends the waitlist notification to the admin once in production', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    await sendWaitlistNotificationEmail({ email: 'visitor@example.com', name: null, marketingEmailOptIn: true })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send.mock.calls[0][0]).toMatchObject({ to: 'steven@eatforkful.com' })
   })
 
   describe('sandbox key outside production', () => {
