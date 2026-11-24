@@ -102,6 +102,22 @@ describe('AdminWaitlist', () => {
     expect(within(rowOf('pat@example.com')).getByRole('button', { name: 'Invite' })).toBeEnabled()
   })
 
+  it('shows a row note for Already invited as neutral, but the same API error text stays a red error', async () => {
+    api.apiInvite.mockResolvedValueOnce({ status: 'already-invited' })
+    renderPage()
+    await screen.findByText('pat@example.com')
+    const pat = () => rowOf('pat@example.com')
+    await userEvent.click(within(pat()).getByRole('button', { name: 'Invite' }))
+    const note = await within(pat()).findByText('Already invited')
+    expect(note.className).toContain('is-note')
+    expect(within(pat()).queryByRole('alert')).toBeNull()
+
+    api.apiInvite.mockRejectedValueOnce(new Error('Already invited'))
+    await userEvent.click(within(pat()).getByRole('button', { name: 'Invite' }))
+    await waitFor(() => expect(within(pat()).getByRole('alert')).toHaveTextContent('Already invited'))
+    expect(within(pat()).getByRole('alert').className).toContain('is-error')
+  })
+
   it('revokes after an inline confirm', async () => {
     api.apiRevokeInvite.mockResolvedValue(undefined)
     renderPage()
