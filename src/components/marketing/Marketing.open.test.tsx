@@ -13,9 +13,9 @@ describe('marketing nav and footer with the invite-only flag off (#374)', () => 
     expect(screen.queryByRole('link', { name: 'Join the waitlist' })).not.toBeInTheDocument()
   })
 
-  it('footer offers "Sign up" to /create-account, not the waitlist', () => {
+  it('footer offers "Create a free account" to /create-account, not the waitlist', () => {
     render(<InviteOnlyProvider value={false}><MarketingFooter /></InviteOnlyProvider>)
-    expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/create-account')
+    expect(screen.getByRole('link', { name: 'Create a free account' })).toHaveAttribute('href', '/create-account')
     expect(screen.queryByRole('link', { name: 'Join the waitlist' })).not.toBeInTheDocument()
   })
 
