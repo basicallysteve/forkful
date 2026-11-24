@@ -22,17 +22,18 @@ export const inviteOnlyAccess = flag<boolean>({
  * The single reader of the flag. Everything that depends on the mode (the access lock, OAuth,
  * POST /api/users, the CTAs, /waitlist) calls this, so they can't disagree.
  *
- * `INVITE_ONLY_ACCESS=true|false` overrides the flag: it is how local development works without
- * a Vercel connection, and a per-environment override (for example Preview). Pass the request
- * from `proxy.ts`, where `next/headers` isn't available.
+ * `INVITE_ONLY_ACCESS` overrides the flag for local development and Preview, and fails closed:
+ * when it is set and non-empty, only the exact string `false` opens sign-up. It is ignored when
+ * `VERCEL_ENV` is `production`, which reads only the Vercel flag. Pass the request from
+ * `proxy.ts`, where `next/headers` isn't available.
  */
 export async function isInviteOnly(request?: { headers: Headers }): Promise<boolean> {
   const override = process.env.INVITE_ONLY_ACCESS
-  if (override === 'true') return true
-  if (override === 'false') return false
+  if (override && process.env.VERCEL_ENV !== 'production') return override !== 'false'
   try {
     // The SDK only reads `request.headers`, so the narrow type is enough.
-    return request ? await inviteOnlyAccess(request as Request) : await inviteOnlyAccess()
+    const value = request ? await inviteOnlyAccess(request as Request) : await inviteOnlyAccess()
+    return value !== false
   } catch {
     // Constant message, no detail: the SDK warns about the cause itself.
     logWarn('Invite-only flag unavailable, using waitlist mode', { area: 'auth' })
