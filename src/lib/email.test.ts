@@ -12,7 +12,7 @@ vi.mock('resend', () => ({
 }))
 vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 
-import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail, sendInviteEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendWaitlistNotificationEmail, sendInviteEmail } from '@/lib/email'
 import { logInfo } from '@/lib/logger'
 
 describe('email send guard', () => {
@@ -51,7 +51,7 @@ describe('email send guard', () => {
 
   it('guards every email function, not just password reset', async () => {
     vi.stubEnv('VERCEL_ENV', 'preview')
-    await sendUserAccountCreationEmail('someone')
+    await sendWaitlistNotificationEmail({ email: 'someone@example.com', name: null, marketingEmailOptIn: false })
     expect(send).not.toHaveBeenCalled()
     expect(logInfo).toHaveBeenCalledTimes(1)
   })
