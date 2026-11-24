@@ -2,13 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import CreateAccount from './CreateAccount'
 
-vi.mock('@/lib/api/users', () => ({
+vi.mock('@/lib/api/users', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/users')>()),
   apiSignUp: vi.fn(),
 }))
 
-import { apiSignUp } from '@/lib/api/users'
+import { apiSignUp, InviteInvalidError } from '@/lib/api/users'
+
+const INVALID_INVITE = "This invite link isn't valid or has already been used. If you think this is a mistake, join the waitlist again."
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(ui)
@@ -398,7 +402,8 @@ describe('CreateAccount Page', () => {
       expect(loginLink).toHaveAttribute('href', '/login')
     })
 
-    it('redirects to login page after successful account creation', async () => {
+    it('signs in and goes to /welcome after successful account creation', async () => {
+      vi.mocked(signIn).mockResolvedValue({ error: undefined, ok: true, status: 200, url: null } as never)
       const mockPush = vi.fn()
       vi.mocked(useRouter).mockReturnValue({
         push: mockPush, replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn(),
@@ -415,7 +420,8 @@ describe('CreateAccount Page', () => {
       await user.click(screen.getByRole('button', { name: /create account/i }))
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login')
+        expect(signIn).toHaveBeenCalledWith('credentials', { username: 'testuser', password: 'StrongPass1!', redirect: false })
+        expect(mockPush).toHaveBeenCalledWith('/welcome')
       })
     })
   })
@@ -505,6 +511,77 @@ describe('CreateAccount Page', () => {
       })
 
       resolve({ id: '1', username: 'testuser', email: 'test@example.com' })
+    })
+  })
+  describe('Invite link', () => {
+    async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>, emailTyped?: string) {
+      await user.type(screen.getByPlaceholderText('Choose a username'), 'testuser')
+      if (emailTyped) await user.type(screen.getByPlaceholderText('you@example.com'), emailTyped)
+      await user.type(screen.getByPlaceholderText('Create a strong password'), 'StrongPass1!')
+      await user.type(screen.getByPlaceholderText('Confirm your password'), 'StrongPass1!')
+      await user.click(screen.getByRole('button', { name: /create account/i }))
+    }
+
+    it('prefills a read-only email and hides the code when the link carries both', () => {
+      renderWithProviders(<CreateAccount email="invited@example.com" code="abc123" />)
+      const email = screen.getByDisplayValue('invited@example.com')
+      expect(email).toHaveAttribute('readonly')
+      expect(screen.queryByText('abc123')).not.toBeInTheDocument()
+      expect(screen.queryByDisplayValue('abc123')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/invite code/i)).not.toBeInTheDocument()
+    })
+
+    it('sends the email and code from the link', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount email="invited@example.com" code="abc123" />)
+      await fillAndSubmit(user)
+      await waitFor(() => {
+        expect(apiSignUp).toHaveBeenCalledWith(expect.objectContaining({ email: 'invited@example.com', code: 'abc123' }))
+      })
+    })
+
+    it('shows the code field when the link has no code', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount email="invited@example.com" />)
+      await user.type(screen.getByLabelText(/invite code/i), 'typed-code')
+      await fillAndSubmit(user)
+      await waitFor(() => {
+        expect(apiSignUp).toHaveBeenCalledWith(expect.objectContaining({ code: 'typed-code' }))
+      })
+    })
+
+    it('shows one banner with a waitlist link for a bad, used or missing code, above the form', async () => {
+      vi.mocked(apiSignUp).mockRejectedValue(new InviteInvalidError())
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount email="invited@example.com" code="used" />)
+      await fillAndSubmit(user)
+      const banner = await screen.findByText(INVALID_INVITE)
+      expect(banner.closest('[role="alert"]')).not.toBeNull()
+      expect(screen.getByRole('link', { name: /join the waitlist/i })).toHaveAttribute('href', '/waitlist')
+      const form = screen.getByRole('button', { name: /create account/i }).closest('form')!
+      expect(banner.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(signIn).not.toHaveBeenCalled()
+    })
+
+    it('shows the waitlist confirmation when the email is not invited', async () => {
+      vi.mocked(apiSignUp).mockResolvedValue({ waitlisted: true })
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+      await fillAndSubmit(user, 'stranger@example.com')
+      expect(await screen.findByText(/You're on the list\. We'll email you when your invite is ready\./)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument()
+      expect(signIn).not.toHaveBeenCalled()
+    })
+
+    it('shows the username error under the field after blur', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+      const username = screen.getByPlaceholderText('Choose a username')
+      await user.type(username, 'ab')
+      expect(screen.queryByText(/at least 3 characters/i)).not.toBeInTheDocument()
+      await user.tab()
+      expect(screen.getByText(/at least 3 characters/i)).toBeInTheDocument()
+      expect(username).toHaveAttribute('aria-invalid', 'true')
     })
   })
 })
