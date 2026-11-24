@@ -7,9 +7,16 @@ import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
 import { login, trackLoginAttempt } from '@/lib/users'
 import { resolveOAuthSignIn } from '@/lib/oauthSignIn'
+import { hasAccess } from '@/lib/access'
+import { logInfo } from '@/lib/logger'
 
 class AccountDeactivatedError extends CredentialsSignin {
   code = 'ACCOUNT_DEACTIVATED' as const
+}
+
+/** Right password, but no Invite (ADR-0032). Thrown so Auth.js sets no session cookie. */
+class WaitlistedError extends CredentialsSignin {
+  code = 'WAITLISTED' as const
 }
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
@@ -45,9 +52,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         try {
           const user = await login({ username: credentials.username, password: credentials.password, ipAddress })
+          // Only reached with the right password, so the waitlist message reveals nothing a
+          // wrong password would not already hide.
+          if (!(await hasAccess(Number(user.id)))) {
+            logInfo('Credential login blocked: waitlisted', { area: 'auth' })
+            throw new WaitlistedError()
+          }
           await trackLoginAttempt({ userId: Number(user.id), successful: true, ipAddress })
           return { id: String(user.id), name: user.username, email: user.email }
         } catch (err) {
+          if (err instanceof WaitlistedError) throw err
           if (err instanceof Error && err.message === 'ACCOUNT_DEACTIVATED') {
             throw new AccountDeactivatedError()
           }
