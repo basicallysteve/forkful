@@ -19,6 +19,7 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn() // not implemented in jsdom
   vi.mocked(signIn).mockReset()
   vi.mocked(apiSignUp).mockResolvedValue({ id: '1', username: 'testuser', email: 'test@example.com' })
 })
