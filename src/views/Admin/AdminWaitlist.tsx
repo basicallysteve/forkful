@@ -139,10 +139,9 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
       <Toast ref={toast} />
       <header className="admin-reports-header">
         <h1 className="admin-reports-title">Waitlist</h1>
-        {rows && <span className="admin-reports-count">{rows.length}</span>}
       </header>
 
-      <form className="admin-waitlist-invite" onSubmit={inviteEmail} noValidate>
+      <form style={{ marginBottom: 20 }} onSubmit={inviteEmail} noValidate>
         <label htmlFor="invite-email" className="admin-waitlist-label">
           Invite an email
         </label>
@@ -198,7 +197,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
             const note = state.error === 'Already invited'
             return (
               <li key={key} className="admin-waitlist-row">
-                <div className="admin-waitlist-info">
+                <div style={{ minWidth: 0 }}>
                   <span className="admin-waitlist-email">{row.email}</span>
                   <span className="admin-waitlist-meta">
                     {formatDate(row.dateAdded)}
