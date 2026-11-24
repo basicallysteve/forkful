@@ -314,6 +314,8 @@ describe('Login Page', () => {
 
 describe('Waitlisted User sign-in (#379)', () => {
   it('shows the waitlist message and does not navigate when sign-in returns WAITLISTED', async () => {
+    // Earlier describes leave queued mockResolvedValueOnce results behind; start from a clean mock.
+    vi.mocked(signIn).mockReset()
     vi.mocked(signIn).mockResolvedValueOnce({ code: 'WAITLISTED', error: 'CredentialsSignin', status: 401, ok: false, url: null })
     const user = userEvent.setup()
     render(<Login />)
