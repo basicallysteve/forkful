@@ -119,7 +119,7 @@ export async function signUpWithInvite({ code, ...user }: SignUpWithInviteInput)
         .where(and(eq(invites.id, invite.id), isNull(invites.codeUsedAt)))
         .returning({ id: invites.id })
       if (redeemed.length === 0) return { status: 'invalid-code' }
-      return { status: 'created', user: await signUp(user, tx) }
+      return { status: 'created', user: await signUp({ ...user, email: normalizeEmail(user.email) }, tx) }
     }),
     'invite.redeem',
   )
