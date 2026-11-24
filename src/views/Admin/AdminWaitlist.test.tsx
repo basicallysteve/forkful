@@ -154,6 +154,23 @@ describe('AdminWaitlist', () => {
       expect(rowOf('pat@example.com').contains(document.activeElement)).toBe(true)
     })
 
+    it('moves focus to Revoke after a successful Invite', async () => {
+      api.apiInvite.mockResolvedValueOnce({ status: 'created', inviteId: 9, email: 'pat@example.com', code: 'X', emailSent: true })
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(btn('pat@example.com', 'Invite'))
+      await waitFor(() => expect(btn('pat@example.com', 'Revoke')).toHaveFocus())
+    })
+
+    it('leaves focus on Invite when the invite fails', async () => {
+      api.apiInvite.mockRejectedValueOnce(new Error('Nope'))
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(btn('pat@example.com', 'Invite'))
+      await within(rowOf('pat@example.com')).findByRole('alert')
+      expect(btn('pat@example.com', 'Invite')).toHaveFocus()
+    })
+
     it('moves focus to a remaining row when the confirmed row disappears', async () => {
       api.apiDeleteWaitlistEntry.mockResolvedValue(undefined)
       renderPage()
