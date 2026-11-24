@@ -79,7 +79,6 @@ export async function revokeInvite(id: number): Promise<boolean> {
 
 export type InviteRow = { id: number; codeHash: string; codeUsedAt: Date | null }
 
-/** The Invite for an email (case-insensitive), or null. */
 export async function getInviteByEmail(email: string): Promise<InviteRow | null> {
   const [row] = await db
     .select({ id: invites.id, codeHash: invites.codeHash, codeUsedAt: invites.codeUsedAt })

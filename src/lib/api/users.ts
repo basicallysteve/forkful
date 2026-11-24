@@ -11,7 +11,7 @@ export type SignUpData = {
   code?: string
 }
 
-/** The server rejected the invite: bad, used or missing code. The cause is never revealed. */
+/** Bad, used or missing invite code; the cause is never revealed. */
 export class InviteInvalidError extends Error {
   constructor() {
     super('Invite is not valid')
@@ -25,10 +25,7 @@ export type SignUpResult = {
   email: string
 }
 
-/**
- * Creates the account, or returns `{ waitlisted: true }` when the email has no Invite: the
- * server then answers exactly like the Waitlist form so it never reveals who is invited.
- */
+/** Creates the account, or `{ waitlisted: true }` when the email has no Invite (the Waitlist answer). */
 export async function apiSignUp(data: SignUpData): Promise<SignUpResult | { waitlisted: true }> {
   const res = await fetch('/api/users', {
     method: 'POST',

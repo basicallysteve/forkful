@@ -57,7 +57,7 @@ const INVALID_INVITE_LEAD = "This invite link isn't valid or has already been us
 type Props = {
   /** From the Invite Email link: prefilled and read-only. */
   email?: string
-  /** From the Invite Email link: kept out of the form's visible fields. Without it a code field is shown. */
+  /** From the Invite Email link, hidden. Without it a code field is shown. */
   code?: string
 }
 
