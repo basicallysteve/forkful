@@ -25,6 +25,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const FALLBACK = 'Something went wrong. Please try again.'
 
 const rowKey = (r: WaitlistAdminRow) => (r.entryId !== null ? `e${r.entryId}` : `i${r.inviteId}`)
+const focusRow = (key: string, sel = 'button') => () => document.querySelector<HTMLElement>(`[data-row="${key}"] ${sel}`)
 const errorText = (e: unknown) => (e instanceof Error ? e.message : FALLBACK)
 
 function formatDate(date: string): string {
@@ -33,12 +34,20 @@ function formatDate(date: string): string {
 
 export default function AdminWaitlist({ emailsEnabled }: Props) {
   const toast = useRef<Toast>(null)
+  // Set by a handler to say where focus should land once the next render is committed.
+  const focusNext = useRef<(() => HTMLElement | null) | null>(null)
   const [rows, setRows] = useState<WaitlistAdminRow[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [states, setStates] = useState<Record<string, RowState>>({})
   const [email, setEmail] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
   const [emailMessage, setEmailMessage] = useState<{ kind: 'error' | 'note'; text: string } | null>(null)
+
+  useEffect(() => {
+    const find = focusNext.current
+    focusNext.current = null
+    find?.()?.focus()
+  })
 
   const load = useCallback(async () => {
     setLoadError(null)
@@ -54,6 +63,14 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
   }, [load])
 
   const patch = (key: string, next: RowState) => setStates((s) => ({ ...s, [key]: next }))
+  const openConfirm = (key: string, action: Confirm) => {
+    focusNext.current = focusRow(key, '[data-action="cancel"]') // Cancel is the safe default for a destructive step
+    patch(key, { confirm: action })
+  }
+  const closeConfirm = (key: string, action: Confirm) => {
+    focusNext.current = focusRow(key, `[data-action="${action}"]`)
+    patch(key, {})
+  }
 
   function announceInvite(address: string, emailSent: boolean | undefined) {
     if (!emailsEnabled) {
@@ -88,6 +105,8 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
 
   async function confirmAction(row: WaitlistAdminRow, action: Confirm) {
     const key = rowKey(row)
+    const index = rows?.findIndex((r) => rowKey(r) === key) ?? 0
+    let nextKey = key
     patch(key, { busy: true, confirm: action })
     try {
       if (action === 'revoke' && row.inviteId !== null) {
@@ -100,11 +119,22 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
         )
       } else if (action === 'delete' && row.entryId !== null) {
         await apiDeleteWaitlistEntry(row.entryId)
-        setRows((prev) => prev?.filter((r) => rowKey(r) !== key) ?? prev)
+        // The Invite outlives its Entry, so an invited row stays as an invite-only row.
+        nextKey = `i${row.inviteId}`
+        setRows((prev) =>
+          row.inviteId === null
+            ? (prev?.filter((r) => rowKey(r) !== key) ?? prev)
+            : (prev?.map((r) => (rowKey(r) === key ? { ...r, entryId: null, name: null, marketingEmailOptIn: false } : r)) ?? prev),
+        )
       }
       patch(key, {})
     } catch (e) {
       patch(key, { error: errorText(e) })
+    }
+    // Never leave focus on a button that just went away: stay in the row, else go to its neighbour.
+    focusNext.current = () => {
+      const items = document.querySelectorAll('.admin-waitlist-row')
+      return focusRow(nextKey)() ?? (items[index] ?? items[index - 1])?.querySelector<HTMLElement>('button') ?? null
     }
   }
 
@@ -148,6 +178,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
         <div className="admin-waitlist-invite-row">
           <input
             id="invite-email"
+            aria-describedby="invite-email-message"
             className="text-input"
             type="email"
             value={email}
@@ -160,6 +191,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           </button>
         </div>
         <p
+          id="invite-email-message"
           className={`admin-waitlist-message ${emailMessage?.kind === 'note' ? 'is-note' : 'is-error'}`}
           role={emailMessage?.kind === 'error' ? 'alert' : undefined}
         >
@@ -195,7 +227,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
             const key = rowKey(row)
             const state = states[key] ?? {}
             return (
-              <li key={key} className="admin-waitlist-row">
+              <li key={key} className="admin-waitlist-row" data-row={key}>
                 <div style={{ minWidth: 0 }}>
                   <span className="admin-waitlist-email">{row.email}</span>
                   <span className="admin-waitlist-meta">
@@ -205,7 +237,10 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                     {row.hasAccount && <span className="admin-waitlist-tag">Has account</span>}
                   </span>
                 </div>
-                <div className="admin-waitlist-actions">
+                <div
+                  className="admin-waitlist-actions"
+                  onKeyDown={(e) => e.key === 'Escape' && state.confirm && !state.busy && closeConfirm(key, state.confirm)}
+                >
                   {state.confirm ? (
                     <>
                       <button
@@ -222,7 +257,8 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                         className="ghost-button"
                         aria-label={`Cancel ${state.confirm} for ${row.email}`}
                         disabled={state.busy}
-                        onClick={() => patch(key, {})}
+                        data-action="cancel"
+                        onClick={() => closeConfirm(key, state.confirm!)}
                       >
                         Cancel
                       </button>
@@ -235,12 +271,12 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                         </button>
                       )}
                       {row.invited && row.inviteId !== null && (
-                        <button type="button" className="ghost-button" disabled={state.busy} onClick={() => patch(key, { confirm: 'revoke' })}>
+                        <button type="button" className="ghost-button" data-action="revoke" disabled={state.busy} onClick={() => openConfirm(key, 'revoke')}>
                           Revoke
                         </button>
                       )}
                       {row.entryId !== null && (
-                        <button type="button" className="danger-button" disabled={state.busy} onClick={() => patch(key, { confirm: 'delete' })}>
+                        <button type="button" className="danger-button" data-action="delete" disabled={state.busy} onClick={() => openConfirm(key, 'delete')}>
                           Delete
                         </button>
                       )}
