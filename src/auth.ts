@@ -2,11 +2,11 @@ import NextAuth, { CredentialsSignin } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Apple from 'next-auth/providers/apple'
 import Credentials from 'next-auth/providers/credentials'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
-import { login, trackLoginAttempt, reactivateAccount } from '@/lib/users'
-import { findOrCreateOAuthUser } from '@/lib/oauth'
+import { login, trackLoginAttempt } from '@/lib/users'
+import { resolveOAuthSignIn } from '@/lib/oauthSignIn'
 
 class AccountDeactivatedError extends CredentialsSignin {
   code = 'ACCOUNT_DEACTIVATED' as const
@@ -60,39 +60,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider === 'google' || account?.provider === 'apple') {
-        // Apple only sends email on the very first authorization — returning users omit it.
-        // If we already have an oauth_account for this providerAccountId, allow the sign-in.
-        if (!profile?.email) {
-          // Apple omits email on all sign-ins after the first. Allow the sign-in if we already
-          // have an oauth_account row for this providerAccountId. The jwt callback handles
-          // the user lookup for these returning-Apple-user sessions via the same providerAccountId
-          // fallback, so the token will be fully populated even without an email.
-          const [existing] = await db
-            .select({ userId: oauthAccounts.userId, dateDeleted: users.dateDeleted })
-            .from(oauthAccounts)
-            .innerJoin(users, eq(users.id, oauthAccounts.userId))
-            .where(eq(oauthAccounts.providerAccountId, account.providerAccountId))
-          if (existing?.dateDeleted) await reactivateAccount(existing.userId)
-          return !!existing
-        }
-        try {
-          const userId = await findOrCreateOAuthUser({
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            email: profile.email,
-            name: profile.name ?? null,
-            avatarUrl: (profile as { picture?: string }).picture ?? null,
-          })
-          const [freshUser] = await db
-            .select({ dateDeleted: users.dateDeleted })
-            .from(users)
-            .where(eq(users.id, userId))
-          if (freshUser?.dateDeleted) await reactivateAccount(userId)
-          return true
-        } catch (err) {
-          console.error('[auth] findOrCreateOAuthUser failed:', err)
-          return false
-        }
+        // Invite-only lock (ADR-0032): returns true, false, or '/waitlist' (no session).
+        return resolveOAuthSignIn({
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          email: profile?.email,
+          name: profile?.name ?? null,
+          avatarUrl: (profile as { picture?: string } | undefined)?.picture ?? null,
+        })
       }
       return true
     },
@@ -131,7 +106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const [r] = await db
             .select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl, onboardingCompletedAt: users.onboardingCompletedAt, password: users.password })
             .from(users)
-            .where(eq(users.email, profile.email))
+            .where(sql`lower(${users.email}) = lower(${profile.email})`)
           row = r
         } else {
           const [link] = await db
