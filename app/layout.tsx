@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata, Viewport } from 'next'
 import ClientLayout from './ClientLayout'
-import { auth } from '@/auth'
+import { getSessionUser } from '@/lib/auth'
 import { getSiteUrl } from '@/lib/seo'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
@@ -32,10 +32,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-  const isLoggedIn = !!session?.user
-  const username = session?.user?.name ?? null
-  const avatarUrl = session?.user?.image ?? null
+  // getSessionUser (not auth()) so a signed-in user without an Invite gets the signed-out nav (ADR-0032).
+  const session = await getSessionUser()
+  const isLoggedIn = !!session
+  const username = session?.username ?? null
+  const avatarUrl = session?.avatarUrl ?? null
 
   return (
     <html lang="en" suppressHydrationWarning>
