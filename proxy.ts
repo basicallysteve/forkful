@@ -26,6 +26,19 @@ function detectSessionCookie(request: NextRequest): boolean {
 }
 
 /**
+ * Decodes the session JWT. Auth.js names the cookie `__Secure-authjs.session-token` over https
+ * and uses that name as the decryption salt; getToken only looks for the plain name unless told
+ * `secureCookie`, so on https (previews, production) it would return null for a valid session.
+ */
+function readSessionToken(request: NextRequest) {
+  return getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET,
+    secureCookie: request.cookies.has('__Secure-authjs.session-token'),
+  })
+}
+
+/**
  * Gate for /reset-password:
  * - A valid ?token= query param (email-link flow) is always allowed through.
  * - Otherwise the session must carry needsPasswordReset: true (90-day forced flow).
@@ -41,7 +54,7 @@ async function checkResetPasswordAccess(
     return NextResponse.redirect(new URL('/login', request.nextUrl))
   }
 
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
+  const token = await readSessionToken(request)
   if (!token?.needsPasswordReset) {
     return NextResponse.redirect(new URL('/login', request.nextUrl))
   }
@@ -62,7 +75,7 @@ async function checkPasswordExpiryRedirect(
   const isExempt = RESET_EXEMPT_PREFIXES.some((p) => pathname.startsWith(p))
   if (isExempt || !hasSessionCookie) return null
 
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
+  const token = await readSessionToken(request)
   if (token?.needsPasswordReset) {
     return NextResponse.redirect(new URL('/reset-password', request.nextUrl))
   }
@@ -106,7 +119,7 @@ async function checkAccessLock(
   hasSessionCookie: boolean,
 ): Promise<NextResponse | null> {
   if (!hasSessionCookie || !isLockedRoute(pathname)) return null
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
+  const token = await readSessionToken(request)
   const userId = Number(token?.userId)
   if (!token || !Number.isFinite(userId)) return null
   if (await hasAccess(userId)) return null
@@ -138,7 +151,7 @@ async function meterRecipeView(
   // presence — a stale or forged session cookie must not grant Unlimited
   // Recipe Access and silently bypass the meter.
   const isAuthenticated = hasSessionCookie
-    ? (await getToken({ req: request, secret: process.env.AUTH_SECRET })) !== null
+    ? (await readSessionToken(request)) !== null
     : false
   if (hasUnlimitedRecipeAccess({ isAuthenticated })) return null
   if (isbot(request.headers.get('user-agent') ?? '')) return null
