@@ -110,7 +110,8 @@
     row-gap: 10px;
   }
 
-  .admin-waitlist-actions {
-    justify-content: flex-start;
+  // Buttons share the card's full width instead of sitting at their natural width.
+  .admin-waitlist-actions button {
+    flex: 1;
   }
 }
