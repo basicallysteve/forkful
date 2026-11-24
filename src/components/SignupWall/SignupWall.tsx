@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useInviteOnly } from '@/components/InviteOnlyProvider'
@@ -15,11 +16,12 @@ export default function SignupWall() {
   const pathname = usePathname()
   const callbackUrl = encodeURIComponent(pathname)
   const inviteOnly = useInviteOnly()
+  const headingId = useId()
 
   return (
-    <section className="signup-wall" aria-label={inviteOnly ? 'Join the waitlist to see the full recipe' : 'Create a free account to see the full recipe'}>
+    <section className="signup-wall" aria-labelledby={headingId}>
       <div className="signup-wall-inner">
-        <h3 className="signup-wall-heading">
+        <h3 id={headingId} className="signup-wall-heading">
           {inviteOnly ? 'Join the waitlist to see the full recipe' : 'Create a free account to see the full recipe'}
         </h3>
         <p className="signup-wall-tease">
