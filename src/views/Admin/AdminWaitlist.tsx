@@ -89,16 +89,19 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
     try {
       const result = await apiInvite({ entryId: row.entryId })
       if (result.status === 'already-invited') {
+        focusNext.current = focusRow(key, '[data-action="invite"]')
         patch(key, { note: 'Already invited' })
         void load()
         return
       }
+      focusNext.current = focusRow(key, '[data-action="revoke"]')
       setRows((prev) =>
         prev?.map((r) => (rowKey(r) === key ? { ...r, invited: true, inviteId: result.inviteId } : r)) ?? prev,
       )
       patch(key, {})
       announceInvite(result.email, result.emailSent)
     } catch (e) {
+      focusNext.current = focusRow(key, '[data-action="invite"]')
       patch(key, { error: errorText(e) })
     }
   }
@@ -228,7 +231,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
             const state = states[key] ?? {}
             return (
               <li key={key} className="admin-waitlist-row" data-row={key}>
-                <div style={{ minWidth: 0 }}>
+                <div>
                   <span className="admin-waitlist-email">{row.email}</span>
                   <span className="admin-waitlist-meta">
                     {formatDate(row.dateAdded)}
@@ -260,7 +263,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                   ) : (
                     <>
                       {!row.invited && row.entryId !== null && (
-                        <button type="button" className="ghost-button" disabled={state.busy} onClick={() => invite(row)}>
+                        <button type="button" className="ghost-button" data-action="invite" disabled={state.busy} onClick={() => invite(row)}>
                           Invite
                         </button>
                       )}
