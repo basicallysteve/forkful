@@ -118,6 +118,73 @@ describe('AdminWaitlist', () => {
     expect(within(pat()).getByRole('alert').className).toContain('is-error')
   })
 
+  describe('focus', () => {
+    const btn = (email: string, name: string | RegExp) => within(rowOf(email)).getByRole('button', { name })
+
+    it('moves focus to Cancel (the safe choice) when the confirm pair opens, and back to the opener on Cancel', async () => {
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(btn('pat@example.com', 'Delete'))
+      expect(btn('pat@example.com', /^Cancel/)).toHaveFocus()
+      await userEvent.keyboard('{Enter}')
+      expect(btn('pat@example.com', 'Delete')).toHaveFocus()
+    })
+
+    it('Escape cancels the confirm and restores focus to the opener', async () => {
+      renderPage()
+      await screen.findByText('sam@example.com')
+      await userEvent.click(btn('sam@example.com', 'Revoke'))
+      await userEvent.keyboard('{Escape}')
+      expect(api.apiRevokeInvite).not.toHaveBeenCalled()
+      expect(btn('sam@example.com', 'Revoke')).toHaveFocus()
+    })
+
+    it('keeps focus in the row after a confirmed revoke and after a failed delete', async () => {
+      api.apiRevokeInvite.mockResolvedValue(undefined)
+      renderPage()
+      await screen.findByText('sam@example.com')
+      await userEvent.click(btn('sam@example.com', 'Revoke'))
+      await userEvent.click(btn('sam@example.com', /^Confirm/))
+      await waitFor(() => expect(rowOf('sam@example.com').contains(document.activeElement)).toBe(true))
+
+      api.apiDeleteWaitlistEntry.mockRejectedValue(new Error('Nope'))
+      await userEvent.click(btn('pat@example.com', 'Delete'))
+      await userEvent.click(btn('pat@example.com', /^Confirm/))
+      await within(rowOf('pat@example.com')).findByRole('alert')
+      expect(rowOf('pat@example.com').contains(document.activeElement)).toBe(true)
+    })
+
+    it('moves focus to a remaining row when the confirmed row disappears', async () => {
+      api.apiDeleteWaitlistEntry.mockResolvedValue(undefined)
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(btn('pat@example.com', 'Delete'))
+      await userEvent.click(btn('pat@example.com', /^Confirm/))
+      await waitFor(() => expect(screen.queryByText('pat@example.com')).toBeNull())
+      expect(document.activeElement).not.toBe(document.body)
+      expect(rowOf('sam@example.com').contains(document.activeElement)).toBe(true)
+    })
+  })
+
+  it('keeps an Invited entry as an invite-only row after Delete (Invited and Revoke, no Delete)', async () => {
+    api.apiDeleteWaitlistEntry.mockResolvedValue(undefined)
+    renderPage()
+    await screen.findByText('sam@example.com')
+    await userEvent.click(within(rowOf('sam@example.com')).getByRole('button', { name: 'Delete' }))
+    await userEvent.click(within(rowOf('sam@example.com')).getByRole('button', { name: /^Confirm/ }))
+    await waitFor(() => expect(within(rowOf('sam@example.com')).queryByRole('button', { name: 'Delete' })).toBeNull())
+    expect(within(rowOf('sam@example.com')).getByText('Invited')).toBeInTheDocument()
+    expect(within(rowOf('sam@example.com')).getByRole('button', { name: 'Revoke' })).toBeInTheDocument()
+  })
+
+  it('links the email field to its message with aria-describedby', async () => {
+    renderPage()
+    await screen.findByText('pat@example.com')
+    await userEvent.type(screen.getByLabelText('Invite an email'), 'pat@')
+    await userEvent.click(screen.getByRole('button', { name: 'Send invite' }))
+    expect(screen.getByLabelText('Invite an email')).toHaveAccessibleDescription('Enter a valid email like pat@example.com')
+  })
+
   it('revokes after an inline confirm', async () => {
     api.apiRevokeInvite.mockResolvedValue(undefined)
     renderPage()
