@@ -75,3 +75,26 @@ describe('proxy access lock (ADR-0032)', () => {
     expect(mockHasAccess).not.toHaveBeenCalled()
   })
 })
+
+describe('proxy password expiry for Waitlisted Users (#379)', () => {
+  it('does not send a Waitlisted User with an expired password to /reset-password; locked pages go to /waitlist', async () => {
+    mockGetToken.mockResolvedValue({ userId: 7, needsPasswordReset: true })
+    mockHasAccess.mockResolvedValue(false)
+    const res = await proxy(req('/pantry'))
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/waitlist')
+  })
+
+  it('does not bounce a Waitlisted User with an expired password away from /waitlist', async () => {
+    mockGetToken.mockResolvedValue({ userId: 7, needsPasswordReset: true })
+    mockHasAccess.mockResolvedValue(false)
+    const res = await proxy(req('/waitlist'))
+    expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('still sends an invited user with an expired password to /reset-password', async () => {
+    mockGetToken.mockResolvedValue({ userId: 7, needsPasswordReset: true })
+    mockHasAccess.mockResolvedValue(true)
+    const res = await proxy(req('/pantry'))
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/reset-password')
+  })
+})

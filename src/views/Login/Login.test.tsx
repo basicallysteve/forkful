@@ -311,3 +311,18 @@ describe('Login Page', () => {
     })
   })
 })
+
+describe('Waitlisted User sign-in (#379)', () => {
+  it('shows the waitlist message and does not navigate when sign-in returns WAITLISTED', async () => {
+    vi.mocked(signIn).mockResolvedValueOnce({ code: 'WAITLISTED', error: 'CredentialsSignin', status: 401, ok: false, url: null })
+    const user = userEvent.setup()
+    render(<Login />)
+    await user.type(screen.getByPlaceholderText('Enter your username'), 'sam')
+    await user.type(screen.getByPlaceholderText('Enter your password'), 'pw')
+    await user.click(screen.getByRole('button', { name: /^login$/i }))
+    expect(
+      await screen.findByText("Your account is on the waitlist. We'll email you when your invite is ready."),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Invalid username or password')).not.toBeInTheDocument()
+  })
+})
