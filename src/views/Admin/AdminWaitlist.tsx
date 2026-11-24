@@ -19,7 +19,7 @@ interface Props {
 }
 
 type Confirm = 'revoke' | 'delete'
-type RowState = { confirm?: Confirm; busy?: boolean; error?: string }
+type RowState = { confirm?: Confirm; busy?: boolean; error?: string; note?: string }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const FALLBACK = 'Something went wrong. Please try again.'
@@ -72,7 +72,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
     try {
       const result = await apiInvite({ entryId: row.entryId })
       if (result.status === 'already-invited') {
-        patch(key, { error: 'Already invited' })
+        patch(key, { note: 'Already invited' })
         void load()
         return
       }
@@ -141,7 +141,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
         <h1 className="admin-reports-title">Waitlist</h1>
       </header>
 
-      <form style={{ marginBottom: 20 }} onSubmit={inviteEmail} noValidate>
+      <form className="admin-waitlist-invite" onSubmit={inviteEmail} noValidate>
         <label htmlFor="invite-email" className="admin-waitlist-label">
           Invite an email
         </label>
@@ -181,7 +181,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           {[0, 1, 2].map((i) => (
             <li key={i} className="admin-waitlist-row" data-testid="waitlist-skeleton">
               <Skeleton width="60%" height="1rem" />
-              <Skeleton width="35%" height="0.8rem" style={{ marginTop: 8 }} />
+              <Skeleton width="35%" height="0.8rem" className="admin-waitlist-skeleton-sub" />
             </li>
           ))}
         </ul>
@@ -194,7 +194,6 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           {rows.map((row) => {
             const key = rowKey(row)
             const state = states[key] ?? {}
-            const note = state.error === 'Already invited'
             return (
               <li key={key} className="admin-waitlist-row">
                 <div style={{ minWidth: 0 }}>
@@ -242,10 +241,10 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                   )}
                 </div>
                 <p
-                  className={`admin-waitlist-message ${note ? 'is-note' : 'is-error'}`}
-                  role={state.error && !note ? 'alert' : undefined}
+                  className={`admin-waitlist-message ${state.error ? 'is-error' : 'is-note'}`}
+                  role={state.error ? 'alert' : undefined}
                 >
-                  {state.error}
+                  {state.error ?? state.note}
                 </p>
               </li>
             )
