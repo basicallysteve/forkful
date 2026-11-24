@@ -5,6 +5,7 @@ import { GoodbyeEmail } from '@/emails/GoodbyeEmail'
 import { DeactivationExpiryWarningEmail } from '@/emails/DeactivationExpiryWarningEmail'
 import { PantryReminderEmail } from '@/emails/PantryReminderEmail'
 import { RecipeSuggestionEmail } from '@/emails/RecipeSuggestionEmail'
+import { NewUserNotificationEmail } from '@/emails/NewUserNotificationEmail'
 import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
 import { WaitlistNotificationEmail } from '@/emails/WaitlistNotificationEmail'
 import { InviteEmail } from '@/emails/InviteEmail'
@@ -135,6 +136,17 @@ export async function sendReviewReportSummaryEmail({ to, reportCount, reports, a
     to,
     subject: `${reportCount} new review report${reportCount !== 1 ? 's' : ''} on EatForkful`,
     react: ReviewReportSummaryEmail({ reportCount, reports, adminUrl }),
+  })
+}
+
+// Unused during the waitlist period (the waitlist notification replaces it); kept for the move to the full application.
+export async function sendUserAccountCreationEmail(username: string): Promise<void> {
+
+  await deliver('new-user-notification', {
+    from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
+    to: "steven@eatforkful.com",
+    subject: 'New user signed up',
+    react: NewUserNotificationEmail({ username }),
   })
 }
 
