@@ -2,11 +2,14 @@
 
 import { createContext, useContext } from 'react'
 
-/** Skeleton (#374): always waitlist mode until the provider carries the flag value. */
+/**
+ * Carries the `invite-only-access` flag (decided on the server in the root layout) to client
+ * components, so none of them fetches a flag. Defaults to waitlist mode (the safe side).
+ */
 const InviteOnlyContext = createContext<boolean>(true)
 
-export function InviteOnlyProvider({ children }: { value: boolean; children: React.ReactNode }) {
-  return <>{children}</>
+export function InviteOnlyProvider({ value, children }: { value: boolean; children: React.ReactNode }) {
+  return <InviteOnlyContext.Provider value={value}>{children}</InviteOnlyContext.Provider>
 }
 
 export function useInviteOnly(): boolean {

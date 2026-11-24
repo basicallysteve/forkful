@@ -1,9 +1,50 @@
 import { NextResponse } from 'next/server'
 import { getInviteByEmail, signUpWithInvite } from '@/lib/invites'
-import { isValidWaitlistEmail } from '@/lib/waitlist'
+import { signUp } from '@/lib/users'
+import { taskRunner } from '@/lib/TaskRunner'
+import { sendUserAccountCreationEmail } from '@/lib/email'
+import { captureError } from '@/lib/logger'
+import { isInviteOnly } from '@/lib/inviteOnly'
+import { isValidWaitlistEmail, normalizeEmail } from '@/lib/waitlist'
 import { respondJoinWaitlist } from '@/lib/waitlistResponse'
 
 const INVALID_INVITE = "This invite link isn't valid or has already been used."
+
+type SignUpBody = {
+  username?: unknown; password?: unknown
+  cuisinePreferences?: string[]; dietaryRestrictions?: string[]; marketingEmailOptIn?: unknown
+}
+
+/** The pre-waitlist sign-up (ADR-0032 amended by #374): validate, create the User, tell the admin. */
+async function openSignUp(body: SignUpBody, email: string) {
+  if (typeof body.username !== 'string' || body.username.trim().length < 3) {
+    return NextResponse.json({ error: 'Username must be at least 3 characters' }, { status: 400 })
+  }
+  if (typeof body.password !== 'string' || body.password.length < 8) {
+    return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+  }
+  const username = body.username.trim()
+  const password = body.password
+  try {
+    const user = await taskRunner.run(
+      () => signUp({
+        username,
+        email: normalizeEmail(email),
+        password,
+        cuisinePreferences: body.cuisinePreferences ?? [],
+        dietaryRestrictions: body.dietaryRestrictions ?? [],
+        marketingEmailOptIn: body.marketingEmailOptIn === true,
+      }),
+      'user.signup',
+    )
+    // The "New user signed up" admin email, as before the waitlist; never blocks the sign-up.
+    sendUserAccountCreationEmail(username).catch((error) => captureError(error, { area: 'auth' }))
+    return NextResponse.json(user, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Registration failed'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+}
 
 // ADR-0032: sign-up needs an Invite code. An email without an Invite gets exactly the
 // POST /api/waitlist response, decided before the username or password are looked at.
@@ -22,6 +63,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Enter a valid email' }, { status: 400 })
   }
   const email = body.email
+
+  // Open sign-up (flag off, #374): as before the waitlist, no Invite or code is needed.
+  if (!(await isInviteOnly())) return openSignUp(body, email)
 
   const invite = await getInviteByEmail(email)
   if (!invite) {

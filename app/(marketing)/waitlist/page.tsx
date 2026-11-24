@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/auth'
+import { isInviteOnly } from '@/lib/inviteOnly'
 import WaitlistForm from '@/views/Waitlist/WaitlistForm'
 import styles from '@/views/Waitlist/Waitlist.module.scss'
 
@@ -10,6 +11,9 @@ export const metadata: Metadata = {
 }
 
 export default async function WaitlistPage() {
+  // Open sign-up (flag off, #374): there is no waitlist to join. /waitlist/leave is a different page and keeps working.
+  if (!(await isInviteOnly())) redirect('/create-account')
+
   // A signed-in user has no reason to join the waitlist. /waitlist/leave is deliberately not
   // redirected: an emailed leave link must work whether or not the person is logged in.
   if (await getSessionUser()) redirect('/')
