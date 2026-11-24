@@ -46,6 +46,15 @@ describe('invites: sign-up with a code (integration)', () => {
     expect(result.status).toBe('created')
   })
 
+  it('stores the email normalized when the invited email is submitted in mixed case', async () => {
+    const code = await invite('itest-invite-g@example.com')
+    const result = await signUpWithInvite({ ...base, username: 'itestinviteg', email: 'ITEST-Invite-G@Example.com', code })
+    expect(result.status).toBe('created')
+    const { rows } = await pool.query("SELECT email FROM users WHERE username = 'itestinviteg'")
+    expect(rows[0].email).toBe('itest-invite-g@example.com')
+    expect(await usedAt('itest-invite-g@example.com')).toBeInstanceOf(Date)
+  })
+
   it('fails the second redemption of the same code', async () => {
     const code = await invite('itest-invite-c@example.com')
     await signUpWithInvite({ ...base, username: 'itestinvitec1', email: 'itest-invite-c@example.com', code })
