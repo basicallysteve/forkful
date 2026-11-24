@@ -15,7 +15,7 @@ export default function MarketingFooter() {
           <Link href="/privacy" className={styles.link}>Privacy Policy</Link>
           <Link href="/terms" className={styles.link}>Terms</Link>
           <Link href="/login" className={styles.link}>Log in</Link>
-          <SignupCta className={styles.link} openLabel="Sign up" />
+          <SignupCta className={styles.link} openLabel="Create a free account" />
         </nav>
       </div>
     </footer>

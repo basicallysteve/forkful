@@ -17,7 +17,7 @@ export default function SignupWall() {
   const inviteOnly = useInviteOnly()
 
   return (
-    <section className="signup-wall" aria-label={inviteOnly ? 'Join the waitlist to see the full recipe' : 'Sign up to see the full recipe'}>
+    <section className="signup-wall" aria-label={inviteOnly ? 'Join the waitlist to see the full recipe' : 'Create a free account to see the full recipe'}>
       <div className="signup-wall-inner">
         <h3 className="signup-wall-heading">
           {inviteOnly ? 'Join the waitlist to see the full recipe' : 'Create a free account to see the full recipe'}
@@ -34,7 +34,7 @@ export default function SignupWall() {
             </Link>
           ) : (
             <Link href={`/create-account?callbackUrl=${callbackUrl}`} className="primary-button signup-wall-cta">
-              Sign up free
+              Create a free account
             </Link>
           )}
           <Link href={`/login?callbackUrl=${callbackUrl}`} className="ghost-button signup-wall-login">
