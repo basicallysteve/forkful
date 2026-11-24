@@ -135,11 +135,11 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
   }
 
   return (
-    <div className="admin-waitlist">
+    <div className="admin-reports">
       <Toast ref={toast} />
-      <header className="admin-waitlist-header">
-        <h1 className="admin-waitlist-title">Waitlist</h1>
-        {rows && <span className="admin-waitlist-count">{rows.length}</span>}
+      <header className="admin-reports-header">
+        <h1 className="admin-reports-title">Waitlist</h1>
+        {rows && <span className="admin-reports-count">{rows.length}</span>}
       </header>
 
       <form className="admin-waitlist-invite" onSubmit={inviteEmail} noValidate>
@@ -182,7 +182,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           {[0, 1, 2].map((i) => (
             <li key={i} className="admin-waitlist-row" data-testid="waitlist-skeleton">
               <Skeleton width="60%" height="1rem" />
-              <Skeleton width="35%" height="0.8rem" className="admin-waitlist-skeleton-sub" />
+              <Skeleton width="35%" height="0.8rem" style={{ marginTop: 8 }} />
             </li>
           ))}
         </ul>
