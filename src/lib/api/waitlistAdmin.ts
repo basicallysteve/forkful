@@ -13,7 +13,7 @@ export type WaitlistAdminRow = {
 }
 
 export type InviteResult =
-  | { status: 'created'; inviteId: number; email: string; code: string }
+  | { status: 'created'; inviteId: number; email: string; code: string; emailSent?: boolean }
   | { status: 'already-invited' }
 
 const FALLBACK = 'Something went wrong. Please try again.'
