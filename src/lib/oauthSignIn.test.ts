@@ -145,3 +145,35 @@ describe('resolveOAuthSignIn: existing account', () => {
     expect(mockCaptureError).toHaveBeenCalled()
   })
 })
+
+describe('resolveOAuthSignIn: provider email verification', () => {
+  beforeEach(() => {
+    mockFindExisting.mockResolvedValue(null)
+    mockEmailHasInvite.mockResolvedValue(true)
+    mockFindOrCreate.mockResolvedValue(9)
+    mockJoinWaitlist.mockResolvedValue({ created: true })
+  })
+
+  it('denies an unverified Google email: no lookup, account, link or waitlist entry', async () => {
+    expect(await resolveOAuthSignIn({ ...google, emailVerified: false })).toBe(false)
+    expect(mockEmailHasInvite).not.toHaveBeenCalled()
+    expect(mockFindOrCreate).not.toHaveBeenCalled()
+    expect(mockJoinWaitlist).not.toHaveBeenCalled()
+  })
+
+  it('denies an unverified email even when it would match an existing account', async () => {
+    mockFindExisting.mockResolvedValue({ userId: 4, email: 'jane@example.com', dateDeleted: null })
+    mockHasAccess.mockResolvedValue(true)
+    expect(await resolveOAuthSignIn({ ...google, emailVerified: false })).toBe(false)
+    expect(mockFindOrCreate).not.toHaveBeenCalled()
+  })
+
+  it('denies Apple\'s string "false"', async () => {
+    expect(await resolveOAuthSignIn({ ...google, provider: 'apple', emailVerified: 'false' })).toBe(false)
+    expect(mockFindOrCreate).not.toHaveBeenCalled()
+  })
+
+  it.each([true, 'true', undefined, null])('treats emailVerified=%s as verified', async (emailVerified) => {
+    expect(await resolveOAuthSignIn({ ...google, emailVerified })).toBe(true)
+  })
+})
