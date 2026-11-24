@@ -19,6 +19,7 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 beforeEach(() => {
+  vi.mocked(signIn).mockReset()
   vi.mocked(apiSignUp).mockResolvedValue({ id: '1', username: 'testuser', email: 'test@example.com' })
 })
 
@@ -555,8 +556,8 @@ describe('CreateAccount Page', () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount email="invited@example.com" code="used" />)
       await fillAndSubmit(user)
-      const banner = await screen.findByText(INVALID_INVITE)
-      expect(banner.closest('[role="alert"]')).not.toBeNull()
+      const banner = await screen.findByRole('alert')
+      expect(banner).toHaveTextContent(INVALID_INVITE)
       expect(screen.getByRole('link', { name: /join the waitlist/i })).toHaveAttribute('href', '/waitlist')
       const form = screen.getByRole('button', { name: /create account/i }).closest('form')!
       expect(banner.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
