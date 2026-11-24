@@ -208,15 +208,22 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                 <div className="admin-waitlist-actions">
                   {state.confirm ? (
                     <>
-                      <span className="admin-waitlist-confirm-text">
-                        {state.confirm === 'revoke'
-                          ? `Revoke the invite for ${row.email}.`
-                          : `Delete ${row.email} from the waitlist? Their account, if any, is kept.`}
-                      </span>
-                      <button type="button" className="danger-button" disabled={state.busy} onClick={() => confirmAction(row, state.confirm!)}>
+                      <button
+                        type="button"
+                        className="danger-button"
+                        aria-label={`Confirm ${state.confirm} for ${row.email}`}
+                        disabled={state.busy}
+                        onClick={() => confirmAction(row, state.confirm!)}
+                      >
                         Confirm
                       </button>
-                      <button type="button" className="ghost-button" disabled={state.busy} onClick={() => patch(key, {})}>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        aria-label={`Cancel ${state.confirm} for ${row.email}`}
+                        disabled={state.busy}
+                        onClick={() => patch(key, {})}
+                      >
                         Cancel
                       </button>
                     </>

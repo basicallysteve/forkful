@@ -17,7 +17,10 @@
   display: flex;
   gap: 8px;
 
-  .text-input { flex: 1; min-width: 0; }
+  .text-input {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 // Always rendered, with a fixed height, so a message appearing never shifts the layout.
@@ -27,8 +30,13 @@
   font-size: 13px;
   line-height: 18px;
 
-  &.is-error { color: var(--vscode-danger); }
-  &.is-note { color: var(--vscode-muted); }
+  &.is-error {
+    color: var(--vscode-danger);
+  }
+
+  &.is-note {
+    color: var(--vscode-muted);
+  }
 }
 
 .admin-waitlist-banner {
@@ -93,7 +101,10 @@
   font-size: 11px;
   font-weight: 600;
 
-  &.is-invited { border-color: var(--vscode-accent); color: var(--vscode-accent); }
+  &.is-invited {
+    border-color: var(--vscode-accent);
+    color: var(--vscode-accent);
+  }
 }
 
 .admin-waitlist-actions {
@@ -102,13 +113,6 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  max-width: 320px;
-}
-
-.admin-waitlist-confirm-text {
-  flex-basis: 100%;
-  font-size: 13px;
-  color: var(--vscode-text);
 }
 
 @media (max-width: 720px) {
@@ -118,7 +122,6 @@
   }
 
   .admin-waitlist-actions {
-    max-width: none;
     justify-content: flex-start;
   }
 }
