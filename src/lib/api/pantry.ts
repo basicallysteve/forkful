@@ -74,8 +74,9 @@ export async function apiUpdatePantryItem(id: number, data: UpdatePantryItemData
   return parsePantryItem(raw)
 }
 
+// keepalive lets a delete finish even if the page is reloaded or closed while it is in flight.
 export async function apiDeletePantryItem(id: number): Promise<void> {
-  const res = await fetch(`/api/pantry/${id}`, { method: 'DELETE' })
+  const res = await fetch(`/api/pantry/${id}`, { method: 'DELETE', keepalive: true })
   if (!res.ok && res.status !== 204) throw new Error('Failed to delete pantry item')
 }
 
@@ -84,6 +85,7 @@ export async function apiDeletePantryItems(ids: number[]): Promise<number[]> {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),
+    keepalive: true,
   })
   if (!res.ok) throw new Error('Failed to delete pantry items')
   const result = await res.json()

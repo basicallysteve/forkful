@@ -290,6 +290,68 @@ describe('Pantry List Page', () => {
       await waitFor(() => expect(usePantryStore.getState().items).toHaveLength(0))
     })
 
+    describe('leaving the page inside the undo window (#316)', () => {
+      it('sends the pending delete when the page is hidden (reload, close), without waiting for the timer', async () => {
+        await loaded(two())
+        clickDelete('Chicken Breast')
+        expect(apiDeletePantryItem).not.toHaveBeenCalled()
+
+        act(() => { window.dispatchEvent(new Event('pagehide')) })
+
+        expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+        expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
+        // The timer firing later must not send it a second time.
+        await act(async () => { vi.advanceTimersByTime(10000) })
+        expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+      })
+
+      it('sends the pending delete when the Pantry view unmounts (route change)', async () => {
+        const { unmount } = renderWithItems(two())
+        await screen.findAllByText('Chicken Breast')
+        clickDelete('Chicken Breast')
+
+        unmount()
+
+        expect(apiDeletePantryItem).toHaveBeenCalledWith(1)
+        expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+      })
+
+      it('sends one bulk request for a pending bulk delete on pagehide', async () => {
+        await loaded(two())
+        fireEvent.click(screen.getByRole('checkbox', { name: /select all items/i }))
+        fireEvent.click(screen.getByRole('button', { name: /delete \(2\)/i }))
+
+        act(() => { window.dispatchEvent(new Event('pagehide')) })
+
+        expect(apiDeletePantryItems).toHaveBeenCalledTimes(1)
+        expect(apiDeletePantryItems).toHaveBeenCalledWith([1, 2])
+      })
+
+      it('sends nothing on leave after Undo', async () => {
+        const { unmount } = renderWithItems(two())
+        await screen.findAllByText('Chicken Breast')
+        clickDelete('Chicken Breast')
+        fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+
+        act(() => { window.dispatchEvent(new Event('pagehide')) })
+        unmount()
+
+        expect(apiDeletePantryItem).not.toHaveBeenCalled()
+        expect(apiDeletePantryItems).not.toHaveBeenCalled()
+      })
+
+      it('does not resend a delete that already went out when the timer expired', async () => {
+        await loaded(two())
+        clickDelete('Chicken Breast')
+        await act(async () => { vi.advanceTimersByTime(7000) })
+        expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+
+        act(() => { window.dispatchEvent(new Event('pagehide')) })
+
+        expect(apiDeletePantryItem).toHaveBeenCalledTimes(1)
+      })
+    })
+
     it('restores the item and shows the error message when the delete fails', async () => {
       vi.mocked(apiDeletePantryItem).mockRejectedValue(new Error('nope'))
       await loaded(two())
