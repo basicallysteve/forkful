@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { isbot } from 'isbot'
+import { hasAccess } from '@/lib/access'
 import { hasUnlimitedRecipeAccess } from '@/lib/entitlements'
 import { decideMeter } from '@/lib/recipeMeter'
 import { readMeter, signMeter, RECIPE_METER_COOKIE } from '@/lib/recipeMeterCookie'
@@ -86,6 +87,32 @@ function checkProtectedRoute(
   return null
 }
 
+// Account pages behind the invite-only lock (ADR-0032). Public routes (/recipes, /blog, /about,
+// /waitlist, /waitlist/leave, public recipes) are deliberately absent (ADR-0020).
+const LOCKED_ROUTES = ['/pantry', '/profile', '/recipes/new', '/foods', '/log', '/shopping-list', '/welcome', '/admin']
+
+function isLockedRoute(pathname: string): boolean {
+  return LOCKED_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+}
+
+/**
+ * Invite-only lock: a signed-in user without an Invite (and who is not the admin) is sent to
+ * /waitlist. Checked against the database on every request so a revoked Invite takes effect
+ * on the next click. Returns a redirect, or null when allowed or not applicable.
+ */
+async function checkAccessLock(
+  request: NextRequest,
+  pathname: string,
+  hasSessionCookie: boolean,
+): Promise<NextResponse | null> {
+  if (!hasSessionCookie || !isLockedRoute(pathname)) return null
+  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET })
+  const userId = Number(token?.userId)
+  if (!token || !Number.isFinite(userId)) return null
+  if (await hasAccess(userId)) return null
+  return NextResponse.redirect(new URL('/waitlist', request.nextUrl))
+}
+
 /**
  * Recipe View Limit metering (Signup Wall).
  *
@@ -153,6 +180,9 @@ export async function proxy(request: NextRequest) {
 
   const protectedRedirect = checkProtectedRoute(request, pathname, hasSessionCookie)
   if (protectedRedirect) return protectedRedirect
+
+  const lockRedirect = await checkAccessLock(request, pathname, hasSessionCookie)
+  if (lockRedirect) return lockRedirect
 
   const meteredResponse = await meterRecipeView(request, pathname, hasSessionCookie)
   if (meteredResponse) return meteredResponse
