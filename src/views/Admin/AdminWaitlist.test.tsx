@@ -124,7 +124,12 @@ describe('AdminWaitlist', () => {
     await screen.findByText('sam@example.com')
     await userEvent.click(within(rowOf('sam@example.com')).getByRole('button', { name: 'Revoke' }))
     expect(api.apiRevokeInvite).not.toHaveBeenCalled()
-    expect(within(rowOf('sam@example.com')).getByText('Revoke the invite for sam@example.com.')).toBeInTheDocument()
+    const sam = within(rowOf('sam@example.com'))
+    // Buttons only: no confirmation sentence. The accessible names say which action they confirm.
+    expect(sam.queryByText(/Revoke the invite/)).toBeNull()
+    expect(sam.getByRole('button', { name: 'Confirm revoke for sam@example.com' })).toBeInTheDocument()
+    expect(sam.getByRole('button', { name: 'Cancel revoke for sam@example.com' })).toBeInTheDocument()
+    expect(sam.queryByRole('button', { name: 'Revoke' })).toBeNull()
     await userEvent.click(within(rowOf('sam@example.com')).getByRole('button', { name: 'Confirm' }))
     expect(api.apiRevokeInvite).toHaveBeenCalledWith(20)
     await waitFor(() => expect(within(rowOf('sam@example.com')).queryByText('Invited')).toBeNull())
@@ -134,9 +139,10 @@ describe('AdminWaitlist', () => {
     renderPage()
     await screen.findByText('pat@example.com')
     await userEvent.click(within(rowOf('pat@example.com')).getByRole('button', { name: 'Delete' }))
-    expect(
-      within(rowOf('pat@example.com')).getByText('Delete pat@example.com from the waitlist? Their account, if any, is kept.'),
-    ).toBeInTheDocument()
+    const pat = within(rowOf('pat@example.com'))
+    expect(pat.queryByText(/from the waitlist/)).toBeNull()
+    expect(pat.getByRole('button', { name: 'Confirm delete for pat@example.com' })).toBeInTheDocument()
+    expect(pat.getByRole('button', { name: 'Cancel delete for pat@example.com' })).toBeInTheDocument()
     await userEvent.click(within(rowOf('pat@example.com')).getByRole('button', { name: 'Cancel' }))
     expect(api.apiDeleteWaitlistEntry).not.toHaveBeenCalled()
     expect(within(rowOf('pat@example.com')).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
