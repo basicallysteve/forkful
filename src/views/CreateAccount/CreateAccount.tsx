@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -69,6 +69,15 @@ function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
   const [typedCode, setTypedCode] = useState("")
   const [inviteInvalid, setInviteInvalid] = useState(false)
   const [waitlisted, setWaitlisted] = useState(false)
+  const feedbackRef = useRef<HTMLParagraphElement>(null)
+
+  // The submit button sits far below the banner: bring the result into view and move focus
+  // to it (instant scroll, so reduced-motion users get no animation).
+  useEffect(() => {
+    if (!inviteInvalid && !waitlisted) return
+    feedbackRef.current?.scrollIntoView({ block: 'center' })
+    feedbackRef.current?.focus()
+  }, [inviteInvalid, waitlisted])
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
@@ -150,7 +159,7 @@ function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
     return (
       <div className="create-account">
         <div className="account-content">
-          <p className="account-helper" role="status">
+          <p ref={feedbackRef} tabIndex={-1} className="account-helper" role="status">
             You&apos;re on the list. We&apos;ll email you when your invite is ready.
           </p>
         </div>
@@ -180,7 +189,7 @@ function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
 
           <div className="panel-content">
             {inviteInvalid && (
-              <p className="invite-banner" role="alert">
+              <p ref={feedbackRef} tabIndex={-1} className="invite-banner" role="alert">
                 {INVALID_INVITE_LEAD}
                 <Link href="/waitlist">join the waitlist again</Link>.
               </p>
