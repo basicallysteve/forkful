@@ -8,6 +8,8 @@ describe('SignupWall (ADR-0020 wording, ADR-0032 switch)', () => {
     render(<InviteOnlyProvider value={true}><SignupWall /></InviteOnlyProvider>)
     expect(screen.getByRole('heading', { name: 'Join the waitlist to see the full recipe' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Join the waitlist' })).toHaveAttribute('href', '/waitlist')
+    expect(screen.getByRole('region', { name: 'Join the waitlist to see the full recipe' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Create a free account' })).not.toBeInTheDocument()
   })
 
   it('invites to create a free account while invite-only is off', () => {
