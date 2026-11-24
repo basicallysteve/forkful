@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:usda": "SEED_ALLOW_PRODUCTION=0 bun --env-file .env.local scripts/seed-usda.ts --dir ./data/usda",
+    "seed:dev-invite": "bun --env-file .env.local scripts/seed-dev-invite.ts",
     "seed:usda:prod": "SEED_ALLOW_PRODUCTION=1 bun --env-file .env.production scripts/seed-usda.ts --dir ./data/usda",
     "seed:usda-branded": "SEED_ALLOW_PRODUCTION=0 bun --env-file .env.local scripts/seed-usda-branded.ts --dir ./data/usda",
     "seed:usda-branded:prod": "SEED_ALLOW_PRODUCTION=1 bun --env-file .env.production scripts/seed-usda-branded.ts --dir ./data/usda",

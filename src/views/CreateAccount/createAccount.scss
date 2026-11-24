@@ -87,6 +87,22 @@
     gap: 12px;
   }
 
+  .invite-banner {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-danger);
+    border-radius: 6px;
+    color: var(--vscode-danger);
+    font-size: 13px;
+    line-height: 1.5;
+
+    a {
+      color: inherit;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+  }
+
   .account-form {
     display: flex;
     flex-direction: column;

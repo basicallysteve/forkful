@@ -41,18 +41,21 @@ export async function hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, saltRounds)
 }
 
-export async function signUp(user: { username: string; email: string; password: string; cuisinePreferences: string[]; dietaryRestrictions: string[]; marketingEmailOptIn?: boolean }): Promise<User> {
+/** `db` or a transaction handle, so sign-up can run inside a caller's transaction. */
+export type DbExecutor = Pick<typeof db, 'select' | 'insert'>
+
+export async function signUp(user: { username: string; email: string; password: string; cuisinePreferences: string[]; dietaryRestrictions: string[]; marketingEmailOptIn?: boolean }, executor: DbExecutor = db): Promise<User> {
     if (!USERNAME_REGEX.test(user.username)) throw new Error('Invalid username format')
 
-    const [existingByUsername] = await db.select().from(users).where(eq(users.username, user.username))
+    const [existingByUsername] = await executor.select().from(users).where(eq(users.username, user.username))
     if (existingByUsername) throw new Error('Username already in use')
 
-    const [existingByEmail] = await db.select().from(users).where(eq(users.email, user.email))
+    const [existingByEmail] = await executor.select().from(users).where(eq(users.email, user.email))
     if (existingByEmail) throw new Error('Email already in use')
 
     const hashedPassword = await hashPassword(user.password)
     const now = new Date()
-    const [data] = await db.insert(users).values({
+    const [data] = await executor.insert(users).values({
         username: user.username,
         email: user.email,
         password: hashedPassword,

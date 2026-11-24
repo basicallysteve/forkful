@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { apiSignUp } from "@/lib/api/users"
-import { getCallbackUrl } from "@/utils/callbackUrl"
+import { signIn } from "next-auth/react"
+import { apiSignUp, InviteInvalidError } from "@/lib/api/users"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
@@ -52,10 +52,32 @@ function isPasswordValid(validation: PasswordValidation): boolean {
   )
 }
 
-function CreateAccount() {
+const INVALID_INVITE_LEAD = "This invite link isn't valid or has already been used. If you think this is a mistake, "
+
+type Props = {
+  /** From the Invite Email link: prefilled and read-only. */
+  email?: string
+  /** From the Invite Email link, hidden. Without it a code field is shown. */
+  code?: string
+}
+
+function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
   const router = useRouter()
   const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
+  const [usernameTouched, setUsernameTouched] = useState(false)
+  const [email, setEmail] = useState(linkEmail ?? "")
+  const [typedCode, setTypedCode] = useState("")
+  const [inviteInvalid, setInviteInvalid] = useState(false)
+  const [waitlisted, setWaitlisted] = useState(false)
+  const feedbackRef = useRef<HTMLParagraphElement>(null)
+
+  // The submit button sits far below the banner: bring the result into view and move focus
+  // to it (instant scroll, so reduced-motion users get no animation).
+  useEffect(() => {
+    if (!inviteInvalid && !waitlisted) return
+    feedbackRef.current?.scrollIntoView({ block: 'center' })
+    feedbackRef.current?.focus()
+  }, [inviteInvalid, waitlisted])
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>([])
@@ -72,6 +94,9 @@ function CreateAccount() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email)
   }, [email])
+
+  const usernameInvalid = username.trim().length < 3
+  const showUsernameError = usernameTouched && usernameInvalid
 
   const canSubmit = useMemo(() => {
     return (
@@ -101,28 +126,45 @@ function CreateAccount() {
     e.preventDefault()
     if (!canSubmit) return
     setSubmitError(null)
+    setInviteInvalid(false)
     setIsSubmitting(true)
     try {
-      await apiSignUp({
+      const code = (linkCode ?? typedCode).trim()
+      const result = await apiSignUp({
         username,
         email,
         password,
         cuisinePreferences,
         dietaryRestrictions,
         marketingEmailOptIn,
+        ...(code ? { code } : {}),
       })
-    
-      // Forward the return target through the login step so the new user lands
-      // back on the recipe they were viewing after signing in.
-      const callbackUrl = getCallbackUrl()
-      router.push(callbackUrl !== '/'
-        ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
-        : '/login')
+      // An email without an Invite gets the Waitlist answer; it never says whether it was invited.
+      if ('waitlisted' in result) {
+        setWaitlisted(true)
+        return
+      }
+      const signInResult = await signIn('credentials', { username: username.trim(), password, redirect: false })
+      router.push(signInResult?.error ? '/login' : '/welcome')
+      router.refresh()
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Registration failed')
+      if (error instanceof InviteInvalidError) setInviteInvalid(true)
+      else setSubmitError(error instanceof Error ? error.message : 'Registration failed')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (waitlisted) {
+    return (
+      <div className="create-account">
+        <div className="account-content">
+          <p ref={feedbackRef} tabIndex={-1} className="account-helper" role="status">
+            You&apos;re on the list. We&apos;ll email you when your invite is ready.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -146,18 +188,30 @@ function CreateAccount() {
           </div>
 
           <div className="panel-content">
+            {inviteInvalid && (
+              <p ref={feedbackRef} tabIndex={-1} className="invite-banner" role="alert">
+                {INVALID_INVITE_LEAD}
+                <Link href="/waitlist">join the waitlist again</Link>.
+              </p>
+            )}
             <form className="account-form" onSubmit={handleSubmit}>
               <div className="form-grid">
-                <label className="form-field">
+                <label className={`form-field ${showUsernameError ? 'has-error' : ''}`}>
                   <span className="field-label">Username</span>
                   <InputText
+                    className={showUsernameError ? 'input-error' : undefined}
                     type="text"
                     value={username}
                     placeholder="Choose a username"
                     onChange={(e) => setUsername(e.target.value)}
+                    onBlur={() => setUsernameTouched(true)}
+                    aria-invalid={showUsernameError}
                     aria-describedby="username-hint"
                     autoComplete="username"
                   />
+                  {showUsernameError && (
+                    <span className="field-error" role="alert">Username must be at least 3 characters.</span>
+                  )}
                   <span id="username-hint" className="field-hint">
                     3–30 characters, letters, numbers, hyphens and underscores only.
                   </span>
@@ -171,6 +225,7 @@ function CreateAccount() {
                     value={email}
                     placeholder="you@example.com"
                     onChange={(e) => setEmail(e.target.value)}
+                    readOnly={!!linkEmail}
                     aria-invalid={email.length > 0 && !isValidEmail}
                     aria-describedby={email.length > 0 && !isValidEmail ? "email-error" : "email-hint"}
                     autoComplete="email"
@@ -185,6 +240,20 @@ function CreateAccount() {
                     </span>
                   )}
                 </label>
+
+                {!linkCode && (
+                  <label className="form-field">
+                    <span className="field-label">Invite code</span>
+                    <InputText
+                      type="text"
+                      value={typedCode}
+                      placeholder="Paste your invite code"
+                      onChange={(e) => setTypedCode(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <span className="field-hint">It's in your invite email.</span>
+                  </label>
+                )}
 
                 <label className={`form-field ${password.length > 0 && !passwordIsValid ? 'has-error' : ''}`}>
                   <span className="field-label">Password</span>

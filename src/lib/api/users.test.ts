@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences, apiUpdateNutritionGoal } from './users'
+import { InviteInvalidError, apiSignUp, apiLogout, apiUpdatePreferences, apiUpdateEmail, apiUpdatePassword, apiUploadAvatar, apiDeleteAvatar, apiUpdateShoppingPreferences, apiUpdateNutritionGoal } from './users'
 
 const mockUser = {
   id: '1',
@@ -31,6 +31,29 @@ describe('apiSignUp', () => {
       '/api/users',
       expect.objectContaining({ method: 'POST' })
     )
+  })
+
+  it('sends the invite code with the sign-up data', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => mockUser } as Response)
+    await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [], code: 'abc' })
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string)
+    expect(body.code).toBe('abc')
+  })
+
+  it('returns { waitlisted: true } when the server answers like the waitlist', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as Response)
+    const result = await apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [] })
+    expect(result).toEqual({ waitlisted: true })
+  })
+
+  it('throws InviteInvalidError when the server reports an invalid invite', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Invite is not valid', code: 'invalid_invite' }),
+    } as Response)
+    await expect(
+      apiSignUp({ username: 'testuser', email: 'test@example.com', password: 'StrongPass1!', cuisinePreferences: [], dietaryRestrictions: [], code: 'bad' })
+    ).rejects.toBeInstanceOf(InviteInvalidError)
   })
 
   it('throws with server error message on non-ok response', async () => {

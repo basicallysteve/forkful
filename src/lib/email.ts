@@ -139,6 +139,7 @@ export async function sendReviewReportSummaryEmail({ to, reportCount, reports, a
   })
 }
 
+// Unused during the waitlist period (the waitlist notification replaces it); kept for the move to the full application.
 export async function sendUserAccountCreationEmail(username: string): Promise<void> {
 
   await deliver('new-user-notification', {
