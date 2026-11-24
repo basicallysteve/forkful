@@ -53,6 +53,22 @@ describe('proxy access lock (ADR-0032)', () => {
     expect(mockHasAccess).not.toHaveBeenCalled()
   })
 
+  it('reads the __Secure- session cookie used over https (previews and production)', async () => {
+    mockHasAccess.mockResolvedValue(false)
+    const secureReq = new NextRequest('https://example.com/pantry', {
+      headers: { cookie: '__Secure-authjs.session-token=abc' },
+    })
+    const res = await proxy(secureReq)
+    expect(mockGetToken).toHaveBeenCalledWith(expect.objectContaining({ secureCookie: true }))
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/waitlist')
+  })
+
+  it('reads the plain session cookie over http', async () => {
+    mockHasAccess.mockResolvedValue(true)
+    await proxy(req('/pantry'))
+    expect(mockGetToken).toHaveBeenCalledWith(expect.objectContaining({ secureCookie: false }))
+  })
+
   it('still sends signed-out visitors on protected routes to /login without a DB check', async () => {
     const res = await proxy(req('/pantry', false))
     expect(new URL(res.headers.get('location')!).pathname).toBe('/login')
