@@ -40,8 +40,15 @@ describe('isInviteOnly (the one reader of the invite-only-access flag, #374)', (
     expect(flagFn).toHaveBeenCalledWith(request)
   })
 
-  describe('INVITE_ONLY_ACCESS override (local dev and per-environment)', () => {
-    it('"false" opens sign-up without asking the flag', async () => {
+  it('treats a flag value that is not exactly false as waitlist mode', async () => {
+    flagFn.mockResolvedValue(undefined)
+    expect(await isInviteOnly()).toBe(true)
+    flagFn.mockResolvedValue('false')
+    expect(await isInviteOnly()).toBe(true)
+  })
+
+  describe('INVITE_ONLY_ACCESS override (local dev and Preview), fails closed', () => {
+    it('only the exact string "false" opens sign-up, without asking the flag', async () => {
       process.env.INVITE_ONLY_ACCESS = 'false'
       expect(await isInviteOnly()).toBe(false)
       expect(flagFn).not.toHaveBeenCalled()
@@ -53,10 +60,34 @@ describe('isInviteOnly (the one reader of the invite-only-access flag, #374)', (
       expect(flagFn).not.toHaveBeenCalled()
     })
 
-    it('ignores any other value and uses the flag', async () => {
-      process.env.INVITE_ONLY_ACCESS = 'maybe'
+    it.each(['FALSE', '0', 'off', ' false', 'maybe'])('%j is set but not "false": waitlist mode, flag not asked', async (value) => {
+      process.env.INVITE_ONLY_ACCESS = value
+      flagFn.mockResolvedValue(false)
+      expect(await isInviteOnly()).toBe(true)
+      expect(flagFn).not.toHaveBeenCalled()
+    })
+
+    it.each([undefined, ''])('%j (unset or empty) falls through to the flag', async (value) => {
+      if (value === undefined) delete process.env.INVITE_ONLY_ACCESS
+      else process.env.INVITE_ONLY_ACCESS = value
       flagFn.mockResolvedValue(false)
       expect(await isInviteOnly()).toBe(false)
+    })
+
+    it('is ignored in production, which reads only the Vercel flag', async () => {
+      vi.stubEnv('VERCEL_ENV', 'production')
+      process.env.INVITE_ONLY_ACCESS = 'false'
+      flagFn.mockResolvedValue(true)
+      expect(await isInviteOnly()).toBe(true)
+      expect(flagFn).toHaveBeenCalled()
+      vi.unstubAllEnvs()
+    })
+
+    it('still applies on Preview', async () => {
+      vi.stubEnv('VERCEL_ENV', 'preview')
+      process.env.INVITE_ONLY_ACCESS = 'false'
+      expect(await isInviteOnly()).toBe(false)
+      vi.unstubAllEnvs()
     })
   })
 })
