@@ -1,9 +1,4 @@
-/**
- * Guard for the dev-only Invite seed. Unlike seedGuard.ts (which only refuses a URL found in
- * .env.production), this is an allowlist: it runs only when every database variable points at
- * the forkful-dev Supabase project, mirroring .claude/team/dev_drizzle.py. An unknown URL is
- * refused, so a mistyped env file can never write an Invite to production.
- */
+/** Allowlist guard for the dev Invite seed: every database URL must be forkful-dev (as in dev_drizzle.py). */
 const DEV_REF = 'gifu'
 const PROD_REF = 'zhjf'
 const DB_VARS = ['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL'] as const

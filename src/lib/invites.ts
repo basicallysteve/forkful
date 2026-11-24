@@ -101,10 +101,10 @@ export type SignUpWithInviteInput = {
 export type SignUpWithInviteResult = { status: 'created'; user: User } | { status: 'invalid-code' }
 
 /**
- * Creates a User from an Invite's single-use code (ADR-0032). A missing invite, a missing,
- * wrong or already-used code all give the same 'invalid-code'. The code is redeemed with one
- * conditional UPDATE in the same transaction as the user insert, so two concurrent requests
- * cannot both succeed and a failed insert (for example a taken username) leaves the code unused.
+ * Creates a User from an Invite's single-use code (ADR-0032). No invite, or a missing, wrong or
+ * used code, all give 'invalid-code'. The code is redeemed by one conditional UPDATE in the
+ * same transaction as the user insert: concurrent requests can't both win, and a failed insert
+ * (taken username) leaves the code unused.
  */
 export async function signUpWithInvite({ code, ...user }: SignUpWithInviteInput): Promise<SignUpWithInviteResult> {
   const invite = await getInviteByEmail(user.email)

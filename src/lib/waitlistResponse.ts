@@ -14,8 +14,6 @@ export async function respondJoinWaitlist(entry: WaitlistRequest): Promise<NextR
   try {
     const { created } = await joinWaitlist(entry)
     if (created) {
-      // after() keeps the function alive until the email is sent, without the visitor's
-      // response waiting on (or revealing) it.
       const notification = {
         email: normalizeEmail(entry.email),
         name: entry.name?.trim() || null,

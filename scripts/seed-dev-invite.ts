@@ -1,13 +1,8 @@
 #!/usr/bin/env bun
 /**
- * Dev only: create an Invite for an email in the forkful-dev database, so the test account
- * has access under the invite-only lock and QA has a fresh Invite Email link to open.
- *
- * Usage: bun seed:dev-invite -- --email someone@example.com
- *
- * Re-runnable: an existing Invite for the email is replaced, so a new link (with a new
- * single-use code) is always printed. Refuses to run unless the database is forkful-dev.
- * The printed link carries the raw code, which exists nowhere else; it is a dev-only secret.
+ * Dev only: create (or replace) an Invite for an email in the forkful-dev database and print
+ * its Invite Email link. Usage: bun seed:dev-invite -- --email someone@example.com
+ * Refuses to run unless every database URL is forkful-dev.
  */
 import { parseArgs } from 'node:util'
 import { assertDevDatabase } from './devInviteSeed'
@@ -21,12 +16,9 @@ if (!values.email) {
 }
 
 // Imported after the guard: '@/db' connects on import.
-const { sql } = await import('drizzle-orm')
-const { db } = await import('@/db')
-const { invites } = await import('@/db/schema')
-const { createInvite } = await import('@/lib/invites')
-const { normalizeEmail } = await import('@/lib/waitlist')
-const { buildInviteLink } = await import('@/lib/inviteLink')
+const [{ sql }, { db }, { invites }, { createInvite }, { normalizeEmail }, { buildInviteLink }] = await Promise.all([
+  import('drizzle-orm'), import('@/db'), import('@/db/schema'), import('@/lib/invites'), import('@/lib/waitlist'), import('@/lib/inviteLink'),
+])
 
 const email = normalizeEmail(values.email)
 await db.delete(invites).where(sql`lower(${invites.email}) = ${email}`)

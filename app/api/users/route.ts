@@ -5,9 +5,8 @@ import { respondJoinWaitlist } from '@/lib/waitlistResponse'
 
 const INVALID_INVITE = "This invite link isn't valid or has already been used."
 
-// Email/password sign-up requires an Invite and its single-use code (ADR-0032). For an email
-// without an Invite this answers exactly like POST /api/waitlist and creates no User, and it
-// does so before looking at the username or password, so nothing else differs.
+// ADR-0032: sign-up needs an Invite code. An email without an Invite gets exactly the
+// POST /api/waitlist response, decided before the username or password are looked at.
 export async function POST(request: Request) {
   let body: {
     username?: unknown; email?: unknown; password?: unknown; code?: unknown
