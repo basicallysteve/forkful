@@ -65,6 +65,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           provider: account.provider,
           providerAccountId: account.providerAccountId,
           email: profile?.email,
+          emailVerified: profile?.email_verified as boolean | string | undefined,
           name: profile?.name ?? null,
           avatarUrl: (profile as { picture?: string } | undefined)?.picture ?? null,
         })
