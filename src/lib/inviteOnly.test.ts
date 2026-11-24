@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const flagFn = vi.fn()
+const { flagFn } = vi.hoisted(() => ({ flagFn: vi.fn() }))
 vi.mock('flags/next', () => ({ flag: () => flagFn }))
 vi.mock('@flags-sdk/vercel', () => ({ vercelAdapter: {} }))
 
