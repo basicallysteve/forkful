@@ -30,3 +30,17 @@ export async function hasAccess(userId: number): Promise<boolean> {
     .limit(1)
   return rows.length > 0
 }
+
+/**
+ * Whether an email has an Invite, for a sign-in that has no `users` row yet (OAuth, #380).
+ * Where an account exists, use `hasAccess` instead. When the Vercel flag (#374) turns the lock
+ * off, this must return true too.
+ */
+export async function emailHasInvite(email: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: invites.id })
+    .from(invites)
+    .where(sql`lower(${invites.email}) = lower(${email})`)
+    .limit(1)
+  return rows.length > 0
+}

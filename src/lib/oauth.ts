@@ -1,5 +1,5 @@
 import 'server-only'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, oauthAccounts } from '@/db/schema'
 
@@ -104,4 +104,29 @@ export async function findOrCreateOAuthUser(profile: OAuthProfile): Promise<numb
 
     return newUser.id
   })
+}
+
+/**
+ * Looks up the account an OAuth sign-in belongs to without creating or changing anything:
+ * by provider link first (Apple omits the email after the first sign-in), else by email
+ * (case-insensitive). Returns null when there is no account.
+ */
+export async function findExistingOAuthUser(
+  profile: { provider: string; providerAccountId: string; email?: string | null },
+): Promise<{ userId: number; email: string; dateDeleted: Date | null } | null> {
+  const [linked] = await db
+    .select({ userId: users.id, email: users.email, dateDeleted: users.dateDeleted })
+    .from(oauthAccounts)
+    .innerJoin(users, eq(users.id, oauthAccounts.userId))
+    .where(and(
+      eq(oauthAccounts.provider, profile.provider),
+      eq(oauthAccounts.providerAccountId, profile.providerAccountId),
+    ))
+  if (linked) return linked
+  if (!profile.email) return null
+  const [byEmail] = await db
+    .select({ userId: users.id, email: users.email, dateDeleted: users.dateDeleted })
+    .from(users)
+    .where(sql`lower(${users.email}) = lower(${profile.email})`)
+  return byEmail ?? null
 }
