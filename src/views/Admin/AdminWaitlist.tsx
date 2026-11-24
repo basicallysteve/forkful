@@ -243,13 +243,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
                 >
                   {state.confirm ? (
                     <>
-                      <button
-                        type="button"
-                        className="danger-button"
-                        aria-label={`Confirm ${state.confirm} for ${row.email}`}
-                        disabled={state.busy}
-                        onClick={() => confirmAction(row, state.confirm!)}
-                      >
+                      <button type="button" className="danger-button" aria-label={`Confirm ${state.confirm} for ${row.email}`} disabled={state.busy} onClick={() => confirmAction(row, state.confirm!)}>
                         Confirm
                       </button>
                       <button
