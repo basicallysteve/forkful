@@ -7,6 +7,16 @@ export type SignUpData = {
   cuisinePreferences: string[]
   dietaryRestrictions: string[]
   marketingEmailOptIn?: boolean
+  /** The single-use code from the Invite Email link. */
+  code?: string
+}
+
+/** The server rejected the invite: bad, used or missing code. The cause is never revealed. */
+export class InviteInvalidError extends Error {
+  constructor() {
+    super('Invite is not valid')
+    this.name = 'InviteInvalidError'
+  }
 }
 
 export type SignUpResult = {
@@ -15,7 +25,11 @@ export type SignUpResult = {
   email: string
 }
 
-export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {
+/**
+ * Creates the account, or returns `{ waitlisted: true }` when the email has no Invite: the
+ * server then answers exactly like the Waitlist form so it never reveals who is invited.
+ */
+export async function apiSignUp(data: SignUpData): Promise<SignUpResult | { waitlisted: true }> {
   const res = await fetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,9 +38,12 @@ export async function apiSignUp(data: SignUpData): Promise<SignUpResult> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
+    if (body.code === 'invalid_invite') throw new InviteInvalidError()
     throw new Error(body.error ?? 'Registration failed')
   }
-  return res.json()
+  const body = await res.json()
+  if (body && body.ok === true && !('id' in body)) return { waitlisted: true }
+  return body
 }
 
 export async function apiLogout(): Promise<void> {
