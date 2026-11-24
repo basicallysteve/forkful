@@ -574,6 +574,33 @@ describe('CreateAccount Page', () => {
       expect(signIn).not.toHaveBeenCalled()
     })
 
+    it('scrolls the invalid-invite banner into view and focuses it after a failed submit', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      vi.mocked(apiSignUp).mockRejectedValue(new InviteInvalidError())
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount email="invited@example.com" code="used" />)
+      expect(scrollIntoView).not.toHaveBeenCalled()
+      expect(document.body).toHaveFocus()
+      await fillAndSubmit(user)
+      const banner = await screen.findByRole('alert')
+      await waitFor(() => expect(banner).toHaveFocus())
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+      expect(screen.getByRole('button', { name: /create account/i })).toBeEnabled()
+    })
+
+    it('scrolls to and focuses the waitlist confirmation', async () => {
+      const scrollIntoView = vi.fn()
+      Element.prototype.scrollIntoView = scrollIntoView
+      vi.mocked(apiSignUp).mockResolvedValue({ waitlisted: true })
+      const user = userEvent.setup()
+      renderWithProviders(<CreateAccount />)
+      await fillAndSubmit(user, 'stranger@example.com')
+      const message = await screen.findByRole('status')
+      await waitFor(() => expect(message).toHaveFocus())
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+    })
+
     it('shows the username error under the field after blur', async () => {
       const user = userEvent.setup()
       renderWithProviders(<CreateAccount />)
