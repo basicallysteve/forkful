@@ -34,6 +34,8 @@ function Login() {
       })
       if (result?.code === 'ACCOUNT_DEACTIVATED') {
         setShowReactivate(true)
+      } else if (result?.code === 'WAITLISTED') {
+        setError("Your account is on the waitlist. We'll email you when your invite is ready.")
       } else if (result?.error) {
         setError('Invalid username or password')
       } else {
