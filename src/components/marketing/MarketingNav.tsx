@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import styles from './MarketingNav.module.scss'
 import ThemedLogo from '../ThemedLogo'
+import SignupCta from '@/components/SignupCta/SignupCta'
+
 export default function MarketingNav() {
   return (
     <header className={styles.nav}>
@@ -12,7 +14,7 @@ export default function MarketingNav() {
         <Link href="/about" className={styles.link}>About</Link>
         <Link href="/blog" className={styles.link}>Blog</Link>
         <Link href="/login" className={styles.linkSecondary}>Log in</Link>
-        <Link href="/waitlist" className={styles.cta}>Join the waitlist</Link>
+        <SignupCta className={styles.cta} openLabel="Get started free" />
       </nav>
     </header>
   )

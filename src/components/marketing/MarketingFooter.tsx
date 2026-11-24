@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import styles from './MarketingFooter.module.scss'
+import SignupCta from '@/components/SignupCta/SignupCta'
 
 export default function MarketingFooter() {
   const year = new Date().getFullYear()
@@ -14,7 +15,7 @@ export default function MarketingFooter() {
           <Link href="/privacy" className={styles.link}>Privacy Policy</Link>
           <Link href="/terms" className={styles.link}>Terms</Link>
           <Link href="/login" className={styles.link}>Log in</Link>
-          <Link href="/waitlist" className={styles.link}>Join the waitlist</Link>
+          <SignupCta className={styles.link} openLabel="Create a free account" />
         </nav>
       </div>
     </footer>

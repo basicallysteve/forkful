@@ -22,6 +22,6 @@ describe('MarketingFooter', () => {
   it('offers "Join the waitlist" linking to /waitlist instead of sign up', () => {
     render(<MarketingFooter />)
     expect(screen.getByRole('link', { name: 'Join the waitlist' })).toHaveAttribute('href', '/waitlist')
-    expect(screen.queryByRole('link', { name: 'Sign up' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Create a free account' })).not.toBeInTheDocument()
   })
 })

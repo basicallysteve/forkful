@@ -729,7 +729,7 @@ describe('Recipe View Page', () => {
       expect(screen.getByText('Join the waitlist to see the full recipe')).toBeInTheDocument()
       expect(screen.queryByText('Create a free account to see the full recipe')).not.toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Join the waitlist' })).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'Sign up free' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Create a free account' })).not.toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument()
     })
 

@@ -8,6 +8,7 @@ import { apiSignUp, InviteInvalidError } from "@/lib/api/users"
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
+import { useInviteOnly } from '@/components/InviteOnlyProvider'
 import './createAccount.scss'
 
 // Common passwords that should be rejected
@@ -63,6 +64,7 @@ type Props = {
 
 function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
   const router = useRouter()
+  const inviteOnly = useInviteOnly()
   const [username, setUsername] = useState("")
   const [usernameTouched, setUsernameTouched] = useState(false)
   const [email, setEmail] = useState(linkEmail ?? "")
@@ -129,7 +131,7 @@ function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
     setInviteInvalid(false)
     setIsSubmitting(true)
     try {
-      const code = (linkCode ?? typedCode).trim()
+      const code = inviteOnly ? (linkCode ?? typedCode).trim() : ''
       const result = await apiSignUp({
         username,
         email,
@@ -241,7 +243,7 @@ function CreateAccount({ email: linkEmail, code: linkCode }: Props = {}) {
                   )}
                 </label>
 
-                {!linkCode && (
+                {inviteOnly && !linkCode && (
                   <label className="form-field">
                     <span className="field-label">Invite code</span>
                     <InputText

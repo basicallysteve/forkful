@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import type { Metadata, Viewport } from 'next'
 import ClientLayout from './ClientLayout'
 import { getSessionUser } from '@/lib/auth'
+import { isInviteOnly } from '@/lib/inviteOnly'
 import { getSiteUrl } from '@/lib/seo'
 import 'primereact/resources/themes/lara-dark-blue/theme.css'
 import 'primereact/resources/primereact.min.css'
@@ -37,6 +38,8 @@ export default async function RootLayout({
   const isLoggedIn = !!session
   const username = session?.username ?? null
   const avatarUrl = session?.avatarUrl ?? null
+  // Decided here, on the server, and handed down as a prop (no client-side flag fetch).
+  const inviteOnly = await isInviteOnly()
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -45,7 +48,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(_){}` }} />
       </head>
       <body>
-        <ClientLayout isLoggedIn={isLoggedIn} username={username} avatarUrl={avatarUrl}>{children}</ClientLayout>
+        <ClientLayout isLoggedIn={isLoggedIn} username={username} avatarUrl={avatarUrl} inviteOnly={inviteOnly}>{children}</ClientLayout>
       </body>
     </html>
   )

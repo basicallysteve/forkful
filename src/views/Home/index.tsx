@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import SignupCta from '@/components/SignupCta/SignupCta'
 import RecipeCard from '@/components/RecipeCard/RecipeCard'
 import type { Recipe } from '@/types/Recipe'
 import type { PantryItem } from '@/types/PantryItem'
@@ -30,7 +31,7 @@ function HeroSection() {
           Discover recipes, track your pantry, and log your meals — all in one place.
         </p>
         <div className={styles.heroCtas}>
-          <Link href="/waitlist" className="primary-button">Join the waitlist</Link>
+          <SignupCta className="primary-button" openLabel="Get started free" />
           <Link href="/login" className={styles.loginLink}>Already have an account? Log in</Link>
         </div>
       </div>

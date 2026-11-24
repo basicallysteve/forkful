@@ -80,7 +80,7 @@ async function checkPasswordExpiryRedirect(
     // A Waitlisted User can't use the app, so a reset would be pointless: skip it and let the
     // access lock send account pages to /waitlist.
     const userId = Number(token.userId)
-    if (Number.isFinite(userId) && !(await hasAccess(userId))) return null
+    if (Number.isFinite(userId) && !(await hasAccess(userId, request))) return null
     return NextResponse.redirect(new URL('/reset-password', request.nextUrl))
   }
 
@@ -126,7 +126,7 @@ async function checkAccessLock(
   const token = await readSessionToken(request)
   const userId = Number(token?.userId)
   if (!token || !Number.isFinite(userId)) return null
-  if (await hasAccess(userId)) return null
+  if (await hasAccess(userId, request)) return null
   return NextResponse.redirect(new URL('/waitlist', request.nextUrl))
 }
 

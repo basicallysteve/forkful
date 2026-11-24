@@ -3,6 +3,7 @@
 import ToolBar from '@/components/ToolBar'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
+import { InviteOnlyProvider } from '@/components/InviteOnlyProvider'
 import { PrimeReactProvider } from 'primereact/api'
 import { SessionProvider } from 'next-auth/react'
 import { Analytics } from "@vercel/analytics/next"
@@ -13,9 +14,11 @@ interface ClientLayoutProps {
   isLoggedIn: boolean
   username: string | null
   avatarUrl?: string | null
+  /** The `invite-only-access` flag, decided server-side in the root layout. */
+  inviteOnly: boolean
 }
 
-export default function ClientLayout({ children, isLoggedIn, username, avatarUrl }: ClientLayoutProps) {
+export default function ClientLayout({ children, isLoggedIn, username, avatarUrl, inviteOnly }: ClientLayoutProps) {
   const isMarketingShell = !isLoggedIn
 
   const menuOptions = [
@@ -49,6 +52,7 @@ export default function ClientLayout({ children, isLoggedIn, username, avatarUrl
 
   if (isMarketingShell) {
     return (
+      <InviteOnlyProvider value={inviteOnly}>
       <SessionProvider session={null}>
         <div className="marketing-shell">
           <MarketingNav />
@@ -58,10 +62,12 @@ export default function ClientLayout({ children, isLoggedIn, username, avatarUrl
           <SpeedInsights />
         </div>
       </SessionProvider>
+      </InviteOnlyProvider>
     )
   }
 
   return (
+     <InviteOnlyProvider value={inviteOnly}>
      <SessionProvider>
       <PrimeReactProvider>
         <div className="app-shell">
@@ -74,5 +80,6 @@ export default function ClientLayout({ children, isLoggedIn, username, avatarUrl
         </div>
       </PrimeReactProvider>
      </SessionProvider>
+     </InviteOnlyProvider>
   )
 }
