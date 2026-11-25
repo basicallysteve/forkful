@@ -91,7 +91,7 @@ describe('AdminSignalSummaryEmail', () => {
 
   it('starts with "Since {time}:" and lists a count per kind present', () => {
     const text = plain(html)
-    expect(text).toMatch(/Since Nov 24, [^:]*:\d\d [^:]*:/)
+    expect(text).toMatch(/Since Nov 24 at [^:]*:\d\d [^:]*:/)
     expect(text).toContain('3 Review Reports')
     expect(text).toContain('1 Feedback Report')
     expect(text).toContain('1 Invite Accepted')

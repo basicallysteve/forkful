@@ -250,7 +250,7 @@ describe('sendAdminSignalEmail', () => {
       to: 'admin@example.com',
       events: [{ kind: 'feedback', createdAt: at }, { kind: 'feedback', createdAt: new Date('2026-11-24T09:05:00Z') }],
     })
-    expect(send.mock.calls[0][0].text).toContain('Since Nov 24, 9:05 AM UTC:')
+    expect(send.mock.calls[0][0].text).toContain('Since Nov 24 at 9:05 AM UTC:')
   })
 
   it('goes through the send guard: nothing is sent outside production', async () => {
