@@ -331,6 +331,49 @@
     padding: 10px 14px;
   }
 
+  // Same look as the log dialog's search-failed row.
+  .foods-load-error {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-left: 3px solid #ef4444;
+    border-radius: 4px;
+    background: color-mix(in srgb, #ef4444 12%, transparent);
+    color: var(--vscode-text);
+    font-size: 14px;
+  }
+
+  .foods-load-retry {
+    border: 1px solid var(--vscode-danger-text);
+    border-radius: 6px;
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    padding: 4px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--vscode-panel-strong);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--vscode-danger-text);
+      outline-offset: 2px;
+    }
+  }
+
+  .foods-loading-text {
+    display: block;
+    margin-top: 6px;
+    color: var(--vscode-muted);
+    font-size: 14px;
+  }
+
   .no-ingredients-text {
     grid-column: 1 / -1;
     margin: 0;
