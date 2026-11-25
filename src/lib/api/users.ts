@@ -1,3 +1,4 @@
+import { apiErrorFor, apiFetch, ensureOk } from './errors'
 import type { RecipeSuggestionFrequency, PantryExpirationFrequency, NutritionGoal } from '@/types/User'
 
 export type SignUpData = {
@@ -27,7 +28,7 @@ export type SignUpResult = {
 
 /** Creates the account, or `{ waitlisted: true }` when the email has no Invite (the Waitlist answer). */
 export async function apiSignUp(data: SignUpData): Promise<SignUpResult | { waitlisted: true }> {
-  const res = await fetch('/api/users', {
+  const res = await apiFetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -36,7 +37,7 @@ export async function apiSignUp(data: SignUpData): Promise<SignUpResult | { wait
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     if (body.code === 'invalid_invite') throw new InviteInvalidError()
-    throw new Error(body.error ?? 'Registration failed')
+    throw apiErrorFor(res.status, body.error ?? 'Registration failed')
   }
   const body = await res.json()
   if (body && body.ok === true && !('id' in body)) return { waitlisted: true }
@@ -44,23 +45,21 @@ export async function apiSignUp(data: SignUpData): Promise<SignUpResult | { wait
 }
 
 export async function apiLogout(): Promise<void> {
-  await fetch('/api/logout', {
+  await apiFetch('/api/logout', {
     method: 'POST',
     credentials: 'same-origin',
   })
 }
 
 async function patchUser(userId: string | number, body: object): Promise<Record<string, unknown>> {
-  const res = await fetch(`/api/users/${userId}`, {
+  const res = await apiFetch(`/api/users/${userId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     credentials: 'same-origin',
   })
+  await ensureOk(res, 'Update failed')
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? 'Update failed')
-  }
   return data as Record<string, unknown>
 }
 
@@ -117,53 +116,41 @@ export async function apiSubmitAccountFeedback(userId: string | number, data: {
   reasons: string[]
   comment?: string
 }): Promise<void> {
-  const res = await fetch(`/api/users/${userId}/feedback`, {
+  const res = await apiFetch(`/api/users/${userId}/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
     credentials: 'same-origin',
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? 'Failed to save feedback')
-  }
+  await ensureOk(res, 'Failed to save feedback')
 }
 
 export async function apiReactivateAccount(username: string, password: string): Promise<void> {
-  const res = await fetch('/api/auth/reactivate', {
+  const res = await apiFetch('/api/auth/reactivate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
     credentials: 'same-origin',
   })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? 'Reactivation failed')
-  }
+  await ensureOk(res, 'Reactivation failed')
 }
 
 export async function apiUploadAvatar(userId: string | number, file: File): Promise<{ url: string }> {
   const formData = new FormData()
   formData.append('file', file)
-  const res = await fetch(`/api/users/${userId}/avatar`, {
+  const res = await apiFetch(`/api/users/${userId}/avatar`, {
     method: 'POST',
     body: formData,
     credentials: 'same-origin',
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error ?? 'Upload failed')
-  }
+  await ensureOk(res, 'Upload failed')
   return res.json()
 }
 
 export async function apiDeleteAvatar(userId: string | number): Promise<void> {
-  const res = await fetch(`/api/users/${userId}/avatar`, {
+  const res = await apiFetch(`/api/users/${userId}/avatar`, {
     method: 'DELETE',
     credentials: 'same-origin',
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error ?? 'Delete failed')
-  }
+  await ensureOk(res, 'Delete failed')
 }

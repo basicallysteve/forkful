@@ -93,10 +93,14 @@ async function serverMessage(res: Response): Promise<string | null> {
 /** Resolves when the response is ok (or its status is in `okStatuses`); otherwise throws an ApiError built from the status and the server's `{error}` message, else `fallback`. */
 export async function ensureOk(res: Response, fallback: string, okStatuses: number[] = []): Promise<void> {
   if (res.ok || okStatuses.includes(res.status)) return
-  const fromServer = await serverMessage(res)
-  if (res.status === 401) throw new UnauthorizedError(fromServer ?? fallback)
-  if (res.status === 403) throw new ForbiddenError(fromServer ?? fallback)
-  throw new ApiError({ status: res.status, kind: kindForStatus(res.status), message: fromServer ?? fallback })
+  throw apiErrorFor(res.status, (await serverMessage(res)) ?? fallback)
+}
+
+/** The ApiError for a failed status, for callers that already read the response body themselves. */
+export function apiErrorFor(status: number, message: string): ApiError {
+  if (status === 401) return new UnauthorizedError(message)
+  if (status === 403) return new ForbiddenError(message)
+  return new ApiError({ status, kind: kindForStatus(status), message })
 }
 
 /** Toast text for a failed action such as "save this recipe", chosen by what went wrong. */

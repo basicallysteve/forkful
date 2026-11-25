@@ -1,3 +1,4 @@
+import { apiFetch, ensureOk } from './errors'
 import type { ScanToBuyOutcome, ScanToBuyResult, ShoppingListItem, ShoppingListItemStatus, ShoppingTripCompletion } from '@/types/ShoppingList'
 
 type RawShoppingListItem = Omit<ShoppingListItem, 'addedDate' | 'expirationDate'> & {
@@ -22,8 +23,8 @@ export type CreateShoppingListItemInput =
   | { sourceType: 'freeform'; name: string; amount: number; unit?: string | null }
 
 export async function apiFetchShoppingListItems(): Promise<ShoppingListItem[]> {
-  const res = await fetch('/api/shopping-list')
-  if (!res.ok) throw new Error('Failed to fetch shopping list items')
+  const res = await apiFetch('/api/shopping-list')
+  await ensureOk(res, 'Failed to fetch shopping list items')
   const raw: RawShoppingListItem[] = await res.json()
   return raw.map(parseShoppingListItem)
 }
@@ -38,25 +39,25 @@ export type PantryGapFillResult = {
 // Pantry-Gap Fill: add only the ingredients a recipe is short on to the active Shopping List. Returns the
 // added/merged lines (parsed to domain objects) and the fully-stocked skip count.
 export async function apiFillPantryGapFromRecipe(recipeShortId: string): Promise<PantryGapFillResult> {
-  const res = await fetch('/api/shopping-list/gap-fill', {
+  const res = await apiFetch('/api/shopping-list/gap-fill', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipeShortId }),
   })
 
-  if (!res.ok) throw new Error('Failed to add missing ingredients to shopping list')
+  await ensureOk(res, 'Failed to add missing ingredients to shopping list')
   const raw: { items: RawShoppingListItem[]; skippedFullyStocked: number } = await res.json()
   return { items: raw.items.map(parseShoppingListItem), skippedFullyStocked: raw.skippedFullyStocked }
 }
 
 export async function apiCreateShoppingListItem(input: CreateShoppingListItemInput): Promise<ShoppingListItem> {
-  const res = await fetch('/api/shopping-list', {
+  const res = await apiFetch('/api/shopping-list', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
 
-  if (!res.ok) throw new Error('Failed to create shopping list item')
+  await ensureOk(res, 'Failed to create shopping list item')
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
 }
@@ -67,20 +68,20 @@ export async function apiCreateShoppingListItem(input: CreateShoppingListItemInp
 // bought), or 'impulse' (a fresh bought Product line for an off-list scan). The outcome/result types are
 // shared via @/types/ShoppingList (as ShoppingTripCompletion is), so the layers can't drift.
 export async function apiScanToBuyShoppingListItem(productId: number): Promise<ScanToBuyResult> {
-  const res = await fetch('/api/shopping-list/scan', {
+  const res = await apiFetch('/api/shopping-list/scan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId }),
   })
 
-  if (!res.ok) throw new Error('Failed to scan shopping list item')
+  await ensureOk(res, 'Failed to scan shopping list item')
   const raw: { item: RawShoppingListItem; outcome: ScanToBuyOutcome } = await res.json()
   return { item: parseShoppingListItem(raw.item), outcome: raw.outcome }
 }
 
 export async function apiDeleteShoppingListItem(id: number): Promise<void> {
-  const res = await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
-  if (!res.ok && res.status !== 204) throw new Error('Failed to delete shopping list item')
+  const res = await apiFetch(`/api/shopping-list/${id}`, { method: 'DELETE' })
+  await ensureOk(res, 'Failed to delete shopping list item', [204])
 }
 
 // Persists a status change. Resolves on success and throws on failure — the caller keeps its own
@@ -89,13 +90,13 @@ export async function apiUpdateShoppingListItemStatus(
   id: number,
   status: ShoppingListItemStatus,
 ): Promise<void> {
-  const res = await fetch(`/api/shopping-list/${id}`, {
+  const res = await apiFetch(`/api/shopping-list/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
   })
 
-  if (!res.ok) throw new Error('Failed to update shopping list item status')
+  await ensureOk(res, 'Failed to update shopping list item status')
 }
 
 // The optional check-off details: the Line Price total and the expiration date. Each field is
@@ -116,13 +117,13 @@ export async function apiUpdateShoppingListItemDetails(
   // Serialize the Date to an ISO string; null clears it, undefined leaves it unchanged.
   if ('expirationDate' in input) body.expirationDate = input.expirationDate ? input.expirationDate.toISOString() : null
 
-  const res = await fetch(`/api/shopping-list/${id}`, {
+  const res = await apiFetch(`/api/shopping-list/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) throw new Error('Failed to update shopping list item details')
+  await ensureOk(res, 'Failed to update shopping list item details')
   const raw: RawShoppingListItem = await res.json()
   return parseShoppingListItem(raw)
 }
@@ -148,13 +149,13 @@ export async function apiSplitShoppingListItem(
   }
   if ('linePrice' in input) body.linePrice = input.linePrice
 
-  const res = await fetch(`/api/shopping-list/${id}/split`, {
+  const res = await apiFetch(`/api/shopping-list/${id}/split`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 
-  if (!res.ok) throw new Error('Failed to split shopping list item')
+  await ensureOk(res, 'Failed to split shopping list item')
   const raw: RawShoppingListItem[] = await res.json()
   return raw.map(parseShoppingListItem)
 }
@@ -163,13 +164,13 @@ export async function apiSplitShoppingListItem(
 // and keep or drop the still-unbought lines as one batch. `keepUnbought` answers the leftover prompt.
 // Returns the ShoppingTripCompletion the server reports, with its items parsed to domain objects.
 export async function apiCompleteShoppingTrip(keepUnbought: boolean): Promise<ShoppingTripCompletion> {
-  const res = await fetch('/api/shopping-list/complete', {
+  const res = await apiFetch('/api/shopping-list/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keepUnbought }),
   })
 
-  if (!res.ok) throw new Error('Failed to complete shopping trip')
+  await ensureOk(res, 'Failed to complete shopping trip')
   const raw: Omit<ShoppingTripCompletion, 'items'> & { items: RawShoppingListItem[] } = await res.json()
   return { ...raw, items: raw.items.map(parseShoppingListItem) }
 }
