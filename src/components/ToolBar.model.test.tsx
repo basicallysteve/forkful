@@ -26,7 +26,7 @@ describe('ToolBar — MegaMenu model urls', () => {
     )
     expect(model[0].url).toBe('/recipes')
     expect(model[1].url).toBeUndefined()
-    const child = (model[1].items as MenuItem[][][])[0][0].items![0]
+    const child = (model[1].items as MenuItem[][])[0][0].items![0] as MenuItem
     expect(child.url).toBe('/pantry')
   })
 })
