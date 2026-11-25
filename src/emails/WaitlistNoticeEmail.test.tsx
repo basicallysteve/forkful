@@ -15,7 +15,7 @@ describe('WaitlistNoticeEmail', () => {
   it('uses the approved wording with the username filled in', () => {
     expect(text()).toContain(
       'Hi pat, EatForkful is invite-only for now. Your account is on the waitlist and your recipes, pantry and food log are safe. ' +
-        "We'll email you when your invite is ready. If you'd rather not wait, you can leave the waitlist:",
+        "We'll email you when your invite is ready. If you'd rather not wait, you can leave the waitlist and deactivate your account:",
     )
   })
 

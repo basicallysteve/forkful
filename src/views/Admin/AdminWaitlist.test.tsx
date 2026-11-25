@@ -30,8 +30,8 @@ function row(over: Partial<WaitlistAdminRow>): WaitlistAdminRow {
 const pending = row({ entryId: 1, email: 'pat@example.com', marketingEmailOptIn: true })
 const invited = row({ entryId: 2, email: 'sam@example.com', invited: true, inviteId: 20, hasAccount: true })
 
-function renderPage(emailsEnabled = true) {
-  return render(<AdminWaitlist emailsEnabled={emailsEnabled} />)
+function renderPage(emailsEnabled = true, inviteOnly = true) {
+  return render(<AdminWaitlist emailsEnabled={emailsEnabled} inviteOnly={inviteOnly} />)
 }
 
 function rowOf(email: string) {
@@ -121,6 +121,20 @@ describe('AdminWaitlist', () => {
 
   describe('waitlist notice', () => {
     const sendButton = () => screen.getByRole('button', { name: 'Send waitlist notice' })
+
+    it('disables the button and explains why when invite-only is off', async () => {
+      renderPage(true, false)
+      expect(sendButton()).toBeDisabled()
+      expect(screen.getByText(/invite-only is off/i)).toBeInTheDocument()
+      await userEvent.setup().click(sendButton())
+      expect(api.apiSendWaitlistNotice).not.toHaveBeenCalled()
+    })
+
+    it('keeps the button enabled when invite-only is on', () => {
+      renderPage(true, true)
+      expect(sendButton()).toBeEnabled()
+      expect(screen.queryByText(/invite-only is off/i)).not.toBeInTheDocument()
+    })
 
     it('sends the notice and reports how many accounts it went to', async () => {
       api.apiSendWaitlistNotice.mockResolvedValue({ sent: 3, failed: 0 })

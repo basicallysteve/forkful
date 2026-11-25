@@ -11,7 +11,7 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/waitlistNotice', () => ({ sendWaitlistNotices: () => mockSendNotices() }))
 vi.mock('@/lib/logger', () => ({ captureError: (...args: unknown[]) => mockCapture(...args) }))
 
-import { POST } from './route'
+import { POST, maxDuration } from './route'
 
 beforeEach(() => {
   mockSession.mockReset().mockResolvedValue({ userId: 1 })
@@ -47,5 +47,9 @@ describe('POST /api/admin/waitlist/notice', () => {
     expect(res.status).toBe(500)
     expect(JSON.stringify(await res.json())).not.toContain('pat@example.com')
     expect(mockCapture).toHaveBeenCalledWith(expect.any(Error), { area: 'waitlist' })
+  })
+
+  it('allows up to 60 seconds, since it sends the emails one by one', () => {
+    expect(maxDuration).toBe(60)
   })
 })

@@ -55,4 +55,23 @@ describe('WaitlistLeaveConfirm', () => {
     expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove me from the waitlist' })).toBeInTheDocument()
   })
+
+  describe('when leaving also deactivates the account', () => {
+    it('states what will happen and changes nothing until the button is pressed', () => {
+      render(<WaitlistLeaveConfirm token="tok" deactivates />)
+      expect(fetch).not.toHaveBeenCalled()
+      expect(screen.getByRole('heading', { name: 'Leave the waitlist and deactivate your account?' })).toBeInTheDocument()
+      expect(screen.getByText(/your account will be deactivated/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Remove me from the waitlist' })).not.toBeInTheDocument()
+    })
+
+    it('POSTs the token and then confirms the deactivation', async () => {
+      vi.mocked(fetch).mockImplementation(() => res(200, { ok: true }))
+      const user = userEvent.setup()
+      render(<WaitlistLeaveConfirm token="tok" deactivates />)
+      await user.click(screen.getByRole('button', { name: 'Leave and deactivate my account' }))
+      expect(await screen.findByRole('heading', { name: 'Your account has been deactivated' })).toBeInTheDocument()
+      expect(fetch).toHaveBeenCalledWith('/api/waitlist/leave', expect.objectContaining({ body: JSON.stringify({ token: 'tok' }) }))
+    })
+  })
 })

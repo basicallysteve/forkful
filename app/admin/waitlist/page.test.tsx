@@ -9,6 +9,8 @@ const getSessionUser = vi.hoisted(() => vi.fn())
 const isAdmin = vi.hoisted(() => vi.fn())
 vi.mock('next/navigation', () => ({ redirect }))
 vi.mock('@/lib/auth', () => ({ getSessionUser, isAdmin }))
+const isInviteOnly = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/inviteOnly', () => ({ isInviteOnly }))
 vi.mock('@/views/Admin/AdminWaitlist', () => ({ default: () => null }))
 
 import AdminWaitlistPage from './page'
@@ -17,6 +19,7 @@ beforeEach(() => {
   redirect.mockClear()
   getSessionUser.mockReset()
   isAdmin.mockReset()
+  isInviteOnly.mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -43,5 +46,13 @@ describe('/admin/waitlist page', () => {
     expect(el.props.emailsEnabled).toBe(true)
     vi.stubEnv('VERCEL_ENV', 'preview')
     expect((await AdminWaitlistPage()).props.emailsEnabled).toBe(false)
+  })
+
+  it('passes the invite-only mode to the view', async () => {
+    getSessionUser.mockResolvedValue({ userId: 1 })
+    isAdmin.mockReturnValue(true)
+    expect((await AdminWaitlistPage()).props.inviteOnly).toBe(true)
+    isInviteOnly.mockResolvedValue(false)
+    expect((await AdminWaitlistPage()).props.inviteOnly).toBe(false)
   })
 })
