@@ -131,3 +131,9 @@ describe('adminSignalText (plain-text version)', () => {
     expect(text).toContain(`Since ${formatSignalTime(early)}:`)
   })
 })
+
+describe('formatSignalTime', () => {
+  it('joins the date and time with " at " regardless of the ICU build', () => {
+    expect(formatSignalTime(new Date('2026-11-24T15:42:00Z'))).toBe('Nov 24 at 3:42 PM UTC')
+  })
+})
