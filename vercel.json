@@ -26,7 +26,7 @@
     },
     {
       "path": "/api/cron/admin-events/flush",
-      "schedule": "*/15 * * * *"
+      "schedule": "30 7 * * *"
     },
     {
       "path": "/api/cron/purge-empty-shopping-lists",
