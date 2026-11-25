@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from "react"
+import { Toast } from 'primereact/toast'
 import { useSubmitGuard } from "@/hooks/useSubmitGuard"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -29,6 +30,7 @@ import MarkdownImport from './MarkdownImport'
 import RecipeImporter from './RecipeImporter'
 import './markdownImport.scss'
 import { hasValidQuantities } from './ingredientQuantities'
+import { SAVE_FAILURE_LIFE_MS, SAVE_FAILURE_TITLE, recipeSaveFailureMessage } from './saveFailure'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -307,6 +309,7 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 function Store() {
   // Which create request is in flight (blocks re-entry before React re-renders, e.g. a double-click).
   const { busy: saving, tryStart, reset: resetSaving } = useSubmitGuard<'save' | 'publish'>()
+  const saveToast = useRef<Toast>(null)
   const router = useRouter()
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
@@ -399,6 +402,12 @@ function Store() {
     }
   }
 
+  // A new failure replaces the previous save-error toast; this Toast only holds save errors, so other toasts are untouched.
+  function showSaveFailure(err: unknown) {
+    saveToast.current?.clear()
+    saveToast.current?.show({ severity: 'error', summary: SAVE_FAILURE_TITLE, detail: recipeSaveFailureMessage(err), life: SAVE_FAILURE_LIFE_MS })
+  }
+
   async function handleSaveRecipe() {
     if (!canSave || !tryStart('save')) return
     try {
@@ -408,6 +417,7 @@ function Store() {
       router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist new recipe:', err)
+      showSaveFailure(err)
       resetSaving()
     }
     // On success stay busy: the page is navigating away and a second click must not create again.
@@ -422,6 +432,7 @@ function Store() {
       router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist published recipe:', err)
+      showSaveFailure(err)
       resetSaving()
     }
   }
@@ -537,6 +548,7 @@ function Store() {
   
   return (
     <div className="recipe-store">
+      <Toast ref={saveToast} position="top-right" className="recipe-save-toast" />
       <div className="store-content">
         <header className="store-header">
           <div>
