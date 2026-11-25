@@ -181,7 +181,7 @@ describe('sendWaitlistNoticeEmail', () => {
     expect(payload.to).toBe('pat@example.com')
     expect(payload.subject).toBe("You're on the EatForkful waitlist")
     const props = JSON.stringify(payload.react.props)
-    expect(props).toContain('"username":"pat"')
+    expect(props).toContain('"Hi ","pat"')
     expect(props).toContain('/waitlist/leave?token=')
   })
 
