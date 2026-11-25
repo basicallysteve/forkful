@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, afterAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from 'vitest'
 import { Pool } from 'pg'
 import { sendWaitlistNotices } from './waitlistNotice'
 
@@ -16,11 +16,17 @@ const sentAt = async (name: string) =>
   (await pool.query('SELECT waitlist_notice_sent_at FROM users WHERE username = $1', [`itest-wn-${name}`])).rows[0].waitlist_notice_sent_at as Date | null
 
 describe('sendWaitlistNotices', () => {
+  // The notice email carries a leave token signed with AUTH_SECRET, which CI does not have: without
+  // it every send throws and nothing counts as sent. Use a test secret.
+  beforeAll(() => {
+    vi.stubEnv('AUTH_SECRET', 'itest-secret')
+  })
   afterEach(async () => {
     await pool.query("DELETE FROM invites WHERE email LIKE 'itest-wn-%'")
     await pool.query("DELETE FROM users WHERE username LIKE 'itest-wn-%'")
   })
   afterAll(async () => {
+    vi.unstubAllEnvs()
     await pool.end()
   })
 
