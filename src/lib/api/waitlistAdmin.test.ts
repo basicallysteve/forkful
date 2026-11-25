@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiListWaitlist, apiInvite, apiRevokeInvite, apiDeleteWaitlistEntry } from './waitlistAdmin'
+import { apiListWaitlist, apiInvite, apiRevokeInvite, apiDeleteWaitlistEntry, apiSendWaitlistNotice } from './waitlistAdmin'
 import { ForbiddenError, UnauthorizedError } from './errors'
 
 const fetchMock = vi.fn()
@@ -14,6 +14,20 @@ beforeEach(() => {
 })
 
 describe('waitlist admin client', () => {
+  it('sends the waitlist notice with a POST and returns the counts', async () => {
+    fetchMock.mockResolvedValue(json(200, { sent: 3, failed: 0 }))
+    expect(await apiSendWaitlistNotice()).toEqual({ sent: 3, failed: 0 })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/waitlist/notice')
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST' })
+  })
+
+  it('throws the server message when the notice fails, and the shared error on 403', async () => {
+    fetchMock.mockResolvedValueOnce(json(500, { error: 'Nope' }))
+    await expect(apiSendWaitlistNotice()).rejects.toThrow('Nope')
+    fetchMock.mockResolvedValueOnce(json(403, {}))
+    await expect(apiSendWaitlistNotice()).rejects.toBeInstanceOf(ForbiddenError)
+  })
+
   it('lists entries', async () => {
     fetchMock.mockResolvedValue(json(200, [{ id: 1, email: 'a@example.com' }]))
     expect(await apiListWaitlist()).toEqual([{ id: 1, email: 'a@example.com' }])

@@ -12,7 +12,7 @@ vi.mock('resend', () => ({
 }))
 vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 
-import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail, sendInviteEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendUserAccountCreationEmail, sendWaitlistNotificationEmail, sendInviteEmail, sendWaitlistNoticeEmail } from '@/lib/email'
 import { logInfo } from '@/lib/logger'
 
 describe('email send guard', () => {
@@ -157,5 +157,53 @@ describe('sendInviteEmail', () => {
     expect(logged).toContain('invite')
     expect(logged).not.toContain('pat@example.com')
     expect(logged).not.toContain('RAW_CODE')
+  })
+})
+
+describe('sendWaitlistNoticeEmail', () => {
+  beforeEach(() => {
+    send.mockClear()
+    vi.mocked(logInfo).mockClear()
+    vi.stubEnv('RESEND_API_KEY', 'prod-key')
+    vi.stubEnv('RESEND_SANDBOX_API_KEY', '')
+    vi.stubEnv('AUTH_SECRET', 'test-secret')
+    vi.stubEnv('AUTH_URL', 'https://app.example.com')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('sends the notice to the user in production with a signed leave link in the body', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    await sendWaitlistNoticeEmail({ to: 'pat@example.com', username: 'pat' })
+    expect(send).toHaveBeenCalledTimes(1)
+    const payload = send.mock.calls[0][0]
+    expect(payload.to).toBe('pat@example.com')
+    expect(payload.subject).toBe("You're on the EatForkful waitlist")
+    const props = JSON.stringify(payload.react.props)
+    expect(props).toContain('"username":"pat"')
+    expect(props).toContain('/waitlist/leave?token=')
+  })
+
+  it('suppresses the notice outside production and logs neither address nor username', async () => {
+    vi.stubEnv('VERCEL_ENV', 'preview')
+    await sendWaitlistNoticeEmail({ to: 'pat@example.com', username: 'patsy' })
+    expect(send).not.toHaveBeenCalled()
+    const logged = JSON.stringify(vi.mocked(logInfo).mock.calls)
+    expect(logged).toContain('waitlist-notice')
+    expect(logged).not.toContain('pat@example.com')
+    expect(logged).not.toContain('patsy')
+  })
+
+  it('rejects when Resend resolves an error, without the address in the message', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    send.mockResolvedValueOnce({
+      data: null,
+      error: { name: 'rate_limit_exceeded', message: 'bad to pat@example.com', statusCode: 429 },
+    })
+    const failure = await sendWaitlistNoticeEmail({ to: 'pat@example.com', username: 'pat' }).then(() => null, (e: Error) => e)
+    expect(failure).toBeInstanceOf(Error)
+    expect(failure!.message).toContain('rate_limit_exceeded')
+    expect(failure!.message).not.toContain('pat@example.com')
   })
 })

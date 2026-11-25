@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   apiInvite: vi.fn(),
   apiRevokeInvite: vi.fn(),
   apiDeleteWaitlistEntry: vi.fn(),
+  apiSendWaitlistNotice: vi.fn(),
 }))
 vi.mock('@/lib/api/waitlistAdmin', () => api)
 
@@ -116,6 +117,65 @@ describe('AdminWaitlist', () => {
     await userEvent.click(within(pat()).getByRole('button', { name: 'Invite' }))
     await waitFor(() => expect(within(pat()).getByRole('alert')).toHaveTextContent('Already invited'))
     expect(within(pat()).getByRole('alert').className).toContain('is-error')
+  })
+
+  describe('waitlist notice', () => {
+    const sendButton = () => screen.getByRole('button', { name: 'Send waitlist notice' })
+
+    it('sends the notice and reports how many accounts it went to', async () => {
+      api.apiSendWaitlistNotice.mockResolvedValue({ sent: 3, failed: 0 })
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(api.apiSendWaitlistNotice).toHaveBeenCalledTimes(1)
+      expect(await screen.findByText('Notice sent to 3 accounts')).toBeInTheDocument()
+    })
+
+    it('says Already sent to everyone when nothing was left to send', async () => {
+      api.apiSendWaitlistNotice.mockResolvedValue({ sent: 0, failed: 0 })
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(await screen.findByText('Already sent to everyone')).toBeInTheDocument()
+    })
+
+    it('says the email was not sent when emails are disabled in this environment', async () => {
+      api.apiSendWaitlistNotice.mockResolvedValue({ sent: 2, failed: 0 })
+      renderPage(false)
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(await screen.findByText('Notice recorded for 2 accounts (email not sent in this environment)')).toBeInTheDocument()
+    })
+
+    it('reports failures as an error and keeps the button usable so a click retries them', async () => {
+      api.apiSendWaitlistNotice.mockResolvedValue({ sent: 2, failed: 1 })
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(await screen.findByRole('alert')).toHaveTextContent('Notice sent to 2 accounts, 1 failed. Click again to retry.')
+      expect(sendButton()).toBeEnabled()
+    })
+
+    it('shows the error when the request fails', async () => {
+      api.apiSendWaitlistNotice.mockRejectedValue(new Error('Something went wrong'))
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong')
+      expect(sendButton()).toBeEnabled()
+    })
+
+    it('disables the button while sending so a double click sends once', async () => {
+      let resolve!: (v: { sent: number; failed: number }) => void
+      api.apiSendWaitlistNotice.mockReturnValue(new Promise((r) => { resolve = r }))
+      renderPage()
+      await screen.findByText('pat@example.com')
+      await userEvent.click(sendButton())
+      expect(sendButton()).toBeDisabled()
+      resolve({ sent: 1, failed: 0 })
+      await screen.findByText('Notice sent to 1 account')
+      expect(api.apiSendWaitlistNotice).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('focus', () => {
