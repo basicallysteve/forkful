@@ -129,6 +129,8 @@ export const users = pgTable('users', {
   dateAdded: timestamp('date_added').defaultNow(),
   dateDeleted: timestamp('date_deleted'),
   deactivationWarningEmailSentAt: timestamp('deactivation_warning_email_sent_at'),
+  // When the one-time "you're on the waitlist" notice (#329) went to this User; null = not yet.
+  waitlistNoticeSentAt: timestamp('waitlist_notice_sent_at'),
 });
 
 export const pantryItems = pgTable('pantry_items', {
