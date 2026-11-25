@@ -88,6 +88,46 @@ describe('recipes data layer (integration)', () => {
     expect(fetched!.name).toBe('ITest Pasta')
   })
 
+  it('derives nutritionComplete from the Food rows, not client calories (createRecipe and updateRecipe)', async () => {
+    const sliceFood = await createFood({
+      name: 'ITest Calibrated Slice Food',
+      calories: 100,
+      protein: 1,
+      carbs: 10,
+      fat: 1,
+      fiber: 0,
+      servingSize: 100,
+      servingUnit: 'g',
+      measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 30 }],
+    })
+    try {
+      const created = await createRecipe({
+        name: 'ITest Nutrition Complete',
+        meal: 'Dinner',
+        description: '',
+        ingredients: [{ food: sliceFood, quantity: 2, calories: 0, servingUnit: 'slice' }],
+        date_published: null,
+        isPublic: true,
+      })
+      expect(created.nutritionComplete).toBe(true)
+
+      const uncalibrated = await updateRecipe(created.id!, {
+        name: 'ITest Nutrition Complete',
+        ingredients: [{ food: sliceFood, quantity: 1, calories: 500, servingUnit: 'cup' }],
+      })
+      expect(uncalibrated!.nutritionComplete).toBe(false)
+
+      const fixed = await updateRecipe(created.id!, {
+        name: 'ITest Nutrition Complete',
+        ingredients: [{ food: sliceFood, quantity: 2, calories: 0, servingUnit: 'slice' }],
+      })
+      expect(fixed!.nutritionComplete).toBe(true)
+    } finally {
+      await cleanupRecipes()
+      await deleteFood(sliceFood.id!)
+    }
+  })
+
   it('lists public recipes without a viewer', async () => {
     await createRecipe({ name: 'ITest Public Salad', meal: 'Lunch', description: '', ingredients: [], date_published: new Date(), isPublic: true })
     await createRecipe({ name: 'ITest Private Soup', meal: 'Dinner', description: '', ingredients: [], date_published: null, isPublic: false })

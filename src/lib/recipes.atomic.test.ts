@@ -11,10 +11,11 @@ const state = vi.hoisted(() => ({
   recipes: [] as Record<string, unknown>[],
   ingredients: [] as Record<string, unknown>[],
   foodIds: new Set<number>([1]),
+  foodRows: [] as Record<string, unknown>[],
 }))
 
 vi.mock('@/db', async () => {
-  const { recipes, ingredients } = await import('@/db/schema')
+  const { recipes, ingredients, foods } = await import('@/db/schema')
   const makeClient = () => ({
     insert: (table: unknown) => ({
       values: (v: Record<string, unknown> | Record<string, unknown>[]) => {
@@ -52,7 +53,15 @@ vi.mock('@/db', async () => {
       }),
     }),
     delete: () => ({ where: async () => { state.ingredients.length = 0 } }),
-    select: () => ({ from: () => ({ innerJoin: () => ({ where: async () => [] }), where: () => ({ orderBy: async () => [] }) }) }),
+    select: () => ({
+      from: (table: unknown) => ({
+        innerJoin: () => ({ where: async () => [] }),
+        where: () => {
+          const rows = table === foods ? state.foodRows : []
+          return { orderBy: async () => rows, then: (res: (x: unknown) => void) => res(rows) }
+        },
+      }),
+    }),
   })
   return {
     db: {
@@ -87,6 +96,7 @@ describe('recipe writes are atomic', () => {
     state.recipes = []
     state.ingredients = []
     state.foodIds = new Set([1])
+    state.foodRows = [{ id: 1, name: 'Flour', calories: 100, protein: '0', carbs: '0', fat: '0', fiber: '0', servingSize: '100', servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 30 }], density: null }]
   })
 
   it('createRecipe with an unknown food id rejects and leaves no recipe row', async () => {
@@ -101,5 +111,24 @@ describe('recipe writes are atomic', () => {
 
     await expect(updateRecipe(1, { ingredients: [ingredient(999)] } as never)).rejects.toMatchObject({ code: '23503' })
     expect(state.ingredients).toEqual([{ recipeId: 1, foodId: 1, quantity: '2', servingUnit: 'g' }])
+  })
+
+  it('createRecipe derives nutritionComplete from the Food rows, ignoring client calories of 0', async () => {
+    const row = { ...ingredient(1), quantity: 2, servingUnit: 'slice', calories: 0 }
+    await createRecipe({ ...input(1), ingredients: [row] } as unknown as CreateRecipeInput)
+    expect(state.recipes[0].nutritionComplete).toBe(true)
+  })
+
+  it('createRecipe stores nutritionComplete false for an uncalibrated unit, ignoring client calories of 500', async () => {
+    const row = { ...ingredient(1), quantity: 1, servingUnit: 'cup', calories: 500 }
+    await createRecipe({ ...input(1), ingredients: [row] } as unknown as CreateRecipeInput)
+    expect(state.recipes[0].nutritionComplete).toBe(false)
+  })
+
+  it('updateRecipe derives nutritionComplete from the Food rows, ignoring client calories of 0', async () => {
+    state.recipes.push({ id: 1, name: 'Test Existing', nutritionComplete: false })
+    const row = { ...ingredient(1), quantity: 2, servingUnit: 'slice', calories: 0 }
+    await updateRecipe(1, { ingredients: [row] } as never)
+    expect(state.recipes[0].nutritionComplete).toBe(true)
   })
 })

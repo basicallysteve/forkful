@@ -55,6 +55,23 @@ export function unitResolvesForFood(
   return servingsFor(food, 1, unit) !== null
 }
 
+/**
+ * Whether a recipe's Nutrition Complete flag holds: every ingredient with a quantity resolves to
+ * calories above zero from its own Food row. Client-sent calories are never consulted (ADR-0002); a
+ * missing Food row counts as incomplete.
+ */
+export function isNutritionComplete(
+  items: { foodId: number; quantity: number; servingUnit: string }[],
+  foodsById: Map<number, NutritionSource>,
+): boolean {
+  return items.every((item) => {
+    if (item.quantity === 0) return true
+    const food = foodsById.get(item.foodId)
+    if (!food) return false
+    return (caloriesFor(food, item.quantity, item.servingUnit) ?? 0) > 0
+  })
+}
+
 export interface CalculateCaloriesParams {
   baseCalories: number
   baseServingSize: number
