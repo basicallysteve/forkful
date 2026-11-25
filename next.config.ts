@@ -14,5 +14,7 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
+  // Strips Sentry SDK debug logging from webpack bundles only. Turbopack (the default for
+  // `next dev` and `next build` in Next 16) ignores it, so no-op there. Sentry Logs are unaffected.
+  webpack: { treeshake: { removeDebugLogging: true } },
 })
