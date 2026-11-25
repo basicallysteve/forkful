@@ -21,16 +21,20 @@ export function adminSignalSentence(kind: AdminEventKind): string {
   return COPY[kind].sentence
 }
 
-/** "Nov 24, 3:42 PM UTC". Always formatted in UTC (not the server's zone), so say so rather than guess the admin's zone. */
+/**
+ * "Nov 24 at 3:42 PM UTC". Always formatted in UTC (not the server's zone), so say so rather than guess the admin's zone.
+ * The date and time are formatted separately and joined with " at " ourselves, because the joiner
+ * `toLocaleString` puts between them (" at " or ", ") depends on the Node/ICU build.
+ */
 export function formatSignalTime(date: Date): string {
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
+  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const time = date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     timeZone: 'UTC',
     timeZoneName: 'short',
   })
+  return `${day} at ${time}`
 }
 
 export function adminSignalSubject(events: AdminSignalEvent[]): string {
