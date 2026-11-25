@@ -10,7 +10,7 @@ import { toSlug } from '@/utils/slug'
 import { nanoid } from 'nanoid'
 import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
-import { caloriesFor } from '@/utils/foodNutrition'
+import { caloriesFor, isNutritionComplete } from '@/utils/foodNutrition'
 import { scrapeRecipe } from "recipe-scrapers"
 import { mapScrapedRecipe } from '@/lib/recipeScrapeMapper'
 import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES, MAX_REDIRECTS } from '@/lib/urlFetchGuard'
@@ -264,14 +264,24 @@ export async function getRecipeById(id: number): Promise<Recipe | null> {
   return row ? buildRecipe(row) : null
 }
 
-function computeNutritionComplete(ingredientList: Ingredient[]): boolean {
-  return ingredientList.every((ing) => ing.calories > 0 || ing.quantity === 0)
+type DbClient = Pick<typeof db, 'select'>
+
+// Derives Nutrition Complete from the Food rows (one query), ignoring the calories the client sent.
+async function computeNutritionComplete(client: DbClient, ingredientList: Ingredient[]): Promise<boolean> {
+  if (ingredientList.length === 0) return true
+  const foodIds = [...new Set(ingredientList.map((ing) => ing.food.id))]
+  const rows = await client.select().from(foods).where(and(inArray(foods.id, foodIds), isNull(foods.dateDeleted)))
+  const foodsById = new Map(rows.map((r) => [r.id, mapFood(r)]))
+  return isNutritionComplete(
+    ingredientList.map((ing) => ({ foodId: ing.food.id, quantity: ing.quantity, servingUnit: ing.servingUnit })),
+    foodsById,
+  )
 }
 
 export async function createRecipe(data: CreateRecipeInput): Promise<Recipe> {
-  const nutritionComplete = computeNutritionComplete(data.ingredients ?? [])
   // One transaction: if the ingredient insert fails (e.g. unknown food id) the recipe row rolls back too.
   const row = await db.transaction(async (tx) => {
+    const nutritionComplete = await computeNutritionComplete(tx, data.ingredients ?? [])
     const [created] = await tx.insert(recipes).values({
       name: data.name,
       shortId: nanoid(8),
@@ -337,7 +347,7 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
     }
 
     if (data.ingredients !== undefined) {
-      const nutritionComplete = computeNutritionComplete(data.ingredients)
+      const nutritionComplete = await computeNutritionComplete(tx, data.ingredients)
       await tx.update(recipes).set({ nutritionComplete }).where(eq(recipes.id, id))
       await tx.delete(ingredients).where(eq(ingredients.recipeId, id))
       if (data.ingredients.length > 0) {
