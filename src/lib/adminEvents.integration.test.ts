@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
 import { Pool } from 'pg'
 import { parseEnvFile } from '@/db/resolveDrizzleEnv'
 import { addAdminEvent, claimDueAdminEvents, failAdminEvents } from './adminEvents'
@@ -7,16 +9,28 @@ import type { AdminEventKind } from './adminEventKinds'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
+const URL_KEYS = ['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL']
+const hostOf = (value: string | undefined) => {
+  if (!value) return undefined
+  try {
+    return new URL(value).hostname.toLowerCase()
+  } catch {
+    return undefined
+  }
+}
+
 /** This suite writes and deletes rows: never let it run against the production database. */
 function assertNotProduction(url: string) {
-  let contents: string | undefined
-  try {
-    contents = readFileSync('.env.production', 'utf8')
-  } catch {
-    return
-  }
-  const prod = parseEnvFile(contents)
-  if (['DATABASE_URL', 'POSTGRES_URL', 'DATABASE_POSTGRES_URL'].some((key) => prod[key] === url)) {
+  // Resolved from this file, so it works from any cwd or worktree. Inert only if the file is absent (CI).
+  const file = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env.production')
+  if (!existsSync(file)) return
+  const prod = parseEnvFile(readFileSync(file, 'utf8'))
+  const prodUrls = URL_KEYS.map((key) => prod[key]).filter(Boolean)
+  const prodHosts = new Set(
+    [...prodUrls.map(hostOf), prod.DATABASE_HOST?.toLowerCase()].filter((host): host is string => !!host),
+  )
+  const targetHosts = [hostOf(url), process.env.DATABASE_HOST?.toLowerCase()].filter((host): host is string => !!host)
+  if (prodUrls.includes(url) || targetHosts.some((host) => prodHosts.has(host))) {
     throw new Error('Refusing to run integration tests against the production database.')
   }
 }
