@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { apiFetchRecipes, apiFetchRecipe, apiCreateRecipe, apiUpdateRecipe, apiDeleteRecipe, apiFetchSavedRecipes, apiSaveRecipe, apiUnsaveRecipe, apiIsRecipeSaved, apiFetchRecipeSteps, apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep, apiReorderRecipeSteps, apiUploadImage } from './recipes'
-import { ForbiddenError, UnauthorizedError } from './errors'
+import { apiFetchRecipes, apiFetchRecipe, apiCreateRecipe, apiUpdateRecipe, apiDeleteRecipe, apiFetchSavedRecipes, apiSaveRecipe, apiUnsaveRecipe, apiIsRecipeSaved, apiFetchRecipeSteps, apiCreateRecipeStep, apiUpdateRecipeStep, apiDeleteRecipeStep, apiReorderRecipeSteps, apiUploadImage, apiScrapeRecipeFromUrl } from './recipes'
+import { ForbiddenError, UnauthorizedError, isUnauthorizedError } from './errors'
 import type { Recipe } from '@/types/Recipe'
 import type { RecipeStep } from '@/types/RecipeStep'
 
@@ -238,6 +238,50 @@ describe('apiUploadImage', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 } as Response)
     const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
     await expect(apiUploadImage(file)).rejects.toThrow('Failed to upload image')
+  })
+})
+
+describe('recipes wrapper throws ApiError carrying status, kind and the server message', () => {
+  const serverError = (status: number, error?: string) =>
+    ({ ok: false, status, json: async () => (error ? { error } : {}) }) as unknown as Response
+
+  it('read, step and save calls expose the status and kind', async () => {
+    global.fetch = vi.fn().mockResolvedValue(serverError(500))
+    await expect(apiFetchRecipes()).rejects.toMatchObject({ status: 500, kind: 'server' })
+    await expect(apiFetchSavedRecipes()).rejects.toMatchObject({ status: 500, kind: 'server' })
+    await expect(apiSaveRecipe('abc12345')).rejects.toMatchObject({ status: 500, kind: 'server' })
+    await expect(apiFetchRecipeSteps('abc12345')).rejects.toMatchObject({ status: 500, kind: 'server' })
+    global.fetch = vi.fn().mockResolvedValue(serverError(403))
+    await expect(apiCreateRecipeStep('abc12345', { content: 'x' })).rejects.toMatchObject({ status: 403, kind: 'forbidden' })
+    await expect(apiDeleteRecipeStep('abc12345', 1)).rejects.toMatchObject({ status: 403, kind: 'forbidden' })
+  })
+
+  it('a 401 from a save call is recognised by isUnauthorizedError', async () => {
+    global.fetch = vi.fn().mockResolvedValue(serverError(401))
+    expect(isUnauthorizedError(await apiSaveRecipe('abc12345').catch((e) => e))).toBe(true)
+  })
+
+  it("write calls surface the server's message on 400", async () => {
+    global.fetch = vi.fn().mockResolvedValue(serverError(400, 'Title is required'))
+    await expect(apiCreateRecipe({ ...mockRecipe } as never)).rejects.toMatchObject({ kind: 'invalid', message: 'Title is required' })
+  })
+
+  it('url import surfaces the server message and status', async () => {
+    global.fetch = vi.fn().mockResolvedValue(serverError(422, 'No recipe found on that page'))
+    await expect(apiScrapeRecipeFromUrl('https://example.com')).rejects.toMatchObject({ status: 422, message: 'No recipe found on that page' })
+  })
+
+  it('apiFetchRecipe still returns null on 404 but throws ApiError on 500', async () => {
+    global.fetch = vi.fn().mockResolvedValue(serverError(404))
+    await expect(apiFetchRecipe('abc12345')).resolves.toBeNull()
+    global.fetch = vi.fn().mockResolvedValue(serverError(500))
+    await expect(apiFetchRecipe('abc12345')).rejects.toMatchObject({ status: 500, kind: 'server' })
+  })
+
+  it('a network failure becomes an ApiError of kind network', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(apiFetchRecipes()).rejects.toMatchObject({ kind: 'network' })
+    await expect(apiUpdateRecipe(mockRecipe)).rejects.toMatchObject({ kind: 'network' })
   })
 })
 
