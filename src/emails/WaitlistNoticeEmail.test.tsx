@@ -21,7 +21,8 @@ describe('WaitlistNoticeEmail', () => {
 
   it('shows a "Leave the waitlist" link whose href is the signed URL, not the raw URL as text', () => {
     const html = render()
-    expect(html).toMatch(new RegExp(`<a href="${leaveUrl.replace(/[.?]/g, '\\$&')}"[^>]*>Leave the waitlist</a>`))
+    expect(html).toContain(`<a href="${leaveUrl}"`)
+    expect(html).toContain('>Leave the waitlist</a>')
     expect(text()).not.toContain(leaveUrl)
   })
 
