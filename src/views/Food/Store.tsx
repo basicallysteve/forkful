@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
@@ -45,6 +45,9 @@ function Store({ existingFood }: FoodStoreProps) {
   const [newMeasurement, setNewMeasurement] = useState('')
   const [measurementError, setMeasurementError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // The ref blocks re-entry before React re-renders (double-click, rapid Enter).
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   // Check for duplicate food name (case-insensitive, trimmed)
   const isDuplicateName = useMemo(() => {
@@ -161,7 +164,9 @@ function Store({ existingFood }: FoodStoreProps) {
   }
 
   async function handleSaveFood() {
-    if (!canSave) return
+    if (!canSave || savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
     setSaveError(null)
 
     const foodData: Omit<Food, 'id'> = {
@@ -199,6 +204,8 @@ function Store({ existingFood }: FoodStoreProps) {
         else console.error('Failed to persist new food:', err)
       }
     }
+    savingRef.current = false
+    setSaving(false)
   }
 
   return (
@@ -489,10 +496,11 @@ function Store({ existingFood }: FoodStoreProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={!canSave}
+                    disabled={!canSave || saving}
+                    aria-busy={saving}
                     onClick={handleSaveFood}
                   >
-                    {isEditing ? 'Update Food' : 'Save Food'}
+                    {saving ? 'Saving…' : isEditing ? 'Update Food' : 'Save Food'}
                   </button>
                 </div>
                 {saveError && <span className="field-error" role="alert">{saveError}</span>}
