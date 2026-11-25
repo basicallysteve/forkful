@@ -112,11 +112,13 @@ describe('recipes data layer (integration)', () => {
       expect(created.nutritionComplete).toBe(true)
 
       const uncalibrated = await updateRecipe(created.id!, {
+        name: 'ITest Nutrition Complete',
         ingredients: [{ food: sliceFood, quantity: 1, calories: 500, servingUnit: 'cup' }],
       })
       expect(uncalibrated!.nutritionComplete).toBe(false)
 
       const fixed = await updateRecipe(created.id!, {
+        name: 'ITest Nutrition Complete',
         ingredients: [{ food: sliceFood, quantity: 2, calories: 0, servingUnit: 'slice' }],
       })
       expect(fixed!.nutritionComplete).toBe(true)
