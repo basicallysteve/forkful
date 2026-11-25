@@ -12,7 +12,7 @@ import { apiCreateRecipe, apiCreateRecipeStep } from '@/lib/api/recipes'
 import { apiFetchFoods } from '@/lib/api/foods'
 import { toRecipeUrl } from '@/utils/slug'
 import { getAllowedUnits } from '@/utils/unitConversion'
-import { calculateCalories } from '@/utils/foodNutrition'
+import { caloriesFor } from '@/utils/foodNutrition'
 import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import type { Food } from '@/types/Food'
 import type { Recipe } from '@/types/Recipe'
@@ -120,16 +120,7 @@ export default function RecipeImportPreview({
           // Food's serving unit when the parsed unit was unrecognised (ADR-0024).
           const qty = overrides[i].quantity ?? 1
           const unit = overrides[i].unit ?? food.servingUnit
-          const measurement = food.measurements?.find((m) => m.unit === unit)
-          const calories =
-            calculateCalories({
-              baseCalories: food.calories || 0,
-              baseServingSize: food.servingSize || 1,
-              baseServingUnit: food.servingUnit,
-              targetAmount: qty,
-              targetUnit: unit,
-              gramsPerUnit: measurement?.gramsPerUnit,
-            }) ?? 0
+          const calories = caloriesFor(food, qty, unit) ?? 0
           return { food, quantity: qty, servingUnit: unit, calories }
         })
         .filter((x): x is IngredientEntry => x !== null)

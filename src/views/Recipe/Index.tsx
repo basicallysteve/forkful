@@ -25,7 +25,7 @@ import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { MAX_QUANTITY } from '@/utils/quantity'
 import { hasValidQuantities } from '@/views/Recipe/ingredientQuantities'
 import { getAllowedUnits } from "@/utils/unitConversion"
-import { calculateCalories } from "@/utils/foodNutrition"
+import { caloriesFor } from "@/utils/foodNutrition"
 import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
@@ -205,16 +205,7 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
 
   // Helper: calories for a given quantity + unit, falling back to 0 if unconvertible
   function computeIngredientCalories(food: Food, quantity: number, servingUnit: string): number {
-    const measurement = food.measurements?.find((m) => m.unit === servingUnit)
-    const raw = calculateCalories({
-      baseCalories: food.calories || 0,
-      baseServingSize: food.servingSize || 1,
-      baseServingUnit: food.servingUnit || DEFAULT_SERVING_UNIT,
-      targetAmount: quantity,
-      targetUnit: servingUnit,
-      gramsPerUnit: measurement?.gramsPerUnit,
-      density: food.density,
-    }) ?? 0
+    const raw = caloriesFor(food, quantity, servingUnit) ?? 0
     return Math.round(raw)
   }
 

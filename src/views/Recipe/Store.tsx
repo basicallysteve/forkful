@@ -13,7 +13,7 @@ import Autocomplete from "@/components/Autocomplete/Autocomplete"
 import QuickAddFoodModal from "@/components/QuickAddFoodModal/QuickAddFoodModal"
 import { toRecipeUrl } from "@/utils/slug"
 import { getAllowedUnits } from "@/utils/unitConversion"
-import { calculateCalories } from "@/utils/foodNutrition"
+import { caloriesFor } from "@/utils/foodNutrition"
 import { useRecipeStore } from "@/stores/recipes"
 import { useFoodStore } from "@/stores/food"
 import { apiCreateRecipe } from "@/lib/api/recipes"
@@ -128,40 +128,20 @@ function IngredientInput({ onAdd, onChange, onRemove, storedIngredient }: { onAd
       updateIngredient({ ...ingredient, quantity: 0, calories: 0 })
       return
     }
-    const caloriesPerUnit = calculateCalories({
-      baseCalories: ingredient.food?.calories || 0,
-      baseServingSize: ingredient.food?.servingSize || 1,
-      baseServingUnit: ingredient.food?.servingUnit || DEFAULT_SERVING_UNIT,
-      targetAmount: 1,
-      targetUnit: ingredient.servingUnit,
-      density: ingredient.food?.density,
-    }) || 0
-    updateIngredient({ ...ingredient, quantity, calories: caloriesPerUnit * quantity })
+    const food = ingredient.food
+    updateIngredient({
+      ...ingredient,
+      quantity,
+      calories: food ? caloriesFor(food, quantity, ingredient.servingUnit) ?? 0 : 0,
+    })
   }
 
   function handleUnitChange(newUnit: string) {
     if (!ingredient || !ingredient.food) return
     
-    const food = ingredient.food
-    const baseCalories = food.calories || 0
-    const baseServingSize = food.servingSize || 1
-    const baseServingUnit = food.servingUnit || DEFAULT_SERVING_UNIT
-    
-    // Calculate calories based on the new unit
-    const calculatedCalories = calculateCalories({
-      baseCalories,
-      baseServingSize,
-      baseServingUnit,
-      targetAmount: ingredient.quantity,
-      targetUnit: newUnit,
-      density: food.density,
-    })
-    
-    // If conversion is possible, use calculated calories; otherwise keep current calories
-    const newCalories = calculatedCalories !== null 
-      ? Math.round(calculatedCalories) 
-      : ingredient.calories
-    
+    // An unresolvable unit counts as 0 calories, the same as the server (ADR-0002, ADR-0028)
+    const newCalories = caloriesFor(ingredient.food, ingredient.quantity, newUnit) ?? 0
+
     updateIngredient({
       ...ingredient,
       servingUnit: newUnit,

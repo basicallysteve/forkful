@@ -71,32 +71,3 @@ export function isNutritionComplete(
     return (caloriesFor(food, item.quantity, item.servingUnit) ?? 0) > 0
   })
 }
-
-export interface CalculateCaloriesParams {
-  baseCalories: number
-  baseServingSize: number
-  baseServingUnit: string
-  targetAmount: number
-  targetUnit: string
-  gramsPerUnit?: number
-  mlPerUnit?: number
-  density?: number
-}
-
-/**
- * @deprecated Loose-parameter form kept only for the recipe editors until slice 1c moves them to
- * `caloriesFor`. Same result as before the move.
- */
-export function calculateCalories(p: CalculateCaloriesParams): number | null {
-  const converted = convertFoodAmount(
-    {
-      measurements: [{ unit: p.targetUnit, gramsPerUnit: p.gramsPerUnit, mlPerUnit: p.mlPerUnit }],
-      density: p.density,
-    },
-    p.targetAmount,
-    p.targetUnit,
-    p.baseServingUnit,
-  )
-  if (converted === null) return null
-  return (p.baseCalories / p.baseServingSize) * converted
-}

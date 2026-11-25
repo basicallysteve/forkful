@@ -576,6 +576,55 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(screen.getAllByLabelText(/calories/i)[1]).toHaveValue('56.25')
   })
 
+  describe('ingredient calories match the server (#306)', () => {
+    const base = { protein: 0, carbs: 0, fat: 0, fiber: 0 }
+    const foods306: Food[] = [
+      { id: 61, name: 'Loaf', ...base, calories: 70, servingSize: 28, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }] },
+      { id: 62, name: 'Powder', ...base, calories: 400, servingSize: 100, servingUnit: 'g', density: 0.5, measurements: [{ unit: 'g' }, { unit: 'scoop', mlPerUnit: 60 }] },
+      { id: 63, name: 'Widget', ...base, calories: 50, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'box' }] },
+      { id: 64, name: 'Broken', ...base, calories: 50, servingSize: 0, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'g' }] },
+      { id: 65, name: 'Oil', ...base, calories: 200, servingSize: 100, servingUnit: 'g', density: 0.8, measurements: [{ unit: 'g' }] },
+    ]
+
+    async function pickFood(user: ReturnType<typeof userEvent.setup>, name: string, quantity: string) {
+      await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+      await user.type(screen.getByPlaceholderText('Select food'), name)
+      await user.click(await screen.findByRole('option', { name: new RegExp(`^${name}`, 'i') }))
+      const qty = screen.getAllByLabelText(/amount/i)[0]
+      await user.clear(qty)
+      await user.type(qty, quantity)
+      await user.tab()
+    }
+
+    async function pickUnit(user: ReturnType<typeof userEvent.setup>, container: HTMLElement, unit: string) {
+      const trigger = container.querySelectorAll<HTMLElement>('.ingredient-unit-select')[0].querySelector<HTMLElement>('[aria-haspopup="listbox"]')!
+      trigger.focus()
+      await user.keyboard('{ArrowDown}')
+      await user.click(await screen.findByRole('option', { name: unit, hidden: true }))
+    }
+
+    it.each([
+      ['a gram-calibrated slice', 'Loaf', '3', 'slice', '210'],
+      ['an ml-calibrated scoop', 'Powder', '2', 'scoop', '240'],
+      ['a density cross-category unit', 'Oil', '250', 'ml', '400'],
+      ['an uncalibrated unit (0, not the old number)', 'Widget', '2', 'box', '0'],
+      ['a zero serving size food (never Infinity or NaN)', 'Broken', '5', 'g', '0'],
+    ])('shows the server calories for %s when the unit changes', async (_label, food, quantity, unit, expected) => {
+      const user = userEvent.setup()
+      const { container } = renderWithProviders(<Store />, { foods: foods306 })
+      await pickFood(user, food, quantity)
+      await pickUnit(user, container, unit)
+      expect(screen.getAllByLabelText(/calories/i)[0]).toHaveValue(expected)
+    })
+
+    it('shows 0, not Infinity or NaN, when the quantity changes on a zero serving size food', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<Store />, { foods: foods306 })
+      await pickFood(user, 'Broken', '5')
+      expect(screen.getAllByLabelText(/calories/i)[0]).toHaveValue('0')
+    })
+  })
+
   describe('Re-entry guard while a save is in flight (#317)', () => {
     async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
       await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Double Save Recipe')

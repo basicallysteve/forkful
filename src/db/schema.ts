@@ -319,7 +319,7 @@ export const foodLogEntries = pgTable('food_log_entries', {
   // the referent Food's Measurements by the write path.
   amount: numeric('amount', { precision: 10, scale: 2 }).notNull(),
   unit: varchar('unit', { length: 50 }),
-  // Frozen macros — facts of record, computed once at create time via calculateCalories / convertUnit.
+  // Frozen macros — facts of record, computed once at create time via caloriesFor / macrosFor.
   calories: numeric('calories', { precision: 10, scale: 2 }).notNull().default('0'),
   protein: numeric('protein', { precision: 10, scale: 2 }).notNull().default('0'),
   carbs: numeric('carbs', { precision: 10, scale: 2 }).notNull().default('0'),
