@@ -33,3 +33,5 @@ backend/.env
 data/usda/*
 # TypeScript incremental build info
 *.tsbuildinfo
+
+prod-ca-2021.crt
