@@ -387,6 +387,33 @@ describe('Recipe View Page', () => {
       expect(screen.getByText('400 calories')).toBeInTheDocument()
     })
 
+    describe('ingredient calories match the server (#306)', () => {
+      const base = { protein: 0, carbs: 0, fat: 0, fiber: 0 }
+      const cases: { name: string; food: Food; unit: string; typed: string; expected: string }[] = [
+        { name: 'grams', food: { id: 20, name: 'Pasta', ...base, calories: 350, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }] }, unit: 'g', typed: '200', expected: '700 calories' },
+        { name: 'ounces', food: { id: 21, name: 'Pasta', ...base, calories: 350, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'g' }] }, unit: 'oz', typed: '4', expected: '397 calories' },
+        { name: 'a gram-calibrated slice', food: { id: 22, name: 'Loaf', ...base, calories: 70, servingSize: 28, servingUnit: 'g', measurements: [{ unit: 'g' }, { unit: 'slice', gramsPerUnit: 28 }] }, unit: 'slice', typed: '3', expected: '210 calories' },
+        { name: 'an ml-calibrated scoop', food: { id: 23, name: 'Powder', ...base, calories: 400, servingSize: 100, servingUnit: 'g', density: 0.5, measurements: [{ unit: 'g' }, { unit: 'scoop', mlPerUnit: 60 }] }, unit: 'scoop', typed: '2', expected: '240 calories' },
+        { name: 'a density cross-category unit', food: { id: 24, name: 'Oil', ...base, calories: 200, servingSize: 100, servingUnit: 'g', density: 0.8, measurements: [{ unit: 'g' }] }, unit: 'ml', typed: '250', expected: '400 calories' },
+        { name: 'an uncalibrated unit (0, per the glossary)', food: { id: 25, name: 'Widget', ...base, calories: 50, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'box' }] }, unit: 'box', typed: '2', expected: '0 calories' },
+        { name: 'a food with a zero serving size (never Infinity or NaN)', food: { id: 26, name: 'Broken', ...base, calories: 50, servingSize: 0, servingUnit: 'g', measurements: [{ unit: 'g' }] }, unit: 'g', typed: '5', expected: '0 calories' },
+      ]
+
+      it.each(cases)('shows the server calories for $name after a quantity edit', async ({ food, unit, typed, expected }) => {
+        const user = userEvent.setup()
+        const recipe: RecipeType = { ...mockRecipe, ingredients: [{ food, quantity: 1, calories: 999, servingUnit: unit }] }
+        renderWithStores(<Recipe recipe={recipe} />, { recipes: [recipe], foods: [food] })
+        await user.click(screen.getByRole('button', { name: /edit/i }))
+
+        const qty = screen.getByRole('spinbutton', { name: /ingredient 1 quantity/i })
+        await user.clear(qty)
+        await user.type(qty, typed)
+
+        expect(screen.getByText(expected)).toBeInTheDocument()
+        expect(screen.queryByText(/Infinity|NaN/)).not.toBeInTheDocument()
+      })
+    })
+
     it('saves changes when Save button is clicked', async () => {
       const user = userEvent.setup()
       renderWithStores(<Recipe recipe={mockRecipe} />)
