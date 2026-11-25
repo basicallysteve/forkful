@@ -783,4 +783,43 @@ describe('Recipe View Page', () => {
       expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', expect.stringContaining('callbackUrl='))
     })
   })
+
+  describe('Nutrition totals (#439)', () => {
+    const grams: Food = { id: 10, name: 'Test Grams', calories: 100, protein: 5, carbs: 10, fat: 3, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [] }
+    const sliced: Food = { id: 11, name: 'Test Sliced', calories: 100, protein: 5, carbs: 10, fat: 3, fiber: 0, servingSize: 100, servingUnit: 'g', measurements: [{ unit: 'slice', gramsPerUnit: 10 }] }
+
+    function nutritionValue(label: string) {
+      const row = screen.getByText(label, { selector: 'dt' }).closest('.nutrition-row')
+      return row?.querySelector('dd')?.textContent
+    }
+
+    it('scales macros by the ingredient unit, not the raw quantity (3 slice of 10 g is 30 g)', () => {
+      const recipe: RecipeType = {
+        ...mockRecipe,
+        serves: null,
+        ingredients: [
+          { food: grams, quantity: 200, calories: 200, servingUnit: 'g' },
+          { food: sliced, quantity: 3, calories: 30, servingUnit: 'slice' },
+        ],
+      }
+      renderWithStores(<Recipe recipe={recipe} />, { foods: [grams, sliced] })
+      // 200 g + 30 g of P5/C10/F3 per 100 g: protein 11.5, carbs 23, fat 6.9
+      expect(nutritionValue('Protein')).toBe('12g')
+      expect(nutritionValue('Carbs')).toBe('23g')
+      expect(nutritionValue('Fat')).toBe('7g')
+    })
+
+    it('does not show 0g when a small-unit ingredient still carries macros (per serving)', () => {
+      const recipe: RecipeType = {
+        ...mockRecipe,
+        serves: 2,
+        ingredients: [{ food: sliced, quantity: 4, calories: 40, servingUnit: 'slice' }],
+      }
+      renderWithStores(<Recipe recipe={recipe} />, { foods: [grams, sliced] })
+      // 40 g: protein 2, carbs 4, fat 1.2; per serving of 2: 1, 2, 0.6
+      expect(nutritionValue('Protein')).toBe('1g')
+      expect(nutritionValue('Carbs')).toBe('2g')
+      expect(nutritionValue('Fat')).toBe('1g')
+    })
+  })
 })
