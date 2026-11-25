@@ -261,6 +261,27 @@ describe('Food Store Page - Add Food', () => {
       })
     })
 
+    it('sends a single create request when Save Food is double-clicked (#317)', async () => {
+      const user = userEvent.setup()
+      const { apiCreateFood } = await import('@/lib/api/foods')
+      vi.mocked(apiCreateFood).mockClear()
+      let resolveCreate: (f: Food) => void = () => {}
+      vi.mocked(apiCreateFood).mockImplementationOnce(
+        () => new Promise<Food>((resolve) => { resolveCreate = resolve })
+      )
+      renderWithProviders(<Store />)
+
+      await user.type(screen.getByPlaceholderText('e.g. Chicken Breast'), 'Double Save Food')
+      const caloriesInput = screen.getByLabelText('Calories')
+      await user.clear(caloriesInput)
+      await user.type(caloriesInput, '150')
+
+      await user.dblClick(screen.getByRole('button', { name: /save food/i }))
+
+      expect(apiCreateFood).toHaveBeenCalledTimes(1)
+      resolveCreate({ ...mockFoods[0], id: 998, name: 'Double Save Food' })
+    })
+
     it('calls updateFood when saving an edited food', async () => {
       const user = userEvent.setup()
       const updateFood = vi.fn()

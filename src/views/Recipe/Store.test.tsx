@@ -576,6 +576,63 @@ describe('Store Page - editing an added ingredient (#16)', () => {
     expect(screen.getAllByLabelText(/calories/i)[1]).toHaveValue('56.25')
   })
 
+  describe('Re-entry guard while a save is in flight (#317)', () => {
+    async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Double Save Recipe')
+      await user.click(screen.getByRole('radio', { name: /lunch/i }))
+      await user.type(screen.getByPlaceholderText('Describe flavors, prep time, or serving ideas.'), 'A description')
+    }
+
+    beforeEach(() => {
+      vi.mocked(apiCreateRecipe).mockClear()
+    })
+
+    it('sends a single create request when Save Recipe is double-clicked', async () => {
+      const user = userEvent.setup()
+      let resolveCreate: (r: Recipe) => void = () => {}
+      vi.mocked(apiCreateRecipe).mockImplementationOnce(
+        () => new Promise<Recipe>((resolve) => { resolveCreate = resolve })
+      )
+      renderWithProviders(<Store />)
+      await fillRequired(user)
+
+      await user.dblClick(screen.getByRole('button', { name: /save recipe/i }))
+
+      expect(apiCreateRecipe).toHaveBeenCalledTimes(1)
+      resolveCreate({ ...mockRecipes[0], id: 9, name: 'Double Save Recipe' })
+    })
+
+    it('shows a busy state and disables Save Recipe and Publish while saving', async () => {
+      const user = userEvent.setup()
+      vi.mocked(apiCreateRecipe).mockImplementationOnce(() => new Promise<Recipe>(() => {}))
+      renderWithProviders(<Store />)
+      await fillRequired(user)
+
+      await user.click(screen.getByRole('button', { name: /save recipe/i }))
+
+      const busy = await screen.findByRole('button', { name: /saving/i })
+      expect(busy).toBeDisabled()
+      expect(screen.getByRole('button', { name: /publish/i })).toBeDisabled()
+    })
+
+    it('re-enables Save Recipe after a failed save so the user can retry', async () => {
+      const user = userEvent.setup()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(apiCreateRecipe).mockRejectedValueOnce(new Error('500'))
+      renderWithProviders(<Store />)
+      await fillRequired(user)
+
+      await user.click(screen.getByRole('button', { name: /save recipe/i }))
+
+      const retry = await screen.findByRole('button', { name: /save recipe/i })
+      await waitFor(() => expect(retry).toBeEnabled())
+      expect(screen.getByPlaceholderText('e.g. Smoky chipotle chili')).toHaveValue('Double Save Recipe')
+
+      await user.click(retry)
+      expect(apiCreateRecipe).toHaveBeenCalledTimes(2)
+    })
+  })
+
   describe('Save Recipe with an invalid stored quantity', () => {
     async function fillDetailsThenAddHam(user: ReturnType<typeof userEvent.setup>) {
       await user.type(screen.getByPlaceholderText('e.g. Smoky chipotle chili'), 'Test Invalid Qty')
