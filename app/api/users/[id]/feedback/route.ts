@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { recordAdminEvent } from '@/lib/adminSignals'
+import { captureError } from '@/lib/logger'
 import { getSessionUser } from '@/lib/auth'
 import { createAccountFeedback } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
@@ -43,6 +45,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       reasons: body.reasons,
       comment: body.comment ?? undefined,
     }))
+    // After the response: emailing the admin must never slow or fail the feedback (it never throws).
+    after(() => recordAdminEvent('feedback', targetId).catch((error) => captureError(error, { area: 'admin-signals' })))
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })

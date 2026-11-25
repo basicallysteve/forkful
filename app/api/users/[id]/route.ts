@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { recordAdminEvent } from '@/lib/adminSignals'
+import { captureError } from '@/lib/logger'
 import { getSessionUser } from '@/lib/auth'
 import {
   updateUserPreferences,
@@ -158,11 +160,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (body.action === 'deactivate') {
       await taskRunner.run(() => deactivateAccount(targetId))
+      // After the response; never fails the request. This route is the user's own action (the waitlist-leave and 12-month cleanup callers are not).
+      after(() => recordAdminEvent('account-deactivated', targetId).catch((error) => captureError(error, { area: 'admin-signals' })))
       return NextResponse.json({ ok: true })
     }
 
     if (body.action === 'delete') {
       await taskRunner.run(() => deleteAccount(targetId))
+      // No user id: the row (and any FK target) is already gone.
+      after(() => recordAdminEvent('account-deleted').catch((error) => captureError(error, { area: 'admin-signals' })))
       return NextResponse.json({ ok: true })
     }
 

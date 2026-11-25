@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
+
+const afterCallbacks: Array<() => unknown> = []
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (fn: () => unknown) => { afterCallbacks.push(fn) },
+}))
+const recordAdminEvent = vi.fn()
+vi.mock('@/lib/adminSignals', () => ({ recordAdminEvent: (...a: unknown[]) => recordAdminEvent(...a) }))
+vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 import { PATCH } from './route'
 import { getSessionUser } from '@/lib/auth'
 import {
@@ -44,7 +53,13 @@ function makeRequest(id: string, body: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  afterCallbacks.length = 0
+  recordAdminEvent.mockReset().mockResolvedValue(undefined)
 })
+
+async function flushAfter() {
+  for (const fn of afterCallbacks.splice(0)) await fn()
+}
 
 describe('PATCH /api/users/[id] — auth', () => {
   it('returns 401 when not logged in', async () => {
@@ -647,5 +662,57 @@ describe('PATCH /api/users/[id] — unknown action', () => {
 
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe('Unknown action')
+  })
+})
+
+describe('PATCH /api/users/[id] — admin signals', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+  })
+
+  it('records account-deactivated with the user id after deactivating, deferred with after()', async () => {
+    (deactivateAccount as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'deactivate' })
+    const res = await PATCH(request, { params })
+    expect(res.status).toBe(200)
+    expect(recordAdminEvent).not.toHaveBeenCalled()
+    await flushAfter()
+    expect(recordAdminEvent).toHaveBeenCalledTimes(1)
+    expect(recordAdminEvent).toHaveBeenCalledWith('account-deactivated', 42)
+  })
+
+  it('records account-deleted without a user id (the row is gone) after deleting', async () => {
+    (deleteAccount as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'delete' })
+    const res = await PATCH(request, { params })
+    expect(res.status).toBe(200)
+    await flushAfter()
+    expect(recordAdminEvent).toHaveBeenCalledTimes(1)
+    expect(recordAdminEvent).toHaveBeenCalledWith('account-deleted')
+  })
+
+  it('still answers ok when recording fails', async () => {
+    (deactivateAccount as Mock).mockResolvedValue(undefined)
+    recordAdminEvent.mockRejectedValue(new Error('db down'))
+    const { request, params } = makeRequest('42', { action: 'deactivate' })
+    const res = await PATCH(request, { params })
+    await expect(flushAfter()).resolves.toBeUndefined()
+    expect(res.status).toBe(200)
+  })
+
+  it('records nothing when deactivating fails', async () => {
+    (deactivateAccount as Mock).mockRejectedValue(new Error('boom'))
+    const { request, params } = makeRequest('42', { action: 'deactivate' })
+    await PATCH(request, { params })
+    await flushAfter()
+    expect(recordAdminEvent).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for other actions', async () => {
+    (updateUsername as Mock).mockResolvedValue(undefined)
+    const { request, params } = makeRequest('42', { action: 'username', username: 'alice2' })
+    await PATCH(request, { params })
+    await flushAfter()
+    expect(recordAdminEvent).not.toHaveBeenCalled()
   })
 })

@@ -1,12 +1,35 @@
 import 'server-only'
+import { after } from 'next/server'
 import { findExistingOAuthUser, findOrCreateOAuthUser } from '@/lib/oauth'
 import { hasAccess, emailHasInvite } from '@/lib/access'
 import { joinWaitlist, normalizeEmail } from '@/lib/waitlist'
 import { sendWaitlistNotificationEmail } from '@/lib/email'
 import { reactivateAccount } from '@/lib/users'
+import { getInviteByEmail } from '@/lib/invites'
+import { recordAdminEvent } from '@/lib/adminSignals'
 import { logInfo, captureError } from '@/lib/logger'
 
 const WAITLIST_PATH = '/waitlist'
+
+/**
+ * Tells the admin an Invite was accepted. Only called right after this sign-in created the account
+ * (the no-account branch), so it fires once per User; a later sign-in finds the account and never
+ * reaches it. Deferred with `after()` (plain call when there is no request scope); never throws.
+ */
+function recordInviteAccepted(userId: number, email: string): void {
+  const run = async () => {
+    try {
+      if (await getInviteByEmail(email)) await recordAdminEvent('invite-accepted', userId)
+    } catch (error) {
+      captureError(error, { area: 'admin-signals' })
+    }
+  }
+  try {
+    after(run)
+  } catch {
+    void run()
+  }
+}
 
 export type OAuthSignInInput = {
   provider: string
@@ -57,7 +80,8 @@ export async function resolveOAuthSignIn(input: OAuthSignInInput): Promise<boole
     if (!input.email) return false
 
     if (await emailHasInvite(input.email)) {
-      await findOrCreateOAuthUser({ ...input, email: input.email, name: input.name ?? null, avatarUrl: input.avatarUrl ?? null })
+      const userId = await findOrCreateOAuthUser({ ...input, email: input.email, name: input.name ?? null, avatarUrl: input.avatarUrl ?? null })
+      recordInviteAccepted(userId, input.email)
       return true
     }
 

@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
+
+const afterCallbacks: Array<() => unknown> = []
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (fn: () => unknown) => { afterCallbacks.push(fn) },
+}))
+const recordAdminEvent = vi.fn()
+vi.mock('@/lib/adminSignals', () => ({ recordAdminEvent: (...a: unknown[]) => recordAdminEvent(...a) }))
+vi.mock('@/lib/logger', () => ({ logInfo: vi.fn(), logWarn: vi.fn(), captureError: vi.fn() }))
 import { POST } from './route'
 import { getSessionUser } from '@/lib/auth'
 import { createAccountFeedback } from '@/lib/users'
@@ -22,7 +31,13 @@ function makeRequest(id: string, body: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  afterCallbacks.length = 0
+  recordAdminEvent.mockReset().mockResolvedValue(undefined)
 })
+
+async function flushAfter() {
+  for (const fn of afterCallbacks.splice(0)) await fn()
+}
 
 describe('POST /api/users/[id]/feedback — auth', () => {
   it('returns 401 when not logged in', async () => {
@@ -172,5 +187,39 @@ describe('POST /api/users/[id]/feedback — success', () => {
       reasons: ['Missing features'],
       comment: undefined,
     })
+  })
+})
+
+describe('POST /api/users/[id]/feedback — admin signal', () => {
+  beforeEach(() => {
+    (getSessionUser as Mock).mockResolvedValue({ userId: 42, username: 'alice' })
+    ;(createAccountFeedback as Mock).mockResolvedValue(undefined)
+  })
+
+  it('records a feedback admin event for the user after the feedback is saved, deferred with after()', async () => {
+    const { request, params } = makeRequest('42', { action: 'deactivated', reasons: ['Other'] })
+    const res = await POST(request, { params })
+    expect(res.status).toBe(200)
+    expect(recordAdminEvent).not.toHaveBeenCalled()
+    await flushAfter()
+    expect(recordAdminEvent).toHaveBeenCalledTimes(1)
+    expect(recordAdminEvent).toHaveBeenCalledWith('feedback', 42)
+  })
+
+  it('still answers ok when recording the event fails', async () => {
+    recordAdminEvent.mockRejectedValue(new Error('db down'))
+    const { request, params } = makeRequest('42', { action: 'deleted', reasons: [] })
+    const res = await POST(request, { params })
+    await expect(flushAfter()).resolves.toBeUndefined()
+    expect(res.status).toBe(200)
+  })
+
+  it('records nothing when saving the feedback fails', async () => {
+    ;(createAccountFeedback as Mock).mockRejectedValue(new Error('boom'))
+    const { request, params } = makeRequest('42', { action: 'deleted', reasons: [] })
+    const res = await POST(request, { params })
+    await flushAfter()
+    expect(res.status).toBe(500)
+    expect(recordAdminEvent).not.toHaveBeenCalled()
   })
 })
