@@ -25,7 +25,7 @@ import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { MAX_QUANTITY } from '@/utils/quantity'
 import { hasValidQuantities } from '@/views/Recipe/ingredientQuantities'
 import { getAllowedUnits } from "@/utils/unitConversion"
-import { caloriesFor } from "@/utils/foodNutrition"
+import { caloriesFor, macrosFor } from "@/utils/foodNutrition"
 import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'
@@ -121,13 +121,17 @@ export default function Recipe({ recipe, foods = [], isEditing = false, canEdit 
     return total + (ingredient.calories || 0)
   }, 0))
 
-  const nutritionTotals = {
-    calories: totalCalories,
-    protein: displayRecipe.ingredients.reduce((t, i) => t + (i.food.protein || 0) * i.quantity / (i.food.servingSize || 1), 0),
-    carbs: displayRecipe.ingredients.reduce((t, i) => t + (i.food.carbs || 0) * i.quantity / (i.food.servingSize || 1), 0),
-    fat: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fat || 0) * i.quantity / (i.food.servingSize || 1), 0),
-    fiber: displayRecipe.ingredients.reduce((t, i) => t + (i.food.fiber || 0) * i.quantity / (i.food.servingSize || 1), 0),
-  }
+  // Macros scale through macrosFor so the ingredient's unit counts (3 slice is not 3 g); an
+  // unresolvable unit contributes nothing, as it does for calories (ADR-0028, ADR-0002).
+  const nutritionTotals = displayRecipe.ingredients.reduce(
+    (totals, i) => {
+      const m = macrosFor(i.food, i.quantity, i.servingUnit)
+      return m
+        ? { ...totals, protein: totals.protein + m.protein, carbs: totals.carbs + m.carbs, fat: totals.fat + m.fat, fiber: totals.fiber + m.fiber }
+        : totals
+    },
+    { calories: totalCalories, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+  )
 
   const serves = displayRecipe.serves ?? null
   const showPerServing = perServing && serves != null && serves > 0
