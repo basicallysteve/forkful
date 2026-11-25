@@ -30,7 +30,7 @@ import MarkdownImport from './MarkdownImport'
 import RecipeImporter from './RecipeImporter'
 import './markdownImport.scss'
 import { hasValidQuantities } from './ingredientQuantities'
-import { SAVE_FAILURE_TITLE, recipeSaveFailureMessage } from './saveFailure'
+import { SAVE_FAILURE_LIFE_MS, SAVE_FAILURE_TITLE, recipeSaveFailureMessage } from './saveFailure'
 
 const mealOptions: Recipe["meal"][] = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
 const DEFAULT_SERVING_UNIT = 'g'
@@ -405,7 +405,7 @@ function Store() {
   // A new failure replaces the previous save-error toast; this Toast only holds save errors, so other toasts are untouched.
   function showSaveFailure(err: unknown) {
     saveToast.current?.clear()
-    saveToast.current?.show({ severity: 'error', summary: SAVE_FAILURE_TITLE, detail: recipeSaveFailureMessage(err), life: 4000 })
+    saveToast.current?.show({ severity: 'error', summary: SAVE_FAILURE_TITLE, detail: recipeSaveFailureMessage(err), life: SAVE_FAILURE_LIFE_MS })
   }
 
   async function handleSaveRecipe() {

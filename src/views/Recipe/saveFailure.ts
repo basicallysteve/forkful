@@ -1,6 +1,8 @@
 import { ApiError, errorMessageFor } from '@/lib/api/errors'
 
 export const SAVE_FAILURE_TITLE = 'Could not save recipe'
+/** How long the save-error toast stays on screen before it dismisses itself. */
+export const SAVE_FAILURE_LIFE_MS = 4000
 
 /** Toast text for a failed recipe create, chosen by what went wrong. Never the raw error message, except the server's own message for a 400. */
 export function recipeSaveFailureMessage(err: unknown): string {

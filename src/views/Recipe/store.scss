@@ -667,13 +667,12 @@
 
 // Save-error toast (PrimeReact Toast, rendered in a portal so it sits outside .recipe-store).
 // PrimeReact pins it 20px from the top and right (inline), so it clears the bottom-right "Report an issue" widget.
-// On narrow screens it spans the width minus that margin, capped at 25rem and centred.
+// On narrow screens (720px and below) it spans the full container width, keeping that 20px inset on both sides.
 .p-toast.recipe-save-toast {
   @media (max-width: 720px) {
     left: 20px;
     width: auto;
-    max-width: 25rem;
-    margin-inline: auto;
+    max-width: none;
   }
 
   // Opaque so the text stays readable over the form in light and dark themes.
