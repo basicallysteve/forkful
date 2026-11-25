@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { recordAdminEvent } from '@/lib/adminSignals'
 import { getInviteByEmail, signUpWithInvite } from '@/lib/invites'
 import { signUp } from '@/lib/users'
 import { taskRunner } from '@/lib/TaskRunner'
@@ -92,6 +93,9 @@ export async function POST(request: Request) {
     if (result.status === 'invalid-code') {
       return NextResponse.json({ error: INVALID_INVITE, code: 'invalid_invite' }, { status: 400 })
     }
+    // Invite accepted: this is the one creation path with a redeemed code, so it happens once per User.
+    // After the response; recording never throws and must not slow or fail sign-up.
+    after(() => recordAdminEvent('invite-accepted', Number(result.user.id)).catch((error) => captureError(error, { area: 'admin-signals' })))
     return NextResponse.json(result.user, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Registration failed'

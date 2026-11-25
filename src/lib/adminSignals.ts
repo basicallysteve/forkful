@@ -50,11 +50,11 @@ async function sendDueEvents(to: string): Promise<number> {
  * in the last 15 minutes; otherwise the event waits for the next event or the flush cron. Never
  * throws: a failure here must not fail the user's request. Does nothing without a valid ADMIN_USER_ID.
  */
-export async function recordAdminEvent(kind: AdminEventKind): Promise<void> {
+export async function recordAdminEvent(kind: AdminEventKind, userId?: number): Promise<void> {
   try {
     const to = await getAdminEmail()
     if (!to) return
-    await taskRunner.run(() => addAdminEvent(kind), 'admin-event.record')
+    await taskRunner.run(() => addAdminEvent(kind, userId), 'admin-event.record')
     await sendDueEvents(to)
   } catch (error) {
     captureError(error, { area: 'admin-signals' })
