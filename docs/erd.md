@@ -6,7 +6,7 @@ The diagram is Steve's (2026-11-17) and may describe the **intended** model, not
 
 A PR that changes `src/db/schema.ts` must update this file or say why not.
 
-Last verified: 2026-11-16, against migration `0035_goofy_forgotten_one.sql` (main at `6e50725`). Verified means the differences were listed, not that the diagram matches the schema.
+Last verified: 2026-11-25, against main at `b4d5539`. Only the `EVENTS` entity (added in #416, documented in #424) was checked against `src/db/schema.ts` this time; the rest of the diagram was not re-verified and still differs from the schema as described above. The delivery flow for `EVENTS` is in `docs/flows/admin-signals.md`.
 
 ```mermaid
 erDiagram
@@ -134,9 +134,23 @@ erDiagram
         float serving_size
     }
 
+    EVENTS {
+        int id PK
+        string type "Admin kind, e.g. review-report"
+        int user_id FK "Nullable, ON DELETE SET NULL"
+        json payload "Nullable"
+        datetime created_at
+        string status "pending, sent or failed"
+        int attempts "Failed sends so far"
+        text last_error "Nullable"
+        datetime next_attempt_at "Nullable, retry backoff"
+        datetime sent_at "Nullable, when the email went out"
+    }
+
     %% Relationships
     FOOD ||--o{ PRODUCT : "parent of many"
     FAMILY ||--o{ USER : "has many members"
+    USER |o--o{ EVENTS : "optionally the subject of"
     
     USER ||--o{ RECIPE : "creates"
     RECIPE ||--o{ INGREDIENT : "has many"
