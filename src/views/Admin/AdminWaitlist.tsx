@@ -17,6 +17,8 @@ import '@/views/Admin/adminWaitlist.scss'
 interface Props {
   /** True only in production, where invite emails are really sent. */
   emailsEnabled: boolean
+  /** The invite-only flag (ADR-0032). Notices are for the waitlist, so they are off when it is off. */
+  inviteOnly: boolean
 }
 
 type Confirm = 'revoke' | 'delete'
@@ -33,7 +35,7 @@ function formatDate(date: string): string {
   return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export default function AdminWaitlist({ emailsEnabled }: Props) {
+export default function AdminWaitlist({ emailsEnabled, inviteOnly }: Props) {
   const toast = useRef<Toast>(null)
   // Set by a handler to say where focus should land once the next render is committed.
   const focusNext = useRef<(() => HTMLElement | null) | null>(null)
@@ -171,7 +173,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
   }
 
   async function sendNotice() {
-    if (noticeBusy) return
+    if (noticeBusy || !inviteOnly) return
     setNoticeMessage(null)
     setNoticeBusy(true)
     try {
@@ -205,7 +207,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           One-time notice to existing accounts
         </h2>
         <div className="admin-waitlist-invite-row">
-          <button type="button" className="ghost-button" disabled={noticeBusy} onClick={() => void sendNotice()}>
+          <button type="button" className="ghost-button" disabled={noticeBusy || !inviteOnly} onClick={() => void sendNotice()}>
             Send waitlist notice
           </button>
         </div>
@@ -213,7 +215,7 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
           className={`admin-waitlist-message ${noticeMessage?.kind === 'error' ? 'is-error' : 'is-note'}`}
           role={noticeMessage?.kind === 'error' ? 'alert' : 'status'}
         >
-          {noticeMessage?.text}
+          {!inviteOnly ? 'Invite-only is off, so there is no waitlist to notify.' : noticeMessage?.text}
         </p>
       </section>
 

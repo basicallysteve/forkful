@@ -3,6 +3,8 @@ import { getSessionUser, isAdmin } from '@/lib/auth'
 import { sendWaitlistNotices } from '@/lib/waitlistNotice'
 import { captureError } from '@/lib/logger'
 
+export const maxDuration = 60
+
 export async function POST() {
   const session = await getSessionUser()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

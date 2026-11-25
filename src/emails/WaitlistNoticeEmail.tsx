@@ -19,7 +19,7 @@ export function WaitlistNoticeEmail({ username, leaveUrl }: Props) {
       </p>
 
       <p style={{ margin: '0 0 4px' }}>
-        If you&apos;d rather not wait, you can leave the waitlist:
+        If you&apos;d rather not wait, you can leave the waitlist and deactivate your account:
       </p>
       <p style={{ margin: 0, fontSize: 13, wordBreak: 'break-all' }}>
         <a href={leaveUrl} style={{ color: '#10b981' }}>

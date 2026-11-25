@@ -7,7 +7,7 @@ import styles from './Waitlist.module.scss'
 type Phase = 'confirm' | 'loading' | 'removed' | 'invalid'
 
 /** Confirmation step for the leave link. Nothing is removed until the button POSTs the token. */
-export default function WaitlistLeaveConfirm({ token }: { token: string }) {
+export default function WaitlistLeaveConfirm({ token, deactivates = false }: { token: string; deactivates?: boolean }) {
   const [phase, setPhase] = useState<Phase>('confirm')
   const [error, setError] = useState<string | null>(null)
 
@@ -36,17 +36,19 @@ export default function WaitlistLeaveConfirm({ token }: { token: string }) {
     }
   }
 
-  if (phase === 'removed' || phase === 'invalid') return <WaitlistLeaveView status={phase} focusOnMount />
+  if (phase === 'removed' || phase === 'invalid') return <WaitlistLeaveView status={phase} focusOnMount deactivated={deactivates} />
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>Leave the waitlist?</h1>
+      <h1 className={styles.title}>{deactivates ? 'Leave the waitlist and deactivate your account?' : 'Leave the waitlist?'}</h1>
       <p className={styles.lead}>
-        We&apos;ll delete your email from the list and won&apos;t send you anything more about it.
+        {deactivates
+          ? 'Your account will be deactivated and you will be taken off the waitlist. Your recipes, pantry and food log are kept for 12 months, then permanently deleted unless you sign in and reactivate.'
+          : "We'll delete your email from the list and won't send you anything more about it."}
       </p>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <button type="button" className="primary-button" onClick={handleRemove} disabled={phase === 'loading'}>
-        {phase === 'loading' ? 'Removing…' : 'Remove me from the waitlist'}
+        {phase === 'loading' ? (deactivates ? 'Deactivating…' : 'Removing…') : deactivates ? 'Leave and deactivate my account' : 'Remove me from the waitlist'}
       </button>
     </div>
   )
