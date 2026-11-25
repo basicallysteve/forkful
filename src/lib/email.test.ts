@@ -183,6 +183,7 @@ describe('sendWaitlistNoticeEmail', () => {
     const props = JSON.stringify(payload.react.props)
     expect(props).toContain('"Hi ","pat"')
     expect(props).toContain('/waitlist/leave?token=')
+    expect(payload.text).toContain('https://app.example.com/waitlist/leave?token=')
   })
 
   it('suppresses the notice outside production and logs neither address nor username', async () => {
