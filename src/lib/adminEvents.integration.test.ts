@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import { Pool } from 'pg'
 import { parseEnvFile } from '@/db/resolveDrizzleEnv'
 import { addAdminEvent, claimDueAdminEvents, failAdminEvents } from './adminEvents'
+import type { AdminEventKind } from './adminEventKinds'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 
@@ -25,7 +26,7 @@ const pool = new Pool({ connectionString })
 
 // Everything here is scoped to rows whose type starts with `itest-`: the claim takes the list of
 // types it works on, so other rows in the table are never read, claimed or deleted.
-const type = (name: string) => `itest-${name}`
+const type = (name: string) => `itest-${name}` as AdminEventKind
 const TYPES = ['a', 'b', 'c', 'd', 'e'].map(type)
 const windowStart = () => new Date(Date.now() - 15 * 60 * 1000)
 const claim = (start = windowStart(), now?: Date) => claimDueAdminEvents(start, TYPES, now)
@@ -98,9 +99,10 @@ describe('failAdminEvents', () => {
     const now = new Date()
     const { terminalIds } = await failAdminEvents(ids, 'resend down', now)
     expect(terminalIds).toEqual([])
-    const { rows } = await pool.query('SELECT status, attempts, last_error, sent_at, next_attempt_at FROM events WHERE type = $1', [type('a')])
+    // Columns are timestamp without time zone, stored as UTC: read the epoch so the client's zone can't skew it.
+    const { rows } = await pool.query('SELECT status, attempts, last_error, sent_at, extract(epoch from next_attempt_at) * 1000 AS next_ms FROM events WHERE type = $1', [type('a')])
     expect(rows[0]).toMatchObject({ status: 'pending', attempts: 1, last_error: 'resend down', sent_at: null })
-    expect(rows[0].next_attempt_at.getTime()).toBe(now.getTime() + DAY)
+    expect(Number(rows[0].next_ms)).toBe(now.getTime() + DAY)
   })
 
   it('a failure does not consume the cap, and the event is not claimed again before its retry time', async () => {

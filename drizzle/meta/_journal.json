@@ -267,13 +267,6 @@
       "when": 1795565206174,
       "tag": "0037_waitlist_notice_sent_at",
       "breakpoints": true
-    },
-    {
-      "idx": 38,
-      "version": "7",
-      "when": 1795573881560,
-      "tag": "0038_nasty_mikhail_rasputin",
-      "breakpoints": true
     }
   ]
 }
