@@ -346,8 +346,9 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
         .where(and(eq(savedRecipes.recipeId, id), isNull(savedRecipes.dateDeleted)))
     }
 
+    let nutritionComplete: boolean | undefined
     if (data.ingredients !== undefined) {
-      const nutritionComplete = await computeNutritionComplete(tx, data.ingredients)
+      nutritionComplete = await computeNutritionComplete(tx, data.ingredients)
       await tx.update(recipes).set({ nutritionComplete }).where(eq(recipes.id, id))
       await tx.delete(ingredients).where(eq(ingredients.recipeId, id))
       if (data.ingredients.length > 0) {
@@ -361,7 +362,7 @@ export async function updateRecipe(id: number, data: Partial<Omit<Recipe, 'id'>>
         )
       }
     }
-    return updated
+    return nutritionComplete === undefined ? updated : { ...updated, nutritionComplete }
   })
   return row ? buildRecipe(row) : null
 }
