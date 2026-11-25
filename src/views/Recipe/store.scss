@@ -666,18 +666,27 @@
 }
 
 // Save-error toast (PrimeReact Toast, rendered in a portal so it sits outside .recipe-store).
-// Top-right on desktop, top on mobile, so it clears the bottom-right "Report an issue" widget.
+// PrimeReact pins it 20px from the top and right (inline), so it clears the bottom-right "Report an issue" widget.
+// On narrow screens it spans the width minus that margin, capped at 25rem and centred.
 .p-toast.recipe-save-toast {
-  top: 16px;
-  right: 16px;
-  width: 25rem;
-  max-width: calc(100vw - 32px);
-
   @media (max-width: 720px) {
-    left: 16px;
-    right: 16px;
+    left: 20px;
     width: auto;
     max-width: 25rem;
     margin-inline: auto;
+  }
+
+  // Opaque so the text stays readable over the form in light and dark themes.
+  .p-toast-message {
+    background: var(--vscode-panel);
+    color: var(--vscode-text);
+    backdrop-filter: none;
+    border: 1px solid var(--vscode-border);
+    border-left: 4px solid var(--vscode-danger-text);
+
+    .p-toast-summary,
+    .p-toast-message-icon {
+      color: var(--vscode-danger-text);
+    }
   }
 }
