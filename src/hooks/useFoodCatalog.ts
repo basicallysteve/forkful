@@ -20,7 +20,6 @@ export function useFoodCatalog(): { status: FoodCatalogStatus; retry: () => void
   useEffect(() => {
     if (attempt === 0 && useFoodStore.getState().foods.length > 0) return
     let cancelled = false
-    setStatus('loading')
     apiFetchFoods()
       .then((foods) => {
         if (cancelled) return
@@ -33,6 +32,9 @@ export function useFoodCatalog(): { status: FoodCatalogStatus; retry: () => void
     return () => { cancelled = true }
   }, [attempt, setFoods])
 
-  const retry = useCallback(() => setAttempt((n) => n + 1), [])
+  const retry = useCallback(() => {
+    setStatus('loading')
+    setAttempt((n) => n + 1)
+  }, [])
   return { status, retry }
 }
