@@ -330,10 +330,11 @@
     > span {
       grid-area: 1 / 1;
     }
+  }
 
-    .label-sizer {
-      visibility: hidden;
-    }
+  // Outside the :has() rule so browsers without :has() still hide the sizer copy.
+  .label-sizer {
+    visibility: hidden;
   }
 
   .primary-button {
