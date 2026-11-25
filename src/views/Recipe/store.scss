@@ -664,3 +664,20 @@
     }
   }
 }
+
+// Save-error toast (PrimeReact Toast, rendered in a portal so it sits outside .recipe-store).
+// Top-right on desktop, top on mobile, so it clears the bottom-right "Report an issue" widget.
+.p-toast.recipe-save-toast {
+  top: 16px;
+  right: 16px;
+  width: 25rem;
+  max-width: calc(100vw - 32px);
+
+  @media (max-width: 720px) {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: 25rem;
+    margin-inline: auto;
+  }
+}
