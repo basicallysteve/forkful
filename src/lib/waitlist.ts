@@ -1,8 +1,9 @@
 import crypto from 'crypto'
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, ne, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { invites, users, waitlistEntries } from '@/db/schema'
 import { taskRunner } from '@/lib/TaskRunner'
+import { deactivateAccount } from '@/lib/users'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_EMAIL_LENGTH = 254
@@ -77,8 +78,35 @@ export function verifyWaitlistLeaveToken(token: string | undefined): string | nu
 }
 
 /**
- * Removes the Waitlist Entry a leave token was signed for. Idempotent: a valid token for an
- * entry that is already gone still reports 'removed'. Never touches a User.
+ * The active User the leave link would deactivate: a User with this email, no Invite, and not
+ * the admin (the waitlist notice, #329, goes to exactly these accounts). Null for a plain
+ * Waitlist Entry, an invited User, or an account that is already deactivated.
+ */
+async function findLeavingAccount(email: string): Promise<number | null> {
+  const adminId = process.env.ADMIN_USER_ID
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(
+      eq(sql`lower(${users.email})`, email),
+      isNull(users.dateDeleted),
+      adminId ? ne(users.id, Number(adminId)) : undefined,
+      sql`not exists (select 1 from ${invites} where lower(${invites.email}) = lower(${users.email}))`,
+    ))
+    .limit(1)
+  return user?.id ?? null
+}
+
+/** True when a valid leave token would also deactivate an account, so the page can say so first. */
+export async function leaveDeactivatesAccount(token: string | undefined): Promise<boolean> {
+  const email = verifyWaitlistLeaveToken(token)
+  return email ? (await findLeavingAccount(email)) !== null : false
+}
+
+/**
+ * Removes the Waitlist Entry a leave token was signed for and, when the email belongs to a
+ * Waitlisted User (no Invite), deactivates that account with the usual Account Deactivation
+ * (ADR-0007). Idempotent: a valid token for an entry that is already gone still reports 'removed'.
  */
 export async function leaveWaitlist(token: string | undefined): Promise<'removed' | 'invalid'> {
   const email = verifyWaitlistLeaveToken(token)
@@ -87,6 +115,8 @@ export async function leaveWaitlist(token: string | undefined): Promise<'removed
     () => db.delete(waitlistEntries).where(eq(sql`lower(${waitlistEntries.email})`, email)),
     'waitlist.leave',
   )
+  const userId = await findLeavingAccount(email)
+  if (userId !== null) await taskRunner.run(() => deactivateAccount(userId), 'waitlist.leave-deactivate')
   return 'removed'
 }
 

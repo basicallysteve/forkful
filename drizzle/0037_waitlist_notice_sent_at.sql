@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "waitlist_notice_sent_at" timestamp;

@@ -50,6 +50,13 @@ export async function apiInvite(target: { entryId: number } | { email: string })
   return { status: 'created', ...(await res.json()) }
 }
 
+/** Sends the one-time waitlist notice to Waitlisted Users who haven't had it. */
+export async function apiSendWaitlistNotice(): Promise<{ sent: number; failed: number }> {
+  const res = await request('/api/admin/waitlist/notice', { method: 'POST' })
+  if (!res.ok) return fail(res)
+  return res.json()
+}
+
 export async function apiRevokeInvite(inviteId: number): Promise<void> {
   const res = await request(`/api/admin/waitlist/invites/${inviteId}`, { method: 'DELETE' })
   if (!res.ok) return fail(res)

@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react'
 
 const mockLeave = vi.fn()
 const mockVerify = vi.fn()
+const mockDeactivates = vi.fn()
 vi.mock('@/lib/waitlist', () => ({
   leaveWaitlist: (...a: unknown[]) => mockLeave(...a),
   verifyWaitlistLeaveToken: (...a: unknown[]) => mockVerify(...a),
+  leaveDeactivatesAccount: (...a: unknown[]) => mockDeactivates(...a),
 }))
 
 import WaitlistLeavePage from './page'
@@ -13,6 +15,7 @@ import WaitlistLeavePage from './page'
 beforeEach(() => {
   mockLeave.mockReset()
   mockVerify.mockReset()
+  mockDeactivates.mockReset().mockResolvedValue(false)
 })
 
 async function renderPage(token?: string) {
@@ -41,5 +44,20 @@ describe('GET /waitlist/leave', () => {
     await renderPage()
     expect(screen.getByText('This link is invalid')).toBeInTheDocument()
     expect(mockLeave).not.toHaveBeenCalled()
+  })
+
+  it('for a notice recipient, says plainly that the account will be deactivated and does NOT deactivate', async () => {
+    mockVerify.mockReturnValue('pat@example.com')
+    mockDeactivates.mockResolvedValue(true)
+    await renderPage('good-token')
+    expect(screen.getByRole('heading', { name: 'Leave the waitlist and deactivate your account?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leave and deactivate my account' })).toBeInTheDocument()
+    expect(mockLeave).not.toHaveBeenCalled()
+  })
+
+  it('does not look up an account for an invalid token', async () => {
+    mockVerify.mockReturnValue(null)
+    await renderPage('bad-token')
+    expect(mockDeactivates).not.toHaveBeenCalled()
   })
 })

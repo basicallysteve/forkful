@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
 import { Pool } from 'pg'
-import { joinWaitlist, leaveWaitlist, signWaitlistLeaveToken } from './waitlist'
+import { joinWaitlist, leaveWaitlist, leaveDeactivatesAccount, signWaitlistLeaveToken } from './waitlist'
 
 const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DATABASE_USER}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}`
 const pool = new Pool({ connectionString })
@@ -17,6 +17,8 @@ describe('waitlist integration tests', () => {
   })
   afterEach(async () => {
     await pool.query("DELETE FROM waitlist_entries WHERE email LIKE 'itest%'")
+    await pool.query("DELETE FROM invites WHERE email LIKE 'itest-lv-%'")
+    await pool.query("DELETE FROM users WHERE username LIKE 'itest-lv-%'")
   })
   afterAll(async () => {
     vi.unstubAllEnvs()
@@ -70,5 +72,42 @@ describe('waitlist integration tests', () => {
   it('leaveWaitlist is idempotent for a valid token whose entry is already gone', async () => {
     const status = await leaveWaitlist(signWaitlistLeaveToken('itest-nobody@example.com'))
     expect(status).toBe('removed')
+  })
+
+  describe('leaving as a notice recipient (a User with no Invite)', () => {
+    const addUser = async (name: string) =>
+      pool.query('INSERT INTO users (username, email) VALUES ($1, $2)', [`itest-lv-${name}`, `itest-lv-${name}@example.com`])
+    const deletedAt = async (name: string) =>
+      (await pool.query('SELECT date_deleted FROM users WHERE username = $1', [`itest-lv-${name}`])).rows[0].date_deleted as Date | null
+
+    it('deactivates the account, and says it will beforehand', async () => {
+      await addUser('pat')
+      const token = signWaitlistLeaveToken('itest-lv-pat@example.com')
+      expect(await leaveDeactivatesAccount(token)).toBe(true)
+      expect(await deletedAt('pat')).toBeNull()
+
+      expect(await leaveWaitlist(token)).toBe('removed')
+      expect(await deletedAt('pat')).toBeInstanceOf(Date)
+    })
+
+    it('does not deactivate a User who has an Invite', async () => {
+      await addUser('invited')
+      await pool.query("INSERT INTO invites (email, code_hash) VALUES ('itest-lv-invited@example.com', $1)", ['0'.repeat(64)])
+      const token = signWaitlistLeaveToken('itest-lv-invited@example.com')
+      expect(await leaveDeactivatesAccount(token)).toBe(false)
+      await leaveWaitlist(token)
+      expect(await deletedAt('invited')).toBeNull()
+    })
+
+    it('does not deactivate anyone for a plain Waitlist Entry, and never for a tampered token', async () => {
+      await joinWaitlist({ email: 'itest-lv-plain@example.com', name: null, marketingEmailOptIn: false })
+      expect(await leaveDeactivatesAccount(signWaitlistLeaveToken('itest-lv-plain@example.com'))).toBe(false)
+
+      await addUser('safe')
+      const token = signWaitlistLeaveToken('itest-lv-safe@example.com')
+      expect(await leaveDeactivatesAccount(token.slice(0, -2) + 'xx')).toBe(false)
+      expect(await leaveWaitlist(token.slice(0, -2) + 'xx')).toBe('invalid')
+      expect(await deletedAt('safe')).toBeNull()
+    })
   })
 })

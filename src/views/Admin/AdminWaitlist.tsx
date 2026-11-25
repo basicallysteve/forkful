@@ -8,6 +8,7 @@ import {
   apiInvite,
   apiListWaitlist,
   apiRevokeInvite,
+  apiSendWaitlistNotice,
   type WaitlistAdminRow,
 } from '@/lib/api/waitlistAdmin'
 import '@/views/Admin/admin.scss'
@@ -16,6 +17,8 @@ import '@/views/Admin/adminWaitlist.scss'
 interface Props {
   /** True only in production, where invite emails are really sent. */
   emailsEnabled: boolean
+  /** The invite-only flag (ADR-0032). Notices are for the waitlist, so they are off when it is off. */
+  inviteOnly: boolean
 }
 
 type Confirm = 'revoke' | 'delete'
@@ -32,7 +35,7 @@ function formatDate(date: string): string {
   return new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export default function AdminWaitlist({ emailsEnabled }: Props) {
+export default function AdminWaitlist({ emailsEnabled, inviteOnly }: Props) {
   const toast = useRef<Toast>(null)
   // Set by a handler to say where focus should land once the next render is committed.
   const focusNext = useRef<(() => HTMLElement | null) | null>(null)
@@ -42,6 +45,8 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
   const [email, setEmail] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
   const [emailMessage, setEmailMessage] = useState<{ kind: 'error' | 'note'; text: string } | null>(null)
+  const [noticeBusy, setNoticeBusy] = useState(false)
+  const [noticeMessage, setNoticeMessage] = useState<{ kind: 'error' | 'note'; text: string } | null>(null)
 
   useEffect(() => {
     const find = focusNext.current
@@ -167,12 +172,52 @@ export default function AdminWaitlist({ emailsEnabled }: Props) {
     }
   }
 
+  async function sendNotice() {
+    if (noticeBusy || !inviteOnly) return
+    setNoticeMessage(null)
+    setNoticeBusy(true)
+    try {
+      const { sent, failed } = await apiSendWaitlistNotice()
+      const accounts = `${sent} ${sent === 1 ? 'account' : 'accounts'}`
+      if (failed > 0) {
+        setNoticeMessage({ kind: 'error', text: `Notice sent to ${accounts}, ${failed} failed. Click again to retry.` })
+      } else if (sent === 0) {
+        setNoticeMessage({ kind: 'note', text: 'Already sent to everyone' })
+      } else if (!emailsEnabled) {
+        setNoticeMessage({ kind: 'note', text: `Notice recorded for ${accounts} (email not sent in this environment)` })
+      } else {
+        setNoticeMessage({ kind: 'note', text: `Notice sent to ${accounts}` })
+      }
+    } catch (err) {
+      setNoticeMessage({ kind: 'error', text: errorText(err) })
+    } finally {
+      setNoticeBusy(false)
+    }
+  }
+
   return (
     <div className="admin-reports">
       <Toast ref={toast} />
       <header className="admin-reports-header">
         <h1 className="admin-reports-title">Waitlist</h1>
       </header>
+
+      <section className="admin-waitlist-invite" aria-labelledby="waitlist-notice-heading">
+        <h2 id="waitlist-notice-heading" className="admin-waitlist-label">
+          One-time notice to existing accounts
+        </h2>
+        <div className="admin-waitlist-invite-row">
+          <button type="button" className="ghost-button" disabled={noticeBusy || !inviteOnly} onClick={() => void sendNotice()}>
+            Send waitlist notice
+          </button>
+        </div>
+        <p
+          className={`admin-waitlist-message ${noticeMessage?.kind === 'error' ? 'is-error' : 'is-note'}`}
+          role={noticeMessage?.kind === 'error' ? 'alert' : 'status'}
+        >
+          {!inviteOnly ? 'Invite-only is off, so there is no waitlist to notify.' : noticeMessage?.text}
+        </p>
+      </section>
 
       <form className="admin-waitlist-invite" onSubmit={inviteEmail} noValidate>
         <label htmlFor="invite-email" className="admin-waitlist-label">
