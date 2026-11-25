@@ -261,6 +261,70 @@ describe('Food Store Page - Add Food', () => {
       })
     })
 
+    it('sends a single create request when Save Food is double-clicked (#317)', async () => {
+      const user = userEvent.setup()
+      const { apiCreateFood } = await import('@/lib/api/foods')
+      vi.mocked(apiCreateFood).mockClear()
+      let resolveCreate: (f: Food) => void = () => {}
+      vi.mocked(apiCreateFood).mockImplementationOnce(
+        () => new Promise<Food>((resolve) => { resolveCreate = resolve })
+      )
+      renderWithProviders(<Store />)
+
+      await user.type(screen.getByPlaceholderText('e.g. Chicken Breast'), 'Double Save Food')
+      const caloriesInput = screen.getByLabelText('Calories')
+      await user.clear(caloriesInput)
+      await user.type(caloriesInput, '150')
+
+      await user.dblClick(screen.getByRole('button', { name: /save food/i }))
+
+      expect(apiCreateFood).toHaveBeenCalledTimes(1)
+      resolveCreate({ ...mockFoods[0], id: 998, name: 'Double Save Food' })
+    })
+
+    it('stays busy after a successful save while the page navigates away (#317)', async () => {
+      const user = userEvent.setup()
+      const { apiCreateFood } = await import('@/lib/api/foods')
+      vi.mocked(apiCreateFood).mockClear()
+      renderWithProviders(<Store />)
+
+      await user.type(screen.getByPlaceholderText('e.g. Chicken Breast'), 'Busy After Save Food')
+      const caloriesInput = screen.getByLabelText('Calories')
+      await user.clear(caloriesInput)
+      await user.type(caloriesInput, '150')
+
+      await user.click(screen.getByRole('button', { name: /save food/i }))
+      await waitFor(() => expect(apiCreateFood).toHaveBeenCalledTimes(1))
+
+      const busy = await screen.findByRole('button', { name: /saving/i })
+      expect(busy).toBeDisabled()
+      await user.click(busy)
+      expect(apiCreateFood).toHaveBeenCalledTimes(1)
+    })
+
+    it('re-enables Save Food after a failed save and keeps the form (#317)', async () => {
+      const user = userEvent.setup()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { apiCreateFood } = await import('@/lib/api/foods')
+      vi.mocked(apiCreateFood).mockClear()
+      vi.mocked(apiCreateFood).mockRejectedValueOnce(new Error('500'))
+      renderWithProviders(<Store />)
+
+      await user.type(screen.getByPlaceholderText('e.g. Chicken Breast'), 'Retry Food')
+      const caloriesInput = screen.getByLabelText('Calories')
+      await user.clear(caloriesInput)
+      await user.type(caloriesInput, '150')
+
+      await user.click(screen.getByRole('button', { name: /save food/i }))
+
+      const retry = await screen.findByRole('button', { name: /save food/i })
+      await waitFor(() => expect(retry).toBeEnabled())
+      expect(screen.getByPlaceholderText('e.g. Chicken Breast')).toHaveValue('Retry Food')
+
+      await user.click(retry)
+      expect(apiCreateFood).toHaveBeenCalledTimes(2)
+    })
+
     it('calls updateFood when saving an edited food', async () => {
       const user = userEvent.setup()
       const updateFood = vi.fn()

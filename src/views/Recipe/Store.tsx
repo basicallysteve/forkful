@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from "react"
+import { useSubmitGuard } from "@/hooks/useSubmitGuard"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -303,6 +304,8 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
 }
 
 function Store() {
+  // Which create request is in flight (blocks re-entry before React re-renders, e.g. a double-click).
+  const { busy: saving, tryStart, reset: resetSaving } = useSubmitGuard<'save' | 'publish'>()
   const router = useRouter()
   const recipes = useRecipeStore((state) => state.recipes)
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe)
@@ -396,7 +399,7 @@ function Store() {
   }
 
   async function handleSaveRecipe() {
-    if (!canSave) return
+    if (!canSave || !tryStart('save')) return
     try {
       const newRecipe = createRecipe(false)
       const created = await apiCreateRecipe(newRecipe)
@@ -404,11 +407,13 @@ function Store() {
       router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist new recipe:', err)
+      resetSaving()
     }
+    // On success stay busy: the page is navigating away and a second click must not create again.
   }
 
   async function handlePublishRecipe() {
-    if (!canPublish) return
+    if (!canPublish || !tryStart('publish')) return
     try {
       const newRecipe = createRecipe(true)
       const created = await apiCreateRecipe(newRecipe)
@@ -416,6 +421,7 @@ function Store() {
       router.push(toRecipeUrl(created.shortId, created.name))
     } catch (err) {
       console.error('Failed to persist published recipe:', err)
+      resetSaving()
     }
   }
 
@@ -485,11 +491,13 @@ function Store() {
 
               <div className="form-footer">
                 <div className="footer-actions">
-                  <button type="button" className="ghost-button" disabled={!canSave} onClick={handleSaveRecipe}>
-                    Save Recipe
+                  <button type="button" className="ghost-button" disabled={!canSave || saving !== null} aria-busy={saving === 'save'} onClick={handleSaveRecipe}>
+                    <span>{saving === 'save' ? 'Saving…' : 'Save Recipe'}</span>
+                    <span className="label-sizer" aria-hidden="true">{saving === 'save' ? 'Save Recipe' : 'Saving…'}</span>
                   </button>
-                  <button type="button" className="primary-button" disabled={!canPublish} onClick={handlePublishRecipe}>
-                    Publish
+                  <button type="button" className="primary-button" disabled={!canPublish || saving !== null} aria-busy={saving === 'publish'} onClick={handlePublishRecipe}>
+                    <span>{saving === 'publish' ? 'Publishing…' : 'Publish'}</span>
+                    <span className="label-sizer" aria-hidden="true">{saving === 'publish' ? 'Publish' : 'Publishing…'}</span>
                   </button>
                 </div>
               </div>
