@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Ingredient } from '@/types/Ingredient'
 import type { Recipe } from '@/types/Recipe'
-import { calculateCalories } from '@/utils/unitConversion'
+import { calculateCalories } from '@/utils/foodNutrition'
 
 type RecipeStore = {
   recipes: Recipe[],
