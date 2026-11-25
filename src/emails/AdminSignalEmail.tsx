@@ -1,5 +1,5 @@
 import { BaseEmail } from './BaseEmail'
-import { ADMIN_SIGNAL_LINK_LABEL, adminSignalSentence, adminSignalSubject, formatSignalTime } from './adminSignalCopy'
+import { ADMIN_SIGNAL_LINK_LABEL, adminSignalHeading, adminSignalSentence, adminSignalSubject, formatSignalTime } from './adminSignalCopy'
 import type { AdminSignalEvent } from '@/lib/adminEventKinds'
 
 interface Props {
@@ -10,6 +10,9 @@ interface Props {
 export function AdminSignalEmail({ event, adminUrl }: Props) {
   return (
     <BaseEmail subject={adminSignalSubject([event])} previewText={adminSignalSentence(event.kind)} variant="functional">
+      <h1 style={{ margin: '0 0 20px', fontSize: 24, fontWeight: 700, color: '#09090b' }}>
+        {adminSignalHeading([event])}
+      </h1>
       <p style={{ margin: '0 0 8px' }}>{adminSignalSentence(event.kind)}</p>
       <p style={{ margin: '0 0 24px', fontSize: 13, color: '#71717a' }}>{formatSignalTime(event.createdAt)}</p>
 

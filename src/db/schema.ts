@@ -376,11 +376,23 @@ export const invites = pgTable('invites', {
   codeHashUnique: unique('invites_code_hash_unique').on(t.codeHash),
 }));
 
-// Things that need the admin's attention (#416). Only what happened and when: never a user, name or text.
-// `sent_at` is set when an admin email carrying this event went out; the newest value is when the last email was sent.
-export const adminEvents = pgTable('admin_events', {
+// Things that happened and need handling later (#416). Admin emails are the first use. Generic on purpose:
+// `type` says what happened, `payload` is optional extra data (never secrets or text a user wrote), and
+// `user_id` is who it is about (nullable; set null if that user is hard-deleted).
+// Delivery bookkeeping: `status` is pending until sent. A failed attempt bumps `attempts`, stores
+// `last_error` and sets `next_attempt_at` (backoff); after the last allowed attempt it is failed for good.
+// `sent_at` is when the email carrying it went out; the newest value is when the last email was sent.
+export const events = pgTable('events', {
   id: serial('id').primaryKey(),
-  kind: varchar('kind', { length: 40 }).notNull(),
+  type: varchar('type', { length: 40 }).notNull(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+  payload: jsonb('payload'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  status: varchar('status', { length: 10, enum: ['pending', 'sent', 'failed'] }).notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  nextAttemptAt: timestamp('next_attempt_at'),
   sentAt: timestamp('sent_at'),
-});
+}, (t) => ({
+  dueIdx: index('events_status_next_attempt_idx').on(t.status, t.nextAttemptAt),
+}));

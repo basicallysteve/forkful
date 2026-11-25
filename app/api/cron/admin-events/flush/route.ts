@@ -4,7 +4,10 @@ import { captureError } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
-/** Every 15 minutes: sends the summary for events held back inside the window (#416). */
+/**
+ * Daily at 07:30 UTC (vercel.json; the Hobby plan only allows daily crons): sends events held back
+ * inside the 15-minute window and retries failed sends whose backoff has passed (#416).
+ */
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret) {

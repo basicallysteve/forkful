@@ -1,9 +1,10 @@
 import { taskRunner } from '@/lib/TaskRunner'
-import { addAdminEvent, claimDueAdminEvents, releaseAdminEvents } from '@/lib/adminEvents'
+import { addAdminEvent, claimDueAdminEvents, failAdminEvents } from '@/lib/adminEvents'
+import { MAX_ATTEMPTS } from '@/lib/adminEventRetry'
 import type { AdminEventKind } from '@/lib/adminEventKinds'
 import { sendAdminSignalEmail } from '@/lib/email'
 import { getUser } from '@/lib/users'
-import { TimeoutError, withTimeout } from '@/lib/withTimeout'
+import { withTimeout } from '@/lib/withTimeout'
 import { captureError, logInfo } from '@/lib/logger'
 
 /** At most one admin email per window. */
@@ -18,9 +19,10 @@ async function getAdminEmail(): Promise<string | null> {
 
 /**
  * Claims whatever is pending (only if the window since the last email has ended) and sends it as
- * one email: a lone event as itself, several as a summary. A failed send releases the events so
- * the next event or the flush cron retries them. A send that times out keeps its stamp: the
- * email may still arrive, and a retry would send it twice.
+ * one email: a lone event as itself, several as a summary. A failed or timed-out send counts an
+ * attempt against each event, stores the error and schedules a retry (see `outcomeAfterFailure`),
+ * so it never counts toward the window; the next event or the flush cron picks it up once due.
+ * A timed-out send may still arrive, so a retry can rarely send a duplicate; that beats losing it.
  */
 async function sendDueEvents(to: string): Promise<number> {
   const claim = await taskRunner.run(
@@ -29,11 +31,13 @@ async function sendDueEvents(to: string): Promise<number> {
   )
   if (claim.events.length === 0) return 0
   try {
-    await withTimeout(sendAdminSignalEmail({ to, events: claim.events, previousSentAt: claim.previousSentAt }), SEND_TIMEOUT_MS)
+    await withTimeout(sendAdminSignalEmail({ to, events: claim.events }), SEND_TIMEOUT_MS)
   } catch (error) {
     captureError(error, { area: 'admin-signals' })
-    if (!(error instanceof TimeoutError)) {
-      await taskRunner.run(() => releaseAdminEvents(claim.ids), 'admin-event.release')
+    const message = (error instanceof Error ? error.message : String(error)).slice(0, 500)
+    const { terminalIds } = await taskRunner.run(() => failAdminEvents(claim.ids, message), 'admin-event.fail')
+    if (terminalIds.length > 0) {
+      captureError(new Error(`Admin events gave up after ${MAX_ATTEMPTS} attempts`), { area: 'admin-signals', attributes: { events: terminalIds.length } })
     }
     return 0
   }
