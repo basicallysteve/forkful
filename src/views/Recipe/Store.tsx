@@ -300,7 +300,7 @@ function AddIngredientRow({ onAdd }: { onAdd: (ingredient: Ingredient) => void }
       <div className="form-field-full" role="status" aria-label="Loading foods">
         <Skeleton height="2.5rem" borderRadius="8px" />
         {/* The Skeleton tint is faint on the light theme, so the words carry the state (as Pantry's "Loading pantry..."). */}
-        <span className="no-foods-message">Loading foods…</span>
+        <span className="foods-loading-text">Loading foods…</span>
       </div>
     )
   }
