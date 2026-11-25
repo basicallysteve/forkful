@@ -47,7 +47,7 @@ describe('adminSignalCountLines', () => {
       ev('review-report'), ev('review-report'), ev('review-report'),
       ev('feedback'), ev('account-deactivated'), ev('invite-accepted'),
     ])
-    expect(lines).toEqual(['3 Review Reports', '1 New Feedback', '1 Account Deactivated', '1 Invite Accepted'])
+    expect(lines).toEqual(['3 Review Reports', '1 Feedback Report', '1 Account Deactivated', '1 Invite Accepted'])
   })
 
   it('pluralizes the other kinds and leaves out kinds with no events', () => {
@@ -93,7 +93,7 @@ describe('AdminSignalSummaryEmail', () => {
     const text = plain(html)
     expect(text).toMatch(/Since Nov 24, [^:]*:\d\d [^:]*:/)
     expect(text).toContain('3 Review Reports')
-    expect(text).toContain('1 New Feedback')
+    expect(text).toContain('1 Feedback Report')
     expect(text).toContain('1 Invite Accepted')
     expect(text).not.toContain('Account Deactivated')
     expect(text).not.toContain('Account Deleted')
@@ -121,7 +121,7 @@ describe('adminSignalText (plain-text version)', () => {
     const text = adminSignalText([ev('review-report'), ev('review-report'), ev('feedback')], adminUrl)
     expect(text).toContain('Since ')
     expect(text).toContain('2 Review Reports')
-    expect(text).toContain('1 New Feedback')
+    expect(text).toContain('1 Feedback Report')
     expect(text).toContain(adminUrl)
   })
 
