@@ -10,7 +10,7 @@ import { ReviewReportSummaryEmail } from '@/emails/ReviewReportSummaryEmail'
 import { WaitlistNotificationEmail } from '@/emails/WaitlistNotificationEmail'
 import { InviteEmail } from '@/emails/InviteEmail'
 import { buildInviteLink } from '@/lib/inviteLink'
-import { WaitlistNoticeEmail } from '@/emails/WaitlistNoticeEmail'
+import { WaitlistNoticeEmail, waitlistNoticeText } from '@/emails/WaitlistNoticeEmail'
 import { absoluteUrl } from '@/lib/seo'
 import { signWaitlistLeaveToken } from '@/lib/waitlist'
 import { logInfo } from '@/lib/logger'
@@ -164,14 +164,14 @@ export async function sendWaitlistNotificationEmail(entry: { email: string; name
 
 /** The leave link carries a signed token; the address and username stay out of logs. */
 export async function sendWaitlistNoticeEmail({ to, username }: { to: string; username: string }): Promise<void> {
+  const leaveUrl = absoluteUrl(`/waitlist/leave?${new URLSearchParams({ token: signWaitlistLeaveToken(to) })}`)
   const result = await deliver('waitlist-notice', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: "You're on the EatForkful waitlist",
-    react: WaitlistNoticeEmail({
-      username,
-      leaveUrl: absoluteUrl(`/waitlist/leave?${new URLSearchParams({ token: signWaitlistLeaveToken(to) })}`),
-    }),
+    react: WaitlistNoticeEmail({ username, leaveUrl }),
+    // Plain-text alternative: a text email can't carry a link label, so it shows the raw URL.
+    text: waitlistNoticeText(username, leaveUrl),
   })
   if (result?.error) {
     throw new Error(`Waitlist notice send failed: ${result.error.name} (${result.error.statusCode ?? 'no status'})`)
