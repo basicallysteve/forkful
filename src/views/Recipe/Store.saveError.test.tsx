@@ -5,7 +5,7 @@ import Store from './Store'
 import { apiCreateRecipe } from '@/lib/api/recipes'
 import { ApiError, ForbiddenError, UnauthorizedError } from '@/lib/api/errors'
 import { useRecipeStore, resetRecipeStore } from '@/stores/recipes'
-import { resetFoodStore } from '@/stores/food'
+import { useFoodStore, resetFoodStore } from '@/stores/food'
 
 vi.mock('@/lib/api/recipes', () => ({
   apiCreateRecipe: vi.fn(),
@@ -71,8 +71,16 @@ describe('Store Page - save error toast (#288)', () => {
   it('shows the same toast when Publish fails', async () => {
     const user = userEvent.setup()
     vi.mocked(apiCreateRecipe).mockRejectedValueOnce(new ForbiddenError())
+    resetFoodStore()
+    useFoodStore.setState({ foods: [{ id: 200, name: 'Test Ingredient', calories: 50, protein: 2, carbs: 5, fat: 1, fiber: 1, servingSize: 1, servingUnit: 'piece', measurements: [{ unit: 'piece' }, { unit: 'g' }] }] })
     render(<Store />)
     await fillRequired(user)
+    // Publish needs at least one ingredient.
+    await user.click(screen.getByRole('button', { name: /ingredients tab/i }))
+    await user.type(screen.getByPlaceholderText('Select food'), 'Test Ingredient')
+    await user.click(await screen.findByRole('option', { name: /test ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }))
+    await user.click(screen.getByRole('button', { name: /details tab/i }))
 
     await user.click(screen.getByRole('button', { name: /publish/i }))
 
