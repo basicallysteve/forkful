@@ -6,7 +6,7 @@ import { ADMIN_EVENT_KINDS, type AdminEventKind, type AdminSignalEvent } from '@
  */
 const COPY: Record<AdminEventKind, { subject: string; sentence: string; singular: string; plural: string }> = {
   'review-report': { subject: 'New Review Report', sentence: 'A user reported a review.', singular: 'Review Report', plural: 'Review Reports' },
-  feedback: { subject: 'New Feedback', sentence: 'A user sent feedback.', singular: 'New Feedback', plural: 'New Feedback' },
+  feedback: { subject: 'New Feedback', sentence: 'A user sent feedback.', singular: 'Feedback Report', plural: 'Feedback Reports' },
   'account-deactivated': { subject: 'Account Deactivated', sentence: 'A user deactivated their account.', singular: 'Account Deactivated', plural: 'Accounts Deactivated' },
   'account-deleted': { subject: 'Account Deleted', sentence: 'A user deleted their account.', singular: 'Account Deleted', plural: 'Accounts Deleted' },
   'invite-accepted': { subject: 'Invite Accepted', sentence: 'An invite was accepted.', singular: 'Invite Accepted', plural: 'Invites Accepted' },
