@@ -545,6 +545,23 @@
     opacity: 0.8;
   }
 
+  // Busy label ("Saving…") swaps in without resizing the button: a hidden copy of the
+  // longer label keeps the width constant. Scoped to buttons that render .label-sizer.
+  .primary-button:has(.label-sizer),
+  .ghost-button:has(.label-sizer) {
+    display: inline-grid;
+    justify-items: center;
+    align-items: center;
+
+    > span {
+      grid-area: 1 / 1;
+    }
+
+    .label-sizer {
+      visibility: hidden;
+    }
+  }
+
   .primary-button {
     background: var(--vscode-accent);
     border-color: var(--vscode-accent);

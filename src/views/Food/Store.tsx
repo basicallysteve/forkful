@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
+import { useSubmitGuard } from '@/hooks/useSubmitGuard'
 import { useRouter } from 'next/navigation'
 import { Tag } from 'primereact/tag'
 import { useFoodStore } from '@/stores/food'
@@ -45,9 +46,8 @@ function Store({ existingFood }: FoodStoreProps) {
   const [newMeasurement, setNewMeasurement] = useState('')
   const [measurementError, setMeasurementError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  // The ref blocks re-entry before React re-renders (double-click, rapid Enter).
-  const [saving, setSaving] = useState(false)
-  const savingRef = useRef(false)
+  // Blocks re-entry before React re-renders (e.g. a double-click).
+  const { busy: saving, tryStart, reset: resetSaving } = useSubmitGuard()
 
   // Check for duplicate food name (case-insensitive, trimmed)
   const isDuplicateName = useMemo(() => {
@@ -163,10 +163,10 @@ function Store({ existingFood }: FoodStoreProps) {
     })
   }
 
+  const idleLabel = isEditing ? 'Update Food' : 'Save Food'
+
   async function handleSaveFood() {
-    if (!canSave || savingRef.current) return
-    savingRef.current = true
-    setSaving(true)
+    if (!canSave || !tryStart()) return
     setSaveError(null)
 
     const foodData: Omit<Food, 'id'> = {
@@ -193,6 +193,7 @@ function Store({ existingFood }: FoodStoreProps) {
       } catch (err) {
         if (isUnauthorizedError(err)) setSaveError(SIGN_IN_REQUIRED_MESSAGE)
         else console.error('Failed to persist food update:', err)
+        resetSaving()
       }
     } else {
       try {
@@ -202,10 +203,10 @@ function Store({ existingFood }: FoodStoreProps) {
       } catch (err) {
         if (isUnauthorizedError(err)) setSaveError(SIGN_IN_REQUIRED_MESSAGE)
         else console.error('Failed to persist new food:', err)
+        resetSaving()
       }
     }
-    savingRef.current = false
-    setSaving(false)
+    // On success stay busy: the page is navigating away and a second click must not save again.
   }
 
   return (
@@ -496,11 +497,12 @@ function Store({ existingFood }: FoodStoreProps) {
                   <button
                     type="button"
                     className="primary-button"
-                    disabled={!canSave || saving}
-                    aria-busy={saving}
+                    disabled={!canSave || saving !== null}
+                    aria-busy={saving !== null}
                     onClick={handleSaveFood}
                   >
-                    {saving ? 'Saving…' : isEditing ? 'Update Food' : 'Save Food'}
+                    <span>{saving ? 'Saving…' : idleLabel}</span>
+                    <span className="label-sizer" aria-hidden="true">{saving ? idleLabel : 'Saving…'}</span>
                   </button>
                 </div>
                 {saveError && <span className="field-error" role="alert">{saveError}</span>}
