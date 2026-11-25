@@ -191,3 +191,7 @@ export async function sendInviteEmail({ to, code }: { to: string; code: string }
     throw new Error(`Invite email send failed: ${result.error.name} (${result.error.statusCode ?? 'no status'})`)
   }
 }
+
+export async function sendAdminSignalEmail(_args: { to: string; events: import("@/lib/adminEventKinds").AdminSignalEvent[]; previousSentAt: Date | null }): Promise<void> {
+  // not implemented
+}
