@@ -241,7 +241,7 @@ describe('sendAdminSignalEmail', () => {
     const payload = send.mock.calls[0][0]
     expect(payload.subject).toBe('EatForkful: 2 things need your attention')
     expect(payload.text).toContain('1 Review Report')
-    expect(payload.text).toContain('1 New Feedback')
+    expect(payload.text).toContain('1 Feedback Report')
   })
 
   it('says "Since" the earliest event time in a summary', async () => {
