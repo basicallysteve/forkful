@@ -6,6 +6,8 @@ const mockAccountEmail = vi.fn()
 const mockGetInvite = vi.fn()
 const mockSignUpWithInvite = vi.fn()
 const afterCallbacks: Array<() => unknown> = []
+const mockRecord = vi.fn()
+vi.mock('@/lib/adminSignals', () => ({ recordAdminEvent: (...a: unknown[]) => mockRecord(...a) }))
 
 vi.mock('next/server', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/server')>()),
@@ -52,6 +54,7 @@ function req(body: unknown, url = 'http://localhost/api/users') {
 
 beforeEach(() => {
   afterCallbacks.length = 0
+  mockRecord.mockReset().mockResolvedValue(undefined)
   mockJoin.mockReset().mockResolvedValue({ created: true })
   mockNotify.mockReset().mockResolvedValue(undefined)
   mockAccountEmail.mockReset().mockResolvedValue(undefined)
@@ -141,5 +144,41 @@ describe('POST /api/users (invite-only)', () => {
       expect(res.status).toBe(400)
       expect(await res.json()).toEqual({ error: 'Username already in use' })
     })
+  })
+})
+
+describe('POST /api/users: invite-accepted admin signal', () => {
+  async function flush() {
+    for (const fn of afterCallbacks.splice(0)) await fn()
+  }
+
+  it('records invite-accepted once for the new user, deferred with after()', async () => {
+    const res = await postUsers(req(valid))
+    expect(res.status).toBe(201)
+    expect(mockRecord).not.toHaveBeenCalled()
+    await flush()
+    expect(mockRecord).toHaveBeenCalledTimes(1)
+    expect(mockRecord).toHaveBeenCalledWith('invite-accepted', 7)
+  })
+
+  it('records nothing for a wrong or used code', async () => {
+    mockSignUpWithInvite.mockResolvedValue({ status: 'invalid-code' })
+    await postUsers(req(valid))
+    await flush()
+    expect(mockRecord).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for an uninvited email', async () => {
+    mockGetInvite.mockResolvedValue(null)
+    await postUsers(req(valid))
+    await flush()
+    expect(mockRecord).not.toHaveBeenCalled()
+  })
+
+  it('still answers 201 when recording fails', async () => {
+    mockRecord.mockRejectedValue(new Error('db down'))
+    const res = await postUsers(req(valid))
+    await expect(flush()).resolves.toBeUndefined()
+    expect(res.status).toBe(201)
   })
 })

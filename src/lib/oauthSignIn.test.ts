@@ -10,6 +10,12 @@ const mockJoinWaitlist = vi.fn()
 const mockSendNotification = vi.fn()
 const mockReactivate = vi.fn()
 const mockCaptureError = vi.fn()
+const mockGetInvite = vi.fn()
+const mockRecord = vi.fn()
+const afterCallbacks: Array<() => unknown> = []
+vi.mock('next/server', () => ({ after: (fn: () => unknown) => { afterCallbacks.push(fn) } }))
+vi.mock('@/lib/invites', () => ({ getInviteByEmail: (e: string) => mockGetInvite(e) }))
+vi.mock('@/lib/adminSignals', () => ({ recordAdminEvent: (...a: unknown[]) => mockRecord(...a) }))
 
 vi.mock('@/lib/oauth', () => ({
   findExistingOAuthUser: (p: unknown) => mockFindExisting(p),
@@ -36,6 +42,8 @@ const google = { provider: 'google', providerAccountId: 'g-1', email: 'Jane@Exam
 
 beforeEach(() => {
   vi.resetAllMocks()
+  afterCallbacks.length = 0
+  mockRecord.mockResolvedValue(undefined)
   mockSendNotification.mockResolvedValue(undefined)
   mockReactivate.mockResolvedValue(undefined)
 })
@@ -175,5 +183,51 @@ describe('resolveOAuthSignIn: provider email verification', () => {
 
   it.each([true, 'true', undefined, null])('treats emailVerified=%s as verified', async (emailVerified) => {
     expect(await resolveOAuthSignIn({ ...google, emailVerified })).toBe(true)
+  })
+})
+
+describe('resolveOAuthSignIn: invite-accepted admin signal', () => {
+  async function flush() {
+    for (const fn of afterCallbacks.splice(0)) await fn()
+  }
+
+  beforeEach(() => {
+    mockFindExisting.mockResolvedValue(null)
+    mockEmailHasInvite.mockResolvedValue(true)
+    mockFindOrCreate.mockResolvedValue(9)
+    mockGetInvite.mockResolvedValue({ id: 1, codeHash: 'h', codeUsedAt: null })
+  })
+
+  it('records invite-accepted for the account just created from an Invite, deferred with after()', async () => {
+    expect(await resolveOAuthSignIn(google)).toBe(true)
+    expect(mockRecord).not.toHaveBeenCalled()
+    await flush()
+    expect(mockRecord).toHaveBeenCalledTimes(1)
+    expect(mockRecord).toHaveBeenCalledWith('invite-accepted', 9)
+  })
+
+  it('records nothing when the email has no Invite (open sign-up)', async () => {
+    mockGetInvite.mockResolvedValue(null)
+    await resolveOAuthSignIn(google)
+    await flush()
+    expect(mockRecord).not.toHaveBeenCalled()
+  })
+
+  it('records nothing when the account already existed (a later sign-in)', async () => {
+    mockFindExisting.mockResolvedValue({ userId: 4, email: 'jane@example.com', dateDeleted: null })
+    mockHasAccess.mockResolvedValue(true)
+    mockFindOrCreate.mockResolvedValue(4)
+    await resolveOAuthSignIn(google)
+    await flush()
+    expect(mockRecord).not.toHaveBeenCalled()
+  })
+
+  it('still signs in when recording or the invite lookup fails', async () => {
+    mockRecord.mockRejectedValue(new Error('db down'))
+    expect(await resolveOAuthSignIn(google)).toBe(true)
+    await expect(flush()).resolves.toBeUndefined()
+    mockGetInvite.mockRejectedValue(new Error('db down'))
+    expect(await resolveOAuthSignIn(google)).toBe(true)
+    await expect(flush()).resolves.toBeUndefined()
   })
 })
