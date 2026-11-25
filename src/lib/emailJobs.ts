@@ -2,6 +2,7 @@ import { eq, and, isNull, lte, gte, inArray, isNotNull, desc } from 'drizzle-orm
 import { db } from '@/db'
 import { users, pantryItems, foods, recipes, ingredients } from '@/db/schema'
 import { sendPantryReminderEmail, sendRecipeSuggestionEmail } from '@/lib/email'
+import { hasAccess } from '@/lib/access'
 import { toSlug } from '@/utils/slug'
 
 export async function processPantryReminders(frequency: 'daily' | 'weekly'): Promise<{ sent: number }> {
@@ -52,6 +53,8 @@ export async function processPantryReminders(frequency: 'daily' | 'weekly'): Pro
   for (const user of eligibleUsers) {
     const expiring = byUser.get(user.id)
     if (!expiring || expiring.length === 0) continue
+    // Locked (Waitlisted) accounts get no cron email (ADR-0032); checked only for would-be recipients.
+    if (!(await hasAccess(user.id))) continue
 
     const items = expiring.map(item => {
       const expDate = item.expirationDate!
@@ -177,6 +180,8 @@ export async function processRecipeSuggestions(frequency: 'weekly' | 'monthly'):
       .slice(0, 5)
 
     if (scored.length === 0) continue
+    // Locked (Waitlisted) accounts get no cron email (ADR-0032).
+    if (!(await hasAccess(user.id))) continue
 
     await sendRecipeSuggestionEmail({
       to: user.email,
