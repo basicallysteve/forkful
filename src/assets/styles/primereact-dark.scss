@@ -162,6 +162,14 @@ html[data-theme='light'] { @include quill-light; }
   color: var(--text-color);
 }
 
+// lara-dark-blue sets the placeholder to white at 60%, which vanishes on the white light-mode input.
+.p-inputtext::placeholder,
+.p-inputnumber-input::placeholder,
+.p-password .p-inputtext::placeholder {
+  color: var(--text-color-secondary);
+  opacity: 1;
+}
+
 // ── Compact dropdown (filter controls) ───────────────────────────────────────
 
 .filter-select.p-dropdown {
