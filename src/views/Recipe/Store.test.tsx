@@ -615,6 +615,21 @@ describe('Store Page - editing an added ingredient (#16)', () => {
       expect(screen.getByRole('button', { name: /publish/i })).toBeDisabled()
     })
 
+    it('stays busy after a successful save while the page navigates away, so a second click cannot create again', async () => {
+      const user = userEvent.setup()
+      vi.mocked(apiCreateRecipe).mockImplementationOnce(async (r) => ({ ...r, id: 11, shortId: 'zzz99999' } as Recipe))
+      renderWithProviders(<Store />)
+      await fillRequired(user)
+
+      await user.click(screen.getByRole('button', { name: /save recipe/i }))
+      await waitFor(() => expect(apiCreateRecipe).toHaveBeenCalledTimes(1))
+
+      const busy = await screen.findByRole('button', { name: /saving/i })
+      expect(busy).toBeDisabled()
+      await user.click(busy)
+      expect(apiCreateRecipe).toHaveBeenCalledTimes(1)
+    })
+
     it('re-enables Save Recipe after a failed save so the user can retry', async () => {
       const user = userEvent.setup()
       vi.spyOn(console, 'error').mockImplementation(() => {})
