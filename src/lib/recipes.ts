@@ -10,7 +10,7 @@ import { toSlug } from '@/utils/slug'
 import { nanoid } from 'nanoid'
 import type { CreateRecipeInput } from '@/types/Recipe'
 import { sanitizeRichText } from '@/lib/sanitize'
-import { calculateCalories } from '@/utils/unitConversion'
+import { caloriesFor } from '@/utils/foodNutrition'
 import { scrapeRecipe } from "recipe-scrapers"
 import { mapScrapedRecipe } from '@/lib/recipeScrapeMapper'
 import { assertFetchableUrl, FETCH_TIMEOUT_MS, MAX_RESPONSE_BYTES, MAX_REDIRECTS } from '@/lib/urlFetchGuard'
@@ -64,17 +64,7 @@ async function buildIngredients(recipeId: number): Promise<Ingredient[]> {
     const food = mapFood(row.foods)
     const servingUnit = row.ingredients.servingUnit ?? food.servingUnit
     const quantity = Number(row.ingredients.quantity)
-    const measurement = food.measurements.find((m) => m.unit === servingUnit)
-    const calories = calculateCalories({
-      baseCalories: food.calories,
-      baseServingSize: food.servingSize,
-      baseServingUnit: food.servingUnit,
-      targetAmount: quantity,
-      targetUnit: servingUnit,
-      gramsPerUnit: measurement?.gramsPerUnit,
-      mlPerUnit: measurement?.mlPerUnit,
-      density: food.density,
-    }) ?? 0
+    const calories = caloriesFor(food, quantity, servingUnit) ?? 0
     return { food, quantity, calories, servingUnit }
   })
 }

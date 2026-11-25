@@ -4,7 +4,8 @@ import { foodLogEntries, foods } from '@/db/schema'
 import type { Food } from '@/types/Food'
 import type { DailyLog, FoodLogEntry, Macros } from '@/types/FoodLogEntry'
 import { mapFood } from '@/lib/foods'
-import { servingScaleFactor, allowedUnitsForFood } from '@/utils/unitConversion'
+import { allowedUnitsForFood } from '@/utils/unitConversion'
+import { macrosFor } from '@/utils/foodNutrition'
 import { ZERO_MACROS, sumMacros } from '@/utils/macros'
 import { round2 } from '@/utils/number'
 
@@ -34,23 +35,14 @@ function mapEntry(row: typeof foodLogEntries.$inferSelect, food: Food | null): F
  * records zero (the flow is expected to offer calibration before reaching this point).
  */
 export function computeFrozenMacros(food: Food, amount: number, unit: string): Macros {
-  const measurement = food.measurements.find((m) => m.unit === unit)
-  const factor = servingScaleFactor({
-    baseServingSize: food.servingSize,
-    baseServingUnit: food.servingUnit,
-    targetAmount: amount,
-    targetUnit: unit,
-    gramsPerUnit: measurement?.gramsPerUnit,
-    mlPerUnit: measurement?.mlPerUnit,
-    density: food.density,
-  })
-  if (factor === null) return { ...ZERO_MACROS }
+  const macros = macrosFor(food, amount, unit)
+  if (macros === null) return { ...ZERO_MACROS }
   return {
-    calories: round2(food.calories * factor),
-    protein: round2(food.protein * factor),
-    carbs: round2(food.carbs * factor),
-    fat: round2(food.fat * factor),
-    fiber: round2(food.fiber * factor),
+    calories: round2(macros.calories),
+    protein: round2(macros.protein),
+    carbs: round2(macros.carbs),
+    fat: round2(macros.fat),
+    fiber: round2(macros.fiber),
   }
 }
 

@@ -24,7 +24,8 @@ import FoodSearch from '@/components/FoodSearch/FoodSearch'
 import QuantityInput from '@/components/QuantityInput/QuantityInput'
 import { MAX_QUANTITY } from '@/utils/quantity'
 import { hasValidQuantities } from '@/views/Recipe/ingredientQuantities'
-import { calculateCalories, getAllowedUnits } from "@/utils/unitConversion"
+import { getAllowedUnits } from "@/utils/unitConversion"
+import { calculateCalories } from "@/utils/foodNutrition"
 import { sanitizeRichText } from '@/lib/sanitize'
 import { cuisineOptions, dietaryOptions } from '@/constants/userPreferences'
 import ReviewsTab from '@/views/Recipe/ReviewsTab'

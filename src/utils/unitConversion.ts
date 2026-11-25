@@ -1,7 +1,6 @@
 import convert from 'convert-units'
 import pluralize from 'pluralize'
 import type { Food } from '@/types/Food'
-import { convertFoodAmount } from '@/utils/convertFoodAmount'
 
 /**
  * The synthetic, app-wide count unit meaning "one item / one package" (see ADR-0022). It is an
@@ -128,63 +127,6 @@ export function shoppingUnitOptions(foodUnits: string[]): string[] {
   return sortUnitsCustomFirst([...new Set([...foodUnits, EACH_UNIT])])
 }
 
-export interface CalculateCaloriesParams {
-  baseCalories: number
-  baseServingSize: number
-  baseServingUnit: string
-  targetAmount: number
-  targetUnit: string
-  gramsPerUnit?: number
-  mlPerUnit?: number
-  density?: number
-}
-
-// The target unit's calibration arrives flat (not as a Food), so wrap it and let both calculators
-// share convertFoodAmount (ADR-0028).
-function amountInBaseUnit(p: {
-  baseServingUnit: string
-  targetAmount: number
-  targetUnit: string
-  gramsPerUnit?: number
-  mlPerUnit?: number
-  density?: number
-}): number | null {
-  return convertFoodAmount(
-    {
-      measurements: [{ unit: p.targetUnit, gramsPerUnit: p.gramsPerUnit, mlPerUnit: p.mlPerUnit }],
-      density: p.density,
-    },
-    p.targetAmount,
-    p.targetUnit,
-    p.baseServingUnit,
-  )
-}
-
-export function calculateCalories(params: CalculateCaloriesParams): number | null {
-  const converted = amountInBaseUnit(params)
-  if (converted === null) return null
-  return (params.baseCalories / params.baseServingSize) * converted
-}
-
-// The factor by which a Food's per-serving nutrition scales to a target amount + unit — i.e. how many
-// base servings the target represents (calories = baseCalories x this factor), so all five macros can
-// be scaled uniformly and frozen onto a Food Log Entry (see ADR-0025). Returns null when the target
-// unit can't be resolved to the base serving unit.
-export function servingScaleFactor(params: {
-  baseServingSize: number
-  baseServingUnit: string
-  targetAmount: number
-  targetUnit: string
-  gramsPerUnit?: number
-  mlPerUnit?: number
-  density?: number
-}): number | null {
-  if (params.baseServingSize <= 0) return null
-  const converted = amountInBaseUnit(params)
-  if (converted === null) return null
-  return converted / params.baseServingSize
-}
-
 // The units a Food may be logged in: its own Measurements, always including its base serving unit
 // (falling back to 'serving' when a Food defines neither). Shared by the client unit picker and the
 // server-side reject check so the two can never disagree on what's valid.
@@ -192,17 +134,6 @@ export function allowedUnitsForFood(food: Pick<Food, 'measurements' | 'servingUn
   const units = food.measurements.map((m) => m.unit).filter(Boolean)
   if (food.servingUnit && !units.includes(food.servingUnit)) units.unshift(food.servingUnit)
   return units.length > 0 ? units : ['serving']
-}
-
-// Whether logging `unit` for this Food can resolve to its base serving unit. False means the unit has
-// no weight (or volume) for this Food, so frozen macros would compute to zero (ADR-0025, ADR-0028).
-export function unitResolvesForFood(
-  food: Pick<Food, 'measurements' | 'servingUnit' | 'servingSize' | 'density'>,
-  unit: string,
-): boolean {
-  if (!unit) return true
-  if (!(food.servingSize > 0)) return false
-  return convertFoodAmount(food, 1, unit, food.servingUnit) !== null
 }
 
 export function getUnitLabel(unit: string): string {
