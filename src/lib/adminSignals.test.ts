@@ -10,6 +10,7 @@ type Row = {
   attempts: number
   lastError: string | null
   nextAttemptAt: Date | null
+  userId?: number
 }
 const store = vi.hoisted(() => ({ rows: [] as unknown[], nextId: 1 }))
 const rows = () => store.rows as Row[]
@@ -18,8 +19,8 @@ const rows = () => store.rows as Row[]
 vi.mock('@/lib/adminEvents', async () => {
   const retry = await vi.importActual<typeof import('@/lib/adminEventRetry')>('@/lib/adminEventRetry')
   return {
-    addAdminEvent: async (type: AdminEventKind) => {
-      rows().push({ id: store.nextId++, type, createdAt: new Date(), sentAt: null, status: 'pending', attempts: 0, lastError: null, nextAttemptAt: null })
+    addAdminEvent: async (type: AdminEventKind, userId?: number) => {
+      rows().push({ id: store.nextId++, type, userId, createdAt: new Date(), sentAt: null, status: 'pending', attempts: 0, lastError: null, nextAttemptAt: null })
     },
     claimDueAdminEvents: async (windowStart: Date) => {
       const now = new Date()
@@ -77,6 +78,11 @@ afterEach(() => {
 const sentKinds = () => sent.flatMap((s) => s.events.map((e) => e.kind))
 
 describe('recordAdminEvent', () => {
+  it('stores the user id on the event when given one', async () => {
+    await recordAdminEvent('account-deactivated', 42)
+    expect(rows()[0].userId).toBe(42)
+  })
+
   it('sends the first event right away, to the admin, as its own email', async () => {
     await recordAdminEvent('review-report')
     expect(sent).toHaveLength(1)
