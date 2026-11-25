@@ -375,3 +375,12 @@ export const invites = pgTable('invites', {
   emailUnique: uniqueIndex('invites_email_lower_unique').on(sql`lower(${t.email})`),
   codeHashUnique: unique('invites_code_hash_unique').on(t.codeHash),
 }));
+
+// Things that need the admin's attention (#416). Only what happened and when: never a user, name or text.
+// `sent_at` is set when an admin email carrying this event went out; the newest value is when the last email was sent.
+export const adminEvents = pgTable('admin_events', {
+  id: serial('id').primaryKey(),
+  kind: varchar('kind', { length: 40 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  sentAt: timestamp('sent_at'),
+});

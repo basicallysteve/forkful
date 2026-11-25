@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { recordAdminEvent } from '@/lib/adminSignals'
+import { captureError } from '@/lib/logger'
 import { getSessionUser } from '@/lib/auth'
 import { createReviewReport } from '@/lib/reviews'
 import { taskRunner } from '@/lib/TaskRunner'
@@ -27,6 +29,8 @@ export async function POST(request: Request, { params }: Params) {
     await taskRunner.run(() =>
       createReviewReport({ userId: session.userId, reviewId: Number(reviewId), reason, comment })
     )
+    // After the response: emailing the admin must never slow or fail the report (it never throws).
+    after(() => recordAdminEvent('review-report').catch((error) => captureError(error, { area: 'admin-signals' })))
     return NextResponse.json({ reported: true }, { status: 201 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to submit report'
