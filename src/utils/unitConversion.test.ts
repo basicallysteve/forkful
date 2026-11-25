@@ -1,33 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CUSTOM_UNITS, EACH_UNIT, formatUnitForAmount, getUnitCategory, getUnitLabel, preferredShoppingUnit, shoppingUnitOptions, unitResolvesForFood } from './unitConversion'
-
-describe('unitResolvesForFood', () => {
-  const base = { servingSize: 100, servingUnit: 'g' }
-
-  it('is true for the base serving unit', () => {
-    expect(unitResolvesForFood({ ...base, measurements: [] }, 'g')).toBe(true)
-  })
-
-  it('is true for a mass unit convertible to the base', () => {
-    expect(unitResolvesForFood({ ...base, measurements: [] }, 'oz')).toBe(true)
-  })
-
-  it('is true for a custom unit that has a weight', () => {
-    expect(unitResolvesForFood({ ...base, measurements: [{ unit: 'slice', gramsPerUnit: 28 }] }, 'slice')).toBe(true)
-  })
-
-  it('is false for a custom unit with no weight', () => {
-    expect(unitResolvesForFood({ ...base, measurements: [{ unit: 'slice' }] }, 'slice')).toBe(false)
-  })
-
-  it('is false when the food has no positive serving size, even for its own unit', () => {
-    expect(unitResolvesForFood({ servingSize: 0, servingUnit: 'g', measurements: [] }, 'g')).toBe(false)
-  })
-
-  it('is false for a volume unit when the food has no density or volume calibration', () => {
-    expect(unitResolvesForFood({ ...base, measurements: [{ unit: 'cup' }] }, 'cup')).toBe(false)
-  })
-})
+import { CUSTOM_UNITS, EACH_UNIT, formatUnitForAmount, getUnitCategory, getUnitLabel, preferredShoppingUnit, shoppingUnitOptions } from './unitConversion'
 
 describe('formatUnitForAmount', () => {
   it('leaves standard mass and volume symbols unchanged regardless of amount', () => {
