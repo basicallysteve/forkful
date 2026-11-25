@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useRef } from "react"
 import { Toast } from 'primereact/toast'
+import { Skeleton } from 'primereact/skeleton'
+import { useFoodCatalog } from "@/hooks/useFoodCatalog"
 import { useSubmitGuard } from "@/hooks/useSubmitGuard"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -286,6 +288,31 @@ function calculateJaccardSimilarity(ingredientsA: string[], ingredientsB: string
   return intersection.size / union.size
 }
 
+/**
+ * The blank add row, shown once the foods have loaded. It seeds its draft from the first food at mount,
+ * so it must not mount while the store is still empty. Loading and failed fetches get their own states
+ * (Skeleton as on the Foods list, message + Retry as in the log dialog) instead of "No foods available".
+ */
+function AddIngredientRow({ onAdd }: { onAdd: (ingredient: Ingredient) => void }) {
+  const { status, retry } = useFoodCatalog()
+  if (status === 'loading') {
+    return (
+      <div className="ingredient-input" role="status" aria-label="Loading foods">
+        <Skeleton height="2.5rem" borderRadius="8px" />
+      </div>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <div className="foods-load-error" role="alert">
+        <span>Could not load foods.</span>
+        <button type="button" className="foods-load-retry" onClick={retry}>Retry</button>
+      </div>
+    )
+  }
+  return <IngredientInput onAdd={onAdd} />
+}
+
 function Store() {
   // Which create request is in flight (blocks re-entry before React re-renders, e.g. a double-click).
   const { busy: saving, tryStart, reset: resetSaving } = useSubmitGuard<'save' | 'publish'>()
@@ -501,7 +528,7 @@ function Store() {
         <h3 className="ingredients-heading form-field-full">Ingredients</h3>
         {ingredientCount === 0 && <p className="no-ingredients-text">No ingredients added yet.</p>}
         
-        <IngredientInput onAdd={handleAddIngredient} />
+        <AddIngredientRow onAdd={handleAddIngredient} />
         {ingredientCount > 0 && recipe.ingredients?.map((ingredient, index) => (
           <IngredientInput storedIngredient={ingredient} key={ingredientRowIds[index] ?? index} onChange={(updated) => handleUpdateIngredient(index, updated)} onRemove={() => handleRemoveIngredient(index)} />
         ))}
