@@ -11,7 +11,7 @@ import { WaitlistNotificationEmail } from '@/emails/WaitlistNotificationEmail'
 import { InviteEmail } from '@/emails/InviteEmail'
 import { AdminSignalEmail } from '@/emails/AdminSignalEmail'
 import { AdminSignalSummaryEmail } from '@/emails/AdminSignalSummaryEmail'
-import { ADMIN_SIGNAL_PATH, adminSignalSubject, adminSignalText } from '@/emails/adminSignalCopy'
+import { ADMIN_SIGNAL_PATH, adminSignalSubject, adminSignalText, earliestEventTime } from '@/emails/adminSignalCopy'
 import type { AdminSignalEvent } from '@/lib/adminEventKinds'
 import { buildInviteLink } from '@/lib/inviteLink'
 import { WaitlistNoticeEmail, waitlistNoticeText } from '@/emails/WaitlistNoticeEmail'
@@ -200,22 +200,21 @@ export async function sendInviteEmail({ to, code }: { to: string; code: string }
  * One email to the admin: a single event goes out as its own email, several as a summary with a
  * count per kind. No user names, addresses or text are ever included (#416).
  */
-export async function sendAdminSignalEmail({ to, events, previousSentAt }: {
+export async function sendAdminSignalEmail({ to, events }: {
   to: string
   events: AdminSignalEvent[]
-  previousSentAt: Date | null
 }): Promise<void> {
   const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'https://eatforkful.com'
   const adminUrl = `${baseUrl}${ADMIN_SIGNAL_PATH}`
   const react = events.length === 1
     ? AdminSignalEmail({ event: events[0], adminUrl })
-    : AdminSignalSummaryEmail({ events, since: previousSentAt ?? events[0].createdAt, adminUrl })
+    : AdminSignalSummaryEmail({ events, since: earliestEventTime(events), adminUrl })
   const result = await deliver('admin-signal', {
     from: process.env.RESEND_FROM_EMAIL ?? 'EatForkful <noreply@eatforkful.com>',
     to,
     subject: adminSignalSubject(events),
     react,
-    text: adminSignalText(events, previousSentAt, adminUrl),
+    text: adminSignalText(events, adminUrl),
   })
   if (result?.error) {
     throw new Error(`Admin signal send failed: ${result.error.name} (${result.error.statusCode ?? 'no status'})`)

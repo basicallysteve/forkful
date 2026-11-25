@@ -1,5 +1,5 @@
 import { BaseEmail } from './BaseEmail'
-import { ADMIN_SIGNAL_LINK_LABEL, adminSignalCountLines, adminSignalSubject, formatSignalTime } from './adminSignalCopy'
+import { ADMIN_SIGNAL_LINK_LABEL, adminSignalCountLines, adminSignalHeading, adminSignalSubject, formatSignalTime } from './adminSignalCopy'
 import type { AdminSignalEvent } from '@/lib/adminEventKinds'
 
 interface Props {
@@ -12,6 +12,9 @@ interface Props {
 export function AdminSignalSummaryEmail({ events, since, adminUrl }: Props) {
   return (
     <BaseEmail subject={adminSignalSubject(events)} previewText={`${events.length} things need your attention.`} variant="functional">
+      <h1 style={{ margin: '0 0 20px', fontSize: 24, fontWeight: 700, color: '#09090b' }}>
+        {adminSignalHeading(events)}
+      </h1>
       <p style={{ margin: '0 0 8px' }}>Since {formatSignalTime(since)}:</p>
       <ul style={{ margin: '0 0 24px', paddingLeft: 20 }}>
         {adminSignalCountLines(events).map((line) => (

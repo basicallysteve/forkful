@@ -224,7 +224,7 @@ describe('sendAdminSignalEmail', () => {
 
   it('sends one immediate email with the kind subject and the full admin URL in the plain text', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
-    await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'review-report', createdAt: at }], previousSentAt: null })
+    await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'review-report', createdAt: at }] })
     expect(send).toHaveBeenCalledTimes(1)
     const payload = send.mock.calls[0][0]
     expect(payload.to).toBe('admin@example.com')
@@ -236,18 +236,26 @@ describe('sendAdminSignalEmail', () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     await sendAdminSignalEmail({
       to: 'admin@example.com',
-      events: [{ kind: 'review-report', createdAt: at }, { kind: 'feedback', createdAt: at }],
-      previousSentAt: new Date('2026-11-24T15:30:00Z'),
+      events: [{ kind: 'review-report', createdAt: at }, { kind: 'feedback', createdAt: at }]
     })
     const payload = send.mock.calls[0][0]
     expect(payload.subject).toBe('EatForkful: 2 things need your attention')
     expect(payload.text).toContain('1 Review Report')
-    expect(payload.text).toContain('1 New Feedback')
+    expect(payload.text).toContain('1 Feedback Report')
+  })
+
+  it('says "Since" the earliest event time in a summary', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production')
+    await sendAdminSignalEmail({
+      to: 'admin@example.com',
+      events: [{ kind: 'feedback', createdAt: at }, { kind: 'feedback', createdAt: new Date('2026-11-24T09:05:00Z') }],
+    })
+    expect(send.mock.calls[0][0].text).toContain('Since Nov 24 at 9:05 AM UTC:')
   })
 
   it('goes through the send guard: nothing is sent outside production', async () => {
     vi.stubEnv('VERCEL_ENV', 'preview')
-    await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'review-report', createdAt: at }], previousSentAt: null })
+    await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'review-report', createdAt: at }] })
     expect(send).not.toHaveBeenCalled()
     expect(logInfo).toHaveBeenCalledTimes(1)
   })
@@ -255,7 +263,7 @@ describe('sendAdminSignalEmail', () => {
   it('rejects when Resend resolves an error, without the address in the message', async () => {
     vi.stubEnv('VERCEL_ENV', 'production')
     send.mockResolvedValueOnce({ data: null, error: { name: 'rate_limit_exceeded', message: 'bad to admin@example.com', statusCode: 429 } })
-    const failure = await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'feedback', createdAt: at }], previousSentAt: null })
+    const failure = await sendAdminSignalEmail({ to: 'admin@example.com', events: [{ kind: 'feedback', createdAt: at }] })
       .then(() => null, (e: Error) => e)
     expect(failure).toBeInstanceOf(Error)
     expect(failure?.message).not.toContain('admin@example.com')
