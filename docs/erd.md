@@ -8,7 +8,7 @@ Reading the diagram: types are the Postgres type; lengths and precision are in t
 
 A PR that changes `src/db/schema.ts` must update this file or say why not.
 
-Last verified: 2026-11-25, against main at `524861d`. All 21 tables in `src/db/schema.ts` were verified at column level (names, types, nullability, defaults, primary keys, foreign keys with ON DELETE, unique constraints). The delivery flow for `EVENTS` is in `docs/flows/admin-signals.md`.
+Last verified: 2026-11-25, against main at `524861d`. All 21 tables in `src/db/schema.ts` were verified at column level (names, types, nullability, defaults, primary keys, foreign keys with ON DELETE, unique constraints). The delivery flow for `EVENTS` is in `docs/flows/admin-signals.md`. Other flows: `INVITES`, `WAITLIST_ENTRIES`, `OAUTH_ACCOUNTS` and `LOGIN_ATTEMPTS` in `docs/flows/invite-waitlist-signup.md`; `PASSWORD_RESET_TOKENS` in `docs/flows/password-reset.md`; `ACCOUNT_FEEDBACK` in `docs/flows/account-closure.md`; `REVIEWS`, `REVIEW_LIKES` and `REVIEW_REPORTS` in `docs/flows/review-moderation.md`; `FOOD_LOG_ENTRIES` in `docs/flows/food-log.md`.
 
 ```mermaid
 erDiagram
